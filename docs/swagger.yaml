@@ -1,0 +1,68 @@
+basePath: /api/v1
+definitions:
+  models.Metadata:
+    properties:
+      available:
+        properties:
+          ram:
+            type: integer
+          update_timestamp:
+            type: integer
+        type: object
+      name:
+        type: string
+      network:
+        type: string
+      public_key:
+        type: string
+      reserved:
+        properties:
+          cpu:
+            type: integer
+          memory:
+            type: integer
+        type: object
+      resource:
+        properties:
+          cpu_max:
+            type: number
+          cpu_usage:
+            type: number
+          ram_max:
+            type: integer
+          total_core:
+            type: integer
+          update_timestamp:
+            type: integer
+        type: object
+    type: object
+host: localhost:9999
+info:
+  contact:
+    email: support@nunet.io
+    name: Support
+    url: https://devexchange.nunet.io/
+  description: A dashboard application for computing providers.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://nunet.io/tos
+  title: Device Management Service
+  version: "1.0"
+paths:
+  /onboard:
+    get:
+      description: Responds with metadata of current provideer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Metadata'
+            type: array
+      summary: Get current device info.
+      tags:
+      - onboard
+swagger: "2.0"
