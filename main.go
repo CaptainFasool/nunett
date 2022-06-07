@@ -3,9 +3,9 @@ package main
 // TODO: please change the package path to:
 // gitlab.com/nunet/device-management/device-management-app
 import (
-	"device-management-service/routes"
+	"gitlab.com/nunet/device-management-service/routes"
 
-	_ "device-management-service/docs"
+	_ "gitlab.com/nunet/device-management-service/docs"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"

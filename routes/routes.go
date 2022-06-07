@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"device-management-service/handlers"
+	"gitlab.com/nunet/device-management-service/handlers"
 
 	"github.com/gin-gonic/gin"
 )

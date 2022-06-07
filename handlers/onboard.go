@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"os/exec"
 
-	"device-management-service/models"
-
 	"github.com/gin-gonic/gin"
+
+	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
 // Onboarded      godoc

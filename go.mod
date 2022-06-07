@@ -1,4 +1,4 @@
-module device-management-service
+module gitlab.com/nunet/device-management-service
 
 go 1.18
 
