@@ -46,6 +46,47 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Onboard runs onboarding script given the amount of resources to onboard.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboard"
+                ],
+                "summary": "Runs the onboarding process.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Metadata"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/provisioned": {
+            "get": {
+                "description": "Get total memory capacity in MB and CPU capacity in MHz.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboard"
+                ],
+                "summary": "Returns provisined capacity on host.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Provisioned"
+                        }
+                    }
+                }
             }
         }
     },
@@ -57,9 +98,6 @@ const docTemplate = `{
                     "type": "object",
                     "properties": {
                         "ram": {
-                            "type": "integer"
-                        },
-                        "update_timestamp": {
                             "type": "integer"
                         }
                     }
@@ -98,11 +136,22 @@ const docTemplate = `{
                         },
                         "total_core": {
                             "type": "integer"
-                        },
-                        "update_timestamp": {
-                            "type": "integer"
                         }
                     }
+                },
+                "update_timestamp": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Provisioned": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "number"
+                },
+                "memory": {
+                    "type": "integer"
                 }
             }
         }

@@ -6,8 +6,6 @@ definitions:
         properties:
           ram:
             type: integer
-          update_timestamp:
-            type: integer
         type: object
       name:
         type: string
@@ -32,9 +30,16 @@ definitions:
             type: integer
           total_core:
             type: integer
-          update_timestamp:
-            type: integer
         type: object
+      update_timestamp:
+        type: integer
+    type: object
+  models.Provisioned:
+    properties:
+      cpu:
+        type: number
+      memory:
+        type: integer
     type: object
 host: localhost:9999
 info:
@@ -63,6 +68,34 @@ paths:
               $ref: '#/definitions/models.Metadata'
             type: array
       summary: Get current device info.
+      tags:
+      - onboard
+    post:
+      description: Onboard runs onboarding script given the amount of resources to
+        onboard.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Metadata'
+            type: array
+      summary: Runs the onboarding process.
+      tags:
+      - onboard
+  /provisioned:
+    get:
+      description: Get total memory capacity in MB and CPU capacity in MHz.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Provisioned'
+      summary: Returns provisined capacity on host.
       tags:
       - onboard
 swagger: "2.0"
