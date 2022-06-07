@@ -59,4 +59,15 @@ func SetPreferences(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "will set preferences to distributed persistent system"})
 }
 
+// Onboarded      godoc
+// @Summary      Returns provisined capacity on host.
+// @Description  Get total memory capacity in MB and CPU capacity in MHz.
+// @Tags         onboard
+// @Produce      json
+// @Success      200  {object}  models.Provisioned
+// @Router       /provisioned [get]
+func ProvisionedCapacity(c *gin.Context) {
+	c.JSON(http.StatusOK, onboarding.GetTotalProvisioned())
+}
+
 // https://github.com/swaggo/swag

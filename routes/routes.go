@@ -13,6 +13,8 @@ func SetupRouter() *gin.Engine {
 	{
 		v1.GET("/onboard", handlers.Onboarded)
 		v1.POST("/onboard", handlers.Onboard)
+		v1.GET("/provisioned", handlers.ProvisionedCapacity)
+
 	}
 
 	return router
