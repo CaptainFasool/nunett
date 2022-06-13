@@ -55,6 +55,20 @@ info:
   title: Device Management Service
   version: "1.0"
 paths:
+  /address/new:
+    get:
+      description: Create a payment address from public key. Return payment address
+        and private key.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Provisioned'
+      summary: Create a new payment address.
+      tags:
+      - onboard
   /onboard:
     get:
       description: Responds with metadata of current provideer
@@ -95,7 +109,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/models.Provisioned'
-      summary: Returns provisined capacity on host.
+      summary: Returns provisioned capacity on host.
       tags:
       - onboard
 swagger: "2.0"

@@ -70,4 +70,20 @@ func ProvisionedCapacity(c *gin.Context) {
 	c.JSON(http.StatusOK, onboarding.GetTotalProvisioned())
 }
 
+// Onboarded      godoc
+// @Summary      Create a new payment address.
+// @Description  Create a payment address from public key. Return payment address and private key.
+// @Tags         onboard
+// @Produce      json
+// @Success      200  {object}  models.Provisioned
+// @Router       /address/new [get]
+func CreatePaymentAddress(c *gin.Context) {
+	pair, err := onboarding.GetAddressAndPrivateKey()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"message": "Error creating address"})
+	}
+	c.JSON(http.StatusOK, pair)
+}
+
 // https://github.com/swaggo/swag

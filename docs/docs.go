@@ -25,6 +25,26 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/address/new": {
+            "get": {
+                "description": "Create a payment address from public key. Return payment address and private key.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboard"
+                ],
+                "summary": "Create a new payment address.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Provisioned"
+                        }
+                    }
+                }
+            }
+        },
         "/onboard": {
             "get": {
                 "description": "Responds with metadata of current provideer",
@@ -78,7 +98,7 @@ const docTemplate = `{
                 "tags": [
                     "onboard"
                 ],
-                "summary": "Returns provisined capacity on host.",
+                "summary": "Returns provisioned capacity on host.",
                 "responses": {
                     "200": {
                         "description": "OK",
