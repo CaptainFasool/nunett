@@ -11,26 +11,31 @@ import (
 )
 
 func TestOnboardedRoute(t *testing.T) {
-    router := routes.SetupRouter()
+	router := routes.SetupRouter()
 
-    w := httptest.NewRecorder()
-    req, _ := http.NewRequest("GET", "/onboard", nil)
-    router.ServeHTTP(w, req)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/onboard", nil)
+	router.ServeHTTP(w, req)
 
-    assert.Equal(t, 200, w.Code)
-    assert.Contains(t, w.Body.String(), "will show onboarded info")
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), "name")
+	assert.Contains(t, w.Body.String(), "resource")
+	assert.Contains(t, w.Body.String(), "available")
+	assert.Contains(t, w.Body.String(), "reserved")
+	assert.Contains(t, w.Body.String(), "network")
+	assert.Contains(t, w.Body.String(), "public_key")
+
 }
 
-
 func TestOnboardRoute(t *testing.T) {
-    router := routes.SetupRouter()
+	router := routes.SetupRouter()
 
-    w := httptest.NewRecorder()
-    req, _ := http.NewRequest("POST", "/onboard", nil)
-    router.ServeHTTP(w, req)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/onboard", nil)
+	router.ServeHTTP(w, req)
 
-    assert.Equal(t, 200, w.Code)
-    assert.Contains(t, w.Body.String(), "will onboard a new device")
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), "will onboard a new device")
 }
 
 func TestProvisionedRoute(t *testing.T) {

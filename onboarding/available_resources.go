@@ -30,9 +30,12 @@ func totalCPUInMHz() float64 {
 
 // GetTotalProvisioned returns Provisioned struct with provisioned memory and CPU.
 func GetTotalProvisioned() *models.Provisioned {
+	cores, _ := cpu.Info()
+
 	provisioned := &models.Provisioned{
-		CPU:    totalCPUInMHz(),
-		Memory: totalRamInMB(),
+		CPU:      totalCPUInMHz(),
+		Memory:   totalRamInMB(),
+		NumCores: uint64(len(cores)),
 	}
 	return provisioned
 }
