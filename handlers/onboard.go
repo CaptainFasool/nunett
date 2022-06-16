@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
+	"text/template"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +16,38 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
+
+const clientTemplate = `{
+    "plugins": {
+      "raw_exec": {
+        "config": {
+          "enabled": "true"
+        }
+      },
+      "docker": {}
+    },
+    "log_level": "DEBUG",
+    "data_dir": "/var/log/nomad",
+    "name": "{{ .Name }}",
+    "datacenter": "{{ .Network }}",
+    "client": {
+      "host_volume": {
+        "machine-metadata": {
+          "name": "machine-metadata",
+          "path": "/etc/nunet"
+        }
+      },
+      "enabled": "true",
+      "servers": [
+        "nomad-nunetio.ddns.net:4647"
+      ],
+      "reserved": {
+        "cpu": {{ .ReservedCPU }},
+        "memory": {{ .ReservedMemory }}
+      }
+    }
+	}
+`
 
 // Onboarded      godoc
 // @Summary      Get current device info.
@@ -76,8 +110,10 @@ func Onboard(c *gin.Context) {
 	var capacityForNunet models.CapacityForNunet
 	c.BindJSON(&capacityForNunet)
 
-	if capacityForNunet.Memory > int64(totalMem) && capacityForNunet.CPU > int64(totalCpu) {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": errors.New("wrong capacity provided")})
+	if (capacityForNunet.Memory > int64(totalMem)) &&
+		capacityForNunet.CPU > int64(totalCpu) {
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": errors.New("wrong capacity provided")})
 		return
 	}
 
@@ -97,6 +133,34 @@ func Onboard(c *gin.Context) {
 	}
 
 	// create client config
+	data := struct {
+		Name           string
+		Network        string
+		ReservedCPU    int64
+		ReservedMemory int64
+	}{
+		Name:           hostname,
+		Network:        capacityForNunet.Channel,
+		ReservedCPU:    metadata.Reserved.CPU,
+		ReservedMemory: metadata.Reserved.Memory,
+	}
+
+	clientFile, err := os.Create("/etc/nunet/clientV2.json")
+	if err != nil {
+		log.Print("execute: ", err)
+		return
+	}
+
+	tmpl, err := template.New("client").Parse(clientTemplate)
+	if err != nil {
+		panic(err)
+	}
+
+	err = tmpl.Execute(clientFile, data)
+
+	if err != nil {
+		panic(err)
+	}
 
 	c.JSON(http.StatusOK, metadata)
 }

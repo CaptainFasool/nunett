@@ -1,0 +1,30 @@
+{
+  "plugins": {
+    "raw_exec": {
+      "config": {
+        "enabled": "true"
+      }
+    },
+    "docker": {}
+  },
+  "log_level": "DEBUG",
+  "data_dir": "/var/log/nomad",
+  "name": {{ .Name }},
+  "datacenter": {{ .Network }},
+  "client": {
+    "host_volume": {
+      "machine-metadata": {
+        "name": "machine-metadata",
+        "path": "/etc/nunet"
+      }
+    },
+    "enabled": "true",
+    "servers": [
+      "nomad-nunetio.ddns.net:4647"
+    ],
+    "reserved": {
+      "cpu": {{ .ReservedCPU }},
+      "memory": {{ .ReservedMemory }}
+    }
+  },
+}
