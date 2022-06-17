@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"text/template"
@@ -16,38 +15,6 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
-
-const clientTemplate = `{
-    "plugins": {
-      "raw_exec": {
-        "config": {
-          "enabled": "true"
-        }
-      },
-      "docker": {}
-    },
-    "log_level": "DEBUG",
-    "data_dir": "/var/log/nomad",
-    "name": "{{ .Name }}",
-    "datacenter": "{{ .Network }}",
-    "client": {
-      "host_volume": {
-        "machine-metadata": {
-          "name": "machine-metadata",
-          "path": "/etc/nunet"
-        }
-      },
-      "enabled": "true",
-      "servers": [
-        "nomad-nunetio.ddns.net:4647"
-      ],
-      "reserved": {
-        "cpu": {{ .ReservedCPU }},
-        "memory": {{ .ReservedMemory }}
-      }
-    }
-	}
-`
 
 // Onboarded      godoc
 // @Summary      Get current device info.
@@ -117,6 +84,16 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
+	cardanoPassive := "no"
+	if capacityForNunet.Cardano {
+		if capacityForNunet.Memory < 10000 || capacityForNunet.CPU < 6000 {
+			c.JSON(http.StatusInternalServerError,
+				gin.H{"error": errors.New("cardano node requires 10000MB of RAM and 6000MHz CPU")})
+			return
+		}
+		cardanoPassive = "yes"
+	}
+
 	metadata.Reserved.Memory = capacityForNunet.Memory
 	metadata.Reserved.CPU = capacityForNunet.CPU
 
@@ -133,33 +110,93 @@ func Onboard(c *gin.Context) {
 	}
 
 	// create client config
-	data := struct {
+	clientData := struct {
 		Name           string
 		Network        string
 		ReservedCPU    int64
 		ReservedMemory int64
+		Cardano        string
 	}{
 		Name:           hostname,
 		Network:        capacityForNunet.Channel,
 		ReservedCPU:    metadata.Reserved.CPU,
 		ReservedMemory: metadata.Reserved.Memory,
+		Cardano:        cardanoPassive,
 	}
 
 	clientFile, err := os.Create("/etc/nunet/clientV2.json")
 	if err != nil {
-		log.Print("execute: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
 
-	tmpl, err := template.New("client").Parse(clientTemplate)
+	tmpl, err := template.New("client").Parse(models.ClientTemplate)
 	if err != nil {
-		panic(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
 	}
 
-	err = tmpl.Execute(clientFile, data)
+	err = tmpl.Execute(clientFile, clientData)
 
 	if err != nil {
-		panic(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+
+	// create adapter-definition.json
+	var adapterPrefix string
+	var dockerImageTag string
+	var deploymentType string
+	var tokenomicsApiName string
+	if metadata.Network == "nunet-development" {
+		dockerImageTag = "test"
+		adapterPrefix = "testing-nunet-adapter"
+		deploymentType = "test"
+		tokenomicsApiName = "testing-tokenomics"
+		if os.Getenv("OS_RELEASE") == "raspbian" {
+			dockerImageTag = "arm-test"
+		}
+	}
+	if metadata.Network == "nunet-private-alpha" {
+		dockerImageTag = "latest"
+		adapterPrefix = "nunet-adapter"
+		deploymentType = "prod"
+		tokenomicsApiName = "tokenomics"
+		if os.Getenv("OS_RELEASE") == "raspbian" {
+			dockerImageTag = "arm-latest"
+		}
+	}
+	adapterData := struct {
+		Datacenters       string
+		AdapterPrefix     string
+		ClientName        string
+		DockerTag         string
+		DeploymentType    string
+		TokenomicsApiName string
+	}{
+		Datacenters:       metadata.Network,
+		AdapterPrefix:     adapterPrefix,
+		ClientName:        hostname,
+		DockerTag:         dockerImageTag,
+		DeploymentType:    deploymentType,
+		TokenomicsApiName: tokenomicsApiName,
+	}
+
+	adapterFile, err := os.Create("/etc/nunet/adapter-definitionV2.json")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+	tmpl, err = template.New("adapter").Parse(models.AdapterTemplate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+
+	err = tmpl.Execute(adapterFile, adapterData)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
 	}
 
 	c.JSON(http.StatusOK, metadata)
