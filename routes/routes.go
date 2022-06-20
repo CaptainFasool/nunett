@@ -11,10 +11,13 @@ func SetupRouter() *gin.Engine {
 
 	v1 := router.Group("/api/v1")
 	{
-		v1.GET("/onboard", handlers.Onboarded)
+		v1.GET("/metadata", handlers.GetMetadata)
 		v1.POST("/onboard", handlers.Onboard)
 		v1.GET("/provisioned", handlers.ProvisionedCapacity)
 		v1.GET("/address/new", handlers.CreatePaymentAddress)
+
+		v1.POST("/echo", handlers.Echo)
+		// v1.POST("/testnomad", handlers.NomadTest)
 
 	}
 

@@ -2,12 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"text/template"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,16 +13,16 @@ import (
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
-// Onboarded      godoc
+// GetMetadata      godoc
 // @Summary      Get current device info.
 // @Description  Responds with metadata of current provideer
 // @Tags         onboard
 // @Produce      json
 // @Success      200  {array}        models.Metadata
-// @Router       /onboard [get]
-func Onboarded(c *gin.Context) {
+// @Router       /metadata [get]
+func GetMetadata(c *gin.Context) {
 	// read the info
-	content, err := ioutil.ReadFile("/etc/nunet/metadata.json")
+	content, err := ioutil.ReadFile("/etc/nunet/metadataV2.json")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
@@ -131,6 +128,12 @@ func Onboard(c *gin.Context) {
 	onboarding.RunNomadJob(c, jobName)
 
 	c.JSON(http.StatusOK, metadata)
+}
+
+func Echo(c *gin.Context) {
+	var json map[string]interface{}
+	c.BindJSON(&json)
+	c.JSON(http.StatusOK, json)
 }
 
 // DeviceUsage streams device resources usage to client.
