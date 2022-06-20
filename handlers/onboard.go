@@ -80,7 +80,7 @@ func Onboard(c *gin.Context) {
 	if (capacityForNunet.Memory > int64(totalMem)) &&
 		capacityForNunet.CPU > int64(totalCpu) {
 		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": errors.New("wrong capacity provided")})
+			gin.H{"error": "wrong capacity provided"})
 		return
 	}
 
@@ -88,10 +88,17 @@ func Onboard(c *gin.Context) {
 	if capacityForNunet.Cardano {
 		if capacityForNunet.Memory < 10000 || capacityForNunet.CPU < 6000 {
 			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": errors.New("cardano node requires 10000MB of RAM and 6000MHz CPU")})
+				gin.H{"error": "cardano node requires 10000MB of RAM and 6000MHz CPU"})
 			return
 		}
 		cardanoPassive = "yes"
+	}
+
+	if capacityForNunet.Channel != "nunet-development" &&
+		capacityForNunet.Channel != "nunet-private-alpha" {
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": "only nunet-development and nunet-private-alpha is supported at the moment"})
+		return
 	}
 
 	metadata.Reserved.Memory = capacityForNunet.Memory
@@ -106,98 +113,22 @@ func Onboard(c *gin.Context) {
 	file, _ := json.MarshalIndent(metadata, "", " ")
 	err = ioutil.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
 
-	// create client config
-	clientData := struct {
-		Name           string
-		Network        string
-		ReservedCPU    int64
-		ReservedMemory int64
-		Cardano        string
-	}{
-		Name:           hostname,
-		Network:        capacityForNunet.Channel,
-		ReservedCPU:    metadata.Reserved.CPU,
-		ReservedMemory: metadata.Reserved.Memory,
-		Cardano:        cardanoPassive,
-	}
+	onboarding.CreateClientConfig(c, &metadata, &capacityForNunet, hostname)
+	onboarding.CreateAdapterConfig(c, &metadata, cardanoPassive, hostname)
 
-	clientFile, err := os.Create("/etc/nunet/clientV2.json")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
-
-	tmpl, err := template.New("client").Parse(models.ClientTemplate)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
-
-	err = tmpl.Execute(clientFile, clientData)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
-
-	// create adapter-definition.json
 	var adapterPrefix string
-	var dockerImageTag string
-	var deploymentType string
-	var tokenomicsApiName string
 	if metadata.Network == "nunet-development" {
-		dockerImageTag = "test"
 		adapterPrefix = "testing-nunet-adapter"
-		deploymentType = "test"
-		tokenomicsApiName = "testing-tokenomics"
-		if os.Getenv("OS_RELEASE") == "raspbian" {
-			dockerImageTag = "arm-test"
-		}
 	}
 	if metadata.Network == "nunet-private-alpha" {
-		dockerImageTag = "latest"
 		adapterPrefix = "nunet-adapter"
-		deploymentType = "prod"
-		tokenomicsApiName = "tokenomics"
-		if os.Getenv("OS_RELEASE") == "raspbian" {
-			dockerImageTag = "arm-latest"
-		}
-	}
-	adapterData := struct {
-		Datacenters       string
-		AdapterPrefix     string
-		ClientName        string
-		DockerTag         string
-		DeploymentType    string
-		TokenomicsApiName string
-	}{
-		Datacenters:       metadata.Network,
-		AdapterPrefix:     adapterPrefix,
-		ClientName:        hostname,
-		DockerTag:         dockerImageTag,
-		DeploymentType:    deploymentType,
-		TokenomicsApiName: tokenomicsApiName,
 	}
 
-	adapterFile, err := os.Create("/etc/nunet/adapter-definitionV2.json")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
-	tmpl, err = template.New("adapter").Parse(models.AdapterTemplate)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
-
-	err = tmpl.Execute(adapterFile, adapterData)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
+	jobName := adapterPrefix + "-" + hostname
+	onboarding.RunNomadJob(c, jobName)
 
 	c.JSON(http.StatusOK, metadata)
 }
