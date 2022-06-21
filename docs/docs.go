@@ -39,13 +39,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Provisioned"
+                            "$ref": "#/definitions/models.AddressPrivKey"
                         }
                     }
                 }
             }
         },
-        "/onboard": {
+        "/metadata": {
             "get": {
                 "description": "Responds with metadata of current provideer",
                 "produces": [
@@ -66,7 +66,9 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/onboard": {
             "post": {
                 "description": "Onboard runs onboarding script given the amount of resources to onboard.",
                 "produces": [
@@ -111,6 +113,17 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.AddressPrivKey": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "private_key": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Metadata": {
             "type": "object",
             "properties": {
@@ -118,6 +131,9 @@ const docTemplate = `{
                     "type": "object",
                     "properties": {
                         "ram": {
+                            "type": "integer"
+                        },
+                        "update_timestamp": {
                             "type": "integer"
                         }
                     }
@@ -156,11 +172,11 @@ const docTemplate = `{
                         },
                         "total_core": {
                             "type": "integer"
+                        },
+                        "update_timestamp": {
+                            "type": "integer"
                         }
                     }
-                },
-                "update_timestamp": {
-                    "type": "integer"
                 }
             }
         },
@@ -171,6 +187,9 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "memory": {
+                    "type": "integer"
+                },
+                "total_cores": {
                     "type": "integer"
                 }
             }

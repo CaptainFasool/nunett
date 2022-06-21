@@ -19,7 +19,6 @@ import (
 // @Tags         onboard
 // @Produce      json
 // @Success      200  {array}        models.Metadata
-// @Failure      500  {object}		 httputil.HTTPError
 // @Router       /metadata [get]
 func GetMetadata(c *gin.Context) {
 	// read the info
@@ -162,7 +161,6 @@ func ProvisionedCapacity(c *gin.Context) {
 // @Description  Create a payment address from public key. Return payment address and private key.
 // @Tags         onboard
 // @Produce      json
-// @Failure      500  {object}
 // @Success      200  {object}  models.AddressPrivKey
 // @Router       /address/new [get]
 func CreatePaymentAddress(c *gin.Context) {

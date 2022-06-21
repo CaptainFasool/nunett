@@ -1,10 +1,19 @@
 basePath: /api/v1
 definitions:
+  models.AddressPrivKey:
+    properties:
+      address:
+        type: string
+      private_key:
+        type: string
+    type: object
   models.Metadata:
     properties:
       available:
         properties:
           ram:
+            type: integer
+          update_timestamp:
             type: integer
         type: object
       name:
@@ -30,15 +39,17 @@ definitions:
             type: integer
           total_core:
             type: integer
+          update_timestamp:
+            type: integer
         type: object
-      update_timestamp:
-        type: integer
     type: object
   models.Provisioned:
     properties:
       cpu:
         type: number
       memory:
+        type: integer
+      total_cores:
         type: integer
     type: object
 host: localhost:9999
@@ -65,11 +76,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.Provisioned'
+            $ref: '#/definitions/models.AddressPrivKey'
       summary: Create a new payment address.
       tags:
       - onboard
-  /onboard:
+  /metadata:
     get:
       description: Responds with metadata of current provideer
       produces:
@@ -84,6 +95,7 @@ paths:
       summary: Get current device info.
       tags:
       - onboard
+  /onboard:
     post:
       description: Onboard runs onboarding script given the amount of resources to
         onboard.
