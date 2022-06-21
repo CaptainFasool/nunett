@@ -37,10 +37,10 @@ $ curl -s localhost:9999/api/v1/provisioned | jq .
 An example response looks like this:
 
 ```json
-[
-    "0x436454984F2efdDcB15f98edCEfcFc2336a2d0AF",
-    "0xa9240a21bb09fed7591967ede57d53f449791b66e8ca3f8198e3f2fd037df596"
-]
+{
+    "address": "0xa7Bd395Aaf64b354dD4e2695cDCcF00F6bA1748b",
+    "private_key": "0x7e855c8cf00668fbe9560cd4927b344074dc072fb872708b5b68ac3319bb918f"
+}
 ```
 
 First element is the wallet address and second is the private key.
