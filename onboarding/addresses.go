@@ -6,9 +6,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"gitlab.com/nunet/device-management-service/models"
 )
 
-func GetAddressAndPrivateKey() ([]string, error) {
+func GetAddressAndPrivateKey() (*models.AddressPrivKey, error) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, err
@@ -25,5 +26,9 @@ func GetAddressAndPrivateKey() ([]string, error) {
 
 	address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
 
-	return []string{address, privateKeyString}, nil
+	var pair models.AddressPrivKey
+	pair.Address = address
+	pair.PrivateKey = privateKeyString
+
+	return &pair, nil
 }

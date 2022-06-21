@@ -19,12 +19,14 @@ import (
 // @Tags         onboard
 // @Produce      json
 // @Success      200  {array}        models.Metadata
+// @Failure      500  {object}		 httputil.HTTPError
 // @Router       /metadata [get]
 func GetMetadata(c *gin.Context) {
 	// read the info
 	content, err := ioutil.ReadFile("/etc/nunet/metadataV2.json")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": "metadata.json does not exists or not readable"})
 		return
 	}
 
@@ -32,14 +34,15 @@ func GetMetadata(c *gin.Context) {
 	var metadata models.Metadata
 	err = json.Unmarshal(content, &metadata)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": "unable to parse metadata.json"})
 		return
 	}
 
 	c.JSON(http.StatusOK, metadata)
 }
 
-// Onboarded      godoc
+// Onboard      godoc
 // @Summary      Runs the onboarding process.
 // @Description  Onboard runs onboarding script given the amount of resources to onboard.
 // @Tags         onboard
@@ -47,11 +50,7 @@ func GetMetadata(c *gin.Context) {
 // @Success      200  {array}  models.Metadata
 // @Router       /onboard [post]
 func Onboard(c *gin.Context) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
+	hostname, _ := os.Hostname()
 
 	currentTime := time.Now().Unix()
 
@@ -76,7 +75,7 @@ func Onboard(c *gin.Context) {
 
 	if (capacityForNunet.Memory > int64(totalMem)) &&
 		capacityForNunet.CPU > int64(totalCpu) {
-		c.JSON(http.StatusInternalServerError,
+		c.JSON(http.StatusConflict,
 			gin.H{"error": "wrong capacity provided"})
 		return
 	}
@@ -84,7 +83,7 @@ func Onboard(c *gin.Context) {
 	cardanoPassive := "no"
 	if capacityForNunet.Cardano {
 		if capacityForNunet.Memory < 10000 || capacityForNunet.CPU < 6000 {
-			c.JSON(http.StatusInternalServerError,
+			c.JSON(http.StatusConflict,
 				gin.H{"error": "cardano node requires 10000MB of RAM and 6000MHz CPU"})
 			return
 		}
@@ -93,7 +92,7 @@ func Onboard(c *gin.Context) {
 
 	if capacityForNunet.Channel != "nunet-development" &&
 		capacityForNunet.Channel != "nunet-private-alpha" {
-		c.JSON(http.StatusInternalServerError,
+		c.JSON(http.StatusConflict,
 			gin.H{"error": "only nunet-development and nunet-private-alpha is supported at the moment"})
 		return
 	}
@@ -108,7 +107,7 @@ func Onboard(c *gin.Context) {
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
-	err = ioutil.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	err := ioutil.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -127,9 +126,10 @@ func Onboard(c *gin.Context) {
 	jobName := adapterPrefix + "-" + hostname
 	onboarding.RunNomadJob(c, jobName)
 
-	c.JSON(http.StatusOK, metadata)
+	c.JSON(http.StatusCreated, metadata)
 }
 
+// Echo responds back with same JSON it has received.
 func Echo(c *gin.Context) {
 	var json map[string]interface{}
 	c.BindJSON(&json)
@@ -146,7 +146,7 @@ func SetPreferences(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "will set preferences to distributed persistent system"})
 }
 
-// Onboarded      godoc
+// ProvisionedCapacity      godoc
 // @Summary      Returns provisioned capacity on host.
 // @Description  Get total memory capacity in MB and CPU capacity in MHz.
 // @Tags         onboard
@@ -157,18 +157,19 @@ func ProvisionedCapacity(c *gin.Context) {
 	c.JSON(http.StatusOK, onboarding.GetTotalProvisioned())
 }
 
-// Onboarded      godoc
+// CreatePaymentAddress      godoc
 // @Summary      Create a new payment address.
 // @Description  Create a payment address from public key. Return payment address and private key.
 // @Tags         onboard
 // @Produce      json
-// @Success      200  {object}  models.Provisioned
+// @Failure      500  {object}
+// @Success      200  {object}  models.AddressPrivKey
 // @Router       /address/new [get]
 func CreatePaymentAddress(c *gin.Context) {
 	pair, err := onboarding.GetAddressAndPrivateKey()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
-			gin.H{"message": "Error creating address"})
+			gin.H{"message": "error creating address"})
 	}
 	c.JSON(http.StatusOK, pair)
 }

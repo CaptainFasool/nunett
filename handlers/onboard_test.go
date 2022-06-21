@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOnboardedRoute(t *testing.T) {
+func TestMetadataRoute(t *testing.T) {
 	router := routes.SetupRouter()
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/onboard", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/metadata", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
@@ -27,15 +28,19 @@ func TestOnboardedRoute(t *testing.T) {
 
 }
 
-func TestOnboardRoute(t *testing.T) {
+func TestCreatePaymentAddressRoute(t *testing.T) {
 	router := routes.SetupRouter()
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/onboard", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/address/new", nil)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "will onboard a new device")
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Contains(t, string(body), "address")
+	assert.Contains(t, string(body), "private_key")
 }
 
 func TestProvisionedRoute(t *testing.T) {
