@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -41,6 +42,11 @@ func TestCreatePaymentAddressRoute(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Contains(t, string(body), "address")
 	assert.Contains(t, string(body), "private_key")
+
+	var jsonMap map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &jsonMap)
+
+	assert.NotEmpty(t, jsonMap)
 }
 
 func TestProvisionedRoute(t *testing.T) {

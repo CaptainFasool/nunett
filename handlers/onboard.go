@@ -49,6 +49,12 @@ func GetMetadata(c *gin.Context) {
 // @Success      200  {array}  models.Metadata
 // @Router       /onboard [post]
 func Onboard(c *gin.Context) {
+	// check if request body is empty
+	if c.Request.ContentLength == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "request body is empty"})
+		return
+	}
+
 	hostname, _ := os.Hostname()
 
 	currentTime := time.Now().Unix()
@@ -74,7 +80,7 @@ func Onboard(c *gin.Context) {
 
 	if (capacityForNunet.Memory > int64(totalMem)) &&
 		capacityForNunet.CPU > int64(totalCpu) {
-		c.JSON(http.StatusConflict,
+		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "wrong capacity provided"})
 		return
 	}
@@ -82,7 +88,7 @@ func Onboard(c *gin.Context) {
 	cardanoPassive := "no"
 	if capacityForNunet.Cardano {
 		if capacityForNunet.Memory < 10000 || capacityForNunet.CPU < 6000 {
-			c.JSON(http.StatusConflict,
+			c.JSON(http.StatusBadRequest,
 				gin.H{"error": "cardano node requires 10000MB of RAM and 6000MHz CPU"})
 			return
 		}
@@ -91,7 +97,7 @@ func Onboard(c *gin.Context) {
 
 	if capacityForNunet.Channel != "nunet-development" &&
 		capacityForNunet.Channel != "nunet-private-alpha" {
-		c.JSON(http.StatusConflict,
+		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "only nunet-development and nunet-private-alpha is supported at the moment"})
 		return
 	}
