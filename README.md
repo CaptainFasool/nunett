@@ -2,9 +2,11 @@
 
 Backend of device management app.
 
-## Getting Started
+## Getting Started with Development
 
-For getting started with development, simply install the packages:
+For getting started with development, please make sure you have the appropriate Go version installed. We work with and test against the latest Go release. You can find the version we are using in the go.mod file.
+
+If you have Go installed, next install the packages:
 
     go install
 
