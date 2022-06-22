@@ -1,7 +1,5 @@
 package main
 
-// TODO: please change the package path to:
-// gitlab.com/nunet/device-management/device-management-app
 import (
 	"gitlab.com/nunet/device-management-service/routes"
 
