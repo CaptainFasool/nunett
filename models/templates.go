@@ -1,7 +1,7 @@
 package models
 
 const ClientTemplate = `{
-  "plugins": {
+  "plugin": {
     "raw_exec": {
       "config": {
         "enabled": "true"
@@ -22,7 +22,7 @@ const ClientTemplate = `{
     },
     "enabled": "true",
     "servers": [
-     "nomad-nunetio.ddns.net:4647"
+      "nomad-nunetio.ddns.net:4647"
     ],
     "reserved": {
       "cpu": {{ .ReservedCPU }},
