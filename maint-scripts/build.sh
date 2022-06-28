@@ -35,6 +35,8 @@ do
     sed -i "s/Architecture:.*/Architecture: $arch/g" $archDir/DEBIAN/control
     env GOOS=linux GOARCH=$arch go build -o $archDir/usr/bin/nunet-dms
 
+    find $archDir -name .gitkeep | xargs rm
+
     dpkg-deb --build --root-owner-group $archDir $outputDir
 done
 
