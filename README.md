@@ -38,6 +38,10 @@ Notice that I'm using `sudo` as the onboarding process writes some configuration
 ## Operations/Endpoints
 
 All the endpoints mentioned below should be prefixed with `/api/v1`.
+
+![nunet-dms-http-docs](docs/nunet-dms-http-docs.png)
+
+The above mentioned documentation is available at <http://localhost:9999/swagger/index.html> while the API server is running.
 ### Provisioned Capacity
 
 `GET /provisioned` endpoint returns some info about the host machine, which will be used to decide how much capacity can be given to NuNet. See `POST /onboard`.

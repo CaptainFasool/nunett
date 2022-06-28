@@ -55,6 +55,13 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
+	_, err := os.Stat("/etc/nunet")
+	if os.IsNotExist(err) {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "/etc/nunet does not exist. is nunet onboaded successfully?"})
+		return
+	}
+
 	hostname, _ := os.Hostname()
 
 	currentTime := time.Now().Unix()
@@ -112,9 +119,11 @@ func Onboard(c *gin.Context) {
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
-	err := ioutil.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	err = ioutil.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
 	if err != nil {
-		panic(err)
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "cound not write metadata.json"})
+		return
 	}
 
 	onboarding.CreateClientConfig(c, &metadata, &capacityForNunet, hostname)
