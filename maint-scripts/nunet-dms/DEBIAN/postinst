@@ -1,0 +1,18 @@
+#!/bin/bash
+
+echo Running postinst script.
+
+USER=nunet
+
+# if there is no such user, create it
+adduser --system --no-create-home --quiet $USER
+addgroup --system $USER
+adduser $USER $USER
+
+# Give above user access to write to /etc/nunet
+chown -R $USER:$USER /etc/nunet
+
+# Start the service.
+systemctl daemon-reload
+systemctl enable nunet-dms
+systemctl start nunet-dms

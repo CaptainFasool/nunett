@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Stop the service
+systemctl stop nunet-dms.service
+systemctl stop nomad-client.service
