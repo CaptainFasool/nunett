@@ -8,11 +8,17 @@ There are 3 files/subdirectory in this directory. Here are what they are for:
 
 ---
 
-## Invoking a build
+## How to build
 
-NOTE: Build process need `gcc` in order to be succussfully built.
+### Requirements/dependencies:
 
-Build is expected to be invoked from the root of the project.
+- `golang` is required to build the nunet-dms binary
+- `gcc` is required to build go-ethereum
+- `dpkg-deb` is required to build the debian package
+
+### Invoking a build
+
+Build is supposed to be invoked from the root of the project.
 
 A build can be invoked by:
 

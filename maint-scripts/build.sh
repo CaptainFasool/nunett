@@ -16,7 +16,11 @@
 
 # Both INSTALLATION PROCESS and UNINSTALLATION PROCESS are done by the package created in the build process.
 
+# Requirements
+
+# golang is required to build the nunet-dms binary
 # gcc is required to build go-ethereum
+# dpkg-deb is required to build go-ethereum
 
 projectRoot=$(pwd)
 outputDir="$projectRoot/dist"
