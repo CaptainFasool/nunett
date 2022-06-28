@@ -1,0 +1,7 @@
+stages:
+  - test
+
+include:
+  - project: nunet/nunet-infra
+    file: ci/templates/Auto-DevOps.gitlab-ci.yml
+    ref: 94-add-static-analysis-to-the-ci-cd-pipeline
