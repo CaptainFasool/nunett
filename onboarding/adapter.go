@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"text/template"
 
 	"github.com/gin-gonic/gin"
@@ -73,6 +74,14 @@ func CreateAdapterConfig(c *gin.Context, metadata *models.MetadataV2, cardanoPas
 }
 
 func RunNomadJob(c *gin.Context, jobName string) {
+	// add a check if nomad is available on the system
+	cmd := exec.Command("nomad", "-v")
+	if err := cmd.Run(); err != nil {
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": "nomad does not exists. https://gitlab.com/nunet/device-management-service/-/wikis/Installation-Guide"})
+		return
+	}
+
 	byteValue, err := ioutil.ReadFile("/etc/nunet/adapter-definitionV2.json")
 
 	if err != nil {
