@@ -1,0 +1,27 @@
+include:
+  - project: nunet/nunet-infra
+    file: ci/templates/Auto-DevOps.gitlab-ci.yml
+    ref: 94-add-static-analysis-to-the-ci-cd-pipeline
+
+stages:
+  - test
+  - build
+
+unit-test-job:
+  stage: test
+  script:
+    - echo "Running unit tests..."
+    - go test -cover ./...
+
+lint-test-job:
+  stage: test
+  script:
+    - echo "Linting go code..."
+    - go vet ./...
+
+build-job:
+  stage: build
+  script:
+    - echo "Building debian archives..."
+    - bash maint-scripts/build.sh
+

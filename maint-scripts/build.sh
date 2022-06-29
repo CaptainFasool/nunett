@@ -38,6 +38,8 @@ do
     find $archDir -name .gitkeep | xargs rm
 
     dpkg-deb --build --root-owner-group $archDir $outputDir
+
+    rm -r $archDir
 done
 
 
