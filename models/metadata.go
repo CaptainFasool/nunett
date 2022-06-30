@@ -1,10 +1,5 @@
 package models
 
-
-
-
-
-
 type Metadata struct {
 	Name     string `json:"name,omitempty"`
 	Resource struct {
@@ -26,25 +21,22 @@ type Metadata struct {
 	PublicKey string `json:"public_key,omitempty"`
 }
 
-
-
-	// 	"name": "kubuntu",
-	// 	"resource": {
-	// 	  "update_timestamp": 1651648799,
-	// 	  "ram_max": 15843,
-	// 	  "total_cores": 8,
-	// 	  "cpu_max": 4100.0,
-	// 	  "cpu_usage": 5.5
-	// 	},
-	// 	"available": {
-	// 	  "updated_timestamp": 1651648799,
-	// 	  "ram": 10695
-	// 	},
-	// 	"reserved": {
-	// 	  "cpu": 27800,
-	// 	  "memory": 13843
-	// 	},
-	// 	"network": "nunet-development",
-	// 	"public_key": "0x0541422b9e05e9f0c0c9b393313279aada6eabb2"
-	// }
-	
+type MetadataV2 struct {
+	Name            string `json:"name,omitempty"`
+	UpdateTimestamp int64  `json:"update_timestamp,omitempty"`
+	Resource        struct {
+		MemoryMax int64 `json:"memory_max,omitempty"`
+		TotalCore int64 `json:"total_core,omitempty"`
+		CpuMax    int64 `json:"cpu_max,omitempty"`
+	} `json:"resource,omitempty"`
+	Available struct {
+		CPU    int64 `json:"cpu,omitempty"`
+		Memory int64 `json:"memory,omitempty"`
+	} `json:"available,omitempty"`
+	Reserved struct {
+		CPU    int64 `json:"cpu,omitempty"`
+		Memory int64 `json:"memory,omitempty"`
+	} `json:"reserved,omitempty"`
+	Network   string `json:"network,omitempty"`
+	PublicKey string `json:"public_key,omitempty"`
+}
