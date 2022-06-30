@@ -1,5 +1,12 @@
 basePath: /api/v1
 definitions:
+  models.AddressPrivKey:
+    properties:
+      address:
+        type: string
+      private_key:
+        type: string
+    type: object
   models.Metadata:
     properties:
       available:
@@ -36,6 +43,15 @@ definitions:
             type: integer
         type: object
     type: object
+  models.Provisioned:
+    properties:
+      cpu:
+        type: number
+      memory:
+        type: integer
+      total_cores:
+        type: integer
+    type: object
 host: localhost:9999
 info:
   contact:
@@ -50,7 +66,21 @@ info:
   title: Device Management Service
   version: "1.0"
 paths:
-  /onboard:
+  /address/new:
+    get:
+      description: Create a payment address from public key. Return payment address
+        and private key.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AddressPrivKey'
+      summary: Create a new payment address.
+      tags:
+      - onboard
+  /metadata:
     get:
       description: Responds with metadata of current provideer
       produces:
@@ -63,6 +93,35 @@ paths:
               $ref: '#/definitions/models.Metadata'
             type: array
       summary: Get current device info.
+      tags:
+      - onboard
+  /onboard:
+    post:
+      description: Onboard runs onboarding script given the amount of resources to
+        onboard.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Metadata'
+            type: array
+      summary: Runs the onboarding process.
+      tags:
+      - onboard
+  /provisioned:
+    get:
+      description: Get total memory capacity in MB and CPU capacity in MHz.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Provisioned'
+      summary: Returns provisioned capacity on host.
       tags:
       - onboard
 swagger: "2.0"

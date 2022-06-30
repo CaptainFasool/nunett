@@ -25,7 +25,27 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/onboard": {
+        "/address/new": {
+            "get": {
+                "description": "Create a payment address from public key. Return payment address and private key.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboard"
+                ],
+                "summary": "Create a new payment address.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AddressPrivKey"
+                        }
+                    }
+                }
+            }
+        },
+        "/metadata": {
             "get": {
                 "description": "Responds with metadata of current provideer",
                 "produces": [
@@ -47,9 +67,63 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/onboard": {
+            "post": {
+                "description": "Onboard runs onboarding script given the amount of resources to onboard.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboard"
+                ],
+                "summary": "Runs the onboarding process.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Metadata"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/provisioned": {
+            "get": {
+                "description": "Get total memory capacity in MB and CPU capacity in MHz.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboard"
+                ],
+                "summary": "Returns provisioned capacity on host.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Provisioned"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "models.AddressPrivKey": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "private_key": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Metadata": {
             "type": "object",
             "properties": {
@@ -103,6 +177,20 @@ const docTemplate = `{
                             "type": "integer"
                         }
                     }
+                }
+            }
+        },
+        "models.Provisioned": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "number"
+                },
+                "memory": {
+                    "type": "integer"
+                },
+                "total_cores": {
+                    "type": "integer"
                 }
             }
         }
