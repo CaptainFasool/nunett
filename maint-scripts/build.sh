@@ -26,6 +26,8 @@ projectRoot=$(pwd)
 outputDir="$projectRoot/dist"
 version=0.1.0  # this should be dynamically set
 
+mkdir -p $outputDir
+
 for arch in amd64 arm64
 do
     # echo .deb file will be written to: $outputDir
@@ -39,7 +41,17 @@ do
 
     dpkg-deb --build --root-owner-group $archDir $outputDir
 
+    echo `pwd`
+    ls $outputDir
+
     rm -r $archDir
+
+    # The remaining part of this script used to upload artifact from build.sh to GitLab Package Registry.
+
+    debArchive=${projectRoot}/dist/nunet-dms_${version}_${arch}.deb
+    [ -f $debArchive ] && echo "deb archive exists, pushing to Package Registry"
+
+    curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file ${projectRoot}/dist/nunet-dms_${version}_${arch}.deb ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb
 done
 
 

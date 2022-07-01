@@ -8,7 +8,7 @@ There are 3 files/subdirectory in this directory. Here are what they are for:
 
 ---
 
-## How to build
+## How to build locally
 
 ### Requirements/dependencies:
 
@@ -18,7 +18,7 @@ There are 3 files/subdirectory in this directory. Here are what they are for:
 
 ### Invoking a build
 
-Build is supposed to be invoked from the root of the project.
+Build is supposed to be invoked from the root of the project. Please comment out the publish command from the build script, it is intended to be called from a GitLab CI environment and will fail locally.
 
 A build can be invoked by:
 
