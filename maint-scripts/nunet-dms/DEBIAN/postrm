@@ -2,14 +2,10 @@
 
 systemctl daemon-reload
 
+# don't need to remove the group because the group is deleted along with the user
+# given that group only has that particular user
 if [ -x "$(command -v deluser)" ]; then
      deluser --quiet --system nunet > /dev/null || true
   else
      echo >&2 "not removing nunet system account because deluser command was not found"
-fi
-
-if [ -x "$(command -v delgroup)" ]; then
-     delgroup --quiet --system nunet > /dev/null || true
-  else
-     echo >&2 "not removing nunet system account because delgroup command was not found"
 fi
