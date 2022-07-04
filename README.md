@@ -1,92 +1,107 @@
-# device-management-app
+# device-management-service
 
+The backend of the device management app.
 
+## Getting Started with Development
 
-## Getting started
+### Setup Development Environment
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+On Debian-based systems, this command should get you ready with the installation.
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/nunet/device-management-app.git
-git branch -M main
-git push -uf origin main
+sudo apt install build-essential curl golang jq
 ```
 
-## Integrate with your tools
+Similarly, on RHEL based system, the equivalent command would be:
 
-- [ ] [Set up project integrations](https://gitlab.com/nunet/device-management-app/-/settings/integrations)
+```
+sudo yum group install "Development Tools"
+sudo yum install curl golang jq
+```
 
-## Collaborate with your team
+Please make sure you have the appropriate Go version installed. We work with and test against the latest Go release. You can find the version we are using in the go.mod file.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
 
-## Test and Deploy
+### Build and Run the server
 
-Use the built-in continuous integration in GitLab.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+If you have Go installed, next install the packages:
 
-***
+    go install
 
-# Editing this README
+and then run the main.go
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!).  Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+    sudo go run main.go
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Notice that I'm using `sudo` as the onboarding process writes some configuration files to `/etc/nunet`.
 
-## Name
-Choose a self-explaining name for your project.
+## Operations/Endpoints
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+All the endpoints mentioned below should be prefixed with `/api/v1`.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+![nunet-dms-http-docs](docs/nunet-dms-http-docs.png)
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+The above mentioned documentation is available at <http://localhost:9999/swagger/index.html> while the API server is running.
+### Provisioned Capacity
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+`GET /provisioned` endpoint returns some info about the host machine, which will be used to decide how much capacity can be given to NuNet. See `POST /onboard`.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+```
+$ curl -s localhost:9999/api/v1/provisioned | jq .
+{
+  "cpu": 32800,
+  "memory": 15843,
+  "total_cores": 8
+}
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### Create a new Wallet Address
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+`GET /address/new` returns a wallet address and a private key. Keep the private key safe.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+An example response looks like this:
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```json
+{
+    "address": "0xa7Bd395Aaf64b354dD4e2695cDCcF00F6bA1748b",
+    "private_key": "0x7e855c8cf00668fbe9560cd4927b344074dc072fb872708b5b68ac3319bb918f"
+}
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+The first element is the wallet address and the second is the private key.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### Onboard Current Machine
 
-## License
-For open source projects, say how it is licensed.
+`POST /onboard` onboards a new machine. Right now it onboards a machine on which the service is running.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+#### Prerequisites
+
+There are a few things you need to know before you try to onboard.
+
+0. First, hit `GET /provisioned` to know how much `cpu` and `memory` your machine is equipped with. You'll be using this info in the JSON body of the `POST /onboard` endpoint.
+
+1. **Channel**: We currently have two channels, `nunet-development` and `nunet-private-alpha`. The former one has the cutting-edge version of the system. `nunet-private-alpha` is one of the milestone channels.
+
+2. **Payment Address**: This is your Ethereum wallet address. If you don't have an existing address, you can use that, or you can use the `GET /address/new` endpoint to generate a new Ethereum mainnet address.
+
+3. **Cardano**: This one is optional, and indicates whether you want your device to be a Cardano node. Please note that to be eligible for this, you must onboard at least *10000MB* of memory and *6000MHz* of compute capacity.
+
+A typical body would look like this:
+
+```json
+{
+    "memory": 4000,
+    "cpu": 4000,
+    "channel": "nunet-private-alpha",
+    "payment_addr": "0x0541422b9e05e9f0c0c9b393313279aada6eabb2",
+    "cardano": false
+}
+```
+
+If you are using curl, save above json in onboard.json and run below command:
+
+```
+curl -XPOST -d @onboard.json  http://localhost:9999/api/v1/onboard | jq .
+```
+
+The server should respond with contents of metadata.json.
