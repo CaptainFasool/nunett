@@ -1,5 +1,17 @@
 stages:
-  - test
+  - static_analysis
+  - unit_tests
+  - security_tests_1
+  - functional_tests
+  - security_tests_2
+  - build
+  - deploy_dev
+  - user_acceptance_tests
+  - deploy_staging
+  - regression_tests
+  - load_tests
+  - security_tests_3
+  - deploy_prod
 
 include:
   - project: nunet/nunet-infra
