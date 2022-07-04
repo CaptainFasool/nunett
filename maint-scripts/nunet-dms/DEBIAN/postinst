@@ -12,7 +12,10 @@ adduser $USER $USER
 # Give above user access to write to /etc/nunet
 chown -R $USER:$USER /etc/nunet
 
-# Start the service.
+# Start the services.
 systemctl daemon-reload
-systemctl enable nunet-dms
-systemctl start nunet-dms
+systemctl enable --now nunet-dms.service  # enable --now == enable and start
+systemctl enable --now nomad-client.service
+
+# https://unix.stackexchange.com/q/708286/22240
+systemctl enable --now nomad-client-restart.path
