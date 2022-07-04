@@ -1,17 +1,33 @@
+stages:
+  - static_analysis
+  - unit_tests
+  - security_tests_1
+  - functional_tests
+  - security_tests_2
+  - build
+  - deploy_dev
+  - user_acceptance_tests
+  - deploy_staging
+  - regression_tests
+  - load_tests
+  - security_tests_3
+  - deploy_prod
+
+include:
+  - project: nunet/nunet-infra
+    file: ci/templates/Auto-DevOps.gitlab-ci.yml
+    ref: 94-add-static-analysis-to-the-ci-cd-pipeline
+
 image: sntshk/ubuntu:nunet
 
-stages:
-  - test
-  - build
-
 unit-test-job:
-  stage: test
+  stage: unit_tests
   script:
     - echo "Running unit tests..."
     - go test -cover ./...
 
 lint-test-job:
-  stage: test
+  stage: unit_tests
   script:
     - echo "Linting go code..."
     - go vet ./...
@@ -21,4 +37,3 @@ build-job:
   script:
     - echo "Building debian archives..."
     - bash maint-scripts/build.sh
-
