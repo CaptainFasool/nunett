@@ -17,3 +17,44 @@ include:
   - project: nunet/nunet-infra
     file: ci/templates/Auto-DevOps.gitlab-ci.yml
     ref: 94-add-static-analysis-to-the-ci-cd-pipeline
+
+image: sntshk/ubuntu:nunet
+
+unit-test-job:
+  stage: unit_tests
+  image: golang:1.18
+  script:
+    - echo "Running unit tests..."
+    - go install
+    - go install gotest.tools/gotestsum
+    - gotestsum --junitfile report.xml --format testname -- -coverprofile=coverage.txt -covermode count ./...
+    - go get github.com/boumenot/gocover-cobertura
+    - go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
+  coverage: /\d+.\d+% of statements/
+  artifacts:
+    untracked: false
+    expire_in: 30 days
+    when: always
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+# unit-test-job:
+#   stage: unit_tests
+#   script:
+#     - echo "Running unit tests..."
+#     - go test -cover ./...
+
+# lint-test-job:
+#   stage: unit_tests
+#   script:
+#     - echo "Linting go code..."
+#     - go vet ./...
+
+build-job:
+  stage: build
+  script:
+    - echo "Building debian archives..."
+    - bash maint-scripts/build.sh

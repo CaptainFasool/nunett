@@ -1,0 +1,13 @@
+[Unit]
+Description=Nomad Client Restart Invoker
+Documentation=Glue between nomad-client.service and nomad-client-restart.path
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=OneShot
+ExecStart=/usr/bin/systemctl restart nomad-client.service
+
+[Install]
+WantedBy=multi-user.target
+
