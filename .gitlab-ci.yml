@@ -28,7 +28,7 @@ unit-test-job:
     - go install
     - go install gotest.tools/gotestsum
     - gotestsum --junitfile report.xml --format testname -- -coverprofile=coverage.txt -covermode count ./...
-    - go install github.com/boumenot/gocover-cobertura
+    - go get github.com/boumenot/gocover-cobertura
     - go run github.com/boumenot/gocover-cobertura < coverage.txt > coverage.xml
   coverage: /\d+.\d+% of statements/
   artifacts:
