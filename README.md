@@ -21,7 +21,6 @@ sudo yum install curl golang jq
 
 Please make sure you have the appropriate Go version installed. We work with and test against the latest Go release. You can find the version we are using in the go.mod file.
 
-
 ### Build and Run the server
 
 
