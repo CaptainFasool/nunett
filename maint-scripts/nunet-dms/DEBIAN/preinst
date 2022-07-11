@@ -1,0 +1,38 @@
+#!/bin/bash
+
+echo "Running pre installation script ..."
+
+# Pre-install script for nunet-dms. 
+
+# Part 1: Remove old version of nunet-dms.
+# 0. Stop running service. Remove the service unit files.
+# 1. Remove binary file.
+# 2. Remove config files at /etc/nunet
+
+echo "Stopping service and removing service unit files ..."
+
+systemctl daemon-reload
+
+if [ -f "/etc/systemd/system/nunet-dms.service" ];then
+    systemctl stop nunet-dms.service
+    rm /etc/systemd/system/nunet-dms.service
+fi
+
+if [ -f "/etc/systemd/system/nomad-client.service" ];then
+    systemctl stop nomad-client.service
+    rm /etc/systemd/system/nomad-client.service
+fi
+
+
+echo "Looking for old versions of nunet-dms ..."
+
+if [ -f "/usr/bin/nunet-dms" ];then
+    rm -f /usr/bin/nunet-dms
+    echo "Removed old nunet-dms from /usr/bin ..."
+fi
+
+if [ -d "/etc/nunet" ];then
+    rm -rf /etc/nunet
+    echo "Removed old nunet-dms config from /etc/ ..."
+fi
+
