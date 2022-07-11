@@ -1,0 +1,9 @@
+Package: nunet-dms
+Version: version
+Architecture: architecture
+Depends: curl, docker.io, nomad
+Installed-Size: 35704
+Section: utils
+Maintainer: Santosh Kumar<santosh.kumar@nunet.io>, Olakunle Oladimeji<olakunle.oladimeji@nunet.io>
+Homepage: https://gitlab.com/nunet/device-management-service
+Description: NuNet Device Management Service is the service which runs on the user machine.
