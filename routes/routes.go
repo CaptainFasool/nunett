@@ -1,24 +1,28 @@
 package routes
 
 import (
-	"gitlab.com/nunet/device-management-service/handlers"
-
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/firecracker"
+	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
 
 	v1 := router.Group("/api/v1")
+	v1.POST("/echo", onboarding.Echo)
+
+	onboardingRoute := v1.Group("/onboarding")
 	{
-		v1.GET("/metadata", handlers.GetMetadata)
-		v1.POST("/onboard", handlers.Onboard)
-		v1.GET("/provisioned", handlers.ProvisionedCapacity)
-		v1.GET("/address/new", handlers.CreatePaymentAddress)
+		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
+		onboardingRoute.POST("/onboard", onboarding.Onboard)
+		onboardingRoute.GET("/provisioned", onboarding.ProvisionedCapacity)
+		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
+	}
 
-		v1.POST("/echo", handlers.Echo)
-		// v1.POST("/testnomad", handlers.NomadTest)
-
+	virtualmachine := v1.Group("/vm")
+	{
+		virtualmachine.GET("/ping", firecracker.Ping)
 	}
 
 	return router
