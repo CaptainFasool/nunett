@@ -23,10 +23,11 @@ func SetupRouter() *gin.Engine {
 	virtualmachine := v1.Group("/vm")
 	{
 		virtualmachine.GET("/ping", firecracker.Ping)
-		virtualmachine.POST("/launch", firecracker.LaunchVM)
-		// virtualmachine.GET("/health", firecracker.GetHealth)
-		// virtualmachine.POST("/delete", firecracker.DeleteVM)
-
+		virtualmachine.POST("/init", firecracker.InitVM)
+		virtualmachine.PUT("/boot-source", firecracker.BootSource)
+		virtualmachine.PUT("/drives/:drive_id", firecracker.Drives)
+		virtualmachine.PUT("/machine-config", firecracker.MachineConfig)
+		virtualmachine.PUT("/actions", firecracker.Actions)
 	}
 
 	return router
