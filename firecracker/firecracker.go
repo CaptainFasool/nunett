@@ -3,9 +3,7 @@ package firecracker
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -13,27 +11,20 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/models"
 )
-
-func Ping(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "pong"})
-}
 
 // InitVM starts the firecracker server for the specific VM. This endpoint requires a socket file.
 // This socket file is further required
 // Further requests are required for configuring the VM.
 func InitVM(c *gin.Context) {
-	var body models.InitVMRequest
-	c.BindJSON(&body)
 
 	// Check if socket file already exists
-	if _, err := os.Stat(body.SocketFile); err == nil {
+	if _, err := os.Stat("/tmp/firecracker.socket"); err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Socket file already exists"})
 		return
 	}
 
-	cmd := exec.Command("firecracker", "--api-sock", body.SocketFile)
+	cmd := exec.Command("firecracker", "--api-sock", "/tmp/firecracker.socket")
 	// output, _ := cmd.CombinedOutput() // for debugging purpose
 
 	cmd.Stdout = os.Stdout // for debugging purpose
@@ -59,28 +50,26 @@ func InitVM(c *gin.Context) {
 	// }
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "Firecracker VM initiated. Configure boot source and invoke start command",
+		"message":   "Firecracker VM initiated. Proceed with boot source, fs, and invoke start command",
 		"timestamp": time.Now(),
 	})
 
 }
 
 func BootSource(c *gin.Context) {
-	var body models.BootSource
-	c.BindJSON(&body)
-	bodyJson, _ := json.Marshal(body)
+	var jsonStr = []byte(`{"kernel_image_path":"/home/santosh/firecracker/vmlinux.bin", "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"}`)
 
 	// initialize http client
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", body.SocketFile)
+				return net.Dial("unix", "/tmp/firecracker.socket")
 			},
 		},
 	}
 
 	// set the HTTP method, url, and request body
-	req, err := http.NewRequest(http.MethodPut, "http://localhost/boot-source", bytes.NewBuffer(bodyJson))
+	req, err := http.NewRequest(http.MethodPut, "http://localhost/boot-source", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		c.JSON(400, gin.H{
 			"message":   "Error in making PUT request to /boot-source with give body",
@@ -91,6 +80,7 @@ func BootSource(c *gin.Context) {
 
 	// set the request header Content-Type for json
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json")
 	_, err = client.Do(req)
 	if err != nil {
 		c.JSON(400, gin.H{
@@ -102,65 +92,55 @@ func BootSource(c *gin.Context) {
 }
 
 func Drives(c *gin.Context) {
-	var body models.Drive
-	c.ShouldBindJSON(&body)
-	body.DriveID = c.Param("drive_id")
-
-	bodyJson, _ := json.Marshal(body)
-	log.Println(string(bodyJson))
+	var jsonStr = []byte(`{"drive_id": "rootfs", "path_on_host":"/home/santosh/firecracker/bionic.rootfs.ext4", "is_root_device": true, "is_read_only": false}`)
 
 	// initialize http client
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", body.SocketFile)
+				return net.Dial("unix", "/tmp/firecracker.socket")
 			},
 		},
 	}
 
 	// set the HTTP method, url, and request body
-	req, err := http.NewRequest(http.MethodPut, "http://localhost/drives/"+body.DriveID, bytes.NewBuffer(bodyJson))
+	req, err := http.NewRequest(http.MethodPut, "http://localhost/drives/rootfs", bytes.NewBuffer(jsonStr))
 	if err != nil {
-		panic(err)
-		// c.JSON(400, gin.H{
-		// 	"message":   "Error in making PUT request to /drives with give body",
-		// 	"timestamp": time.Now(),
-		// })
-		// return
+		c.JSON(400, gin.H{
+			"message":   "Error in making PUT request to /drives with give body",
+			"timestamp": time.Now(),
+		})
+		return
 	}
 
 	// set the request header Content-Type for json
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json")
 	_, err = client.Do(req)
 	if err != nil {
-		panic(err)
-		// c.JSON(400, gin.H{
-		// 	"message":   "Error in making PUT request to /drives with give body",
-		// 	"timestamp": time.Now(),
-		// })
-		// return
+		c.JSON(400, gin.H{
+			"message":   "Error in making PUT request to /drives with give body",
+			"timestamp": time.Now(),
+		})
+		return
 	}
 
 }
 
 func MachineConfig(c *gin.Context) {
-	var body models.MachineConfig
-	c.BindJSON(&body)
-	bodyJson, _ := json.Marshal(body)
-
-	log.Println(string(bodyJson))
+	var jsonStr = []byte(`{"vcpu_count": 2,"mem_size_mib": 512}`)
 
 	// initialize http client
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", body.SocketFile)
+				return net.Dial("unix", "/tmp.firecracker.socket")
 			},
 		},
 	}
 
 	// set the HTTP method, url, and request body
-	req, err := http.NewRequest(http.MethodPut, "http://localhost/machine-config", bytes.NewBuffer(bodyJson))
+	req, err := http.NewRequest(http.MethodPut, "http://localhost/machine-config", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		c.JSON(400, gin.H{
 			"message":   "Error in making PUT request to /machine-config with give body",
@@ -171,6 +151,7 @@ func MachineConfig(c *gin.Context) {
 
 	// set the request header Content-Type for json
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json")
 	_, err = client.Do(req)
 	if err != nil {
 		c.JSON(400, gin.H{
@@ -182,40 +163,36 @@ func MachineConfig(c *gin.Context) {
 }
 
 func Actions(c *gin.Context) {
-	var body models.Action
-	c.BindJSON(&body)
-
-	bodyJson, _ := json.Marshal(body)
+	var jsonStr = []byte(`{"action_type": "InstanceStart"}`)
 
 	// initialize http client
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", body.SocketFile)
+				return net.Dial("unix", "/tmp/firecracker.socket")
 			},
 		},
 	}
 
 	// set the HTTP method, url, and request body
-	req, err := http.NewRequest(http.MethodPut, "http://localhost/actions", bytes.NewBuffer(bodyJson))
+	req, err := http.NewRequest(http.MethodPut, "http://localhost/actions", bytes.NewBuffer(jsonStr))
 	if err != nil {
-		panic(err)
-		// c.JSON(400, gin.H{
-		// 	"message":   "Error in making PUT request to /actions with give body",
-		// 	"timestamp": time.Now(),
-		// })
-		// return
+		c.JSON(400, gin.H{
+			"message":   "Error in making PUT request to /actions with give body",
+			"timestamp": time.Now(),
+		})
+		return
 	}
 
 	// set the request header Content-Type for json
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json")
 	_, err = client.Do(req)
 	if err != nil {
-		panic(err)
-		// c.JSON(400, gin.H{
-		// 	"message":   "Error in making PUT request to /actions with give body",
-		// 	"timestamp": time.Now(),
-		// })
-		// return
+		c.JSON(400, gin.H{
+			"message":   "Error in making PUT request to /actions with give body",
+			"timestamp": time.Now(),
+		})
+		return
 	}
 }
