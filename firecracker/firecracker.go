@@ -162,6 +162,43 @@ func MachineConfig(c *gin.Context) {
 	}
 }
 
+func NetworkInterfaces(c *gin.Context) {
+	var jsonStr = []byte(`{ "iface_id": "eth0", "guest_mac": "AA:FC:00:00:00:01", "host_dev_name": "tap1" }`)
+
+	// initialize http client
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", "/tmp/firecracker.socket")
+			},
+		},
+	}
+
+	// set the HTTP method, url, and request body
+	req, err := http.NewRequest(http.MethodPut, "http://localhost/network-interfaces/eth0", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		panic(err)
+		// c.JSON(400, gin.H{
+		// 	"message":   "Error in making PUT request to /network-interfaces with give body",
+		// 	"timestamp": time.Now(),
+		// })
+		// return
+	}
+
+	// set the request header Content-Type for json
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json")
+	_, err = client.Do(req)
+	if err != nil {
+		panic(err)
+		// c.JSON(400, gin.H{
+		// 	"message":   "Error in making PUT request to /network-interfaces with give body",
+		// 	"timestamp": time.Now(),
+		// })
+		// return
+	}
+}
+
 func Actions(c *gin.Context) {
 	var jsonStr = []byte(`{"action_type": "InstanceStart"}`)
 
