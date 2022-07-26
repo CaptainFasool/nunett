@@ -3,6 +3,7 @@ package firecracker
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/models"
 )
 
 func NewClient(sockFile string) *http.Client {
@@ -95,58 +97,100 @@ func InitVM(c *gin.Context) {
 }
 
 func BootSource(c *gin.Context) {
-	var jsonStr = []byte(`{"kernel_image_path":"/home/santosh/firecracker/vmlinux.bin", "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"}`)
+	// var jsonBytes = []byte(`{"kernel_image_path":"/home/santosh/firecracker/vmlinux.bin", "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"}`)
 
-	// initialize http client
+	body := models.BootSource{}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	jsonBytes, _ := json.Marshal(body)
+
 	client := NewClient("/tmp/firecracker.socket")
 
 	errMsg := "Error in making PUT request to /boot-source with give body"
 
-	MakeRequest(c, client, "http://localhost/boot-source", jsonStr, errMsg)
+	MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, errMsg)
 }
 
 func Drives(c *gin.Context) {
-	var jsonStr = []byte(`{"drive_id": "rootfs", "path_on_host":"/home/santosh/firecracker/bionic.rootfs.ext4", "is_root_device": true, "is_read_only": false}`)
+	// var jsonBytes = []byte(`{"drive_id": "rootfs", "path_on_host":"/home/santosh/firecracker/bionic.rootfs.ext4", "is_root_device": true, "is_read_only": false}`)
+
+	body := models.Drives{}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	jsonBytes, _ := json.Marshal(body)
 
 	client := NewClient("/tmp/firecracker.socket")
 
 	errMsg := "Error in making PUT request to /drives with give body"
 
-	MakeRequest(c, client, "http://localhost/drives/rootfs", jsonStr, errMsg)
+	MakeRequest(c, client, "http://localhost/drives/rootfs", jsonBytes, errMsg)
 
 }
 
 func MachineConfig(c *gin.Context) {
-	var jsonStr = []byte(`{"vcpu_count": 2,"mem_size_mib": 512}`)
+	// var jsonBytes = []byte(`{"vcpu_count": 2,"mem_size_mib": 512}`)
 
-	// initialize http client
+	body := models.MachineConfig{}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	jsonBytes, _ := json.Marshal(body)
+
 	client := NewClient("/tmp/firecracker.socket")
 
 	errMsg := "Error in making PUT request to /machine-config with give body"
 
-	MakeRequest(c, client, "http://localhost/machine-config", jsonStr, errMsg)
+	MakeRequest(c, client, "http://localhost/machine-config", jsonBytes, errMsg)
 
 }
 
 func NetworkInterfaces(c *gin.Context) {
-	var jsonStr = []byte(`{ "iface_id": "eth0", "guest_mac": "AA:FC:00:00:00:01", "host_dev_name": "tap1" }`)
+	// var jsonBytes = []byte(`{ "iface_id": "eth0", "guest_mac": "AA:FC:00:00:00:01", "host_dev_name": "tap1" }`)
 
-	// initialize http client
+	body := models.NetworkInterfaces{}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	jsonBytes, _ := json.Marshal(body)
+
 	client := NewClient("/tmp/firecracker.socket")
 
 	errMsg := "Error in making PUT request to /network-interfaces with give body"
 
-	MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonStr, errMsg)
+	MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, errMsg)
 }
 
 func Actions(c *gin.Context) {
-	var jsonStr = []byte(`{"action_type": "InstanceStart"}`)
+	// var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
+
+	body := models.Actions{}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	jsonBytes, _ := json.Marshal(body)
 
 	// initialize http client
 	client := NewClient("/tmp/firecracker.socket")
 
 	errMsg := "Error in making PUT request to /actions with give body"
 
-	MakeRequest(c, client, "http://localhost/actions", jsonStr, errMsg)
+	MakeRequest(c, client, "http://localhost/actions", jsonBytes, errMsg)
 
 }
