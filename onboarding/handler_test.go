@@ -1,4 +1,4 @@
-package handlers_test
+package onboarding_test
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ func TestCreatePaymentAddressRoute(t *testing.T) {
 	router := routes.SetupRouter()
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/address/new", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/onboarding/address/new", nil)
 	router.ServeHTTP(w, req)
 
 	resp := w.Result()
@@ -36,7 +36,7 @@ func TestProvisionedRoute(t *testing.T) {
 	router := routes.SetupRouter()
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/provisioned", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/onboarding/provisioned", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)

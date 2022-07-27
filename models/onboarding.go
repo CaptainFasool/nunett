@@ -1,5 +1,30 @@
 package models
 
+// AddressPrivKey holds Ethereum wallet address and private key from which the
+// address is derived.
+type AddressPrivKey struct {
+	Address    string `json:"address,omitempty"`
+	PrivateKey string `json:"private_key,omitempty"`
+}
+
+// CapacityForNunet is a struct required in request body for the onboarding
+type CapacityForNunet struct {
+	Memory         int64  `json:"memory,omitempty"`
+	CPU            int64  `json:"cpu,omitempty"`
+	Channel        string `json:"channel,omitempty"`
+	PaymentAddress string `json:"payment_addr,omitempty"`
+	Cardano        bool   `json:"cardano,omitempty"`
+}
+
+// Provisioned struct holds data about how much total resource
+// host machine is equipped with
+type Provisioned struct {
+	CPU      float64 `json:"cpu,omitempty"`
+	Memory   uint64  `json:"memory,omitempty"`
+	NumCores uint64  `json:"total_cores,omitempty"`
+}
+
+// Metadata has an older version of schema for metadata.json.
 type Metadata struct {
 	Name     string `json:"name,omitempty"`
 	Resource struct {
@@ -21,6 +46,7 @@ type Metadata struct {
 	PublicKey string `json:"public_key,omitempty"`
 }
 
+// MetadataV2 has a newer version of schema for metadata.json.
 type MetadataV2 struct {
 	Name            string `json:"name,omitempty"`
 	UpdateTimestamp int64  `json:"update_timestamp,omitempty"`

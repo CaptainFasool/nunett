@@ -34,9 +34,9 @@ and then run the main.go
 
 Notice that I'm using `sudo` as the onboarding process writes some configuration files to `/etc/nunet`.
 
-## Operations/Endpoints
+## Onboarding Operations/Endpoints
 
-All the endpoints mentioned below should be prefixed with `/api/v1`.
+All the endpoints mentioned below should be prefixed with `/api/v1/onboarding`.
 
 ![nunet-dms-http-docs](docs/nunet-dms-http-docs.png)
 
@@ -46,7 +46,7 @@ The above mentioned documentation is available at <http://localhost:9999/swagger
 `GET /provisioned` endpoint returns some info about the host machine, which will be used to decide how much capacity can be given to NuNet. See `POST /onboard`.
 
 ```
-$ curl -s localhost:9999/api/v1/provisioned | jq .
+$ curl -s localhost:9999/api/v1/onboarding/provisioned | jq .
 {
   "cpu": 32800,
   "memory": 15843,
@@ -100,7 +100,7 @@ A typical body would look like this:
 If you are using curl, save above json in onboard.json and run below command:
 
 ```
-curl -XPOST -d @onboard.json  http://localhost:9999/api/v1/onboard | jq .
+curl -XPOST -d @onboard.json  http://localhost:9999/api/v1/onboarding/onboard | jq .
 ```
 
 The server should respond with contents of metadata.json.

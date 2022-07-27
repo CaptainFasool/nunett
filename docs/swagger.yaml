@@ -64,8 +64,19 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: "1.0"
+  version: "0.1"
 paths:
+  /actions:
+    put:
+      description: Start or stop the VM.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Start or stop the VM.
+      tags:
+      - vm
   /address/new:
     get:
       description: Create a payment address from public key. Return payment address
@@ -79,7 +90,52 @@ paths:
             $ref: '#/definitions/models.AddressPrivKey'
       summary: Create a new payment address.
       tags:
-      - onboard
+      - onboarding
+  /boot-source:
+    put:
+      description: Configure kernel for the VM.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Configures kernel for the VM.
+      tags:
+      - vm
+  /drives:
+    put:
+      description: Configures filesystem for the VM.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Configures filesystem for the VM.
+      tags:
+      - vm
+  /init:
+    post:
+      description: Starts the firecracker server for the specific VM. Further configuration
+        are required.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Starts the VM booting process.
+      tags:
+      - vm
+  /machine-config:
+    put:
+      description: Configures system spec for the VM like CPU and Memory.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Configures system spec for the VM.
+      tags:
+      - vm
   /metadata:
     get:
       description: Responds with metadata of current provideer
@@ -94,7 +150,18 @@ paths:
             type: array
       summary: Get current device info.
       tags:
-      - onboard
+      - onboarding
+  /network-interface:
+    put:
+      description: Configures network interface on the host.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Configures network interface on the host.
+      tags:
+      - vm
   /onboard:
     post:
       description: Onboard runs onboarding script given the amount of resources to
@@ -110,7 +177,7 @@ paths:
             type: array
       summary: Runs the onboarding process.
       tags:
-      - onboard
+      - onboarding
   /provisioned:
     get:
       description: Get total memory capacity in MB and CPU capacity in MHz.
@@ -123,5 +190,5 @@ paths:
             $ref: '#/definitions/models.Provisioned'
       summary: Returns provisioned capacity on host.
       tags:
-      - onboard
+      - onboarding
 swagger: "2.0"
