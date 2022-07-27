@@ -15,7 +15,7 @@ import (
 // GetMetadata      godoc
 // @Summary      Get current device info.
 // @Description  Responds with metadata of current provideer
-// @Tags         onboard
+// @Tags         onboarding
 // @Produce      json
 // @Success      200  {array}        models.Metadata
 // @Router       /metadata [get]
@@ -43,7 +43,7 @@ func GetMetadata(c *gin.Context) {
 // Onboard      godoc
 // @Summary      Runs the onboarding process.
 // @Description  Onboard runs onboarding script given the amount of resources to onboard.
-// @Tags         onboard
+// @Tags         onboarding
 // @Produce      json
 // @Success      200  {array}  models.Metadata
 // @Router       /onboard [post]
@@ -162,7 +162,7 @@ func SetPreferences(c *gin.Context) {
 // ProvisionedCapacity      godoc
 // @Summary      Returns provisioned capacity on host.
 // @Description  Get total memory capacity in MB and CPU capacity in MHz.
-// @Tags         onboard
+// @Tags         onboarding
 // @Produce      json
 // @Success      200  {object}  models.Provisioned
 // @Router       /provisioned [get]
@@ -173,7 +173,7 @@ func ProvisionedCapacity(c *gin.Context) {
 // CreatePaymentAddress      godoc
 // @Summary      Create a new payment address.
 // @Description  Create a payment address from public key. Return payment address and private key.
-// @Tags         onboard
+// @Tags         onboarding
 // @Produce      json
 // @Success      200  {object}  models.AddressPrivKey
 // @Router       /address/new [get]

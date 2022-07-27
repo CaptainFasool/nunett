@@ -13,11 +13,28 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "1.0"
+        "version": "0.1"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
     "paths": {
+        "/actions": {
+            "put": {
+                "description": "Start or stop the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Start or stop the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
@@ -25,7 +42,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "onboard"
+                    "onboarding"
                 ],
                 "summary": "Create a new payment address.",
                 "responses": {
@@ -38,6 +55,74 @@
                 }
             }
         },
+        "/boot-source": {
+            "put": {
+                "description": "Configure kernel for the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures kernel for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/drives": {
+            "put": {
+                "description": "Configures filesystem for the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures filesystem for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/init": {
+            "post": {
+                "description": "Starts the firecracker server for the specific VM. Further configuration are required.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Starts the VM booting process.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/machine-config": {
+            "put": {
+                "description": "Configures system spec for the VM like CPU and Memory.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures system spec for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/metadata": {
             "get": {
                 "description": "Responds with metadata of current provideer",
@@ -45,7 +130,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "onboard"
+                    "onboarding"
                 ],
                 "summary": "Get current device info.",
                 "responses": {
@@ -61,6 +146,23 @@
                 }
             }
         },
+        "/network-interface": {
+            "put": {
+                "description": "Configures network interface on the host.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures network interface on the host.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/onboard": {
             "post": {
                 "description": "Onboard runs onboarding script given the amount of resources to onboard.",
@@ -68,7 +170,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "onboard"
+                    "onboarding"
                 ],
                 "summary": "Runs the onboarding process.",
                 "responses": {
@@ -91,7 +193,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "onboard"
+                    "onboarding"
                 ],
                 "summary": "Returns provisioned capacity on host.",
                 "responses": {

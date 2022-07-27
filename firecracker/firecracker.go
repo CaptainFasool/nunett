@@ -53,9 +53,13 @@ func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, e
 
 }
 
-// InitVM starts the firecracker server for the specific VM. This endpoint requires a socket file.
-// This socket file is further required
-// Further requests are required for configuring the VM.
+// InitVM		godoc
+// @Summary		Starts the VM booting process.
+// @Description	Starts the firecracker server for the specific VM. Further configuration are required.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/init [post]
 func InitVM(c *gin.Context) {
 
 	// Check if socket file already exists
@@ -96,6 +100,13 @@ func InitVM(c *gin.Context) {
 
 }
 
+// BootSource	godoc
+// @Summary		Configures kernel for the VM.
+// @Description	Configure kernel for the VM.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/boot-source [put]
 func BootSource(c *gin.Context) {
 	// var jsonBytes = []byte(`{"kernel_image_path":"/home/santosh/firecracker/vmlinux.bin", "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"}`)
 
@@ -115,6 +126,13 @@ func BootSource(c *gin.Context) {
 	MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, errMsg)
 }
 
+// Drives		godoc
+// @Summary		Configures filesystem for the VM.
+// @Description	Configures filesystem for the VM.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/drives [put]
 func Drives(c *gin.Context) {
 	// var jsonBytes = []byte(`{"drive_id": "rootfs", "path_on_host":"/home/santosh/firecracker/bionic.rootfs.ext4", "is_root_device": true, "is_read_only": false}`)
 
@@ -135,6 +153,13 @@ func Drives(c *gin.Context) {
 
 }
 
+// MachineConfig godoc
+// @Summary		Configures system spec for the VM.
+// @Description	Configures system spec for the VM like CPU and Memory.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/machine-config [put]
 func MachineConfig(c *gin.Context) {
 	// var jsonBytes = []byte(`{"vcpu_count": 2,"mem_size_mib": 512}`)
 
@@ -155,6 +180,13 @@ func MachineConfig(c *gin.Context) {
 
 }
 
+// NetworkInterfaces godoc
+// @Summary		Configures network interface on the host.
+// @Description	Configures network interface on the host.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/network-interface [put]
 func NetworkInterfaces(c *gin.Context) {
 	// var jsonBytes = []byte(`{ "iface_id": "eth0", "guest_mac": "AA:FC:00:00:00:01", "host_dev_name": "tap1" }`)
 
@@ -174,6 +206,13 @@ func NetworkInterfaces(c *gin.Context) {
 	MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, errMsg)
 }
 
+// Actions godoc
+// @Summary		Start or stop the VM.
+// @Description	Start or stop the VM.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/actions [put]
 func Actions(c *gin.Context) {
 	// var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
 
