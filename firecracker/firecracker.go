@@ -15,6 +15,10 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
+const (
+	DMS_BASE_URL = "http://localhost:9999/api/v1"
+)
+
 func NewClient(sockFile string) *http.Client {
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -232,4 +236,88 @@ func Actions(c *gin.Context) {
 
 	MakeRequest(c, client, "http://localhost/actions", jsonBytes, errMsg)
 
+}
+
+// MakeInternalRequest is a helper method to make call to DMS's own API
+func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) {
+	req, err := http.NewRequest(methodType, DMS_BASE_URL+internalEndpoint, bytes.NewBuffer(body))
+	if err != nil {
+		panic(err)
+	}
+
+	client := http.Client{}
+
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json")
+	_, err = client.Do(req)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"message":   fmt.Sprintf("Error making %s request to %s", methodType, internalEndpoint),
+			"timestamp": time.Now(),
+		})
+		return
+	}
+}
+
+// StartDefault godoc
+// @Summary		Start a VM with default configuration.
+// @Description	This endpoint is an abstraction of all other endpoints. When invokend, it calls all other endpoints in a sequence.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/start-default [post]
+func StartDefault(c *gin.Context) {
+	// Everything except kernel files and filesystem file will be set by DMS itself.
+
+	type StartDefaultBody struct {
+		KernelImagePath string `json:"kernel_image_path"`
+		FilesystemPath  string `json:"filesystem_path"`
+	}
+
+	body := StartDefaultBody{}
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	// POST /init
+	MakeInternalRequest(c, "POST", "/vm/init", nil)
+
+	// PUT /boot-source
+	bootSourceBody := models.BootSource{}
+	bootSourceBody.KernelImagePath = body.KernelImagePath
+	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
+
+	jsonBytes, _ := json.Marshal(bootSourceBody)
+	MakeInternalRequest(c, "PUT", "/vm/boot-source", jsonBytes)
+
+	// PUT /drives
+	drivesBody := models.Drives{}
+
+	drivesBody.DriveID = "rootfs"
+	drivesBody.PathOnHost = body.FilesystemPath
+	drivesBody.IsRootDevice = true
+	drivesBody.IsReadOnly = false
+
+	jsonBytes, _ = json.Marshal(drivesBody)
+	MakeInternalRequest(c, "PUT", "/vm/drives", jsonBytes)
+
+	// PUT /machine-config
+	machineConfigBody := models.MachineConfig{}
+	// TODO: vCPU and memory has to be estimated based on how much capacity is remaining in nunet quota
+	machineConfigBody.MemSizeMib = 256
+	machineConfigBody.VCPUCount = 2
+
+	jsonBytes, _ = json.Marshal(machineConfigBody)
+	MakeInternalRequest(c, "PUT", "/vm/machine-config", jsonBytes)
+
+	// PUT /network-interfaces
+	// MakeInternalRequest(c, "PUT", "/vm/network-interfaces", jsonBytes)
+
+	// PUT /actions
+	actionsBody := models.Actions{}
+	actionsBody.ActionType = "InstanceStart"
+
+	jsonBytes, _ = json.Marshal(actionsBody)
+	MakeInternalRequest(c, "PUT", "/vm/actions", jsonBytes)
 }

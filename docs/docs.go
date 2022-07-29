@@ -212,6 +212,23 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/start-default": {
+            "post": {
+                "description": "This endpoint is an abstraction of all other endpoints. When invokend, it calls all other endpoints in a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Start a VM with default configuration.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
         }
     },
     "definitions": {
