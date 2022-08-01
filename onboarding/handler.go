@@ -1,4 +1,4 @@
-package handlers
+package onboarding
 
 import (
 	"encoding/json"
@@ -10,13 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
 // GetMetadata      godoc
 // @Summary      Get current device info.
 // @Description  Responds with metadata of current provideer
-// @Tags         onboard
+// @Tags         onboarding
 // @Produce      json
 // @Success      200  {array}        models.Metadata
 // @Router       /metadata [get]
@@ -44,7 +43,7 @@ func GetMetadata(c *gin.Context) {
 // Onboard      godoc
 // @Summary      Runs the onboarding process.
 // @Description  Onboard runs onboarding script given the amount of resources to onboard.
-// @Tags         onboard
+// @Tags         onboarding
 // @Produce      json
 // @Success      200  {array}  models.Metadata
 // @Router       /onboard [post]
@@ -66,9 +65,9 @@ func Onboard(c *gin.Context) {
 
 	currentTime := time.Now().Unix()
 
-	totalCpu := onboarding.GetTotalProvisioned().CPU
-	totalMem := onboarding.GetTotalProvisioned().Memory
-	numCores := onboarding.GetTotalProvisioned().NumCores
+	totalCpu := GetTotalProvisioned().CPU
+	totalMem := GetTotalProvisioned().Memory
+	numCores := GetTotalProvisioned().NumCores
 
 	// create metadata
 	var metadata models.MetadataV2
@@ -126,8 +125,8 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
-	onboarding.CreateClientConfig(c, &metadata, &capacityForNunet, hostname)
-	onboarding.CreateAdapterConfig(c, &metadata, cardanoPassive, hostname)
+	CreateClientConfig(c, &metadata, &capacityForNunet, hostname)
+	CreateAdapterConfig(c, &metadata, cardanoPassive, hostname)
 
 	var adapterPrefix string
 	if metadata.Network == "nunet-development" {
@@ -138,7 +137,7 @@ func Onboard(c *gin.Context) {
 	}
 
 	jobName := adapterPrefix + "-" + hostname
-	onboarding.RunNomadJob(c, jobName)
+	RunNomadJob(c, jobName)
 
 	c.JSON(http.StatusCreated, metadata)
 }
@@ -163,23 +162,23 @@ func SetPreferences(c *gin.Context) {
 // ProvisionedCapacity      godoc
 // @Summary      Returns provisioned capacity on host.
 // @Description  Get total memory capacity in MB and CPU capacity in MHz.
-// @Tags         onboard
+// @Tags         onboarding
 // @Produce      json
 // @Success      200  {object}  models.Provisioned
 // @Router       /provisioned [get]
 func ProvisionedCapacity(c *gin.Context) {
-	c.JSON(http.StatusOK, onboarding.GetTotalProvisioned())
+	c.JSON(http.StatusOK, GetTotalProvisioned())
 }
 
 // CreatePaymentAddress      godoc
 // @Summary      Create a new payment address.
 // @Description  Create a payment address from public key. Return payment address and private key.
-// @Tags         onboard
+// @Tags         onboarding
 // @Produce      json
 // @Success      200  {object}  models.AddressPrivKey
 // @Router       /address/new [get]
 func CreatePaymentAddress(c *gin.Context) {
-	pair, err := onboarding.GetAddressAndPrivateKey()
+	pair, err := GetAddressAndPrivateKey()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
 			gin.H{"message": "error creating address"})

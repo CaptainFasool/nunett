@@ -25,6 +25,23 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/actions": {
+            "put": {
+                "description": "Start or stop the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Start or stop the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
@@ -32,7 +49,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "onboard"
+                    "onboarding"
                 ],
                 "summary": "Create a new payment address.",
                 "responses": {
@@ -45,6 +62,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/boot-source": {
+            "put": {
+                "description": "Configure kernel for the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures kernel for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/drives": {
+            "put": {
+                "description": "Configures filesystem for the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures filesystem for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/init": {
+            "post": {
+                "description": "Starts the firecracker server for the specific VM. Further configuration are required.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Starts the VM booting process.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/machine-config": {
+            "put": {
+                "description": "Configures system spec for the VM like CPU and Memory.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures system spec for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/metadata": {
             "get": {
                 "description": "Responds with metadata of current provideer",
@@ -52,7 +137,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "onboard"
+                    "onboarding"
                 ],
                 "summary": "Get current device info.",
                 "responses": {
@@ -68,6 +153,23 @@ const docTemplate = `{
                 }
             }
         },
+        "/network-interface": {
+            "put": {
+                "description": "Configures network interface on the host.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures network interface on the host.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/onboard": {
             "post": {
                 "description": "Onboard runs onboarding script given the amount of resources to onboard.",
@@ -75,7 +177,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "onboard"
+                    "onboarding"
                 ],
                 "summary": "Runs the onboarding process.",
                 "responses": {
@@ -98,7 +200,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "onboard"
+                    "onboarding"
                 ],
                 "summary": "Returns provisioned capacity on host.",
                 "responses": {
@@ -199,7 +301,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
+	Version:          "0.1",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
