@@ -27,9 +27,11 @@ func SetupRouter() *gin.Engine {
 		virtualmachine.PUT("/drives", firecracker.Drives)
 		virtualmachine.PUT("/machine-config", firecracker.MachineConfig)
 		virtualmachine.PUT("/network-interfaces", firecracker.NetworkInterfaces)
-		virtualmachine.PUT("/actions", firecracker.Actions)
+		virtualmachine.PUT("/start", firecracker.StartVM)
+		virtualmachine.PUT("/stop", firecracker.StopVM)
 
-		virtualmachine.POST("/start-default", firecracker.StartDefault)
+		// virtualmachine.POST("/start-default", firecracker.StartDefault)
+		virtualmachine.POST("/fromConfig", firecracker.RunFromConfig)
 	}
 
 	return router

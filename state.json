@@ -1,0 +1,10 @@
+[
+  {
+    "name": "VM1",
+    "socket_file": "/tmp/VM1.socket",
+    "boot_source": "/home/santosh/firecracker/vmlinux.bin",
+    "filesystem": "/home/santosh/firecracker/bionic.rootfs.ext4",
+    "network_interface": "tap1",
+    "state": "running"
+  }
+]

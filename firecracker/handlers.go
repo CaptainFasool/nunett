@@ -1,3 +1,5 @@
+// Package firecracker deals with anything related to Firecracker virtual machines. This involves creating, deleting,
+// It also deals with keeping track of network interfaces, socket files.
 package firecracker
 
 import (
@@ -13,10 +15,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/models"
-)
-
-const (
-	DMS_BASE_URL = "http://localhost:9999/api/v1"
 )
 
 func NewClient(sockFile string) *http.Client {
@@ -125,9 +123,7 @@ func BootSource(c *gin.Context) {
 
 	client := NewClient("/tmp/firecracker.socket")
 
-	errMsg := "Error in making PUT request to /boot-source with give body"
-
-	MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, errMsg)
+	MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, ERR_BOOTSOURCE_REQ)
 }
 
 // Drives		godoc
@@ -151,9 +147,7 @@ func Drives(c *gin.Context) {
 
 	client := NewClient("/tmp/firecracker.socket")
 
-	errMsg := "Error in making PUT request to /drives with give body"
-
-	MakeRequest(c, client, "http://localhost/drives/rootfs", jsonBytes, errMsg)
+	MakeRequest(c, client, "http://localhost/drives/rootfs", jsonBytes, ERR_DRIVES_REQ)
 
 }
 
@@ -178,9 +172,7 @@ func MachineConfig(c *gin.Context) {
 
 	client := NewClient("/tmp/firecracker.socket")
 
-	errMsg := "Error in making PUT request to /machine-config with give body"
-
-	MakeRequest(c, client, "http://localhost/machine-config", jsonBytes, errMsg)
+	MakeRequest(c, client, "http://localhost/machine-config", jsonBytes, ERR_MACHINE_CONFIG_REQ)
 
 }
 
@@ -205,37 +197,39 @@ func NetworkInterfaces(c *gin.Context) {
 
 	client := NewClient("/tmp/firecracker.socket")
 
-	errMsg := "Error in making PUT request to /network-interfaces with give body"
-
-	MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, errMsg)
+	MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, ERR_MACHINE_CONFIG_REQ)
 }
 
-// Actions godoc
-// @Summary		Start or stop the VM.
-// @Description	Start or stop the VM.
+// StartVM godoc
+// @Summary		Start the VM.
+// @Description	Start the VM.
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/actions [put]
-func Actions(c *gin.Context) {
-	// var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
-
-	body := models.Actions{}
-
-	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-
-	jsonBytes, _ := json.Marshal(body)
+// @Router		/start [post]
+func StartVM(c *gin.Context) {
+	var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
 
 	// initialize http client
 	client := NewClient("/tmp/firecracker.socket")
 
-	errMsg := "Error in making PUT request to /actions with give body"
+	MakeRequest(c, client, "http://localhost/actions", jsonBytes, ERR_ACTIONS_REQ)
+}
 
-	MakeRequest(c, client, "http://localhost/actions", jsonBytes, errMsg)
+// StopVM godoc
+// @Summary		Stop the VM.
+// @Description	Stop the VM.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/stop [post]
+func StopVM(c *gin.Context) {
+	var jsonBytes = []byte(`{"action_type": "SendCtrlAltDel"}`)
 
+	// initialize http client
+	client := NewClient("/tmp/firecracker.socket")
+
+	MakeRequest(c, client, "http://localhost/actions", jsonBytes, ERR_ACTIONS_REQ)
 }
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
@@ -266,36 +260,86 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 // @Produce 	json
 // @Success		200
 // @Router		/start-default [post]
-func StartDefault(c *gin.Context) {
-	// Everything except kernel files and filesystem file will be set by DMS itself.
+// func StartDefault(c *gin.Context) {
+// 	// Everything except kernel files and filesystem file will be set by DMS itself.
 
-	type StartDefaultBody struct {
-		KernelImagePath string `json:"kernel_image_path"`
-		FilesystemPath  string `json:"filesystem_path"`
-	}
+// 	type StartDefaultBody struct {
+// 		KernelImagePath string `json:"kernel_image_path"`
+// 		FilesystemPath  string `json:"filesystem_path"`
+// 	}
 
-	body := StartDefaultBody{}
+// 	body := StartDefaultBody{}
+// 	if err := c.BindJSON(&body); err != nil {
+// 		c.AbortWithError(http.StatusBadRequest, err)
+// 		return
+// 	}
+
+// 	// POST /init
+// 	MakeInternalRequest(c, "POST", "/vm/init", nil)
+
+// 	// PUT /boot-source
+// 	bootSourceBody := models.BootSource{}
+// 	bootSourceBody.KernelImagePath = body.KernelImagePath
+// 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
+
+// 	jsonBytes, _ := json.Marshal(bootSourceBody)
+// 	MakeInternalRequest(c, "PUT", "/vm/boot-source", jsonBytes)
+
+// 	// PUT /drives
+// 	drivesBody := models.Drives{}
+
+// 	drivesBody.DriveID = "rootfs"
+// 	drivesBody.PathOnHost = body.FilesystemPath
+// 	drivesBody.IsRootDevice = true
+// 	drivesBody.IsReadOnly = false
+
+// 	jsonBytes, _ = json.Marshal(drivesBody)
+// 	MakeInternalRequest(c, "PUT", "/vm/drives", jsonBytes)
+
+// 	// PUT /machine-config
+// 	machineConfigBody := models.MachineConfig{}
+// 	// TODO: vCPU and memory has to be estimated based on how much capacity is remaining in nunet quota
+// 	machineConfigBody.MemSizeMib = 256
+// 	machineConfigBody.VCPUCount = 2
+
+// 	jsonBytes, _ = json.Marshal(machineConfigBody)
+// 	MakeInternalRequest(c, "PUT", "/vm/machine-config", jsonBytes)
+
+// 	// PUT /network-interfaces
+// 	// MakeInternalRequest(c, "PUT", "/vm/network-interfaces", jsonBytes)
+
+// 	// PUT /actions
+// 	actionsBody := models.Actions{}
+// 	actionsBody.ActionType = "InstanceStart"
+
+// 	jsonBytes, _ = json.Marshal(actionsBody)
+// 	MakeInternalRequest(c, "PUT", "/vm/actions", jsonBytes)
+// }
+
+func RunFromConfig(c *gin.Context) {
+	body := models.State{}
 	if err := c.BindJSON(&body); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
+	jsonBytes, _ := json.Marshal(body)
 	// POST /init
-	MakeInternalRequest(c, "POST", "/vm/init", nil)
+	MakeInternalRequest(c, "POST", "/vm/init", jsonBytes)
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
-	bootSourceBody.KernelImagePath = body.KernelImagePath
+	bootSourceBody.KernelImagePath = body.BootSource
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	jsonBytes, _ := json.Marshal(bootSourceBody)
+	jsonBytes, _ = json.Marshal(bootSourceBody)
 	MakeInternalRequest(c, "PUT", "/vm/boot-source", jsonBytes)
 
 	// PUT /drives
 	drivesBody := models.Drives{}
 
 	drivesBody.DriveID = "rootfs"
-	drivesBody.PathOnHost = body.FilesystemPath
+	drivesBody.PathOnHost = body.Filesystem
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
@@ -314,10 +358,7 @@ func StartDefault(c *gin.Context) {
 	// PUT /network-interfaces
 	// MakeInternalRequest(c, "PUT", "/vm/network-interfaces", jsonBytes)
 
-	// PUT /actions
-	actionsBody := models.Actions{}
-	actionsBody.ActionType = "InstanceStart"
+	// POST /start
 
-	jsonBytes, _ = json.Marshal(actionsBody)
-	MakeInternalRequest(c, "PUT", "/vm/actions", jsonBytes)
+	MakeInternalRequest(c, "PUT", "/vm/start", nil)
 }
