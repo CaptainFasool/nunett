@@ -28,12 +28,7 @@ type Actions struct {
 }
 
 type VirtualMachine struct {
-	Name       string
-	SocketFile string
-}
-
-type State struct {
-	Name             string `json:"name"`
+	ID               uint   `json:"id"`
 	SocketFile       string `json:"socket_file"`
 	BootSource       string `json:"boot_source"`
 	Filesystem       string `json:"filesystem"`
