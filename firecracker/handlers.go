@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/firecracker/networking"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -65,7 +67,7 @@ func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, e
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/init [post]
+// @Router		/init/:vmID [post]
 func InitVM(c *gin.Context) {
 	var vm models.VirtualMachine
 	if err := db.DB.Where("id = ?", c.Param("vmID")).First(&vm).Error; err != nil {
@@ -119,7 +121,7 @@ func InitVM(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/boot-source [put]
+// @Router		/boot-source/:vmID [put]
 func BootSource(c *gin.Context) {
 	// var jsonBytes = []byte(`{"kernel_image_path":"/home/santosh/firecracker/vmlinux.bin", "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"}`)
 	var vm models.VirtualMachine
@@ -148,7 +150,7 @@ func BootSource(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/drives [put]
+// @Router		/drives/:vmID [put]
 func Drives(c *gin.Context) {
 	// var jsonBytes = []byte(`{"drive_id": "rootfs", "path_on_host":"/home/santosh/firecracker/bionic.rootfs.ext4", "is_root_device": true, "is_read_only": false}`)
 	var vm models.VirtualMachine
@@ -178,7 +180,7 @@ func Drives(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/machine-config [put]
+// @Router		/machine-config/:vmID [put]
 func MachineConfig(c *gin.Context) {
 	// var jsonBytes = []byte(`{"vcpu_count": 2,"mem_size_mib": 512}`)
 	var vm models.VirtualMachine
@@ -208,7 +210,7 @@ func MachineConfig(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/network-interface [put]
+// @Router		/network-interface/:vmID [put]
 func NetworkInterfaces(c *gin.Context) {
 	// var jsonBytes = []byte(`{ "iface_id": "eth0", "guest_mac": "AA:FC:00:00:00:01", "host_dev_name": "tap1" }`)
 	var vm models.VirtualMachine
@@ -218,6 +220,12 @@ func NetworkInterfaces(c *gin.Context) {
 	}
 
 	body := models.NetworkInterfaces{}
+
+	err := networking.ConfigureTapByName(vm.TapDevice)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, errors.New("error configuring network"))
+		return
+	}
 
 	if err := c.BindJSON(&body); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
@@ -237,7 +245,7 @@ func NetworkInterfaces(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/start [post]
+// @Router		/start/:vmID [post]
 func StartVM(c *gin.Context) {
 	var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
 	var vm models.VirtualMachine
@@ -263,7 +271,7 @@ func StartVM(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/stop [post]
+// @Router		/stop/:vmID [post]
 func StopVM(c *gin.Context) {
 	var jsonBytes = []byte(`{"action_type": "SendCtrlAltDel"}`)
 
@@ -326,12 +334,14 @@ func StartDefault(c *gin.Context) {
 		return
 	}
 
+	tapDevName := networking.NextTapDevice()
+
 	vm := models.VirtualMachine{
-		SocketFile:       GenerateSocketFile(10),
-		BootSource:       "/home/santosh/firecracker/vmlinux.bin",
-		Filesystem:       "/home/santosh/firecracker/bionic.rootfs.ext4",
-		NetworkInterface: "tap1",
-		State:            "awaiting",
+		SocketFile: GenerateSocketFile(10),
+		BootSource: "/home/santosh/firecracker/vmlinux.bin",
+		Filesystem: "/home/santosh/firecracker/bionic.rootfs.ext4",
+		TapDevice:  tapDevName,
+		State:      "awaiting",
 	}
 
 	result := db.DB.Create(&vm)
@@ -371,7 +381,12 @@ func StartDefault(c *gin.Context) {
 	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
 
 	// PUT /network-interfaces
-	// MakeInternalRequest(c, "PUT", "/vm/network-interfaces", jsonBytes)
+	networkInterfacesBody := models.NetworkInterfaces{}
+	networkInterfacesBody.IfaceID = "eth0"
+	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
+	networkInterfacesBody.HostDevName = tapDevName
+	jsonBytes, _ = json.Marshal(networkInterfacesBody)
+	MakeInternalRequest(c, "PUT", "/vm/network-interfaces/eth0", jsonBytes)
 
 	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", vm.ID), jsonBytes)
 }
@@ -386,10 +401,9 @@ func RunFromConfig(c *gin.Context) {
 
 	// Check if socket file already exists
 	if _, err := os.Stat(body.SocketFile); err == nil {
-		log.Println(body.SocketFile)
-		panic(err)
-		// c.JSON(http.StatusBadRequest, gin.H{"error": "Socket file already exists"})
-		// return
+		log.Println("socket file exists, removing...")
+		os.Remove(body.SocketFile)
+		log.Println(body.SocketFile, "removed")
 	}
 
 	cmd := exec.Command("firecracker", "--api-sock", body.SocketFile)
@@ -439,7 +453,12 @@ func RunFromConfig(c *gin.Context) {
 	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", body.ID), jsonBytes)
 
 	// PUT /network-interfaces
-	// MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/network-interfaces/%d", body.ID), jsonBytes)
+	networkInterfacesBody := models.NetworkInterfaces{}
+	networkInterfacesBody.IfaceID = "eth0"
+	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
+	networkInterfacesBody.HostDevName = body.TapDevice
+	jsonBytes, _ = json.Marshal(networkInterfacesBody)
+	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/network-interfaces/%d", body.ID), jsonBytes)
 
 	// POST /start
 

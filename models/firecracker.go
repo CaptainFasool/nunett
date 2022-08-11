@@ -28,10 +28,10 @@ type Actions struct {
 }
 
 type VirtualMachine struct {
-	ID               uint   `json:"id"`
-	SocketFile       string `json:"socket_file"`
-	BootSource       string `json:"boot_source"`
-	Filesystem       string `json:"filesystem"`
-	NetworkInterface string `json:"network_interface"`
-	State            string `json:"state"`
+	ID         uint   `json:"id"`
+	SocketFile string `json:"socket_file"`
+	BootSource string `json:"boot_source"`
+	Filesystem string `json:"filesystem"`
+	TapDevice  string `json:"tap_device"`
+	State      string `json:"state"`
 }

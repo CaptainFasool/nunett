@@ -21,7 +21,6 @@ func RunPreviouslyRunningVMs() error {
 	for _, vm := range vms {
 		// send request to fromConfig
 		jsonBytes, _ := json.Marshal(vm)
-		// MakeInternalRequest(&gin.Context{}, "POST", "/vm/fromConfig", jsonBytes)
 
 		// set the HTTP method, url, and request body
 		req, _ := http.NewRequest("POST", DMS_BASE_URL+"/vm/fromConfig", bytes.NewBuffer(jsonBytes))

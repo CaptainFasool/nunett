@@ -18,8 +18,8 @@ import (
 	"strings"
 )
 
-// GetActiveInterface returns active interface used to connect to internet.
-func GetActiveInterface() (string, error) {
+// getActiveInterface returns active interface used to connect to internet.
+func getActiveInterface() (string, error) {
 	cmd := "ip route | grep default"
 	_, err := exec.Command("bash", "-c", cmd).Output()
 	if err != nil {
@@ -50,33 +50,33 @@ func NextTapDevice() string {
 
 // ConfigureTapByName takes in a tap device name, and configures subnet range and makes
 // some changes to iptables tables and chains.
-func ConfigureTapByName(tap string) {
+func ConfigureTapByName(tap string) error {
 	commandString := fmt.Sprintf("ip tuntap add %s mode tap", tap)
 	_, err := exec.Command("bash", "-c", commandString).Output()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	subnetCidr := SubnetCidrFromTap(tap)
+	subnetCidr := subnetCidrFromTap(tap)
 	commandString = fmt.Sprintf("ip addr add %s dev %s", subnetCidr, tap)
 	_, err = exec.Command("bash", "-c", commandString).Output()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	commandString = fmt.Sprintf("ip link set %s up", tap)
 	_, err = exec.Command("bash", "-c", commandString).Output()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	commandString = "echo 1 > /proc/sys/net/ipv4/ip_forward"
 	_, err = exec.Command("bash", "-c", commandString).Output()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	currentIface, _ := GetActiveInterface()
+	currentIface, _ := getActiveInterface()
 	commandString = fmt.Sprintf("iptables -t nat -A POSTROUTING -o %s -j MASQUERADE || iptables -t nat -A POSTROUTING -o %s -j MASQUERADE", currentIface, currentIface)
 	exec.Command("bash", "-c", commandString).Output()
 
@@ -85,6 +85,8 @@ func ConfigureTapByName(tap string) {
 
 	commandString = fmt.Sprintf("iptables -C FORWARD -i %s -o %s -j ACCEPT || iptables -A FORWARD -i %s -o %s -j ACCEPT", tap, currentIface, tap, currentIface)
 	exec.Command("bash", "-c", commandString).Output()
+
+	return nil
 }
 
 // isTapInUse tells if tap with same name is registered or not.
@@ -93,8 +95,8 @@ func isTapInUse(tap string) bool {
 	return err == nil
 }
 
-// SubnetCidrFromTap takes in last number from the tap device name and take it as third octet in CIDR.
-func SubnetCidrFromTap(tap string) string {
+// subnetCidrFromTap takes in last number from the tap device name and take it as third octet in CIDR.
+func subnetCidrFromTap(tap string) string {
 	expression := regexp.MustCompile("[0-9]+$")
 	tapId := expression.FindString(tap)
 

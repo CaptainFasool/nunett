@@ -30,7 +30,7 @@ func SetupRouter() *gin.Engine {
 		virtualmachine.PUT("/start/:vmID", firecracker.StartVM)
 		virtualmachine.PUT("/stop/:vmID", firecracker.StopVM)
 
-		// virtualmachine.POST("/start-default", firecracker.StartDefault)
+		virtualmachine.POST("/start-default", firecracker.StartDefault)
 		virtualmachine.POST("/fromConfig", firecracker.RunFromConfig)
 	}
 
