@@ -25,6 +25,23 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/actions": {
+            "put": {
+                "description": "Start or stop the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Start or stop the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",

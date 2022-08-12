@@ -66,6 +66,17 @@ info:
   title: Device Management Service
   version: "0.1"
 paths:
+  /actions:
+    put:
+      description: Start or stop the VM.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Start or stop the VM.
+      tags:
+      - vm
   /address/new:
     get:
       description: Create a payment address from public key. Return payment address
