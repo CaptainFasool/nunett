@@ -91,7 +91,7 @@ paths:
       summary: Create a new payment address.
       tags:
       - onboarding
-  /boot-source:
+  /boot-source/:vmID:
     put:
       description: Configure kernel for the VM.
       produces:
@@ -102,7 +102,7 @@ paths:
       summary: Configures kernel for the VM.
       tags:
       - vm
-  /drives:
+  /drives/:vmID:
     put:
       description: Configures filesystem for the VM.
       produces:
@@ -113,7 +113,7 @@ paths:
       summary: Configures filesystem for the VM.
       tags:
       - vm
-  /init:
+  /init/:vmID:
     post:
       description: Starts the firecracker server for the specific VM. Further configuration
         are required.
@@ -125,7 +125,7 @@ paths:
       summary: Starts the VM booting process.
       tags:
       - vm
-  /machine-config:
+  /machine-config/:vmID:
     put:
       description: Configures system spec for the VM like CPU and Memory.
       produces:
@@ -151,7 +151,7 @@ paths:
       summary: Get current device info.
       tags:
       - onboarding
-  /network-interface:
+  /network-interface/:vmID:
     put:
       description: Configures network interface on the host.
       produces:
@@ -191,4 +191,38 @@ paths:
       summary: Returns provisioned capacity on host.
       tags:
       - onboarding
+  /start-default:
+    post:
+      description: This endpoint is an abstraction of all other endpoints. When invokend,
+        it calls all other endpoints in a sequence.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Start a VM with default configuration.
+      tags:
+      - vm
+  /start/:vmID:
+    post:
+      description: Start the VM.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Start the VM.
+      tags:
+      - vm
+  /stop/:vmID:
+    post:
+      description: Stop the VM.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Stop the VM.
+      tags:
+      - vm
 swagger: "2.0"

@@ -26,3 +26,14 @@ type NetworkInterfaces struct {
 type Actions struct {
 	ActionType string `json:"action_type"`
 }
+
+type VirtualMachine struct {
+	ID         uint   `json:"id"`
+	SocketFile string `json:"socket_file"`
+	BootSource string `json:"boot_source"`
+	Filesystem string `json:"filesystem"`
+	VCPUCount  int    `json:"vcpu_count"`
+	MemSizeMib int    `json:"mem_size_mib"`
+	TapDevice  string `json:"tap_device"`
+	State      string `json:"state"`
+}
