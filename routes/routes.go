@@ -31,7 +31,8 @@ func SetupRouter() *gin.Engine {
 		virtualmachine.PUT("/stop/:vmID", firecracker.StopVM)
 
 		virtualmachine.POST("/start-default", firecracker.StartDefault)
-		virtualmachine.POST("/fromConfig", firecracker.RunFromConfig)
+		virtualmachine.POST("/start-custom", firecracker.StartCustom)
+		virtualmachine.POST("/from-config", firecracker.RunFromConfig)
 	}
 
 	return router

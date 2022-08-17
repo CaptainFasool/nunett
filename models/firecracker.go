@@ -32,6 +32,8 @@ type VirtualMachine struct {
 	SocketFile string `json:"socket_file"`
 	BootSource string `json:"boot_source"`
 	Filesystem string `json:"filesystem"`
+	VCPUCount  int    `json:"vcpu_count"`
+	MemSizeMib int    `json:"mem_size_mib"`
 	TapDevice  string `json:"tap_device"`
 	State      string `json:"state"`
 }
