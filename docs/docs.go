@@ -62,7 +62,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/boot-source": {
+        "/boot-source/:vmID": {
             "put": {
                 "description": "Configure kernel for the VM.",
                 "produces": [
@@ -79,7 +79,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/drives": {
+        "/drives/:vmID": {
             "put": {
                 "description": "Configures filesystem for the VM.",
                 "produces": [
@@ -96,7 +96,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/init": {
+        "/init/:vmID": {
             "post": {
                 "description": "Starts the firecracker server for the specific VM. Further configuration are required.",
                 "produces": [
@@ -113,7 +113,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/machine-config": {
+        "/machine-config/:vmID": {
             "put": {
                 "description": "Configures system spec for the VM like CPU and Memory.",
                 "produces": [
@@ -153,7 +153,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/network-interface": {
+        "/network-interface/:vmID": {
             "put": {
                 "description": "Configures network interface on the host.",
                 "produces": [
@@ -209,6 +209,57 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.Provisioned"
                         }
+                    }
+                }
+            }
+        },
+        "/start-default": {
+            "post": {
+                "description": "This endpoint is an abstraction of all other endpoints. When invokend, it calls all other endpoints in a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Start a VM with default configuration.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/start/:vmID": {
+            "post": {
+                "description": "Start the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Start the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/stop/:vmID": {
+            "post": {
+                "description": "Stop the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Stop the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
                     }
                 }
             }
