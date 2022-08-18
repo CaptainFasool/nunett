@@ -313,6 +313,87 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 	}
 }
 
+// StartCustom godoc
+// @Summary		Start a VM with custom configuration.
+// @Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
+// @Tags		vm
+// @Produce 	json
+// @Success		200
+// @Router		/start-custom [post]
+func StartCustom(c *gin.Context) {
+	type StartCustomBody struct {
+		KernelImagePath string `json:"kernel_image_path"`
+		FilesystemPath  string `json:"filesystem_path"`
+		VCPUCount       int    `json:"vcpu_count"`
+		MemSizeMib      int    `json:"mem_size_mib"`
+		TapDevice       string `json:"tap_device"`
+	}
+
+	body := StartCustomBody{}
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	tapDevName := networking.NextTapDevice()
+
+	vm := models.VirtualMachine{
+		SocketFile: GenerateSocketFile(10),
+		BootSource: body.KernelImagePath,
+		Filesystem: body.FilesystemPath,
+		VCPUCount:  body.VCPUCount,
+		MemSizeMib: body.MemSizeMib,
+		TapDevice:  body.TapDevice,
+		State:      "awaiting",
+	}
+
+	result := db.DB.Create(&vm)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+
+	// POST /init
+	MakeInternalRequest(c, "POST", fmt.Sprintf("/vm/init/%d", vm.ID), nil)
+
+	// PUT /boot-source
+	bootSourceBody := models.BootSource{}
+	bootSourceBody.KernelImagePath = body.KernelImagePath
+	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
+
+	jsonBytes, _ := json.Marshal(bootSourceBody)
+	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", vm.ID), jsonBytes)
+
+	// PUT /drives
+	drivesBody := models.Drives{}
+
+	drivesBody.DriveID = "rootfs"
+	drivesBody.PathOnHost = body.FilesystemPath
+	drivesBody.IsRootDevice = true
+	drivesBody.IsReadOnly = false
+
+	jsonBytes, _ = json.Marshal(drivesBody)
+	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", vm.ID), jsonBytes)
+
+	// PUT /machine-config
+	machineConfigBody := models.MachineConfig{}
+	// TODO: vCPU and memory has to be estimated based on how much capacity is remaining in nunet quota
+	machineConfigBody.MemSizeMib = vm.MemSizeMib
+	machineConfigBody.VCPUCount = vm.VCPUCount
+
+	jsonBytes, _ = json.Marshal(machineConfigBody)
+	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
+
+	// PUT /network-interfaces
+	networkInterfacesBody := models.NetworkInterfaces{}
+	networkInterfacesBody.IfaceID = "eth0"
+	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
+	networkInterfacesBody.HostDevName = tapDevName
+	jsonBytes, _ = json.Marshal(networkInterfacesBody)
+	MakeInternalRequest(c, "PUT", "/vm/network-interfaces/eth0", jsonBytes)
+
+	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", vm.ID), jsonBytes)
+}
+
 // StartDefault godoc
 // @Summary		Start a VM with default configuration.
 // @Description	This endpoint is an abstraction of all other endpoints. When invokend, it calls all other endpoints in a sequence.
@@ -338,8 +419,8 @@ func StartDefault(c *gin.Context) {
 
 	vm := models.VirtualMachine{
 		SocketFile: GenerateSocketFile(10),
-		BootSource: "/home/santosh/firecracker/vmlinux.bin",
-		Filesystem: "/home/santosh/firecracker/bionic.rootfs.ext4",
+		BootSource: body.KernelImagePath,
+		Filesystem: body.FilesystemPath,
 		TapDevice:  tapDevName,
 		State:      "awaiting",
 	}
@@ -376,6 +457,12 @@ func StartDefault(c *gin.Context) {
 	// TODO: vCPU and memory has to be estimated based on how much capacity is remaining in nunet quota
 	machineConfigBody.MemSizeMib = 256
 	machineConfigBody.VCPUCount = 2
+	vm.MemSizeMib = 256
+	vm.VCPUCount = 2
+	result = db.DB.Save(&vm)
+	if result.Error != nil {
+		panic(result.Error)
+	}
 
 	jsonBytes, _ = json.Marshal(machineConfigBody)
 	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
