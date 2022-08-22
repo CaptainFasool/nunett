@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+option go_package = "gitlab.com/nunet/device-management-service/adapter";
+
+
+message getPeerParams {}
+
+message getDhtParams {}
+
+message peers {
+    string peer_address=1;
+}
+
+message DhtContents {
+    string dht_contents=1;
+}
+
+message messageParams {
+    string peer_id=1;
+    string message_content=2;
+}
+
+message messageResponse {
+    string message_response=1;
+}
+
+message receivedMessageParams {}
+
+
+
+service NunetAdapter {
+    rpc getPeerList(getPeerParams) returns (peers) {}
+
+    rpc getDhtContent(getDhtParams) returns (DhtContents) {}
+
+    rpc sendMessage(messageParams) returns (messageResponse) {}
+    
+    rpc receivedMessage(receivedMessageParams) returns (messageResponse) {}
+}
+
