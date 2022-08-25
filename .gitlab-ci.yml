@@ -1,4 +1,5 @@
 stages:
+  - deploy:openapi
   - static_analysis
   - unit_tests
   - security_tests_1
