@@ -13,6 +13,10 @@ stages:
   - security_tests_3
   - deploy_prod
 
+variables: 
+  # https://hub.docker.com/r/alpine/git/tags
+  GIT_VERSION: v2.30.1
+
 include:
   - project: nunet/nunet-infra
     file: ci/templates/Auto-DevOps.gitlab-ci.yml
@@ -37,3 +41,44 @@ build-job:
   script:
     - echo "Building debian archives..."
     - bash maint-scripts/build.sh
+
+.git:push:
+  after_script:
+    - cd "${CI_COMMIT_SHA}"
+
+    - git checkout -B ${CI_COMMIT_BRANCH}
+    
+    - git add .
+    
+    - |-
+      CHANGES=$(git status --porcelain | wc -l)
+
+      if [ "$CHANGES" -gt "0" ]; then
+        git status
+
+        git commit -m "${COMMIT_MESSAGE}"
+
+        git push -f origin "${CI_COMMIT_BRANCH}"  
+      
+      fi
+
+  before_script:
+    - git clone "https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@${CI_SERVER_HOST}/nunet/open-api/device-management-api-spec" "${CI_COMMIT_SHA}"
+
+    - git config --global user.email "${GIT_USER_EMAIL:-$GITLAB_USER_EMAIL}"
+    - git config --global user.name "${GIT_USER_NAME:-$GITLAB_USER_NAME}"
+
+  image:
+    entrypoint: ['']
+    name: alpine/git:${GIT_VERSION}
+
+deploy:openapi:
+  extends: .git:push
+  script:
+    - mv docs/swagger.json "${CI_COMMIT_SHA}"
+    - mv docs/device-management-api-spec.yaml "${CI_COMMIT_SHA}"
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+      - develop
+      - staging
