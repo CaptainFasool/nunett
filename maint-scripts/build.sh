@@ -24,7 +24,7 @@
 
 projectRoot=$(pwd)
 outputDir="$projectRoot/dist"
-version=0.1.1  # this should be dynamically set
+version=0.2.0  # this should be dynamically set
 
 mkdir -p $outputDir
 

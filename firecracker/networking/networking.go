@@ -51,13 +51,15 @@ func NextTapDevice() string {
 // ConfigureTapByName takes in a tap device name, and configures subnet range and makes
 // some changes to iptables tables and chains.
 func ConfigureTapByName(tap string) error {
+	subnetCidr := subnetCidrFromTap(tap)
+	currentIface, _ := getActiveInterface()
+
 	commandString := fmt.Sprintf("ip tuntap add %s mode tap", tap)
 	_, err := exec.Command("bash", "-c", commandString).Output()
 	if err != nil {
 		return err
 	}
 
-	subnetCidr := subnetCidrFromTap(tap)
 	commandString = fmt.Sprintf("ip addr add %s dev %s", subnetCidr, tap)
 	_, err = exec.Command("bash", "-c", commandString).Output()
 	if err != nil {
@@ -76,8 +78,7 @@ func ConfigureTapByName(tap string) error {
 		return err
 	}
 
-	currentIface, _ := getActiveInterface()
-	commandString = fmt.Sprintf("iptables -t nat -A POSTROUTING -o %s -j MASQUERADE || iptables -t nat -A POSTROUTING -o %s -j MASQUERADE", currentIface, currentIface)
+	commandString = fmt.Sprintf("iptables -t nat -C POSTROUTING -o %s -j MASQUERADE || iptables -t nat -A POSTROUTING -o %s -j MASQUERADE", currentIface, currentIface)
 	exec.Command("bash", "-c", commandString).Output()
 
 	commandString = "iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT"
