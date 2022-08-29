@@ -38,5 +38,7 @@ service NunetAdapter {
     rpc sendMessage(messageParams) returns (messageResponse) {}
     
     rpc receivedMessage(receivedMessageParams) returns (messageResponse) {}
+
+    rpc getSelfPeer(getPeerParams) returns (peers) {}
 }
 

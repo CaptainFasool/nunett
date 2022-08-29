@@ -26,6 +26,7 @@ type NunetAdapterClient interface {
 	GetDhtContent(ctx context.Context, in *GetDhtParams, opts ...grpc.CallOption) (*DhtContents, error)
 	SendMessage(ctx context.Context, in *MessageParams, opts ...grpc.CallOption) (*MessageResponse, error)
 	ReceivedMessage(ctx context.Context, in *ReceivedMessageParams, opts ...grpc.CallOption) (*MessageResponse, error)
+	GetSelfPeer(ctx context.Context, in *GetPeerParams, opts ...grpc.CallOption) (*Peers, error)
 }
 
 type nunetAdapterClient struct {
@@ -72,6 +73,15 @@ func (c *nunetAdapterClient) ReceivedMessage(ctx context.Context, in *ReceivedMe
 	return out, nil
 }
 
+func (c *nunetAdapterClient) GetSelfPeer(ctx context.Context, in *GetPeerParams, opts ...grpc.CallOption) (*Peers, error) {
+	out := new(Peers)
+	err := c.cc.Invoke(ctx, "/NunetAdapter/getSelfPeer", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NunetAdapterServer is the server API for NunetAdapter service.
 // All implementations must embed UnimplementedNunetAdapterServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type NunetAdapterServer interface {
 	GetDhtContent(context.Context, *GetDhtParams) (*DhtContents, error)
 	SendMessage(context.Context, *MessageParams) (*MessageResponse, error)
 	ReceivedMessage(context.Context, *ReceivedMessageParams) (*MessageResponse, error)
+	GetSelfPeer(context.Context, *GetPeerParams) (*Peers, error)
 	mustEmbedUnimplementedNunetAdapterServer()
 }
 
@@ -98,6 +109,9 @@ func (UnimplementedNunetAdapterServer) SendMessage(context.Context, *MessagePara
 }
 func (UnimplementedNunetAdapterServer) ReceivedMessage(context.Context, *ReceivedMessageParams) (*MessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReceivedMessage not implemented")
+}
+func (UnimplementedNunetAdapterServer) GetSelfPeer(context.Context, *GetPeerParams) (*Peers, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSelfPeer not implemented")
 }
 func (UnimplementedNunetAdapterServer) mustEmbedUnimplementedNunetAdapterServer() {}
 
@@ -184,6 +198,24 @@ func _NunetAdapter_ReceivedMessage_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NunetAdapter_GetSelfPeer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPeerParams)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NunetAdapterServer).GetSelfPeer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/NunetAdapter/getSelfPeer",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NunetAdapterServer).GetSelfPeer(ctx, req.(*GetPeerParams))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NunetAdapter_ServiceDesc is the grpc.ServiceDesc for NunetAdapter service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +238,10 @@ var NunetAdapter_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "receivedMessage",
 			Handler:    _NunetAdapter_ReceivedMessage_Handler,
+		},
+		{
+			MethodName: "getSelfPeer",
+			Handler:    _NunetAdapter_GetSelfPeer_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
