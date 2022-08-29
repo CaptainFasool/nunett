@@ -59,6 +59,7 @@ build-job:
 
 deploy:openapi:
   extends: .git:push
+  stage: .pre
   script:
     - mv docs/swagger.json "${CI_COMMIT_SHA}"
     - mv docs/device-management-api-spec.yaml "${CI_COMMIT_SHA}"
