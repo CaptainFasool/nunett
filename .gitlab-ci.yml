@@ -1,27 +1,11 @@
-stages:
-  - deploy:openapi
-  - static_analysis
-  - unit_tests
-  - security_tests_1
-  - functional_tests
-  - security_tests_2
-  - build
-  - deploy_dev
-  - user_acceptance_tests
-  - deploy_staging
-  - regression_tests
-  - load_tests
-  - security_tests_3
-  - deploy_prod
-
 variables: 
   # https://hub.docker.com/r/alpine/git/tags
   GIT_VERSION: v2.30.1
 
 include:
-  - project: nunet/nunet-infra
-    file: ci/templates/Auto-DevOps.gitlab-ci.yml
-    ref: develop
+  project: nunet/nunet-infra
+  file: ci/templates/Auto-DevOps.gitlab-ci.yml
+  ref: develop
 
 image: sntshk/ubuntu:nunet
 
