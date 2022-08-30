@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/onboarding"
+	spoPackage "gitlab.com/nunet/device-management-service/spo"
 )
 
 func SetupRouter() *gin.Engine {
@@ -33,6 +34,14 @@ func SetupRouter() *gin.Engine {
 		virtualmachine.POST("/start-default", firecracker.StartDefault)
 		virtualmachine.POST("/start-custom", firecracker.StartCustom)
 		virtualmachine.POST("/from-config", firecracker.RunFromConfig)
+	}
+
+	// SPO == Stake Pool Operator
+	spo := v1.Group("/spo")
+	{
+		spo.GET("/search_device", spoPackage.SearchDevice)
+		spo.GET("/req_cardano_deploy/:peerID/auto", spoPackage.DeployAuto)
+		spo.GET("/req_cardano_deploy/:peerID/manual", spoPackage.DeployManual)
 	}
 
 	return router

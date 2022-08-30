@@ -23,7 +23,7 @@ func RunPreviouslyRunningVMs() error {
 		jsonBytes, _ := json.Marshal(vm)
 
 		// set the HTTP method, url, and request body
-		req, _ := http.NewRequest("POST", DMS_BASE_URL+"/vm/fromConfig", bytes.NewBuffer(jsonBytes))
+		req, _ := http.NewRequest("POST", DMS_BASE_URL+"/vm/from-config", bytes.NewBuffer(jsonBytes))
 
 		client := http.Client{}
 		// set the request header Content-Type for json
