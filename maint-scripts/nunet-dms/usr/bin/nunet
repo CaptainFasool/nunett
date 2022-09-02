@@ -1,0 +1,250 @@
+#!/bin/bash 
+#
+## @file        nunet
+## @author      Dagim Sisay <dagim@nunet.io>
+## @licence     AGPL
+
+# NuNET CLI - Device Management Service
+
+set -e
+
+GOOD_C='\033[32m'   # GREEN
+INFO_C='\033[33m' # YELLOW
+BAD_C='\033[31m'    # RED
+NORMAL_C='\033[0m'
+
+SELF_NAME=$(basename $0)
+
+DMS_HOST=localhost
+DMS_PORT=9999
+
+usage() {
+    echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
+    echo -e "Command line interface for the NuNet Device Management Service.\n"
+    echo "Options:"
+    echo "    -v, --verbose    Verbose output"
+    echo -e "    -p, --pretty     Prettified JSON output\n"
+    echo "Commands:"
+    echo "  available     Display available resources"
+    echo "  wallet        Get Current Wallet Address"
+    echo "  onboard       Onboard the device to NuNet"
+    echo "  offboard      Offboard the device from NuNet"
+    echo -e "  info          Get current status\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+available_usage() {
+    echo -e "Usage: $SELF_NAME available [OPTIONS]\n"
+    echo -e "Command line interface for the NuNet Device Management Service.\n"
+    echo "Options:"
+    echo "    -v, --verbose    Verbose output"
+    echo -e "    -p, --pretty     Prettified JSON output\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+wallet_usage() {
+    echo -e "Usage: $SELF_NAME [OPTIONS] \n"
+    echo -e "Command line interface for the NuNet Device Management Service.\n"
+    echo "Options:"
+    echo "    -v, --verbose    Verbose output"
+    echo -e "    -p, --pretty     Prettified JSON output\n"
+    echo "Commands:"
+    echo "  available     Display available resources"
+    echo "  wallet        Get Current Wallet Address"
+    echo "  onboard       Onboard the device to NuNet"
+    echo "  offboard      Offboard the device from NuNet"
+    echo -e "  info          Get current status\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+onboard_usage() {
+    echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
+    echo -e "Command line interface for the NuNet Device Management Service.\n"
+    echo "Options:"
+    echo "    -v, --verbose    Verbose output"
+    echo -e "    -p, --pretty     Prettified JSON output\n"
+    echo "Commands:"
+    echo "  available     Display available resources"
+    echo "  wallet        Get Current Wallet Address"
+    echo "  onboard       Onboard the device to NuNet"
+    echo "  offboard      Offboard the device from NuNet"
+    echo -e "  info          Get current status\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+offboard_usage() {
+    echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
+    echo -e "Command line interface for the NuNet Device Management Service.\n"
+    echo "Options:"
+    echo "    -v, --verbose    Verbose output"
+    echo -e "    -p, --pretty     Prettified JSON output\n"
+    echo "Commands:"
+    echo "  available     Display available resources"
+    echo "  wallet        Get Current Wallet Address"
+    echo "  onboard       Onboard the device to NuNet"
+    echo "  offboard      Offboard the device from NuNet"
+    echo -e "  info          Get current status\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+info_usage() {
+    echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
+    echo -e "Command line interface for the NuNet Device Management Service.\n"
+    echo "Options:"
+    echo "    -v, --verbose    Verbose output"
+    echo -e "    -p, --pretty     Prettified JSON output\n"
+    echo "Commands:"
+    echo "  available     Display available resources"
+    echo "  wallet        Get Current Wallet Address"
+    echo "  onboard       Onboard the device to NuNet"
+    echo "  offboard      Offboard the device from NuNet"
+    echo -e "  info          Get current status\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+available() {
+    if [[ ${#@} -ge 3 ]] ; then
+        printf "\n${BAD_C}Wrong number of arguments to 'available' command${NORMAL_C}\n"
+        exit
+    else
+        avargs=($@)
+        for avarg in "${avargs[@]}"; do
+            case $avarg in
+                "-p" | "--pretty")
+                    NPRETTY_OUT=1
+                    ;;
+                "-v" | "--verbose")
+                    NVERBOSE_OUT=1
+                    ;;
+                *)
+                    printf "${BAD_C}Bad argument \"$avarg\" for 'available' Command. ${NORMAL_C}\n"
+                    exit
+                    ;;
+            esac
+        done
+    fi
+    
+    N_C_OUT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/provisioned)
+    if [[ $NPRETTY_OUT -eq 1 ]] ; then
+        echo $N_C_OUT | jq
+    else
+        echo $N_C_OUT
+    fi
+}
+
+wallet() {
+    if [[ ${#@} -ge 4 ]] ; then
+        printf "${BAD_C}Wrong number of arguments to 'wallet' command${NORMAL_C}\n"
+        exit
+    else
+        avargs=($@)
+        for avarg in "${avargs[@]}"; do
+            case $avarg in
+                "-p" | "--pretty")
+                    NPRETTY_OUT=1
+                    ;;
+                "-v" | "--verbose")
+                    NVERBOSE_OUT=1
+                    ;;
+                "create")
+                    N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/address/new)
+                    ;;
+                *)
+                    printf "${BAD_C}Bad argument \"$avarg\" for 'wallet' Command. ${NORMAL_C}\n"
+                    exit
+                    ;;
+            esac
+        done
+    fi
+    
+    #XXX #TODO
+    if [[ N_CREATE_WALLET == "" ]] ; then
+        printf "${BAD_C}Not yet implemented. Only 'wallet create' at this time.${NORMAL_C}\n"
+    else
+        if [[ $NPRETTY_OUT -eq 1 ]] ; then
+            echo $N_CREATE_WALLET | jq
+        else
+            echo $N_CREATE_WALLET
+        fi
+    fi
+}
+
+onboard() {
+    if [[ ${#@} -ge 3 ]] ; then
+        printf "${BAD_C}Wrong number of arguments to 'onboard' command${NORMAL_C}\n"
+        exit
+    else
+        avargs=($@)
+        for avarg in "${avargs[@]}"; do
+            case $avarg in
+                "-p" | "--pretty")
+                    NPRETTY_OUT=1
+                    ;;
+                "-v" | "--verbose")
+                    NVERBOSE_OUT=1
+                    ;;
+                "-m" | "--memory")
+                    N_ONBOARD_MEM=$
+                    ;;
+                *)
+                    printf "${BAD_C}Bad argument \"$avarg\" for 'wallet' Command. ${NORMAL_C}\n"
+                    exit
+                    ;;
+            esac
+        done 
+    fi
+    
+    #XXX #TODO
+    if [[ N_CREATE_WALLET == "" ]] ; then
+        printf "${BAD_C}Not yet implemented. Only 'wallet create' at this time.${NORMAL_C}\n"
+    else
+        if [[ $NPRETTY_OUT -eq 1 ]] ; then
+            echo $N_CREATE_WALLET | jq
+        else
+            echo $N_CREATE_WALLET
+        fi
+    fi
+}
+
+offboard() {
+    printf "${GOOD_C}offboard Function${NORMAL_C}\n"
+    printf "Supplied ${#@} arguments to Offboard: $@\n"
+}
+
+info() {
+    printf "${GOOD_C}Info Function${NORMAL_C}\n"
+    printf "Supplied ${#@} arguments to Info: $@\n"
+}
+
+
+cmds=("available" "wallet" "onboard" "offboard" "info")
+
+if [ $# -eq  0 ] ; then
+    printf "${BAD_C}Error! Please Specify Command${NORMAL_C}\n"
+    usage
+else
+    in_args=($@)
+    arg=$1
+    argargs=("${in_args[@]:1}")
+    cmd_valid=0
+    for cmd in "${cmds[@]}"; do
+        if [[ $arg == $cmd ]]; then
+            cmd_valid=1
+            break
+        fi
+    done
+
+    if [[ $cmd_valid -eq 0 ]] ; then
+        printf "${BAD_C}Error: Command \"$arg\" not found.${NORMAL_C}\n"
+        usage
+    else
+        $cmd ${argargs[@]}
+    fi
+
+fi
