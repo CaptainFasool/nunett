@@ -4,7 +4,7 @@
 ## @author      Dagim Sisay <dagim@nunet.io>
 ## @licence     AGPL
 
-# NuNET CLI - Device Management Service
+# NuNet CLI - Device Management Service
 
 set -e
 
@@ -27,9 +27,7 @@ usage() {
     echo "Commands:"
     echo "  available     Display available resources"
     echo "  wallet        Get Current Wallet Address"
-    echo "  onboard       Onboard the device to NuNet"
-    echo "  offboard      Offboard the device from NuNet"
-    echo -e "  info          Get current status\n"
+    echo -e "  onboard       Onboard the device to NuNet\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -45,65 +43,28 @@ available_usage() {
 }
 
 wallet_usage() {
-    echo -e "Usage: $SELF_NAME [OPTIONS] \n"
-    echo -e "Command line interface for the NuNet Device Management Service.\n"
+    echo -e "Usage: $SELF_NAME wallet COMMAND [OPTIONS] \n"
+    echo -e "Manage blockchain wallet.\n"
     echo "Options:"
     echo "    -v, --verbose    Verbose output"
     echo -e "    -p, --pretty     Prettified JSON output\n"
     echo "Commands:"
-    echo "  available     Display available resources"
-    echo "  wallet        Get Current Wallet Address"
-    echo "  onboard       Onboard the device to NuNet"
-    echo "  offboard      Offboard the device from NuNet"
-    echo -e "  info          Get current status\n"
+    echo -e "  new         Create a new wallet address. Returns public and private keys.\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
 
 onboard_usage() {
     echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
-    echo -e "Command line interface for the NuNet Device Management Service.\n"
+    echo -e "Onboard the current machine to the NuNet platform.\n"
     echo "Options:"
-    echo "    -v, --verbose    Verbose output"
-    echo -e "    -p, --pretty     Prettified JSON output\n"
-    echo "Commands:"
-    echo "  available     Display available resources"
-    echo "  wallet        Get Current Wallet Address"
-    echo "  onboard       Onboard the device to NuNet"
-    echo "  offboard      Offboard the device from NuNet"
-    echo -e "  info          Get current status\n"
-    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
-    exit
-}
-
-offboard_usage() {
-    echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
-    echo -e "Command line interface for the NuNet Device Management Service.\n"
-    echo "Options:"
-    echo "    -v, --verbose    Verbose output"
-    echo -e "    -p, --pretty     Prettified JSON output\n"
-    echo "Commands:"
-    echo "  available     Display available resources"
-    echo "  wallet        Get Current Wallet Address"
-    echo "  onboard       Onboard the device to NuNet"
-    echo "  offboard      Offboard the device from NuNet"
-    echo -e "  info          Get current status\n"
-    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
-    exit
-}
-
-info_usage() {
-    echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
-    echo -e "Command line interface for the NuNet Device Management Service.\n"
-    echo "Options:"
-    echo "    -v, --verbose    Verbose output"
-    echo -e "    -p, --pretty     Prettified JSON output\n"
-    echo "Commands:"
-    echo "  available     Display available resources"
-    echo "  wallet        Get Current Wallet Address"
-    echo "  onboard       Onboard the device to NuNet"
-    echo "  offboard      Offboard the device from NuNet"
-    echo -e "  info          Get current status\n"
+    echo "    -m, --memory           Amount of memory in Megabytes"
+    echo "    -c, --cpu              Amount of CPU in Megahertz"
+    echo "    -n, --nunet-channel    NuNet channel to onboard the machine to (nunet-private-alpha, nunet-development)"
+    echo "    -a, --address          Wallet Address (Public Key)"
+    echo "    -C, --Cardano          Allow deployment of a Cardano Node"
+    echo "    -v, --verbose          Verbose output"
+    echo -e "    -p, --pretty           Prettified JSON output\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -141,7 +102,7 @@ available() {
 wallet() {
     if [[ ${#@} -ge 4 ]] ; then
         printf "${BAD_C}Wrong number of arguments to 'wallet' command${NORMAL_C}\n"
-        exit
+        wallet_usage
     else
         avargs=($@)
         for avarg in "${avargs[@]}"; do
@@ -152,20 +113,21 @@ wallet() {
                 "-v" | "--verbose")
                     NVERBOSE_OUT=1
                     ;;
-                "create")
+                "new")
                     N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/address/new)
                     ;;
                 *)
-                    printf "${BAD_C}Bad argument \"$avarg\" for 'wallet' Command. ${NORMAL_C}\n"
+                    printf "${BAD_C}Bad argument \"$avarg\" for 'wallet' Command. ${NORMAL_C}\n\n"
+                    wallet_usage
                     exit
                     ;;
             esac
         done
     fi
     
-    #XXX #TODO
     if [[ N_CREATE_WALLET == "" ]] ; then
-        printf "${BAD_C}Not yet implemented. Only 'wallet create' at this time.${NORMAL_C}\n"
+        printf "${BAD_C}Not yet implemented. Only 'wallet new' at this time.${NORMAL_C}\n"
+        wallet_usage
     else
         if [[ $NPRETTY_OUT -eq 1 ]] ; then
             echo $N_CREATE_WALLET | jq
@@ -176,54 +138,61 @@ wallet() {
 }
 
 onboard() {
-    if [[ ${#@} -ge 3 ]] ; then
-        printf "${BAD_C}Wrong number of arguments to 'onboard' command${NORMAL_C}\n"
-        exit
-    else
-        avargs=($@)
-        for avarg in "${avargs[@]}"; do
-            case $avarg in
-                "-p" | "--pretty")
-                    NPRETTY_OUT=1
-                    ;;
-                "-v" | "--verbose")
-                    NVERBOSE_OUT=1
-                    ;;
-                "-m" | "--memory")
-                    N_ONBOARD_MEM=$
-                    ;;
-                *)
-                    printf "${BAD_C}Bad argument \"$avarg\" for 'wallet' Command. ${NORMAL_C}\n"
-                    exit
-                    ;;
-            esac
-        done 
-    fi
+    N_ONBOARD_OPTS=$(getopt -a -n jelesman -o m:c:n:a:Cvp: --long memory:,cpu:,nunet-channel:,address:,cardano,verbose,pretty -- "$@")
+    eval set -- "$N_ONBOARD_OPTS"
+
+    N_ONBOARD_CARDANO=false
     
-    #XXX #TODO
-    if [[ N_CREATE_WALLET == "" ]] ; then
-        printf "${BAD_C}Not yet implemented. Only 'wallet create' at this time.${NORMAL_C}\n"
+    while :
+        do
+            case "$1" in
+                -m | --memory)        N_ONBOARD_MEM="$2"  ; shift 2 ;;
+                -c | --cpu)           N_ONBOARD_CPU="$2"  ; shift 2 ;;
+                -n | --nunet-channel) N_ONBOARD_CHAN="$2" ; shift 2 ;;
+                -a | --address)       N_ONBOARD_ADD="$2"  ; shift 2 ;;
+                -C | --cardano)       N_ONBOARD_CARDANO=true ; shift ;;
+                -v | --verbose)       N_ONBOARD_VERBOSE=1 ; shift ;;
+                -p | --pretty)        N_ONBOARD_PRETTY=1  ; shift ;;
+                --) shift; break ;;
+                *) echo "Unexpected option: $1."
+                    onboard_usage ;;
+            esac
+    done
+
+    # validation
+    N_AVAILABLE_RES=$(curl -s localhost:9999/api/v1/provisioned)
+    N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
+    N_AVAILABLE_CPU=$(echo $N_AVAILABLE_RES | jq ".cpu")
+    if [[ N_ONBOARD_MEM -gt $((N_AVAILABLE_MEM*9/10)) || N_ONBOARD_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
+        printf "${BAD_C}Memory should be between 10%% and 90%% of the available memory ($((N_AVAILABLE_MEM/10)) and $((N_AVAILABLE_MEM*9/10))) ${NORMAL_C}\n"
+        printf "${INFO_C}Check available resources with 'nunet available --pretty'${NORMAL_C}\n"
+        exit
+    elif [[ N_ONBOARD_CPU -gt $((N_AVAILABLE_CPU*9/10)) || N_ONBOARD_CPU -lt $((N_AVAILABLE_CPU/10)) ]] ; then
+        printf "${BAD_C}CPU should be between 10%% and 90%% of the available CPU ($((N_AVAILABLE_CPU/10)) and $((N_AVAILABLE_CPU*9/10))) ${NORMAL_C}\n"
+        printf "${INFO_C}Check available resources with 'nunet available --pretty'${NORMAL_C}\n"
+        exit
+    elif [[ N_ONBOARD_CHAN == "nunet-private-alpha" || N_ONBOARD_CHAN == "nunet-development" ]] ; then
+        printf "$BAD_C}NuNet Channel should be 'nunet-private-alpha' or 'nunet-development'${NORMAL_C}\n"
+
     else
-        if [[ $NPRETTY_OUT -eq 1 ]] ; then
-            echo $N_CREATE_WALLET | jq
+        N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+            -d "{\"memory\": $N_ONBOARD_MEM, \"cpu\": $N_ONBOARD_CPU, \
+            \"channel\":\"$N_ONBOARD_CHAN\", \"payment_addr\": \"$N_ONBOARD_ADD\", \
+            \"cardano\": $N_ONBOARD_CARDANO}" \
+            localhost:9999/api/v1/onboard)
+        # check if error
+        N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq '. | select(.error != null) | .error')
+        if [[ ! -z $N_ONBOARD_ERR_MSG ]] ; then
+            printf "${BAD_C}Error: $N_ONBOARD_ERR_MSG ${NORMAL_C}\n"
         else
-            echo $N_CREATE_WALLET
+            [[ -z $N_ONBOARD_PRETTY ]] && echo $N_ONBOARD_RESPONSE || echo $N_ONBOARD_RESPONSE | jq
         fi
     fi
-}
-
-offboard() {
-    printf "${GOOD_C}offboard Function${NORMAL_C}\n"
-    printf "Supplied ${#@} arguments to Offboard: $@\n"
-}
-
-info() {
-    printf "${GOOD_C}Info Function${NORMAL_C}\n"
-    printf "Supplied ${#@} arguments to Info: $@\n"
+    
 }
 
 
-cmds=("available" "wallet" "onboard" "offboard" "info")
+cmds=("available" "wallet" "onboard")
 
 if [ $# -eq  0 ] ; then
     printf "${BAD_C}Error! Please Specify Command${NORMAL_C}\n"
