@@ -39,6 +39,14 @@ do
 
     gcc $projectRoot/maint-scripts/config_network.c -o $archDir/usr/bin/nunet-tap-config
 
+    # start including firecracker
+    curl -L https://github.com/firecracker-microvm/firecracker/releases/download/v1.1.1/firecracker-v1.1.1-x86_64.tgz -o $archDir/firecracker-v1.1.1-x86_64.tgz
+    tar -xf $archDir/firecracker-v1.1.1-x86_64.tgz -C $archDir/
+    mv -v $archDir/release-v1.1.1-x86_64/firecracker-v1.1.1-x86_64 $archDir/usr/bin/firecracker
+    rm -rf $archDir/release-v1.1.1-x86_64/
+    rm -rf $archDir/firecracker-v1.1.1-x86_64.tgz
+    # including firecracker ends
+
     find $archDir -name .gitkeep | xargs rm
 
     dpkg-deb --build --root-owner-group $archDir $outputDir
