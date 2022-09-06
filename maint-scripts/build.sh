@@ -2,7 +2,7 @@
 
 # Build process comprises of following steps:
 
-# Supported architectures: arm64, amd64
+# Supported architectures: amd64
 
 # INSTALLATION PROCESS
 
@@ -24,11 +24,11 @@
 
 projectRoot=$(pwd)
 outputDir="$projectRoot/dist"
-version=0.1.1  # this should be dynamically set
+version=$(cat main.go | grep @version | awk {'print $3'})
 
 mkdir -p $outputDir
 
-for arch in amd64 arm64
+for arch in amd64 # arm64
 do
     # echo .deb file will be written to: $outputDir
     archDir=$projectRoot/maint-scripts/nunet-dms_$version\_$arch
@@ -36,6 +36,8 @@ do
     sed -i "s/Version:.*/Version: $version/g" $archDir/DEBIAN/control
     sed -i "s/Architecture:.*/Architecture: $arch/g" $archDir/DEBIAN/control
     env GOOS=linux GOARCH=$arch go build -o $archDir/usr/bin/nunet-dms
+
+    gcc $projectRoot/maint-scripts/config_network.c -o $archDir/usr/bin/nunet-tap-config
 
     find $archDir -name .gitkeep | xargs rm
 
