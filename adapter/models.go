@@ -1,7 +1,7 @@
 package adapter
 
 type NodeId string
-type IP []string
+type IP []any
 
 type PeerAddr IP
 
@@ -10,7 +10,7 @@ type PeerID struct {
 	Key          string `json:"key,omitempty"`
 	Mid          string `json:"mid,omitempty"`
 	PublicKey    string `json:"public_key,omitempty"`
-	Address      string `json:"_address,omitempty"`
+	Address      IP     `json:"_address,omitempty"`
 	AllowCardano string `json:"allow_cardano,omitempty"`
 }
 

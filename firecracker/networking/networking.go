@@ -54,38 +54,11 @@ func ConfigureTapByName(tap string) error {
 	subnetCidr := subnetCidrFromTap(tap)
 	currentIface, _ := getActiveInterface()
 
-	commandString := fmt.Sprintf("ip tuntap add %s mode tap", tap)
+	commandString := fmt.Sprintf("nunet-tap-config %s %s %s", currentIface, tap, subnetCidr)
 	_, err := exec.Command("bash", "-c", commandString).Output()
 	if err != nil {
 		return err
 	}
-
-	commandString = fmt.Sprintf("ip addr add %s dev %s", subnetCidr, tap)
-	_, err = exec.Command("bash", "-c", commandString).Output()
-	if err != nil {
-		return err
-	}
-
-	commandString = fmt.Sprintf("ip link set %s up", tap)
-	_, err = exec.Command("bash", "-c", commandString).Output()
-	if err != nil {
-		return err
-	}
-
-	commandString = "echo 1 > /proc/sys/net/ipv4/ip_forward"
-	_, err = exec.Command("bash", "-c", commandString).Output()
-	if err != nil {
-		return err
-	}
-
-	commandString = fmt.Sprintf("iptables -t nat -C POSTROUTING -o %s -j MASQUERADE || iptables -t nat -A POSTROUTING -o %s -j MASQUERADE", currentIface, currentIface)
-	exec.Command("bash", "-c", commandString).Output()
-
-	commandString = "iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT"
-	exec.Command("bash", "-c", commandString).Output()
-
-	commandString = fmt.Sprintf("iptables -C FORWARD -i %s -o %s -j ACCEPT || iptables -A FORWARD -i %s -o %s -j ACCEPT", tap, currentIface, tap, currentIface)
-	exec.Command("bash", "-c", commandString).Output()
 
 	return nil
 }

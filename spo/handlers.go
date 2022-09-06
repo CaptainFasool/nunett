@@ -28,10 +28,18 @@ func SearchDevice(c *gin.Context) {
 	c.JSON(200, peers)
 }
 
-func DeployAuto(c *gin.Context) {
+// auto: will use a cardano firecracker golden image and takes in configuration parameters.
+// manual: will use a generic ubuntu firecracker golden image with docker installed in it to allow
+// the SPO to remotely connect and setup a cardano node with docker inside firecracker.
+func SendDeploymentRequest(c *gin.Context) {
+	// Send message to nodeID with REQUESTING_PEER_PUBKEY
+	nodeId := c.Param("nodeID")
+	deploymentType := c.Query("deployment_type")
 
-}
+	response, err := adapter.SendMessage(nodeId, deploymentType)
+	if err != nil {
+		log.Fatalf("Error sending message")
+	}
 
-func DeployManual(c *gin.Context) {
-
+	c.JSON(200, response)
 }
