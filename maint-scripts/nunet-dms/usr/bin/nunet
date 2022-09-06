@@ -55,14 +55,14 @@ wallet_usage() {
 }
 
 onboard_usage() {
-    echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
+    echo -e "Usage: $SELF_NAME {-mcna} [-Cvp]\n"
     echo -e "Onboard the current machine to the NuNet platform.\n"
     echo "Options:"
     echo "    -m, --memory           Amount of memory in Megabytes"
     echo "    -c, --cpu              Amount of CPU in Megahertz"
     echo "    -n, --nunet-channel    NuNet channel to onboard the machine to (nunet-private-alpha, nunet-development)"
     echo "    -a, --address          Wallet Address (Public Key)"
-    echo "    -C, --Cardano          Allow deployment of a Cardano Node"
+    echo "    -C, --cardano          Allow deployment of a Cardano Node"
     echo "    -v, --verbose          Verbose output"
     echo -e "    -p, --pretty           Prettified JSON output\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
@@ -100,8 +100,7 @@ available() {
 }
 
 wallet() {
-    if [[ ${#@} -ge 4 ]] ; then
-        printf "${BAD_C}Wrong number of arguments to 'wallet' command${NORMAL_C}\n"
+    if [[ ${#@} -ge 4 || ${#@} -lt 1 ]] ; then
         wallet_usage
     else
         avargs=($@)
@@ -138,10 +137,14 @@ wallet() {
 }
 
 onboard() {
-    N_ONBOARD_OPTS=$(getopt -a -n jelesman -o m:c:n:a:Cvp: --long memory:,cpu:,nunet-channel:,address:,cardano,verbose,pretty -- "$@")
+    N_ONBOARD_OPTS=$(getopt -a -n nunet-onboard -o m:c:n:a:Cvp: --long memory:,cpu:,nunet-channel:,address:,cardano,verbose,pretty -- "$@")
     eval set -- "$N_ONBOARD_OPTS"
 
     N_ONBOARD_CARDANO=false
+
+    if [[ ${#@} -le 1 ]] ; then
+        onboard_usage
+    fi
     
     while :
         do
@@ -160,6 +163,11 @@ onboard() {
     done
 
     # validation
+    [[ -z $N_ONBOARD_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && onboard_usage
+    [[ -z $N_ONBOARD_MEM ]] && printf "${BAD_C}Error: -m | --memory must be specified.${NORMAL_C}\n" && onboard_usage
+    [[ -z $N_ONBOARD_CHAN ]] && printf "${BAD_C}Error: -n | --nunet-channel must be specified.${NORMAL_C}\n" && onboard_usage
+    [[ -z $N_ONBOARD_ADD ]] && printf "${BAD_C}Error: -a | --address must be specified.${NORMAL_C}\n" && onboard_usage
+
     N_AVAILABLE_RES=$(curl -s localhost:9999/api/v1/provisioned)
     N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
     N_AVAILABLE_CPU=$(echo $N_AVAILABLE_RES | jq ".cpu")
