@@ -195,7 +195,6 @@ onboard() {
 cmds=("available" "wallet" "onboard")
 
 if [ $# -eq  0 ] ; then
-    printf "${BAD_C}Error! Please Specify Command${NORMAL_C}\n"
     usage
 else
     in_args=($@)
