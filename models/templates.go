@@ -164,7 +164,7 @@ const AdapterTemplate = `{
             "ReservedPorts": [
               {
                 "Label": "rpc",
-                "Value": 60778,
+                "Value": 60777,
                 "To": 0,
                 "HostNetwork": ""
               }
