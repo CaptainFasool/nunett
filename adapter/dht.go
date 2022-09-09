@@ -11,7 +11,7 @@ import (
 
 func fetchDht() (string, error) {
 	// Set up a connection to the server.
-	address := "localhost:9998"
+	address := "localhost:60777"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -64,7 +64,7 @@ func PeersWithCardanoAllowed(peers []Peer) []Peer {
 
 func SendMessage(nodeID string, message string) (string, error) {
 	// Set up a connection to the server.
-	address := "localhost:9998"
+	address := "localhost:60777"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
