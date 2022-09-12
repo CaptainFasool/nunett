@@ -62,6 +62,19 @@ func PeersWithCardanoAllowed(peers []Peer) []Peer {
 	return cardanoAllowedPeers
 }
 
+func PeersWithGPU(peers []Peer) []Peer {
+	var peersWithGPU []Peer
+
+	for idx, peer := range peers {
+		if peer.PeerID.HasGPU == "true" {
+			peersWithGPU = append(peersWithGPU, peer)
+		}
+		_ = idx
+	}
+
+	return peersWithGPU
+}
+
 func SendMessage(nodeID string, message string) (string, error) {
 	// Set up a connection to the server.
 	address := "localhost:60777"

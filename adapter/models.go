@@ -12,6 +12,7 @@ type PeerID struct {
 	PublicKey    string `json:"public_key,omitempty"`
 	Address      IP     `json:"_address,omitempty"`
 	AllowCardano string `json:"allow_cardano,omitempty"`
+	HasGPU       string `json:"has_gpu,omitempty"`
 }
 
 type Service struct {

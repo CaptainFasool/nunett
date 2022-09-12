@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/firecracker"
+	gpuPackage "gitlab.com/nunet/device-management-service/gpu"
 	"gitlab.com/nunet/device-management-service/onboarding"
 	spoPackage "gitlab.com/nunet/device-management-service/spo"
 )
@@ -42,6 +43,12 @@ func SetupRouter() *gin.Engine {
 		spo.GET("/devices", spoPackage.SearchDevice)
 		// following route accept query param: deployment_type: auto/manual
 		spo.POST("/deploy/:nodeID", spoPackage.SendDeploymentRequest)
+	}
+
+	gpu := v1.Group("/gpu")
+	{
+		gpu.GET("/devices", gpuPackage.SearchDevice)
+		gpu.POST("/deploy/:nodeID", gpuPackage.SendDeploymentRequest)
 	}
 
 	return router
