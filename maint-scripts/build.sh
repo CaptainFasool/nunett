@@ -24,7 +24,7 @@
 
 projectRoot=$(pwd)
 outputDir="$projectRoot/dist"
-version=0.1.1  # this should be dynamically set
+version=$(cat main.go | grep @version | awk {'print $3'})
 
 mkdir -p $outputDir
 
