@@ -6,7 +6,6 @@
 
 # NuNet CLI - Device Management Service
 
-set -e
 
 GOOD_C='\033[32m'   # GREEN
 INFO_C='\033[33m' # YELLOW
@@ -206,6 +205,16 @@ info() {
 }
 
 
+check_dms_run() {
+    N_CHECK_DMS=$(netstat -tnlp 2>/dev/null | grep ":9999")
+    if [[ ! $? -eq 0 ]] ; then
+        printf "${BAD_C}Looks like NuNet DMS is not running."
+        printf "Please check with ${INFO_C}'systemctl status nunet-dms.service'${NORMAL_C}\n"
+        exit
+    fi
+}
+
+
 cmds=("available" "wallet" "onboard" "info")
 
 if [ $# -eq  0 ] ; then
@@ -226,6 +235,7 @@ else
         printf "${BAD_C}Error: Command \"$arg\" not found.${NORMAL_C}\n"
         usage
     else
+        check_dms_run
         $cmd ${argargs[@]}
     fi
 
