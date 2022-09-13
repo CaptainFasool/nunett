@@ -193,6 +193,7 @@ onboard() {
         if [[ ! -z $N_ONBOARD_ERR_MSG ]] ; then
             printf "${BAD_C}Error: $N_ONBOARD_ERR_MSG ${NORMAL_C}\n"
         else
+            printf "${GOOD_C}Successfully Onboarded.${NORMAL_C}\n"
             [[ -z $N_ONBOARD_PRETTY ]] && echo $N_ONBOARD_RESPONSE || echo $N_ONBOARD_RESPONSE | jq
         fi
     fi
