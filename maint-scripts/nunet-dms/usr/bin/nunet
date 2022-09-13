@@ -27,7 +27,8 @@ usage() {
     echo "Commands:"
     echo "  available     Display available resources"
     echo "  wallet        Get Current Wallet Address"
-    echo -e "  onboard       Onboard the device to NuNet\n"
+    echo "  onboard       Onboard the device to NuNet"
+    echo -e "  info       Get info about currently onboarded machine\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -91,7 +92,7 @@ available() {
         done
     fi
     
-    N_C_OUT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/provisioned)
+    N_C_OUT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/provisioned)
     if [[ $NPRETTY_OUT -eq 1 ]] ; then
         echo $N_C_OUT | jq
     else
@@ -113,7 +114,7 @@ wallet() {
                     NVERBOSE_OUT=1
                     ;;
                 "new")
-                    N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/address/new)
+                    N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/address/new)
                     ;;
                 *)
                     printf "${BAD_C}Bad argument \"$avarg\" for 'wallet' Command. ${NORMAL_C}\n\n"
@@ -168,7 +169,7 @@ onboard() {
     [[ -z $N_ONBOARD_CHAN ]] && printf "${BAD_C}Error: -n | --nunet-channel must be specified.${NORMAL_C}\n" && onboard_usage
     [[ -z $N_ONBOARD_ADD ]] && printf "${BAD_C}Error: -a | --address must be specified.${NORMAL_C}\n" && onboard_usage
 
-    N_AVAILABLE_RES=$(curl -s localhost:9999/api/v1/provisioned)
+    N_AVAILABLE_RES=$(curl -s localhost:9999/api/v1/onboarding/provisioned)
     N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
     N_AVAILABLE_CPU=$(echo $N_AVAILABLE_RES | jq ".cpu")
     if [[ N_ONBOARD_MEM -gt $((N_AVAILABLE_MEM*9/10)) || N_ONBOARD_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
@@ -184,10 +185,10 @@ onboard() {
 
     else
         N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-            -d "{\"memory\": $N_ONBOARD_MEM, \"cpu\": $N_ONBOARD_CPU, \
+            -d "{\"memory\": \"$N_ONBOARD_MEM\", \"cpu\": \"$N_ONBOARD_CPU\", \
             \"channel\":\"$N_ONBOARD_CHAN\", \"payment_addr\": \"$N_ONBOARD_ADD\", \
-            \"cardano\": $N_ONBOARD_CARDANO}" \
-            localhost:9999/api/v1/onboard)
+            \"cardano\": \"$N_ONBOARD_CARDANO\"}" \
+            localhost:9999/api/v1/onboarding/onboard)
         # check if error
         N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq '. | select(.error != null) | .error')
         if [[ ! -z $N_ONBOARD_ERR_MSG ]] ; then
@@ -199,8 +200,13 @@ onboard() {
     
 }
 
+info() {
+    N_INFO=$(curl -s localhost:9999/api/v1/onboarding/metadata)
+    echo $N_INFO | jq
+}
 
-cmds=("available" "wallet" "onboard")
+
+cmds=("available" "wallet" "onboard" "info")
 
 if [ $# -eq  0 ] ; then
     usage
