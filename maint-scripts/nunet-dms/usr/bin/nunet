@@ -207,7 +207,7 @@ info() {
 
 
 check_dms_run() {
-    N_CHECK_DMS=$(netstat -tnlp 2>/dev/null | grep ":9999")
+    N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":9999")
     if [[ ! $? -eq 0 ]] ; then
         printf "${BAD_C}Looks like NuNet DMS is not running."
         printf "Please check with ${INFO_C}'systemctl status nunet-dms.service'${NORMAL_C}\n"
