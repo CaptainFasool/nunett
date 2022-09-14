@@ -6,7 +6,6 @@
 
 # NuNet CLI - Device Management Service
 
-
 GOOD_C='\033[32m'   # GREEN
 INFO_C='\033[33m' # YELLOW
 BAD_C='\033[31m'    # RED
@@ -168,7 +167,7 @@ onboard() {
     [[ -z $N_ONBOARD_CHAN ]] && printf "${BAD_C}Error: -n | --nunet-channel must be specified.${NORMAL_C}\n" && onboard_usage
     [[ -z $N_ONBOARD_ADD ]] && printf "${BAD_C}Error: -a | --address must be specified.${NORMAL_C}\n" && onboard_usage
 
-    N_AVAILABLE_RES=$(curl -s localhost:9999/api/v1/onboarding/provisioned)
+    N_AVAILABLE_RES=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/provisioned)
     N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
     N_AVAILABLE_CPU=$(echo $N_AVAILABLE_RES | jq ".cpu")
     if [[ N_ONBOARD_MEM -gt $((N_AVAILABLE_MEM*9/10)) || N_ONBOARD_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
@@ -187,7 +186,7 @@ onboard() {
             -d "{\"memory\": \"$N_ONBOARD_MEM\", \"cpu\": \"$N_ONBOARD_CPU\", \
             \"channel\":\"$N_ONBOARD_CHAN\", \"payment_addr\": \"$N_ONBOARD_ADD\", \
             \"cardano\": \"$N_ONBOARD_CARDANO\"}" \
-            localhost:9999/api/v1/onboarding/onboard)
+            $DMS_HOST:$DMS_PORT/api/v1/onboarding/onboard)
         # check if error
         N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq '. | select(.error != null) | .error')
         if [[ ! -z $N_ONBOARD_ERR_MSG ]] ; then
@@ -201,13 +200,18 @@ onboard() {
 }
 
 info() {
-    N_INFO=$(curl -s localhost:9999/api/v1/onboarding/metadata)
-    echo $N_INFO | jq
+    N_INFO=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/metadata)
+    N_INFO_ERR_MSG=$(echo $N_INFO | jq '. | select(.error != null) | .error')
+    if [[ ! -z $N_INFO_ERR_MSG ]] ; then
+        printf "${BAD_C}Error: $N_INFO_ERR_MSG ${NORMAL_C}\n"
+    else
+        echo $N_INFO | jq
+    fi
 }
 
 
 check_dms_run() {
-    N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":9999")
+    N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":$DMS_PORT")
     if [[ ! $? -eq 0 ]] ; then
         printf "${BAD_C}Looks like NuNet DMS is not running."
         printf "Please check with ${INFO_C}'systemctl status nunet-dms.service'${NORMAL_C}\n"
