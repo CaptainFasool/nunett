@@ -2,6 +2,7 @@ package gpu
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -31,9 +32,12 @@ func SearchDevice(c *gin.Context) {
 func SendDeploymentRequest(c *gin.Context) {
 	// Send message to nodeID with REQUESTING_PEER_PUBKEY
 	nodeId := c.Param("nodeID")
-	deploymentType := c.Query("deployment_type")
 
-	response, err := adapter.SendMessage(nodeId, deploymentType)
+	bodyAsByteArray, _ := ioutil.ReadAll(c.Request.Body)
+	jsonBody := string(bodyAsByteArray)
+
+	response, err := adapter.SendMessage(nodeId, jsonBody)
+
 	if err != nil {
 		log.Fatalf("Error sending message")
 	}
