@@ -22,7 +22,7 @@ const ClientTemplate = `{
     },
     "enabled": "true",
     "servers": [
-      "nomad-nunetio.ddns.net:4647"
+      "nomad.nunet.io:4647"
     ],
     "reserved": {
       "cpu": {{ .ReservedCPU }},

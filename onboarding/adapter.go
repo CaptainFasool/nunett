@@ -95,7 +95,7 @@ func RunNomadJob(c *gin.Context, jobName string) {
 	client := &http.Client{}
 
 	// set the HTTP method, url, and request body
-	req, err := http.NewRequest(http.MethodPut, "http://nomad-nunetio.ddns.net:4646/v1/job/"+jobName, bytes.NewBuffer(byteValue))
+	req, err := http.NewRequest(http.MethodPut, "http://nomad.nunet.io:4646/v1/job/"+jobName, bytes.NewBuffer(byteValue))
 	if err != nil {
 		panic(err)
 	}
