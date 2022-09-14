@@ -2,7 +2,18 @@
 
 The backend of the device management app.
 
+Note: This README is intended for developers. For end users, please check our [Wiki section](https://gitlab.com/nunet/device-management-service/-/wikis/home).
+
 ## Getting Started with Development
+
+Operations done via Device Management Service (DMS) depends on packages such as:
+
+- docker
+- iptables
+- ip
+- nomad
+
+For end users, these are installed as part of .deb package. these prerequisites will be taken care of, otherwise, you need to install them manually.
 
 ### Setup Development Environment
 
@@ -33,6 +44,9 @@ and then run the main.go
     sudo go run main.go
 
 Notice that I'm using `sudo` as the onboarding process writes some configuration files to `/etc/nunet`.
+
+Note about firecracker VMs. DMS also depends on binaries such as `firecracker` and one custom build binary, source code of which is stored in ./maint-script directory. Store them somewhere in $PATH.
+
 
 ## Onboarding Operations/Endpoints
 
