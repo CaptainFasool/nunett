@@ -26,7 +26,6 @@ type NetworkInterfaces struct {
 type Actions struct {
 	ActionType string `json:"action_type"`
 }
-
 type VirtualMachine struct {
 	ID         uint   `json:"id"`
 	SocketFile string `json:"socket_file"`
