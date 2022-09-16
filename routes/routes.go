@@ -49,6 +49,7 @@ func SetupRouter() *gin.Engine {
 	{
 		gpu.GET("/devices", gpuPackage.SearchDevice)
 		gpu.POST("/deploy/:nodeID", gpuPackage.SendDeploymentRequest)
+		gpu.GET("/deploy/receive", gpuPackage.ReceiveDeploymentRequest)
 	}
 
 	return router

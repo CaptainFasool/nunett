@@ -44,3 +44,17 @@ func SendDeploymentRequest(c *gin.Context) {
 
 	c.JSON(200, response)
 }
+
+func ReceiveDeploymentRequest(c *gin.Context) {
+	// Pull the image
+
+	// Run the container.
+
+	// Get the logs.
+
+	// Delete the container.
+
+	// Remove the downloaded image.
+
+	// Send back the logs.
+}
