@@ -2,6 +2,7 @@ package spo
 
 import (
 	"encoding/json"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
@@ -33,9 +34,20 @@ func SearchDevice(c *gin.Context) {
 func SendDeploymentRequest(c *gin.Context) {
 	// Send message to nodeID with REQUESTING_PEER_PUBKEY
 	nodeId := c.Param("nodeID")
-	deploymentType := c.Query("deployment_type")
 
-	response, err := adapter.SendMessage(nodeId, deploymentType)
+	type DeploymentBody struct {
+		DeploymentType string `json:"deployment_type,omitempty"`
+	}
+
+	body := DeploymentBody{}
+
+	// deploymentType := c.Query("deployment_type")
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	response, err := adapter.SendMessage(nodeId, body.DeploymentType)
 	if err != nil {
 		panic("Error sending message")
 	}
