@@ -2,7 +2,6 @@ package spo
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
@@ -19,7 +18,7 @@ func SearchDevice(c *gin.Context) {
 
 	err = json.Unmarshal(jsonBytes, &dht)
 	if err != nil {
-		log.Fatalf("Error unmarshalling data")
+		panic("Error unmarshalling data")
 	}
 
 	peers := adapter.PeersWithCardanoAllowed(dht.PeerMeta)
@@ -38,7 +37,7 @@ func SendDeploymentRequest(c *gin.Context) {
 
 	response, err := adapter.SendMessage(nodeId, deploymentType)
 	if err != nil {
-		log.Fatalf("Error sending message")
+		panic("Error sending message")
 	}
 
 	c.JSON(200, response)

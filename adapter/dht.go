@@ -2,7 +2,7 @@ package adapter
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"time"
 
 	grpc "google.golang.org/grpc"
@@ -14,7 +14,7 @@ func fetchDht() (string, error) {
 	address := "localhost:60777"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		panic(fmt.Sprintf("did not connect: %v", err))
 	}
 	defer conn.Close()
 
@@ -67,7 +67,7 @@ func SendMessage(nodeID string, message string) (string, error) {
 	address := "localhost:60777"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		panic(fmt.Sprintf("did not connect: %v", err))
 	}
 	defer conn.Close()
 
