@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -18,27 +19,26 @@ func main() {
 		panic(err)
 	}
 
-	// ListContainers(ctx, cli)
-	// ListImages(ctx, cli)
-	// PullImage(ctx, cli)
-	// PrintLogs(ctx, cli)
 	RunContainer(ctx, cli)
 }
 
 func RunContainer(ctx context.Context, cli *client.Client) {
-	reader, err := cli.ImagePull(ctx, "hello-world", types.ImagePullOptions{})
+	reader, err := cli.ImagePull(ctx, "nvidia/cuda:10.0-base", types.ImagePullOptions{})
 	if err != nil {
 		panic(err)
 	}
 
 	defer reader.Close()
-	io.Copy(os.Stdout, reader)
+	// io.Copy(os.Stdout, reader)
+
+	gpuOpts := opts.GpuOpts{}
+	gpuOpts.Set("all")
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: "alpine",
-		Cmd:   []string{"echo", "hello world"},
-		Tty:   false,
-	}, nil, nil, nil, "")
+		Image: "nvidia/cuda:10.0-base",
+		Cmd:   []string{"nvidia-smi"},
+		// Tty:   false,
+	}, &container.HostConfig{Resources: container.Resources{DeviceRequests: gpuOpts.Value()}}, nil, nil, "")
 
 	if err != nil {
 		panic(err)
@@ -64,17 +64,6 @@ func RunContainer(ctx context.Context, cli *client.Client) {
 	}
 
 	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-}
-
-func PullImage(ctx context.Context, cli *client.Client) {
-	out, err := cli.ImagePull(ctx, "mongo", types.ImagePullOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	defer out.Close()
-
-	io.Copy(os.Stdout, out)
 }
 
 func PrintLogs(ctx context.Context, cli *client.Client) {
