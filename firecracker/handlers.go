@@ -20,6 +20,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 func NewClient(sockFile string) *http.Client {
@@ -32,33 +33,6 @@ func NewClient(sockFile string) *http.Client {
 	}
 
 	return client
-}
-
-func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, errMsg string) {
-	// set the HTTP method, url, and request body
-	req, err := http.NewRequest(http.MethodPut, uri, bytes.NewBuffer(body))
-
-	if err != nil {
-		c.JSON(400, gin.H{
-			"message":   errMsg,
-			"timestamp": time.Now(),
-		})
-		return
-	}
-
-	// set the request header Content-Type for json
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("Accept", "application/json")
-	_, err = client.Do(req)
-	if err != nil {
-		// c.JSON(400, gin.H{
-		// 	"message":   errMsg,
-		// 	"timestamp": time.Now(),
-		// })
-		// return
-		panic(err)
-	}
-
 }
 
 // InitVM		godoc
@@ -141,7 +115,7 @@ func BootSource(c *gin.Context) {
 
 	client := NewClient(vm.SocketFile)
 
-	MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, ERR_BOOTSOURCE_REQ)
+	utils.MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, ERR_BOOTSOURCE_REQ)
 }
 
 // Drives		godoc
@@ -170,7 +144,7 @@ func Drives(c *gin.Context) {
 
 	client := NewClient(vm.SocketFile)
 
-	MakeRequest(c, client, "http://localhost/drives/rootfs", jsonBytes, ERR_DRIVES_REQ)
+	utils.MakeRequest(c, client, "http://localhost/drives/rootfs", jsonBytes, ERR_DRIVES_REQ)
 
 }
 
@@ -200,7 +174,7 @@ func MachineConfig(c *gin.Context) {
 
 	client := NewClient(vm.SocketFile)
 
-	MakeRequest(c, client, "http://localhost/machine-config", jsonBytes, ERR_MACHINE_CONFIG_REQ)
+	utils.MakeRequest(c, client, "http://localhost/machine-config", jsonBytes, ERR_MACHINE_CONFIG_REQ)
 
 }
 
@@ -236,7 +210,7 @@ func NetworkInterfaces(c *gin.Context) {
 
 	client := NewClient(vm.SocketFile)
 
-	MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, ERR_MACHINE_CONFIG_REQ)
+	utils.MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, ERR_MACHINE_CONFIG_REQ)
 }
 
 // StartVM godoc
@@ -258,7 +232,7 @@ func StartVM(c *gin.Context) {
 	// initialize http client
 	client := NewClient(vm.SocketFile)
 
-	MakeRequest(c, client, "http://localhost/actions", jsonBytes, ERR_ACTIONS_REQ)
+	utils.MakeRequest(c, client, "http://localhost/actions", jsonBytes, ERR_ACTIONS_REQ)
 
 	vm.State = "running"
 
@@ -284,33 +258,11 @@ func StopVM(c *gin.Context) {
 	// initialize http client
 	client := NewClient(vm.SocketFile)
 
-	MakeRequest(c, client, "http://localhost/actions", jsonBytes, ERR_ACTIONS_REQ)
+	utils.MakeRequest(c, client, "http://localhost/actions", jsonBytes, ERR_ACTIONS_REQ)
 
 	vm.State = "stopped"
 
 	db.DB.Save(&vm)
-}
-
-// MakeInternalRequest is a helper method to make call to DMS's own API
-func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) {
-	req, err := http.NewRequest(methodType, DMS_BASE_URL+internalEndpoint, bytes.NewBuffer(body))
-	if err != nil {
-		panic(err)
-	}
-
-	client := http.Client{}
-
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("Accept", "application/json")
-	_, err = client.Do(req)
-	if err != nil {
-		panic(err)
-		// c.JSON(400, gin.H{
-		// 	"message":   fmt.Sprintf("Error making %s request to %s", methodType, internalEndpoint),
-		// 	"timestamp": time.Now(),
-		// })
-		// return
-	}
 }
 
 // StartCustom godoc
@@ -353,7 +305,7 @@ func StartCustom(c *gin.Context) {
 	}
 
 	// POST /init
-	MakeInternalRequest(c, "POST", fmt.Sprintf("/vm/init/%d", vm.ID), nil)
+	utils.MakeInternalRequest(c, "POST", fmt.Sprintf("/vm/init/%d", vm.ID), nil)
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
@@ -361,7 +313,7 @@ func StartCustom(c *gin.Context) {
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
 	jsonBytes, _ := json.Marshal(bootSourceBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", vm.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", vm.ID), jsonBytes)
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -372,7 +324,7 @@ func StartCustom(c *gin.Context) {
 	drivesBody.IsReadOnly = false
 
 	jsonBytes, _ = json.Marshal(drivesBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", vm.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", vm.ID), jsonBytes)
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -381,7 +333,7 @@ func StartCustom(c *gin.Context) {
 	machineConfigBody.VCPUCount = vm.VCPUCount
 
 	jsonBytes, _ = json.Marshal(machineConfigBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -389,9 +341,9 @@ func StartCustom(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 	jsonBytes, _ = json.Marshal(networkInterfacesBody)
-	MakeInternalRequest(c, "PUT", "/vm/network-interfaces/eth0", jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", "/vm/network-interfaces/eth0", jsonBytes)
 
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", vm.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", vm.ID), jsonBytes)
 }
 
 // StartDefault godoc
@@ -431,7 +383,7 @@ func StartDefault(c *gin.Context) {
 	}
 
 	// POST /init
-	MakeInternalRequest(c, "POST", fmt.Sprintf("/vm/init/%d", vm.ID), nil)
+	utils.MakeInternalRequest(c, "POST", fmt.Sprintf("/vm/init/%d", vm.ID), nil)
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
@@ -439,7 +391,7 @@ func StartDefault(c *gin.Context) {
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
 	jsonBytes, _ := json.Marshal(bootSourceBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", vm.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", vm.ID), jsonBytes)
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -450,7 +402,7 @@ func StartDefault(c *gin.Context) {
 	drivesBody.IsReadOnly = false
 
 	jsonBytes, _ = json.Marshal(drivesBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", vm.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", vm.ID), jsonBytes)
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -465,7 +417,7 @@ func StartDefault(c *gin.Context) {
 	}
 
 	jsonBytes, _ = json.Marshal(machineConfigBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -473,9 +425,9 @@ func StartDefault(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 	jsonBytes, _ = json.Marshal(networkInterfacesBody)
-	MakeInternalRequest(c, "PUT", "/vm/network-interfaces/eth0", jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", "/vm/network-interfaces/eth0", jsonBytes)
 
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", vm.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", vm.ID), jsonBytes)
 }
 
 func RunFromConfig(c *gin.Context) {
@@ -517,7 +469,7 @@ func RunFromConfig(c *gin.Context) {
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
 	jsonBytes, _ := json.Marshal(bootSourceBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", body.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", body.ID), jsonBytes)
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -528,7 +480,7 @@ func RunFromConfig(c *gin.Context) {
 	drivesBody.IsReadOnly = false
 
 	jsonBytes, _ = json.Marshal(drivesBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", body.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", body.ID), jsonBytes)
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -537,7 +489,7 @@ func RunFromConfig(c *gin.Context) {
 	machineConfigBody.VCPUCount = 2
 
 	jsonBytes, _ = json.Marshal(machineConfigBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", body.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", body.ID), jsonBytes)
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -545,9 +497,9 @@ func RunFromConfig(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = body.TapDevice
 	jsonBytes, _ = json.Marshal(networkInterfacesBody)
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/network-interfaces/%d", body.ID), jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/network-interfaces/%d", body.ID), jsonBytes)
 
 	// POST /start
 
-	MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", body.ID), nil)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", body.ID), nil)
 }
