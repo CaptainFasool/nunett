@@ -64,19 +64,8 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: "0.1"
+  version: "0.2"
 paths:
-  /actions:
-    put:
-      description: Start or stop the VM.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-      summary: Start or stop the VM.
-      tags:
-      - vm
   /address/new:
     get:
       description: Create a payment address from public key. Return payment address
@@ -191,6 +180,18 @@ paths:
       summary: Returns provisioned capacity on host.
       tags:
       - onboarding
+  /start-custom:
+    post:
+      description: This endpoint is an abstraction of all primitive endpoints. When
+        invokend, it calls all primitive endpoints in a sequence.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Start a VM with custom configuration.
+      tags:
+      - vm
   /start-default:
     post:
       description: This endpoint is an abstraction of all other endpoints. When invokend,

@@ -13,28 +13,11 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.1"
+        "version": "0.2"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
     "paths": {
-        "/actions": {
-            "put": {
-                "description": "Start or stop the VM.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Start or stop the VM.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
         "/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
@@ -202,6 +185,23 @@
                         "schema": {
                             "$ref": "#/definitions/models.Provisioned"
                         }
+                    }
+                }
+            }
+        },
+        "/start-custom": {
+            "post": {
+                "description": "This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Start a VM with custom configuration.",
+                "responses": {
+                    "200": {
+                        "description": ""
                     }
                 }
             }
