@@ -3,40 +3,30 @@ package gpu
 import (
 	"context"
 	"io"
-	"os"
 
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 )
 
-func main() {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+func PullImage(ctx context.Context, cli *client.Client, imageName string) {
+	out, err := cli.ImagePull(ctx, imageName, types.ImagePullOptions{})
 	if err != nil {
 		panic(err)
 	}
 
-	RunContainer(ctx, cli)
+	defer out.Close()
+	// io.Copy(os.Stdout, out)
 }
 
-func RunContainer(ctx context.Context, cli *client.Client) {
-	reader, err := cli.ImagePull(ctx, "nvidia/cuda:10.0-base", types.ImagePullOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	defer reader.Close()
-	// io.Copy(os.Stdout, reader)
-
+func RunContainer(ctx context.Context, cli *client.Client, imgName string, cmd []string) (contID string) {
 	gpuOpts := opts.GpuOpts{}
 	gpuOpts.Set("all")
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: "nvidia/cuda:10.0-base",
-		Cmd:   []string{"nvidia-smi"},
+		Cmd:   cmd,
 		// Tty:   false,
 	}, &container.HostConfig{Resources: container.Resources{DeviceRequests: gpuOpts.Value()}}, nil, nil, "")
 
@@ -58,21 +48,38 @@ func RunContainer(ctx context.Context, cli *client.Client) {
 	case <-statusCh:
 	}
 
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
-	if err != nil {
-		panic(err)
-	}
-
-	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	return resp.ID
 }
 
-func PrintLogs(ctx context.Context, cli *client.Client) {
+func GetLogs(ctx context.Context, cli *client.Client, contName string) (logOutput string) {
 	options := types.ContainerLogsOptions{ShowStdout: true}
 
-	out, err := cli.ContainerLogs(ctx, "nunet-adapter-kubuntu-20595d13-67cb-2af9-e5da-a4e2520af544", options)
+	out, err := cli.ContainerLogs(ctx, contName, options)
 	if err != nil {
 		panic(err)
 	}
 
-	io.Copy(os.Stdout, out)
+	// stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	bytes, _ := io.ReadAll(out)
+	return string(bytes)
+}
+
+func DeleteContainer(ctx context.Context, cli *client.Client, contName string) {
+	options := types.ContainerRemoveOptions{}
+
+	err := cli.ContainerRemove(ctx, contName, options)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func DeleteImage(ctx context.Context, cli *client.Client, imagID string) {
+	options := types.ImageRemoveOptions{}
+
+	imgDeleteResp, err := cli.ImageRemove(ctx, imagID, options)
+	if err != nil {
+		panic(err)
+	}
+
+	_ = imgDeleteResp // contains hashes of all the images tags and their child
 }
