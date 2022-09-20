@@ -11,8 +11,13 @@ import (
 	"gitlab.com/nunet/device-management-service/adapter"
 )
 
-// SearchDevice searches the DHT for non-busy, available devices with "has_gpu" metadata. Search results returns a list of available devices along with the resource capacity.
-// TODO: Add Swagger comments
+// SearchDevice  godoc
+// @Summary      Search devices on DHT with has_gpu attribute set..
+// @Description  SearchDevice searches the DHT for non-busy, available devices with "has_gpu" metadata. Search results returns a list of available devices along with the resource capacity.
+// @Tags         gpu
+// @Produce      json
+// @Success      200  {array}  adapter.Peer
+// @Router       /gpu/devices [get]
 func SearchDevice(c *gin.Context) {
 	jsonBytes, err := adapter.FetchDht()
 	if err != nil {
@@ -32,7 +37,13 @@ func SearchDevice(c *gin.Context) {
 	c.JSON(200, peers)
 }
 
-// TODO: Add Swagger comments
+// SendDeploymentRequest  godoc
+// @Summary      Send deployment request to one of the peer.
+// @Description  Sends deployment request message to one of the peer on the message exchange. Request include details such as docker image name, capacity required etc.
+// @Tags         gpu
+// @Produce      json
+// @Success      200  {string}  string  "sent"
+// @Router       /gpu/deploy/:nodeID [post]
 func SendDeploymentRequest(c *gin.Context) {
 	// Send message to nodeID with REQUESTING_PEER_PUBKEY
 	nodeId := c.Param("nodeID")
@@ -49,11 +60,17 @@ func SendDeploymentRequest(c *gin.Context) {
 	c.JSON(200, response)
 }
 
-// TODO: Add Swagger comments
-// The current implementation of the system is to poll message exchange for any
-// new message. This should be replaced with something similar observer pattern
-// where when a message is received, this endpoint is triggered.
+// ReceiveDeploymentRequest  godoc
+// @Summary      Receive the deployment message and do the needful.
+// @Description  Receives the deployment message from the message exchange. And do following docker based actions in the sequence: Pull image, rnu container, get logs, delete container, delete image, send log to the requester.
+// @Tags         gpu
+// @Produce      json
+// @Success      200  {string}	string
+// @Router       /gpu/deploy/receive [get]
 func ReceiveDeploymentRequest(c *gin.Context) {
+	// The current implementation of the system is to poll message exchange for any
+	// new message. This should be replaced with something similar observer pattern
+	// where when a message is received, this endpoint is triggered.
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -80,5 +97,6 @@ func ReceiveDeploymentRequest(c *gin.Context) {
 	DeleteImage(ctx, cli, imageName)
 
 	// Send back the logs.
+	// TODO: Send message to the requesting peer instead of below stub.
 	c.JSON(200, logOutput)
 }

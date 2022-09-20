@@ -41,7 +41,7 @@ func NewClient(sockFile string) *http.Client {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/init/:vmID [post]
+// @Router		/vm/init/:vmID [post]
 func InitVM(c *gin.Context) {
 	var vm models.VirtualMachine
 	if err := db.DB.Where("id = ?", c.Param("vmID")).First(&vm).Error; err != nil {
@@ -95,7 +95,7 @@ func InitVM(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/boot-source/:vmID [put]
+// @Router		/vm/boot-source/:vmID [put]
 func BootSource(c *gin.Context) {
 	// var jsonBytes = []byte(`{"kernel_image_path":"/home/santosh/firecracker/vmlinux.bin", "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"}`)
 	var vm models.VirtualMachine
@@ -124,7 +124,7 @@ func BootSource(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/drives/:vmID [put]
+// @Router		/vm/drives/:vmID [put]
 func Drives(c *gin.Context) {
 	// var jsonBytes = []byte(`{"drive_id": "rootfs", "path_on_host":"/home/santosh/firecracker/bionic.rootfs.ext4", "is_root_device": true, "is_read_only": false}`)
 	var vm models.VirtualMachine
@@ -154,7 +154,7 @@ func Drives(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/machine-config/:vmID [put]
+// @Router		/vm/machine-config/:vmID [put]
 func MachineConfig(c *gin.Context) {
 	// var jsonBytes = []byte(`{"vcpu_count": 2,"mem_size_mib": 512}`)
 	var vm models.VirtualMachine
@@ -184,7 +184,7 @@ func MachineConfig(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/network-interface/:vmID [put]
+// @Router		/vm/network-interface/:vmID [put]
 func NetworkInterfaces(c *gin.Context) {
 	// var jsonBytes = []byte(`{ "iface_id": "eth0", "guest_mac": "AA:FC:00:00:00:01", "host_dev_name": "tap1" }`)
 	var vm models.VirtualMachine
@@ -219,7 +219,7 @@ func NetworkInterfaces(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/start/:vmID [post]
+// @Router		/vm/start/:vmID [post]
 func StartVM(c *gin.Context) {
 	var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
 	var vm models.VirtualMachine
@@ -245,7 +245,7 @@ func StartVM(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/stop/:vmID [post]
+// @Router		/vm/stop/:vmID [post]
 func StopVM(c *gin.Context) {
 	var jsonBytes = []byte(`{"action_type": "SendCtrlAltDel"}`)
 
@@ -271,7 +271,7 @@ func StopVM(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/start-custom [post]
+// @Router		/vm/start-custom [post]
 func StartCustom(c *gin.Context) {
 	type StartCustomBody struct {
 		KernelImagePath string `json:"kernel_image_path"`
@@ -352,7 +352,7 @@ func StartCustom(c *gin.Context) {
 // @Tags		vm
 // @Produce 	json
 // @Success		200
-// @Router		/start-default [post]
+// @Router		/vm/start-default [post]
 func StartDefault(c *gin.Context) {
 	// Everything except kernel files and filesystem file will be set by DMS itself.
 
