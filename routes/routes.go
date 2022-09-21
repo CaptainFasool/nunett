@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/firecracker"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/onboarding"
 	spoPackage "gitlab.com/nunet/device-management-service/spo"
 )
@@ -42,6 +43,11 @@ func SetupRouter() *gin.Engine {
 		spo.GET("/devices", spoPackage.SearchDevice)
 		// following route accept query param: deployment_type: auto/manual
 		spo.POST("/deploy/:nodeID", spoPackage.SendDeploymentRequest)
+	}
+
+	tele := v1.Group("/telemetry")
+	{
+		tele.GET("/free", telemetry.GetFreeResource)
 	}
 
 	return router
