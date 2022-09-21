@@ -3,6 +3,7 @@ module gitlab.com/nunet/device-management-service
 go 1.18
 
 require (
+	github.com/docker/cli v20.10.18+incompatible
 	github.com/docker/docker v20.10.18+incompatible
 	github.com/ethereum/go-ethereum v1.10.18
 	github.com/gin-gonic/gin v1.7.7
@@ -24,7 +25,6 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
-	github.com/docker/cli v20.10.18+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
