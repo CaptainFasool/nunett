@@ -1,10 +1,7 @@
 package adapter
 
 import (
-	"bytes"
 	"context"
-	"errors"
-	"log"
 	"fmt"
 	"time"
 

@@ -91,7 +91,10 @@ func Downloader(url string ) string {
 
     log.Printf("downloading kernel image")
 
-    resp, _ := http.Get(url)
+    resp, err := http.Get(url)
+    if err != nil {
+        log.Printf("Error occured while downloading kernel")
+    }
     defer resp.Body.Close()
 
     io.Copy(out, resp.Body)
