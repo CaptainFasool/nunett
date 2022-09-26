@@ -13,7 +13,7 @@ import (
 // @Description  SendDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine
 // @Tags         run
 // @Produce      json
-// @Success      200  {array}  adapter.Peer
+// @Success      200  {string}  string
 // @Router       /run/deploy [post]
 func SendDeploymentRequest(c *gin.Context) {
 	// parse the body, get service type, and filter devices

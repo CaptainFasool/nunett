@@ -87,7 +87,7 @@ func DeleteImage(ctx context.Context, cli *client.Client, imagID string) {
 
 // HandleDockerDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, delete container, delete image, send log to the requester
-func HandleDockerDeployment(c gin.Context) {
+func HandleDockerDeployment(c *gin.Context) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
