@@ -1,48 +1,5 @@
 basePath: /api/v1
 definitions:
-  adapter.Peer:
-    properties:
-      ip_addrs:
-        items:
-          type: any
-        type: array
-      peer_id:
-        $ref: '#/definitions/adapter.PeerID'
-      services:
-        items:
-          $ref: '#/definitions/adapter.Service'
-        type: array
-      timestamp:
-        type: integer
-    type: object
-  adapter.PeerID:
-    properties:
-      _address:
-        items:
-          type: any
-        type: array
-      allow_cardano:
-        type: string
-      has_gpu:
-        type: string
-      key:
-        type: string
-      mid:
-        type: string
-      nodeID:
-        type: string
-      public_key:
-        type: string
-    type: object
-  adapter.Service:
-    properties:
-      price:
-        type: integer
-      service_input:
-        type: string
-      service_output:
-        type: string
-    type: object
   models.AddressPrivKey:
     properties:
       address:
@@ -109,53 +66,6 @@ info:
   title: Device Management Service
   version: 0.3.1
 paths:
-  /gpu/deploy/:nodeID:
-    post:
-      description: Sends deployment request message to one of the peer on the message
-        exchange. Request include details such as docker image name, capacity required
-        etc.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: sent
-          schema:
-            type: string
-      summary: Send deployment request to one of the peer.
-      tags:
-      - gpu
-  /gpu/deploy/receive:
-    get:
-      description: 'Receives the deployment message from the message exchange. And
-        do following docker based actions in the sequence: Pull image, rnu container,
-        get logs, delete container, delete image, send log to the requester.'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      summary: Receive the deployment message and do the needful.
-      tags:
-      - gpu
-  /gpu/devices:
-    get:
-      description: SearchDevice searches the DHT for non-busy, available devices with
-        "has_gpu" metadata. Search results returns a list of available devices along
-        with the resource capacity.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/adapter.Peer'
-            type: array
-      summary: Search devices on DHT with has_gpu attribute set..
-      tags:
-      - gpu
   /onboarding/address/new:
     get:
       description: Create a payment address from public key. Return payment address
@@ -214,37 +124,36 @@ paths:
       summary: Returns provisioned capacity on host.
       tags:
       - onboarding
-  /spo/deploy/:nodeID:
+  /run/deploy:
     post:
-      description: Sends deployment request message to one of the peer on the message
-        exchange.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: sent
-          schema:
-            type: string
-      summary: Send deployment request to one of the peer.
-      tags:
-      - spo
-  /spo/devices:
-    get:
-      description: SearchDevice searches the DHT for non-busy, available devices with
-        "allow_cardano" metadata. Search results returns a list of available devices
-        along with the resource capacity.
+      description: SendDeploymentRequest searches the DHT for non-busy, available
+        devices with appropriate metadata. Then sends a deployment request to the
+        first machine
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/adapter.Peer'
-            type: array
-      summary: Search devices on DHT with has_gpu attribute set..
+            type: string
+      summary: Search devices on DHT with appropriate machines and sends a deployment
+        request.
       tags:
-      - spo
+      - run
+  /run/deploy/receive:
+    get:
+      description: Receives the deployment message from the message exchange. And
+        do required actions based on the service_type.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Receive the deployment message and do the needful.
+      tags:
+      - gpu
   /vm/boot-source/:vmID:
     put:
       description: Configure kernel for the VM.

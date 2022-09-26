@@ -25,69 +25,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/gpu/deploy/:nodeID": {
-            "post": {
-                "description": "Sends deployment request message to one of the peer on the message exchange. Request include details such as docker image name, capacity required etc.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "gpu"
-                ],
-                "summary": "Send deployment request to one of the peer.",
-                "responses": {
-                    "200": {
-                        "description": "sent",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/gpu/deploy/receive": {
-            "get": {
-                "description": "Receives the deployment message from the message exchange. And do following docker based actions in the sequence: Pull image, rnu container, get logs, delete container, delete image, send log to the requester.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "gpu"
-                ],
-                "summary": "Receive the deployment message and do the needful.",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/gpu/devices": {
-            "get": {
-                "description": "SearchDevice searches the DHT for non-busy, available devices with \"has_gpu\" metadata. Search results returns a list of available devices along with the resource capacity.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "gpu"
-                ],
-                "summary": "Search devices on DHT with has_gpu attribute set..",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/adapter.Peer"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/onboarding/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
@@ -174,19 +111,19 @@ const docTemplate = `{
                 }
             }
         },
-        "/spo/deploy/:nodeID": {
+        "/run/deploy": {
             "post": {
-                "description": "Sends deployment request message to one of the peer on the message exchange.",
+                "description": "SendDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "spo"
+                    "run"
                 ],
-                "summary": "Send deployment request to one of the peer.",
+                "summary": "Search devices on DHT with appropriate machines and sends a deployment request.",
                 "responses": {
                     "200": {
-                        "description": "sent",
+                        "description": "OK",
                         "schema": {
                             "type": "string"
                         }
@@ -194,24 +131,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/spo/devices": {
+        "/run/deploy/receive": {
             "get": {
-                "description": "SearchDevice searches the DHT for non-busy, available devices with \"allow_cardano\" metadata. Search results returns a list of available devices along with the resource capacity.",
+                "description": "Receives the deployment message from the message exchange. And do required actions based on the service_type.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "spo"
+                    "gpu"
                 ],
-                "summary": "Search devices on DHT with has_gpu attribute set..",
+                "summary": "Receive the deployment message and do the needful.",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/adapter.Peer"
-                            }
+                            "type": "string"
                         }
                     }
                 }
@@ -372,72 +306,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "adapter.Peer": {
-            "type": "object",
-            "properties": {
-                "ip_addrs": {
-                    "type": "array",
-                    "items": {
-                        "type": "any"
-                    }
-                },
-                "peer_id": {
-                    "$ref": "#/definitions/adapter.PeerID"
-                },
-                "services": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/adapter.Service"
-                    }
-                },
-                "timestamp": {
-                    "type": "integer"
-                }
-            }
-        },
-        "adapter.PeerID": {
-            "type": "object",
-            "properties": {
-                "_address": {
-                    "type": "array",
-                    "items": {
-                        "type": "any"
-                    }
-                },
-                "allow_cardano": {
-                    "type": "string"
-                },
-                "has_gpu": {
-                    "type": "string"
-                },
-                "key": {
-                    "type": "string"
-                },
-                "mid": {
-                    "type": "string"
-                },
-                "nodeID": {
-                    "type": "string"
-                },
-                "public_key": {
-                    "type": "string"
-                }
-            }
-        },
-        "adapter.Service": {
-            "type": "object",
-            "properties": {
-                "price": {
-                    "type": "integer"
-                },
-                "service_input": {
-                    "type": "string"
-                },
-                "service_output": {
-                    "type": "string"
-                }
-            }
-        },
         "models.AddressPrivKey": {
             "type": "object",
             "properties": {
