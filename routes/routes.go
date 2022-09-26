@@ -5,6 +5,7 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/onboarding"
 	spoPackage "gitlab.com/nunet/device-management-service/spo"
+	cardano "gitlab.com/nunet/device-management-service/cardano"
 )
 
 func SetupRouter() *gin.Engine {
@@ -44,5 +45,11 @@ func SetupRouter() *gin.Engine {
 		spo.GET("/req_cardano_deploy/:peerID/manual", spoPackage.DeployManual)
 	}
 
+	cardano_route := v1.Group("/trigger_cardano")
+	{
+		cardano_route.GET("/:peerdID/manual", cardano.Deploy)
+		cardano_route.GET("/:peerdID/auto", cardano.Deploy)
+	}
+	
 	return router
 }
