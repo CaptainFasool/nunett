@@ -3,7 +3,6 @@ package spo
 import (
 	"encoding/json"
 	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
 )

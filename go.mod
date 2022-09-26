@@ -46,6 +46,7 @@ require (
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	gitlab.com/nunet/firecracker-images/image-creator v0.0.0-20220818081924-e811a903d4a5 // indirect
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/net v0.0.0-20220517181318-183a9ca12b87 // indirect
 	golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68 // indirect
