@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/gin-gonic/gin"
 )
 
 func PullImage(ctx context.Context, cli *client.Client, imageName string) {
@@ -82,4 +83,37 @@ func DeleteImage(ctx context.Context, cli *client.Client, imagID string) {
 	}
 
 	_ = imgDeleteResp // contains hashes of all the images tags and their child
+}
+
+// HandleDockerDeployment does following docker based actions in the sequence:
+// Pull image, run container, get logs, delete container, delete image, send log to the requester
+func HandleDockerDeployment(c gin.Context) {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	// Pull the image
+	// TODO: Where in the flow do we get the image name.
+	imageName := "nvidia/cuda:10.0-base"
+
+	PullImage(ctx, cli, imageName)
+
+	// Run the container.
+	// TODO: What command do we run inside container? Do does the Image comes pre-baked?
+	contID := RunContainer(ctx, cli, imageName, []string{"nvidia-smi"})
+
+	// Get the logs.
+	logOutput := GetLogs(ctx, cli, contID)
+
+	// Delete the container.
+	DeleteContainer(ctx, cli, contID)
+
+	// Remove the downloaded image.
+	DeleteImage(ctx, cli, imageName)
+
+	// Send back the logs.
+	// TODO: Send message to the requesting peer instead of below stub.
+	c.JSON(200, logOutput)
 }
