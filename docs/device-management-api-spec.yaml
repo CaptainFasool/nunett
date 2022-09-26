@@ -1,0 +1,220 @@
+asyncapi: 2.4.0
+info:
+  title: Device Management API
+  version: 0.1.0
+  description: Device Management API is in charge of all the communication between NuNet platform and blokchains that are enabled. The API itself is blockchain agnostic and defines only the functionality from the platfrom perspective. Blockchain specific implementations of this API are developed separately for each blockchain and hosted appropriately.
+channels:
+
+  tokenomics/deposit:
+    publish:
+      message:
+        $ref: '#/components/messages/deposit'
+  
+  tokenomics/withdraw:
+    publish:
+      message:
+        $ref: '#/components/messages/withdraw'
+
+  tokenomics/verify:
+    publish:
+      message:
+        $ref: '#/components/messages/verify'   
+
+  tokenomics/openChannel:
+    publish:
+      message:
+        $ref: '#/components/messages/OpenChannel'
+  
+  tokenomics/closeChannel:
+     publish:
+      message:
+        $ref: '#/components/messages/CloseChannel'
+
+  tokenomics/extendChannel:
+     publish:
+      message:
+        $ref: '#/components/messages/ExtendChannel'
+
+
+  tokenomics/listenForWithdraw:
+     subscribe:
+      message:
+        $ref: '#/components/messages/ListenForWithdraw'
+
+  tokenomics/listenForDeposit:
+     subscribe:
+      message:
+        $ref: '#/components/messages/ListenForDeposit'
+        
+  tokenomics/listenForVerify:
+     subscribe:
+      message:
+        $ref: '#/components/messages/ListenForVerify'
+
+  tokenomics/listenForOpenChanel:
+     subscribe:
+      message:
+        $ref: '#/components/messages/ListenForOpenChannel'
+
+  tokenomics/listenForClosedChanel:
+     subscribe:
+      message:
+        $ref: '#/components/messages/ListenForClosedChannel'
+
+  tokenomics/listenForExtendedChanel:
+     subscribe:
+      message:
+        $ref: '#/components/messages/ListenForExtendedChannel'
+
+components:
+  messages:
+    deposit:
+      payload:
+        type: object
+        properties:
+            value:
+              type: number
+              description: The Amount to deposit
+           
+    withdraw:
+      payload:
+        type: object
+        properties:
+            value:
+              type: number
+              description: Channel Type i.e one time , subscription or pay as you go
+            key:
+              type: string
+              description: The signature of the sender
+
+    verify:
+      payload:
+        type: object
+        properties:
+             key:
+              type: string
+              description: The signature of the sender
+
+    OpenChannel:
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            description: Channel Type i.e one time , subscription or pay as you go
+          to:
+            type: string
+            format: address
+            description: address of the user
+          from:
+            type: string
+            format: address
+            description: address of the user
+          amount:
+            type: string
+            format: Number
+            description: Amount of tokens deposited
+          expiration:
+            type: string
+            format: Number
+            description: timestamp for channel close
+            
+    CloseChannel:
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            description: Channel Type i.e one time , subscription or pay as you go
+          to:
+            type: string
+            format: address
+            description: address of the user
+          from:
+            type: string
+            format: address
+            description: address of the user
+          amount:
+            type: string
+            format: Number
+            description: Amount of tokens deposited
+          expiration:
+            type: string
+            format: Number
+            description: timestamp for channel close
+        
+
+    ExtendChannel:
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            description: Channel Type i.e one time , subscription or pay as you go
+          to:
+            type: string
+            format: address
+            description: address of the user
+          from:
+            type: string
+            format: address
+            description: address of the user
+          amount:
+            type: string
+            format: Number
+            description: Amount of tokens deposited
+          expiration:
+            type: string
+            format: Number
+            description: timestamp for channel close
+        
+
+    ListenForOpenChannel:
+       payload:
+        type: object
+        properties:
+          listenerLife:
+            type: number
+            description: timestamp for listner close
+
+
+    ListenForClosedChannel:
+       payload:
+        type: object
+        properties:
+          listenerLife:
+            type: number
+            description: timestamp for listner close       
+
+    ListenForExtendedChannel:
+       payload:
+        type: object
+        properties:
+          listenerLife:
+            type: number
+            description: timestamp for listner close
+
+    ListenForWithdraw:
+       payload:
+        type: object
+        properties:
+          listenerLife:
+            type: number
+            description: timestamp for listner close
+
+
+    ListenForDeposit:
+       payload:
+        type: object
+        properties:
+          listenerLife:
+            type: number
+            description: timestamp for listner close
+
+    ListenForVerify:
+       payload:
+        type: object
+        properties:
+          listenerLife:
+            type: number
+            description: timestamp for listner close

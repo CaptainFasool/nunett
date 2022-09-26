@@ -18,7 +18,7 @@ message DhtContents {
 }
 
 message messageParams {
-    string peer_id=1;
+    string node_id=1;
     string message_content=2;
 }
 

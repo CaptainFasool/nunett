@@ -12,11 +12,12 @@ import (
     "github.com/gin-gonic/gin"
     "gitlab.com/nunet/firecracker-images/image-creator/rootfs"
     "gitlab.com/nunet/device-management-service/firecracker"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 
 func ProcessDeployement(kernel string, fs string){
-    url := firecracker.DMS_BASE_URL+"vm/start-default"
+    url := utils.DMS_BASE_URL+"vm/start-default"
     method := "POST"
     payload := fmt.Sprintf(`{
         "kernel_image_path":"%s",

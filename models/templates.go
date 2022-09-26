@@ -22,7 +22,7 @@ const ClientTemplate = `{
     },
     "enabled": "true",
     "servers": [
-      "nomad-nunetio.ddns.net:4647"
+      "nomad.nunet.io:4647"
     ],
     "reserved": {
       "cpu": {{ .ReservedCPU }},
@@ -164,7 +164,7 @@ const AdapterTemplate = `{
             "ReservedPorts": [
               {
                 "Label": "rpc",
-                "Value": 60778,
+                "Value": 60777,
                 "To": 0,
                 "HostNetwork": ""
               }

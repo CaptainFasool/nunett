@@ -3,6 +3,7 @@ package spo
 import (
 	"encoding/json"
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
@@ -19,7 +20,7 @@ func SearchDevice(c *gin.Context) {
 
 	err = json.Unmarshal(jsonBytes, &dht)
 	if err != nil {
-		log.Fatalf("Error unmarshalling data")
+		panic("Error unmarshalling data")
 	}
 
 	peers := adapter.PeersWithCardanoAllowed(dht.PeerMeta)
@@ -28,10 +29,29 @@ func SearchDevice(c *gin.Context) {
 	c.JSON(200, peers)
 }
 
-func DeployAuto(c *gin.Context) {
+// auto: will use a cardano firecracker golden image and takes in configuration parameters.
+// manual: will use a generic ubuntu firecracker golden image with docker installed in it to allow
+// the SPO to remotely connect and setup a cardano node with docker inside firecracker.
+func SendDeploymentRequest(c *gin.Context) {
+	// Send message to nodeID with REQUESTING_PEER_PUBKEY
+	nodeId := c.Param("nodeID")
 
-}
+	type DeploymentBody struct {
+		DeploymentType string `json:"deployment_type,omitempty"`
+	}
 
-func DeployManual(c *gin.Context) {
+	body := DeploymentBody{}
 
+	// deploymentType := c.Query("deployment_type")
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	response, err := adapter.SendMessage(nodeId, body.DeploymentType)
+	if err != nil {
+		panic("Error sending message")
+	}
+
+	c.JSON(200, response)
 }

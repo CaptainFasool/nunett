@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"fmt"
 	"time"
 
 	grpc "google.golang.org/grpc"
@@ -13,10 +14,10 @@ import (
 
 func fetchDht() (string, error) {
 	// Set up a connection to the server.
-	address := "localhost:9998"
+	address := "localhost:60777"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		panic(fmt.Sprintf("did not connect: %v", err))
 	}
 	defer conn.Close()
 
@@ -28,24 +29,18 @@ func fetchDht() (string, error) {
 	r, err := client.GetDhtContent(ctx, &GetDhtParams{})
 
 	if err != nil {
-		return "", errors.New("could not get dht contents")
+		return "", err
 	}
 
 	return r.GetDhtContents(), nil
 }
 
-func preProcessDht(contents []byte) (trimmed []byte) {
-	trimmed = bytes.ReplaceAll(contents, []byte("'"), []byte("\""))
-	return
-}
-
 func FetchDht() ([]byte, error) {
 	content, err := fetchDht()
 	if err != nil {
-		return nil, errors.New("error getting dht content")
+		return nil, err
 	}
 	b := []byte(content)
-	b = preProcessDht(b)
 
 	return b, nil
 }
@@ -68,4 +63,30 @@ func PeersWithCardanoAllowed(peers []Peer) []Peer {
 	}
 
 	return cardanoAllowedPeers
+}
+
+func SendMessage(nodeID string, message string) (string, error) {
+	// Set up a connection to the server.
+	address := "localhost:60777"
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		panic(fmt.Sprintf("did not connect: %v", err))
+	}
+	defer conn.Close()
+
+	client := NewNunetAdapterClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := client.SendMessage(ctx, &MessageParams{
+		NodeId:         nodeID,
+		MessageContent: message,
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return r.GetMessageResponse(), nil
 }

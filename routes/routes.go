@@ -40,9 +40,9 @@ func SetupRouter() *gin.Engine {
 	// SPO == Stake Pool Operator
 	spo := v1.Group("/spo")
 	{
-		spo.GET("/search_device", spoPackage.SearchDevice)
-		spo.GET("/req_cardano_deploy/:peerID/auto", spoPackage.DeployAuto)
-		spo.GET("/req_cardano_deploy/:peerID/manual", spoPackage.DeployManual)
+		spo.GET("/devices", spoPackage.SearchDevice)
+		// following route accept query param: deployment_type: auto/manual
+		spo.POST("/deploy/:nodeID", spoPackage.SendDeploymentRequest)
 	}
 
 	cardano_route := v1.Group("/trigger_cardano")
@@ -51,5 +51,6 @@ func SetupRouter() *gin.Engine {
 		cardano_route.GET("/:peerdID/auto", cardano.Deploy)
 	}
 	
+
 	return router
 }
