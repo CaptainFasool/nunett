@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	grpc "google.golang.org/grpc"
@@ -14,7 +13,7 @@ func fetchDht() (string, error) {
 	address := "localhost:60777"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		panic(fmt.Sprintf("did not connect: %v", err))
+		return "", err
 	}
 	defer conn.Close()
 
@@ -62,12 +61,26 @@ func PeersWithCardanoAllowed(peers []Peer) []Peer {
 	return cardanoAllowedPeers
 }
 
+func PeersWithGPU(peers []Peer) []Peer {
+	var peersWithGPU []Peer
+
+	for idx, peer := range peers {
+		if peer.PeerID.HasGPU == "true" {
+			peersWithGPU = append(peersWithGPU, peer)
+		}
+		_ = idx
+	}
+
+	return peersWithGPU
+}
+
 func SendMessage(nodeID string, message string) (string, error) {
 	// Set up a connection to the server.
 	address := "localhost:60777"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		panic(fmt.Sprintf("did not connect: %v", err))
+		// log.Fatalf("did not connect: %v", err)
+		return "", err
 	}
 	defer conn.Close()
 
