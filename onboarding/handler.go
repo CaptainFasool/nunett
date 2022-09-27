@@ -18,7 +18,7 @@ import (
 // @Tags         onboarding
 // @Produce      json
 // @Success      200  {array}        models.Metadata
-// @Router       /metadata [get]
+// @Router       /onboarding/metadata [get]
 func GetMetadata(c *gin.Context) {
 	// read the info
 	content, err := ioutil.ReadFile("/etc/nunet/metadataV2.json")
@@ -46,7 +46,7 @@ func GetMetadata(c *gin.Context) {
 // @Tags         onboarding
 // @Produce      json
 // @Success      200  {array}  models.Metadata
-// @Router       /onboard [post]
+// @Router       /onboarding/onboard [post]
 func Onboard(c *gin.Context) {
 	// check if request body is empty
 	if c.Request.ContentLength == 0 {
@@ -165,7 +165,7 @@ func SetPreferences(c *gin.Context) {
 // @Tags         onboarding
 // @Produce      json
 // @Success      200  {object}  models.Provisioned
-// @Router       /provisioned [get]
+// @Router       /onboarding/provisioned [get]
 func ProvisionedCapacity(c *gin.Context) {
 	c.JSON(http.StatusOK, GetTotalProvisioned())
 }
@@ -176,7 +176,7 @@ func ProvisionedCapacity(c *gin.Context) {
 // @Tags         onboarding
 // @Produce      json
 // @Success      200  {object}  models.AddressPrivKey
-// @Router       /address/new [get]
+// @Router       /onboarding/address/new [get]
 func CreatePaymentAddress(c *gin.Context) {
 	pair, err := GetAddressAndPrivateKey()
 	if err != nil {

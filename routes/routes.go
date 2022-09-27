@@ -2,9 +2,9 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/adapter/machines"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/onboarding"
-	spoPackage "gitlab.com/nunet/device-management-service/spo"
 )
 
 func SetupRouter() *gin.Engine {
@@ -36,12 +36,13 @@ func SetupRouter() *gin.Engine {
 		virtualmachine.POST("/from-config", firecracker.RunFromConfig)
 	}
 
-	// SPO == Stake Pool Operator
-	spo := v1.Group("/spo")
+	// spo and gpu endpoint will merge.
+	// devices endpoint will go away and exist as a function only
+
+	run := v1.Group("/run")
 	{
-		spo.GET("/devices", spoPackage.SearchDevice)
-		// following route accept query param: deployment_type: auto/manual
-		spo.POST("/deploy/:nodeID", spoPackage.SendDeploymentRequest)
+		run.POST("/deploy", machines.SendDeploymentRequest)
+		run.GET("/deploy/receive", machines.ReceiveDeploymentRequest)
 	}
 
 	return router
