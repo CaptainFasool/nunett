@@ -22,6 +22,7 @@ func SendDeploymentRequest(c *gin.Context) {
 
 	peers, err := SearchDevice(c, deploymentRequest.ServiceType)
 	if err != nil {
+		c.JSON(500, gin.H{"error": "no peers with specified spec was found"})
 		panic(err)
 	}
 
@@ -30,11 +31,13 @@ func SendDeploymentRequest(c *gin.Context) {
 
 	out, err := json.Marshal(deploymentRequest)
 	if err != nil {
+		c.JSON(500, gin.H{"error": "error converting deployment request body to string"})
 		panic(err)
 	}
 
 	response, err := adapter.SendMessage(selectedNode.PeerID.NodeID, string(out))
 	if err != nil {
+		c.JSON(500, gin.H{"error": "cannot send message to the peer"})
 		panic(err)
 	}
 
