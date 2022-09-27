@@ -44,7 +44,7 @@ func SendDeploymentRequest(c *gin.Context) {
 // ReceiveDeploymentRequest  godoc
 // @Summary      Receive the deployment message and do the needful.
 // @Description  Receives the deployment message from the message exchange. And do required actions based on the service_type.
-// @Tags         gpu
+// @Tags         run
 // @Produce      json
 // @Success      200  {string}	string
 // @Router       /run/deploy/receive [get]

@@ -138,7 +138,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "gpu"
+                    "run"
                 ],
                 "summary": "Receive the deployment message and do the needful.",
                 "responses": {
