@@ -25,7 +25,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/address/new": {
+        "/onboarding/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
                 "produces": [
@@ -45,75 +45,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/boot-source/:vmID": {
-            "put": {
-                "description": "Configure kernel for the VM.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Configures kernel for the VM.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/drives/:vmID": {
-            "put": {
-                "description": "Configures filesystem for the VM.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Configures filesystem for the VM.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/init/:vmID": {
-            "post": {
-                "description": "Starts the firecracker server for the specific VM. Further configuration are required.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Starts the VM booting process.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/machine-config/:vmID": {
-            "put": {
-                "description": "Configures system spec for the VM like CPU and Memory.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Configures system spec for the VM.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/metadata": {
+        "/onboarding/metadata": {
             "get": {
                 "description": "Responds with metadata of current provideer",
                 "produces": [
@@ -136,24 +68,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/network-interface/:vmID": {
-            "put": {
-                "description": "Configures network interface on the host.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Configures network interface on the host.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/onboard": {
+        "/onboarding/onboard": {
             "post": {
                 "description": "Onboard runs onboarding script given the amount of resources to onboard.",
                 "produces": [
@@ -176,7 +91,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/provisioned": {
+        "/onboarding/provisioned": {
             "get": {
                 "description": "Get total memory capacity in MB and CPU capacity in MHz.",
                 "produces": [
@@ -196,7 +111,132 @@ const docTemplate = `{
                 }
             }
         },
-        "/start-custom": {
+        "/run/deploy": {
+            "post": {
+                "description": "SendDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "run"
+                ],
+                "summary": "Search devices on DHT with appropriate machines and sends a deployment request.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/run/deploy/receive": {
+            "get": {
+                "description": "Receives the deployment message from the message exchange. And do required actions based on the service_type.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "run"
+                ],
+                "summary": "Receive the deployment message and do the needful.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/vm/boot-source/:vmID": {
+            "put": {
+                "description": "Configure kernel for the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures kernel for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/vm/drives/:vmID": {
+            "put": {
+                "description": "Configures filesystem for the VM.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures filesystem for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/vm/init/:vmID": {
+            "post": {
+                "description": "Starts the firecracker server for the specific VM. Further configuration are required.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Starts the VM booting process.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/vm/machine-config/:vmID": {
+            "put": {
+                "description": "Configures system spec for the VM like CPU and Memory.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures system spec for the VM.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/vm/network-interface/:vmID": {
+            "put": {
+                "description": "Configures network interface on the host.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vm"
+                ],
+                "summary": "Configures network interface on the host.",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/vm/start-custom": {
             "post": {
                 "description": "This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.",
                 "produces": [
@@ -213,7 +253,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/start-default": {
+        "/vm/start-default": {
             "post": {
                 "description": "This endpoint is an abstraction of all other endpoints. When invokend, it calls all other endpoints in a sequence.",
                 "produces": [
@@ -230,7 +270,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/start/:vmID": {
+        "/vm/start/:vmID": {
             "post": {
                 "description": "Start the VM.",
                 "produces": [
@@ -247,7 +287,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/stop/:vmID": {
+        "/vm/stop/:vmID": {
             "post": {
                 "description": "Stop the VM.",
                 "produces": [
@@ -352,7 +392,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.2",
+	Version:          "0.3.1",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
