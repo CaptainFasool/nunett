@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/cpu"
@@ -23,13 +24,6 @@ func QueryRunningVMs(DB *gorm.DB) []models.VirtualMachine {
 
 }
 
-// CalcUsedResources godoc
-// @Summary		Calculates Resources used by VMs
-// @Description	Calculates total CPU(Mhz) and Mem used by running VMs
-// @Tags		vm
-// @Produce 	json
-// @Success		200
-// TODO: update route @Router		/machine-config/:vmID [put]  ************************TODO*****************
 func CalcUsedResources(vms []models.VirtualMachine) (int, int) {
 	var tot_vcpu, tot_mem_size_mib, tot_cpu_mhz int
 	for i := 0; i < len(vms); i++ {
@@ -58,11 +52,24 @@ func GetMetadata() models.Metadata {
 	return metadata
 }
 
+// CalcFreeResources godoc
+// @Summary		Calculates free resources
+// @Description	Calculates total CPU(Mhz) and Mem available for use
+// @Tags		telemetry
+// @Produce 	json
+// @Success		200
+//@Router		/free [get]
 func GetFreeResource(c *gin.Context) {
 	vms := QueryRunningVMs(db.DB)
 
 	tot_cpu_mhz, tot_mem := CalcUsedResources(vms)
 
+	_, err := os.Stat("/etc/nunet/metadataV2.json")
+	if os.IsNotExist(err) {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "/etc/nunet/metadataV2.json does not exist. Is nunet onboarded successfully?"})
+		return
+	}
 	metadata := GetMetadata()
 	cpu_provisioned, mem_provisioned := metadata.Reserved.Cpu, metadata.Reserved.Memory
 
