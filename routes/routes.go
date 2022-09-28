@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter/machines"
 	"gitlab.com/nunet/device-management-service/firecracker"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
@@ -43,6 +44,11 @@ func SetupRouter() *gin.Engine {
 	{
 		run.POST("/deploy", machines.SendDeploymentRequest)
 		run.GET("/deploy/receive", machines.ReceiveDeploymentRequest)
+	}
+
+	tele := v1.Group("/telemetry")
+	{
+		tele.GET("/free", telemetry.GetFreeResource)
 	}
 
 	return router
