@@ -341,7 +341,7 @@ func StartCustom(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 	jsonBytes, _ = json.Marshal(networkInterfacesBody)
-	utils.MakeInternalRequest(c, "PUT", "/vm/network-interfaces/eth0", jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/network-interfaces/%d", vm.ID), jsonBytes)
 
 	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", vm.ID), jsonBytes)
 }
@@ -407,11 +407,12 @@ func StartDefault(c *gin.Context) {
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
 	// TODO: vCPU and memory has to be estimated based on how much capacity is remaining in nunet quota
-	machineConfigBody.MemSizeMib = 256
+	machineConfigBody.MemSizeMib = 1024
 	machineConfigBody.VCPUCount = 2
-	vm.MemSizeMib = 256
+	vm.MemSizeMib = 1024
 	vm.VCPUCount = 2
 	result = db.DB.Save(&vm)
+
 	if result.Error != nil {
 		panic(result.Error)
 	}
@@ -425,7 +426,7 @@ func StartDefault(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 	jsonBytes, _ = json.Marshal(networkInterfacesBody)
-	utils.MakeInternalRequest(c, "PUT", "/vm/network-interfaces/eth0", jsonBytes)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/network-interfaces/%d", vm.ID), jsonBytes)
 
 	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/start/%d", vm.ID), jsonBytes)
 }
