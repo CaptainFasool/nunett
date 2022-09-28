@@ -75,8 +75,10 @@ func GetFreeResource(c *gin.Context) {
 
 	var freeResource models.FreeResources
 	fmt.Printf("Provisioned cpu %d", cpu_provisioned)
+	fmt.Printf("Provisioned mem %d", mem_provisioned)
+	fmt.Printf("Total mem %d", tot_mem)
 	freeResource.CPU = float64(cpu_provisioned) - float64(tot_cpu_mhz)
-	freeResource.Memory = uint64(mem_provisioned) - uint64(tot_mem)
+	freeResource.Memory = int64(mem_provisioned) - int64(tot_mem)
 	fmt.Printf("USED --- %d", tot_cpu_mhz)
 	c.JSON(http.StatusOK, freeResource)
 
