@@ -48,7 +48,7 @@ do
     # including firecracker ends
 
     find $archDir -name .gitkeep | xargs rm
-
+    chmod -R 755 $archDir
     dpkg-deb --build --root-owner-group $archDir $outputDir
 
     rm -r $archDir
