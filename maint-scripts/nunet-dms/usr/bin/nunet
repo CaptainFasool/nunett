@@ -170,6 +170,9 @@ onboard() {
     N_AVAILABLE_RES=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/provisioned)
     N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
     N_AVAILABLE_CPU=$(echo $N_AVAILABLE_RES | jq ".cpu")
+    N_AVAILABLE_CPU=$(printf "%.0f" $(echo $N_AVAILABLE_CPU | bc)) # rounding in case of decimal values cpu freq such as cloud
+    echo "MeMORY = $N_AVAILABLE_MEM"
+    echo "CPU = $N_AVAILABLE_CPU"
     if [[ N_ONBOARD_MEM -gt $((N_AVAILABLE_MEM*9/10)) || N_ONBOARD_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
         printf "${BAD_C}Memory should be between 10%% and 90%% of the available memory ($((N_AVAILABLE_MEM/10)) and $((N_AVAILABLE_MEM*9/10))) ${NORMAL_C}\n"
         printf "${INFO_C}Check available resources with 'nunet available --pretty'${NORMAL_C}\n"
