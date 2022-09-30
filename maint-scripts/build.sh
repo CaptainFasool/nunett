@@ -35,7 +35,9 @@ do
     cp -r $projectRoot/maint-scripts/nunet-dms $archDir
     sed -i "s/Version:.*/Version: $version/g" $archDir/DEBIAN/control
     sed -i "s/Architecture:.*/Architecture: $arch/g" $archDir/DEBIAN/control
+    go version # redundant check of go version
     env GOOS=linux GOARCH=$arch go build -o $archDir/usr/bin/nunet-dms
+    ls -R $archDir/usr # to allow checking all files are where they're supposed to be
 
     gcc $projectRoot/maint-scripts/config_network.c -o $archDir/usr/bin/nunet-tap-config
 
