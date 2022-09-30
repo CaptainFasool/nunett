@@ -123,8 +123,6 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
-	CreateClientConfig(c, &metadata, &capacityForNunet, hostname)
-
 	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
 
 	c.JSON(http.StatusCreated, metadata)

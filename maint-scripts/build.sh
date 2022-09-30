@@ -6,9 +6,9 @@
 
 # INSTALLATION PROCESS
 
-# 1. Install Nomad and Docker.
+# 1. Install Docker.
 # 2. Create a nunet user. This user will be used to run the device-management-service. This user will have access to write to /etc/nunet.
-# 3. Get nomad-client.service and nunet-dms.service. Copy it to appropriate location. Make sure they are run at the end of the installation process.
+# 3. Get nunet-dms.service. Copy it to appropriate location. Make sure it is run at the end of the installation process.
 
 # UNINSTALLATION PROCESS
 # 1. Stop services and remove service files.
