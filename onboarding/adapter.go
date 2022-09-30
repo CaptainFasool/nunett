@@ -50,34 +50,35 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 		panic(err)
 	}
 
-	log.Println("Start pulling nunet-adapter image")
+	log.Println("[DMS Adapter] Start pulling nunet-adapter image")
 	reader, err := cli.ImagePull(c, fmt.Sprintf("%s:%s", adapterImage, adapterImageTag), types.ImagePullOptions{})
 	if err != nil {
 		panic(err)
 	}
 	io.Copy(ioutil.Discard, reader)
-	log.Println("Done pulling nunet-adapter image")
+	log.Println("[DMS Adapter] Done pulling nunet-adapter image")
 
 	envVars := []string{fmt.Sprintf("tokenomics_api_name=%s", tokenomicsApiName),
 						fmt.Sprintf("deployment_type=%s", deploymentType)}
 
 	contConfig := container.Config{
-		Image:        fmt.Sprintf("%s:%s", adapterImage, adapterImageTag),
-		Env: 		  envVars,
-		Hostname:     adapterName,
+		Image:       fmt.Sprintf("%s:%s", adapterImage, adapterImageTag),
+		Env:         envVars,
+		Hostname:    adapterName,
+		Cmd:         []string{"python", "nunet_adapter.py", "60777"},
 	}
 
 	hostConfig := container.HostConfig{}
 	hostConfig.NetworkMode = container.NetworkMode("host")
 
-	log.Println("Creating NuNet Adapter container")
+	log.Println("[DMS Adapter] Creating NuNet Adapter container")
 	resp, err := cli.ContainerCreate(c, &contConfig, &hostConfig, nil, nil, adapterName)
 
 	if err != nil {
 		panic(err)
 	}
-	log.Println("Created NuNet Adapter container")
-	log.Println("Starting NuNet Adapter container")
+	log.Println("[DMS Adapter] Created NuNet Adapter container")
+	log.Println("[DMS Adapter] Starting NuNet Adapter container")
 	if err := cli.ContainerStart(c, resp.ID, types.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
