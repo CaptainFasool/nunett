@@ -8,6 +8,7 @@ USER=nunet
 adduser --system --no-create-home --quiet $USER
 addgroup --system $USER
 adduser $USER $USER
+adduser $USER docker
 
 # Give above user access to write to /etc/nunet
 chown -R $USER:$USER /etc/nunet
