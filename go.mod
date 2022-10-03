@@ -1,6 +1,6 @@
 module gitlab.com/nunet/device-management-service
 
-go 1.18
+go 1.19
 
 require (
 	github.com/docker/cli v20.10.18+incompatible
