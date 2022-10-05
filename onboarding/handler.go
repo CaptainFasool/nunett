@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"os"
 	"time"
-
 	"github.com/gin-gonic/gin"
-
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -125,19 +123,7 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
-	CreateClientConfig(c, &metadata, &capacityForNunet, hostname)
-	CreateAdapterConfig(c, &metadata, cardanoPassive, hostname)
-
-	var adapterPrefix string
-	if metadata.Network == "nunet-development" {
-		adapterPrefix = "testing-nunet-adapter"
-	}
-	if metadata.Network == "nunet-private-alpha" {
-		adapterPrefix = "nunet-adapter"
-	}
-
-	jobName := adapterPrefix + "-" + hostname
-	RunNomadJob(c, jobName)
+	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
 
 	c.JSON(http.StatusCreated, metadata)
 }

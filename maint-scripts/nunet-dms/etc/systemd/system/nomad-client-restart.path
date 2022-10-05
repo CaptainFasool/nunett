@@ -1,5 +1,0 @@
-[Path]
-PathChanged=/etc/nunet/clientV2.json
-
-[Install]
-WantedBy=multi-user.target
