@@ -6,9 +6,9 @@
 
 # INSTALLATION PROCESS
 
-# 1. Install Nomad and Docker.
+# 1. Install Docker.
 # 2. Create a nunet user. This user will be used to run the device-management-service. This user will have access to write to /etc/nunet.
-# 3. Get nomad-client.service and nunet-dms.service. Copy it to appropriate location. Make sure they are run at the end of the installation process.
+# 3. Get nunet-dms.service. Copy it to appropriate location. Make sure it is run at the end of the installation process.
 
 # UNINSTALLATION PROCESS
 # 1. Stop services and remove service files.
@@ -35,7 +35,9 @@ do
     cp -r $projectRoot/maint-scripts/nunet-dms $archDir
     sed -i "s/Version:.*/Version: $version/g" $archDir/DEBIAN/control
     sed -i "s/Architecture:.*/Architecture: $arch/g" $archDir/DEBIAN/control
+    go version # redundant check of go version
     env GOOS=linux GOARCH=$arch go build -o $archDir/usr/bin/nunet-dms
+    ls -R $archDir/usr # to allow checking all files are where they're supposed to be
 
     gcc $projectRoot/maint-scripts/config_network.c -o $archDir/usr/bin/nunet-tap-config
 
