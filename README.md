@@ -11,7 +11,6 @@ Operations done via Device Management Service (DMS) depends on packages such as:
 - docker
 - iptables
 - ip
-- nomad
 
 For end users, these are installed as part of .deb package. these prerequisites will be taken care of, otherwise, you need to install them manually.
 

@@ -18,12 +18,6 @@ if [ -f "/etc/systemd/system/nunet-dms.service" ];then
     rm /etc/systemd/system/nunet-dms.service
 fi
 
-if [ -f "/etc/systemd/system/nomad-client.service" ];then
-    systemctl stop nomad-client.service
-    rm /etc/systemd/system/nomad-client.service
-fi
-
-
 echo "Looking for old versions of nunet-dms ..."
 
 if [ -f "/usr/bin/nunet-dms" ];then
