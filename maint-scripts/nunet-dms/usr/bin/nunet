@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #
 ## @file        nunet
 ## @author      Dagim Sisay <dagim@nunet.io>
@@ -15,6 +15,7 @@ SELF_NAME=$(basename $0)
 
 DMS_HOST=localhost
 DMS_PORT=9999
+ADAPTER_PORT=60777
 
 usage() {
     echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
@@ -26,7 +27,8 @@ usage() {
     echo "  available     Display available resources"
     echo "  wallet        Get Current Wallet Address"
     echo "  onboard       Onboard the device to NuNet"
-    echo -e "  info       Get info about currently onboarded machine\n"
+    echo "  info          Get info about currently onboarded machine"
+    echo -e "  peer          Interact with currently visible peers\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -68,6 +70,15 @@ onboard_usage() {
     exit
 }
 
+peer_usage() {
+    echo -e "Usage: $SELF_NAME peer COMMAND [OPTIONS] \n"
+    echo -e "Interact with connected peers.\n"
+    echo "Commands:"
+    echo -e "  list         List visible peers.\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
 available() {
     if [[ ${#@} -ge 3 ]] ; then
         printf "\n${BAD_C}Wrong number of arguments to 'available' command${NORMAL_C}\n"
@@ -89,7 +100,7 @@ available() {
             esac
         done
     fi
-    
+
     N_C_OUT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/provisioned)
     if [[ $NPRETTY_OUT -eq 1 ]] ; then
         echo $N_C_OUT | jq
@@ -122,7 +133,7 @@ wallet() {
             esac
         done
     fi
-    
+
     if [[ N_CREATE_WALLET == "" ]] ; then
         printf "${BAD_C}Not yet implemented. Only 'wallet new' at this time.${NORMAL_C}\n"
         wallet_usage
@@ -144,7 +155,7 @@ onboard() {
     if [[ ${#@} -le 1 ]] ; then
         onboard_usage
     fi
-    
+
     while :
         do
             case "$1" in
@@ -197,7 +208,7 @@ onboard() {
             [[ -z $N_ONBOARD_PRETTY ]] && echo $N_ONBOARD_RESPONSE || echo $N_ONBOARD_RESPONSE | jq
         fi
     fi
-    
+
 }
 
 info() {
@@ -210,6 +221,35 @@ info() {
     fi
 }
 
+peer() {
+    check_adapter_run
+    if [[ ${#@} -ge 2 || ${#@} -lt 1 ]] ; then
+        peer_usage
+    else
+        avargs=($@)
+        for avarg in "${avargs[@]}"; do
+            case $avarg in
+                "list")
+                    N_LIST_PEERS=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers)
+                    ;;
+                *)
+                    printf "${BAD_C}Bad argument \"$avarg\" for 'peer' Command. ${NORMAL_C}\n\n"
+                    peer_usage
+                    exit
+                    ;;
+            esac
+        done
+    fi
+
+    N_LIST_PEERS_ERR_MSG=$(echo $N_LIST_PEERS | jq '. | select(.error != null) | .error')
+    if [[ ! -z $N_LIST_PEERS_ERR_MSG ]] ; then
+        printf "${BAD_C}Error: $N_LIST_PEERS_ERR_MSG ${NORMAL_C}\n"
+    elif [[ N_LIST_PEERS == "" ]] ; then
+        printf "${BAD_C}No peers available. Please try again in a few minutes.${NORMAL_C}\n"
+    else
+        echo $N_LIST_PEERS | jq --raw-output '["Node-ID", "Public-Key"], ["-------", "----------"], (.[] | [.peer_info.nodeID, .peer_info.public_key]) | @tsv' | column -t
+    fi
+}
 
 check_dms_run() {
     N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":$DMS_PORT")
@@ -220,8 +260,16 @@ check_dms_run() {
     fi
 }
 
+check_adapter_run() {
+    N_CHECK_ADAPTER=$(ss -tnlp 2>/dev/null | grep ":$ADAPTER_PORT")
+    if [[ ! $? -eq 0 ]] ; then
+        printf "${BAD_C}Looks like NuNet Adapter is not running."
+        printf "Please check with ${INFO_C}'docker ps -a | grep adapter'${NORMAL_C}\n"
+        exit
+    fi
+}
 
-cmds=("available" "wallet" "onboard" "info")
+cmds=("available" "wallet" "onboard" "info" "peer")
 
 if [ $# -eq  0 ] ; then
     usage

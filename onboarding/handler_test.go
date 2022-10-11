@@ -2,7 +2,7 @@ package onboarding_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,7 +20,7 @@ func TestCreatePaymentAddressRoute(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	resp := w.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Contains(t, string(body), "address")

@@ -1,18 +1,17 @@
 package onboarding
 
 import (
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
 	"fmt"
-	"log"
-	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-
+	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/models"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
 )
 
 func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.MetadataV2, cardanoPassive string) {
@@ -59,13 +58,13 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 	log.Println("[DMS Adapter] Done pulling nunet-adapter image")
 
 	envVars := []string{fmt.Sprintf("tokenomics_api_name=%s", tokenomicsApiName),
-						fmt.Sprintf("deployment_type=%s", deploymentType)}
+		fmt.Sprintf("deployment_type=%s", deploymentType)}
 
 	contConfig := container.Config{
-		Image:       fmt.Sprintf("%s:%s", adapterImage, adapterImageTag),
-		Env:         envVars,
-		Hostname:    adapterName,
-		Cmd:         []string{"python", "nunet_adapter.py", "60777"},
+		Image:    fmt.Sprintf("%s:%s", adapterImage, adapterImageTag),
+		Env:      envVars,
+		Hostname: adapterName,
+		Cmd:      []string{"python", "nunet_adapter.py", "60777"},
 	}
 
 	hostConfig := container.HostConfig{}

@@ -2,7 +2,6 @@ package onboarding
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -19,7 +18,7 @@ import (
 // @Router       /onboarding/metadata [get]
 func GetMetadata(c *gin.Context) {
 	// read the info
-	content, err := ioutil.ReadFile("/etc/nunet/metadataV2.json")
+	content, err := os.ReadFile("/etc/nunet/metadataV2.json")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
 			gin.H{"error": "metadata.json does not exists or not readable"})
@@ -116,7 +115,7 @@ func Onboard(c *gin.Context) {
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
-	err = ioutil.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
 	if err != nil {
 		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "cound not write metadata.json"})
@@ -126,23 +125,6 @@ func Onboard(c *gin.Context) {
 	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
 
 	c.JSON(http.StatusCreated, metadata)
-}
-
-// Echo responds back with same JSON it has received.
-func Echo(c *gin.Context) {
-	var json map[string]interface{}
-	c.BindJSON(&json)
-	c.JSON(http.StatusOK, json)
-}
-
-// DeviceUsage streams device resources usage to client.
-func DeviceUsage(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "will stream device usage"})
-}
-
-// SetPreferences set preferences.
-func SetPreferences(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "will set preferences to distributed persistent system"})
 }
 
 // ProvisionedCapacity      godoc
