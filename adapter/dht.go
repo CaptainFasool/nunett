@@ -2,18 +2,19 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func fetchDht() (string, error) {
+func fetchDhtContents() (*DhtContents, error) {
 	// Set up a connection to the server.
 	address := "localhost:60777"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer conn.Close()
 
@@ -25,18 +26,50 @@ func fetchDht() (string, error) {
 	r, err := client.GetDhtContent(ctx, &GetDhtParams{})
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return r.GetDhtContents(), nil
+	return r, nil
 }
 
-func FetchDht() ([]byte, error) {
-	content, err := fetchDht()
+// FetchMachines returns Machines on DHT.
+func FetchMachines() (Machines, error) {
+	dhtContent, err := fetchDhtContents()
 	if err != nil {
 		return nil, err
 	}
-	b := []byte(content)
+	machinesByte := []byte(dhtContent.GetMachinesIndex())
+
+	var machines Machines
+
+	err = json.Unmarshal(machinesByte, &machines)
+	if err != nil {
+		return nil, err
+	}
+
+	return machines, nil
+}
+
+// FetchAvailableResources returns AvailableResources on DHT.
+// TODO: Return actual struct, not bytes; check FetchMachines
+func FetchAvailableResources() ([]byte, error) {
+	dhtContent, err := fetchDhtContents()
+	if err != nil {
+		return nil, err
+	}
+	b := []byte(dhtContent.GetAvailableResourcesIndex())
+
+	return b, nil
+}
+
+// FetchServices returns Services on DHT.
+// TODO: Return actual struct, not bytes; check FetchMachines
+func FetchServices() ([]byte, error) {
+	dhtContent, err := fetchDhtContents()
+	if err != nil {
+		return nil, err
+	}
+	b := []byte(dhtContent.GetServicesIndex())
 
 	return b, nil
 }
@@ -52,7 +85,7 @@ func PeersWithCardanoAllowed(peers []Peer) []Peer {
 	var cardanoAllowedPeers []Peer
 
 	for idx, peer := range peers {
-		if peer.PeerID.AllowCardano == "true" {
+		if peer.AllowCardano == "True" {
 			cardanoAllowedPeers = append(cardanoAllowedPeers, peer)
 		}
 		_ = idx
@@ -65,7 +98,7 @@ func PeersWithGPU(peers []Peer) []Peer {
 	var peersWithGPU []Peer
 
 	for idx, peer := range peers {
-		if peer.PeerID.HasGPU == "true" {
+		if peer.HasGpu == "True" {
 			peersWithGPU = append(peersWithGPU, peer)
 		}
 		_ = idx

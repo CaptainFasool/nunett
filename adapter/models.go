@@ -1,36 +1,51 @@
 package adapter
 
-type NodeId string
+// This file replicates the schema of DHTContents for marshaling and unmarshaling
+// Currently, the entire schema is divided into 3 parts:
+// 1. Machines Index
+// 2. Available Resources Index
+// 3. Services Index
+
+// 1. Machines Index
 type IP []any
 
-type PeerAddr IP
-
-type PeerID struct {
-	NodeID       string `json:"nodeID,omitempty"`
-	Key          string `json:"key,omitempty"`
-	Mid          string `json:"mid,omitempty"`
-	PublicKey    string `json:"public_key,omitempty"`
-	Address      IP     `json:"_address,omitempty"`
-	AllowCardano string `json:"allow_cardano,omitempty"`
-	HasGPU       string `json:"has_gpu,omitempty"`
+type PeerInfo struct {
+	NodeID    string `json:"nodeID,omitempty"`
+	Key       string `json:"key,omitempty"`
+	Mid       string `json:"mid,omitempty"`
+	PublicKey string `json:"public_key,omitempty"`
+	Address   IP     `json:"_address,omitempty"`
 }
 
-type Service struct {
-	ServiceInput  string `json:"service_input,omitempty"`
-	ServiceOutput string `json:"service_output,omitempty"`
-	Price         int    `json:"price,omitempty"`
+type AvailableResource struct {
+	CpuNo     int    `json:"cpu_no"`
+	CpuHz     int    `json:"cpu_hz"`
+	PriceCpu  string `json:"price_cpu"`
+	Ram       int    `json:"ram"`
+	PriceRam  string `json:"price_ram"`
+	Vcpu      string `json:"vcpu"`
+	Disk      string `json:"disk"`
+	PriceDisk string `json:"price_disk"`
+}
+
+type GpuInfo struct {
+	Name string `json:"name,omitempty"`
+	Vram string `json:"vram,omitempty"`
 }
 
 type Peer struct {
-	PeerID    PeerID    `json:"peer_id,omitempty"`
-	IPAddrs   IP        `json:"ip_addrs,omitempty"`
-	Services  []Service `json:"services,omitempty"`
-	Timestamp uint32    `json:"timestamp,omitempty"`
+	PeerInfo             PeerInfo          `json:"peer_info,omitempty"`
+	IPAddr               IP                `json:"ip_addr,omitempty"`
+	AvailableResources   AvailableResource `json:"available_resources,omitempty"`
+	TokenomicsAdress     string            `json:"tokenomics_adress,omitempty"`
+	TokenomicsBlockchain string            `json:"tokenomics_blockchain,omitempty"`
+	HasGpu               string            `json:"has_gpu,omitempty"`
+	AllowCardano         string            `json:"allow_cardano,omitempty"`
+	GpuInfo              GpuInfo           `json:"gpu_info,omitempty"`
+	Timestamp            uint32            `json:"timestamp,omitempty"`
 }
 
-type DHT struct {
-	NodeIds    []NodeId   `json:"node_ids,omitempty"`
-	PeerAddrs  []PeerAddr `json:"peer_addrs,omitempty"`
-	PeerMeta   []Peer     `json:"peer_meta,omitempty"`
-	Tokenomics IP         `json:"tokenomics,omitempty"`
-}
+type Machines map[string]Peer
+
+// TODO: 2. Available Resources Index
+// TODO: 3. Services Index

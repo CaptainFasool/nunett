@@ -35,7 +35,7 @@ func SendDeploymentRequest(c *gin.Context) {
 		panic(err)
 	}
 
-	response, err := adapter.SendMessage(selectedNode.PeerID.NodeID, string(out))
+	response, err := adapter.SendMessage(selectedNode.PeerInfo.NodeID, string(out))
 	if err != nil {
 		c.JSON(500, gin.H{"error": "cannot send message to the peer"})
 		panic(err)
@@ -57,4 +57,21 @@ func ReceiveDeploymentRequest(c *gin.Context) {
 	// where when a message is received, this endpoint is triggered.
 
 	// TODO: Check the service_type and act according to it.
+}
+
+// ListPeers  godoc
+// @Summary      Return list of peers currently connected to
+// @Description  Gets a list of peers the adapter can see within the network and return a list of peer info
+// @Tags         run
+// @Produce      json
+// @Success      200  {string}	string
+// @Router       /peer/list [get]
+func ListPeers(c *gin.Context) {
+	response, err := adapter.FetchMachines()
+    if err != nil {
+        c.JSON(500, gin.H{"error": "can not fetch peers"})
+        panic(err)
+    }
+    c.JSON(200, response)
+
 }
