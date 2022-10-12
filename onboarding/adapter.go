@@ -41,6 +41,11 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 	adapterImage := "registry.gitlab.com/nunet/nunet-adapter"
 	adapterName := adapterPrefix + "-" + hostname
 
+    // truncate adapter name to less than 60 characters for issue #56
+	if len(adapterName) > 60 {
+		adapterName = adapterName[:60]
+	}
+
 	// XXX might be best to generalize gpu/docker.go and use functions from there
 	//     implementing afresh here because of gpu specifity there and no networking
 	// XXX would also be good to log adapter's output with a rotating log
