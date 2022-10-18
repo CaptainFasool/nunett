@@ -109,7 +109,7 @@ func PeersWithGPU(peers []Peer) []Peer {
 
 func SendMessage(nodeID string, message string) (string, error) {
 	// Set up a connection to the server.
-	address := "localhost:60777"
+	address := "localhost:9998"
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		// log.Fatalf("did not connect: %v", err)

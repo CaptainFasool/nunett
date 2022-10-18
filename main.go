@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"gitlab.com/nunet/device-management-service/db"
+	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/routes"
-
-	_ "gitlab.com/nunet/device-management-service/docs"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -33,6 +32,9 @@ func main() {
 	wg.Add(1)
 
 	go startServer(wg)
+
+	// Poll messages from the adapter
+	// go machines.ReceiveDeploymentRequest()
 
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)

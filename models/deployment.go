@@ -1,5 +1,9 @@
 package models
 
+import (
+	"time"
+)
+
 type DeploymentRequest struct {
 	AddressUser string `json:"address_user"`
 	MaxNtx      string `json:"max_ntx"`
@@ -17,4 +21,11 @@ type DeploymentRequest struct {
 		Power string `json:"power"`
 		Time  string `json:"time"`
 	} `json:"constraints"`
+	Timestamp time.Time
+}
+
+type DeploymentResponse struct {
+	NodeId  string
+	Success bool
+	Content string
 }

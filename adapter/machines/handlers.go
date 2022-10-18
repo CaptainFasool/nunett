@@ -2,6 +2,7 @@ package machines
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
@@ -28,7 +29,7 @@ func SendDeploymentRequest(c *gin.Context) {
 
 	// pick a peer from the list and send a message to the nodeID of the peer.
 	selectedNode := peers[0]
-
+	deploymentRequest.Timestamp = time.Now()
 	out, err := json.Marshal(deploymentRequest)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "error converting deployment request body to string"})
@@ -51,12 +52,12 @@ func SendDeploymentRequest(c *gin.Context) {
 // @Produce      json
 // @Success      200  {string}	string
 // @Router       /run/deploy/receive [get]
-func ReceiveDeploymentRequest(c *gin.Context) {
+func ReceiveDeploymentRequest() {
 	// The current implementation of the system is to poll message exchange for any
 	// new message. This should be replaced with something similar observer pattern
 	// where when a message is received, this endpoint is triggered.
 
-	// TODO: Check the service_type and act according to it.
+	adapter.PollAdapter()
 }
 
 // ListPeers  godoc
@@ -68,10 +69,10 @@ func ReceiveDeploymentRequest(c *gin.Context) {
 // @Router       /peer/list [get]
 func ListPeers(c *gin.Context) {
 	response, err := adapter.FetchMachines()
-    if err != nil {
-        c.JSON(500, gin.H{"error": "can not fetch peers"})
-        panic(err)
-    }
-    c.JSON(200, response)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "can not fetch peers"})
+		panic(err)
+	}
+	c.JSON(200, response)
 
 }
