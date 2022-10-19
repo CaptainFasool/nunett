@@ -46,7 +46,6 @@ func SetupRouter() *gin.Engine {
 	run := v1.Group("/run")
 	{
 		run.POST("/deploy", machines.SendDeploymentRequest)
-		// run.GET("/deploy/receive", machines.ReceiveDeploymentRequest)
 	}
 
 	tele := v1.Group("/telemetry")

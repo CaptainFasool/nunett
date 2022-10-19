@@ -2,13 +2,14 @@ package machines
 
 import (
 	"encoding/json"
+	"net/http"
 	"time"
 
+	"context"
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel"
-	"context"
 )
 
 // SendDeploymentRequest  godoc
@@ -20,11 +21,21 @@ import (
 // @Router       /run/deploy [post]
 func SendDeploymentRequest(c *gin.Context) {
 	// parse the body, get service type, and filter devices
-	var deploymentRequest models.DeploymentRequest
-	
-	c.BindJSON(&deploymentRequest)
+	var depReq models.DeploymentRequest
+	if err := c.ShouldBindJSON(&depReq); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "invalid deployment request body",
+		})
+	}
 
-	peers, err := SearchDevice(c, deploymentRequest.ServiceType)
+	// check if the pricing matched
+	if estimatedNtx := CalculateStaticNtxGpu(depReq); estimatedNtx > float64(depReq.MaxNtx) {
+		c.JSON(406, gin.H{"error": "nunet estimation price is greater than client price"})
+		return
+	}
+
+	// filter peers based on passed criteria
+	peers, err := FilterPeers(c, depReq)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "no peers with specified spec was found"})
 		panic(err)
@@ -34,16 +45,17 @@ func SendDeploymentRequest(c *gin.Context) {
 	_, span := otel.Tracer("SendDeploymentRequest").Start(context.Background(), "SendDeploymentRequest")
 	defer span.End()
 
-	//extract a span context parameters , so that a child span constructed on the reciever side 
-	deploymentRequest.TraceInfo.SpanID=span.SpanContext().TraceID().String()
-	deploymentRequest.TraceInfo.TraceID=span.SpanContext().SpanID().String()
-	deploymentRequest.TraceInfo.TraceFlags=span.SpanContext().TraceFlags().String()
-	deploymentRequest.TraceInfo.TraceStates=span.SpanContext().TraceState().String()
+	//extract a span context parameters , so that a child span constructed on the reciever side
+	depReq.TraceInfo.SpanID = span.SpanContext().TraceID().String()
+	depReq.TraceInfo.TraceID = span.SpanContext().SpanID().String()
+	depReq.TraceInfo.TraceFlags = span.SpanContext().TraceFlags().String()
+	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
 	// pick a peer from the list and send a message to the nodeID of the peer.
 	selectedNode := peers[0]
-	deploymentRequest.Timestamp = time.Now()
-	out, err := json.Marshal(deploymentRequest)
+	depReq.Timestamp = time.Now()
+	out, err := json.Marshal(depReq)
+
 	if err != nil {
 		c.JSON(500, gin.H{"error": "error converting deployment request body to string"})
 		panic(err)
@@ -54,23 +66,8 @@ func SendDeploymentRequest(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "cannot send message to the peer"})
 		panic(err)
 	}
-	
+
 	c.JSON(200, response)
-}
-
-// ReceiveDeploymentRequest  godoc
-// @Summary      Receive the deployment message and do the needful.
-// @Description  Receives the deployment message from the message exchange. And do required actions based on the service_type.
-// @Tags         run
-// @Produce      json
-// @Success      200  {string}	string
-// @Router       /run/deploy/receive [get]
-func ReceiveDeploymentRequest() {
-	// The current implementation of the system is to poll message exchange for any
-	// new message. This should be replaced with something similar observer pattern
-	// where when a message is received, this endpoint is triggered.
-
-	adapter.PollAdapter()
 }
 
 // ListPeers  godoc
