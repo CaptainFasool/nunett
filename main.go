@@ -37,7 +37,7 @@ func main() {
 	go startServer(wg)
 
 	// Poll messages from the adapter
-	// go machines.ReceiveDeploymentRequest()
+	// go adapter.PollAdapter()
 
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"gitlab.com/nunet/device-management-service/models"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -39,6 +40,7 @@ func FetchMachines() (Machines, error) {
 		return nil, err
 	}
 	machinesByte := []byte(dhtContent.GetMachinesIndex())
+	// machinesByte, err := os.ReadFile("/tmp/machine_index.json")
 
 	var machines Machines
 
@@ -74,13 +76,8 @@ func FetchServices() ([]byte, error) {
 	return b, nil
 }
 
-func PeersNonBusy(peers []Peer) []Peer {
-	// TODO: Not Implemented. Implementation is deferred when DHT/peers have data related to
-	// resource onboarded vs resource already used. This will only happen when adapter is
-	// re-written using Golang (libp2p).
-	return peers
-}
-
+// PeersWithCardanoAllowed is a filter function which returns a slice of
+// Peer based on allow_cardano metadata on peer.
 func PeersWithCardanoAllowed(peers []Peer) []Peer {
 	var cardanoAllowedPeers []Peer
 
@@ -94,6 +91,8 @@ func PeersWithCardanoAllowed(peers []Peer) []Peer {
 	return cardanoAllowedPeers
 }
 
+// PeersWithGPU is a filter function which returns a slice of
+// Peer based on has_gpu metadata on peer.
 func PeersWithGPU(peers []Peer) []Peer {
 	var peersWithGPU []Peer
 
@@ -107,6 +106,25 @@ func PeersWithGPU(peers []Peer) []Peer {
 	return peersWithGPU
 }
 
+// PeersWithMatchingSpec takes in a depReq which has minimum spec specified to
+// run a job. Then it matches it against the peers available.
+func PeersWithMatchingSpec(peers []Peer, depReq models.DeploymentRequest) []Peer {
+	constraints := depReq.Constraints
+
+	var peersWithMachingSpec []Peer
+
+	for _, peer := range peers {
+		prAvRes := peer.AvailableResources
+		if prAvRes.CpuHz > constraints.CPU && prAvRes.Ram > constraints.RAM {
+			peersWithMachingSpec = append(peersWithMachingSpec, peer)
+		}
+	}
+
+	return peersWithMachingSpec
+}
+
+// SendMessage takes in a nodeID of a node from the P2P network and posts a message
+// to it. `message` is supposed to be a JSON marshalled in string.
 func SendMessage(nodeID string, message string) (string, error) {
 	// Set up a connection to the server.
 	address := "localhost:9998"

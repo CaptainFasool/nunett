@@ -3,10 +3,11 @@ package machines
 import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
+	"gitlab.com/nunet/device-management-service/models"
 )
 
-// SearchDevice searches for available compute providers given specific parameters.
-func SearchDevice(c *gin.Context, serviceType string) ([]adapter.Peer, error) {
+// FilterPeers searches for available compute providers given specific parameters in depReq.
+func FilterPeers(c *gin.Context, depReq models.DeploymentRequest) ([]adapter.Peer, error) {
 	machines, err := adapter.FetchMachines()
 	if err != nil {
 		return nil, err
@@ -20,15 +21,14 @@ func SearchDevice(c *gin.Context, serviceType string) ([]adapter.Peer, error) {
 		i++
 	}
 
-	if serviceType == "gpu" {
+	peers = adapter.PeersWithMatchingSpec(peers, depReq)
+	if depReq.ServiceType == "ml-training-gpu" {
 		peers = adapter.PeersWithGPU(peers)
 	}
 
-	if serviceType == "cardano" {
+	if depReq.ServiceType == "cardano_node" {
 		peers = adapter.PeersWithCardanoAllowed(peers)
 	}
-
-	peers = adapter.PeersNonBusy(peers)
 
 	return peers, nil
 }
