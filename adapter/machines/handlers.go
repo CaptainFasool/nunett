@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/models"
+	"go.opentelemetry.io/otel"
+	"context"
 )
 
 // SendDeploymentRequest  godoc
@@ -19,6 +21,7 @@ import (
 func SendDeploymentRequest(c *gin.Context) {
 	// parse the body, get service type, and filter devices
 	var deploymentRequest models.DeploymentRequest
+	
 	c.BindJSON(&deploymentRequest)
 
 	peers, err := SearchDevice(c, deploymentRequest.ServiceType)
@@ -26,6 +29,16 @@ func SendDeploymentRequest(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "no peers with specified spec was found"})
 		panic(err)
 	}
+
+	//create a new span
+	_, span := otel.Tracer("SendDeploymentRequest").Start(context.Background(), "SendDeploymentRequest")
+	defer span.End()
+
+	//extract a span context parameters , so that a child span constructed on the reciever side 
+	deploymentRequest.TraceInfo.SpanID=span.SpanContext().TraceID().String()
+	deploymentRequest.TraceInfo.TraceID=span.SpanContext().SpanID().String()
+	deploymentRequest.TraceInfo.TraceFlags=span.SpanContext().TraceFlags().String()
+	deploymentRequest.TraceInfo.TraceStates=span.SpanContext().TraceState().String()
 
 	// pick a peer from the list and send a message to the nodeID of the peer.
 	selectedNode := peers[0]
@@ -41,7 +54,7 @@ func SendDeploymentRequest(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "cannot send message to the peer"})
 		panic(err)
 	}
-
+	
 	c.JSON(200, response)
 }
 
