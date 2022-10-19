@@ -30,6 +30,8 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
@@ -64,11 +66,20 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/net v0.0.0-20220517181318-183a9ca12b87 // indirect
-	golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68 // indirect
+	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.10 // indirect
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.3.0 // indirect
+)
+
+require (
+	go.opentelemetry.io/otel v1.11.0
+	go.opentelemetry.io/otel/exporters/jaeger v1.11.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.11.0
+	go.opentelemetry.io/otel/sdk v1.11.0
+	go.opentelemetry.io/otel/trace v1.11.0 // indirect
+	
 )

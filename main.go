@@ -5,9 +5,12 @@ import (
 	"time"
 
 	"gitlab.com/nunet/device-management-service/db"
-	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/routes"
+	"gitlab.com/nunet/device-management-service/adapter"
+	_ "gitlab.com/nunet/device-management-service/docs"
+	"go.opentelemetry.io/otel"
+	"context"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -39,9 +42,18 @@ func main() {
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
 
+	//export traces to jaeger
+	tp, _ := adapter.TracerProvider("http://testserver.nunet.io:14268/api/traces")
+
+	otel.SetTracerProvider(tp)
+	defer func() {
+		if err := tp.Shutdown(context.Background()); err != nil {
+			_=err
+		}
+	}()
+
 	// get managed VMs, assume previous run left some VM running
 	firecracker.RunPreviouslyRunningVMs()
-
 	wg.Wait()
 }
 

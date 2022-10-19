@@ -9,6 +9,7 @@ type DeploymentRequest struct {
 	MaxNtx      string `json:"max_ntx"`
 	Blockchain  string `json:"blockchain"`
 	ServiceType string `json:"service_type"`
+	Timestamp time.Time
 	Params      struct {
 		ImageID  string `json:"image_id"`
 		ModelURL string `json:"model_url"`
@@ -21,7 +22,12 @@ type DeploymentRequest struct {
 		Power string `json:"power"`
 		Time  string `json:"time"`
 	} `json:"constraints"`
-	Timestamp time.Time
+	TraceInfo struct {
+		TraceID   string `json:"trace_id"`
+		SpanID   string `json:"span_id"`
+		TraceFlags   string `json:"trace_flags"`
+		TraceStates   string `json:"trace_state"`
+	} `json:"traceinfo"`
 }
 
 type DeploymentResponse struct {
