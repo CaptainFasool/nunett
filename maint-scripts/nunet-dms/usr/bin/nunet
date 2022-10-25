@@ -195,9 +195,9 @@ onboard() {
 
     else
         N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-            -d "{\"memory\": \"$N_ONBOARD_MEM\", \"cpu\": \"$N_ONBOARD_CPU\", \
+            -d "{\"memory\": $N_ONBOARD_MEM, \"cpu\": $N_ONBOARD_CPU, \
             \"channel\":\"$N_ONBOARD_CHAN\", \"payment_addr\": \"$N_ONBOARD_ADD\", \
-            \"cardano\": \"$N_ONBOARD_CARDANO\"}" \
+            \"cardano\": $N_ONBOARD_CARDANO}" \
             $DMS_HOST:$DMS_PORT/api/v1/onboarding/onboard)
         # check if error
         N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq '. | select(.error != null) | .error')
