@@ -1,16 +1,37 @@
 package adapter
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
+	"net/http"
+
+	"gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/exporters/jaeger"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/resource"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	// "gitlab.com/nunet/device-management-service/firecracker/telemetry"
 )
 
+func GetMetadata() models.Metadata {
+	resp, err := http.Get("http://localhost:9999/api/v1/onboarding/metadata")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	var metadata models.Metadata
+
+	body, _ := io.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &metadata)
+	if err != nil && resp.StatusCode == 200 {
+		panic(err)
+	}
+	fmt.Println(metadata.Reserved)
+	return metadata
+}
 
 // newExporter returns a console exporter.
 func newExporter(w io.Writer) (tracesdk.SpanExporter, error) {
@@ -24,9 +45,9 @@ func newExporter(w io.Writer) (tracesdk.SpanExporter, error) {
 }
 
 func newResource() *resource.Resource {
-	metadata:=telemetry.GetMetadata()
-	deviceName:=metadata.Name
-	environment:=metadata.Network
+	metadata := GetMetadata()
+	deviceName := metadata.Name
+	environment := metadata.Network
 	r, _ := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
@@ -39,9 +60,9 @@ func newResource() *resource.Resource {
 }
 
 func TracerProvider(url string) (*tracesdk.TracerProvider, error) {
-	metadata:=telemetry.GetMetadata()
-	environment:=metadata.Network
-	deviceName:=metadata.Name
+	metadata := GetMetadata()
+	environment := metadata.Network
+	deviceName := metadata.Name
 	// Create the Jaeger exporter
 	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
 	if err != nil {

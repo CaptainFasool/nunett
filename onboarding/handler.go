@@ -2,10 +2,15 @@ package onboarding
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"os"
 	"time"
+
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/adapter"
+	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -26,7 +31,7 @@ func GetMetadata(c *gin.Context) {
 	}
 
 	// deserialize to json
-	var metadata models.Metadata
+	var metadata models.MetadataV2
 	err = json.Unmarshal(content, &metadata)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
@@ -121,8 +126,40 @@ func Onboard(c *gin.Context) {
 			gin.H{"error": "cound not write metadata.json"})
 		return
 	}
+	// Add available resources to database.
+
+	available_resources := models.AvailableResources{
+		TotCpuHz:  int(capacityForNunet.CPU),
+		CpuNo:     int(numCores),
+		CpuHz:     hz_per_cpu(),
+		PriceCpu:  0, // TODO: Get price of CPU
+		Ram:       int(capacityForNunet.Memory),
+		PriceRam:  0, // TODO: Get price of RAM
+		Vcpu:      int(math.Floor((float64(capacityForNunet.CPU)) / hz_per_cpu())),
+		Disk:      0,
+		PriceDisk: 0,
+	}
+
+	var avail_resources models.AvailableResources
+	if res := db.DB.Find(&avail_resources); res.RowsAffected == 0 {
+		result := db.DB.Create(&available_resources)
+		if result.Error != nil {
+			panic(result.Error)
+		}
+	} else {
+		result := db.DB.Model(&models.AvailableResources{}).Where("id = ?", 1).Updates(available_resources)
+		if result.Error != nil {
+			panic(result.Error)
+		}
+	}
 
 	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
+
+	time.AfterFunc(50*time.Second, func() {
+		_ = telemetry.CalcFreeResources()
+	})
+
+	time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
 
 	c.JSON(http.StatusCreated, metadata)
 }

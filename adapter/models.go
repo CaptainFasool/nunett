@@ -18,14 +18,14 @@ type PeerInfo struct {
 }
 
 type AvailableResource struct {
-	CpuNo     int    `json:"cpu_no"`
-	CpuHz     int    `json:"cpu_hz"`
-	PriceCpu  string `json:"price_cpu"`
-	Ram       int    `json:"ram"`
-	PriceRam  string `json:"price_ram"`
-	Vcpu      string `json:"vcpu"`
-	Disk      string `json:"disk"`
-	PriceDisk string `json:"price_disk"`
+	CpuNo     int     `json:"cpu_no"`
+	CpuHz     int     `json:"cpu_hz"`
+	PriceCpu  float64 `json:"price_cpu"`
+	Ram       int     `json:"ram"`
+	PriceRam  float64 `json:"price_ram"`
+	Vcpu      int     `json:"vcpu"`
+	Disk      float64 `json:"disk"`
+	PriceDisk float64 `json:"price_disk"`
 }
 
 type GpuInfo struct {

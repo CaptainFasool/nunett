@@ -3,8 +3,10 @@ package adapter
 import (
 	"context"
 	"encoding/json"
+	fmt "fmt"
 	"time"
 
+	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -64,6 +66,16 @@ func FetchAvailableResources() ([]byte, error) {
 	return b, nil
 }
 
+// func FetchDht() ([]byte, error) {
+// 	content, err := fetchDht()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	b := []byte(content)
+
+// 	return b, nil
+// }
+
 // FetchServices returns Services on DHT.
 // TODO: Return actual struct, not bytes; check FetchMachines
 func FetchServices() ([]byte, error) {
@@ -111,16 +123,16 @@ func PeersWithGPU(peers []Peer) []Peer {
 func PeersWithMatchingSpec(peers []Peer, depReq models.DeploymentRequest) []Peer {
 	constraints := depReq.Constraints
 
-	var peersWithMachingSpec []Peer
+	var peerWithMachingSpec []Peer
 
 	for _, peer := range peers {
 		prAvRes := peer.AvailableResources
 		if prAvRes.CpuHz > constraints.CPU && prAvRes.Ram > constraints.RAM {
-			peersWithMachingSpec = append(peersWithMachingSpec, peer)
+			peerWithMachingSpec = append(peerWithMachingSpec, peer)
 		}
 	}
 
-	return peersWithMachingSpec
+	return peerWithMachingSpec
 }
 
 // SendMessage takes in a nodeID of a node from the P2P network and posts a message
@@ -150,4 +162,125 @@ func SendMessage(nodeID string, message string) (string, error) {
 	}
 
 	return r.GetMessageResponse(), nil
+}
+
+func UpdateAvailableResoruces() (string, error) {
+	address := "localhost:60777"
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	client := NewNunetAdapterClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	var freeResources models.FreeResources
+	if err := db.DB.Where("id = ?", 1).First(&freeResources).Error; err != nil {
+		panic(err)
+
+	}
+
+	marshaledRes, err := json.Marshal(freeResources)
+	if err != nil {
+		panic(err)
+	}
+
+	r, err := client.UpdateDHT(ctx, &DHTUpdateContent{
+		HasGpu:             "",
+		AllowCardano:       "",
+		GpuInfo:            "",
+		ServicesIndex:      "",
+		AvailableResources: string(marshaledRes),
+	})
+
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+	return r.GetResponse(), nil
+}
+
+func getSelfNodeID() (string, error) {
+	// Set up a connection to the server.
+	address := "localhost:60777"
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	client := NewNunetAdapterClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := client.GetSelfPeer(ctx, &GetPeerParams{})
+
+	if err != nil {
+		return "", err
+	}
+
+	return r.GetNodeId(), nil
+}
+
+func UpdateMachinesTable() {
+	machines, err := FetchMachines()
+	if err != nil {
+		panic(err)
+	}
+
+	nodeId, _ := getSelfNodeID()
+
+	var machine_index models.Machine
+	if res := db.DB.Find(&machine_index); res.RowsAffected == 0 {
+		result := db.DB.Create(&machine_index)
+		if result.Error != nil {
+			panic(result.Error)
+		}
+	}
+
+	var available_resources models.AvailableResources
+	if err := db.DB.Where("id = ?", 1).First(&available_resources).Error; err != nil {
+		panic(err)
+	}
+
+	var freeResources models.FreeResources
+	if err := db.DB.Where("id = ?", 1).First(&freeResources).Error; err != nil {
+		panic(err)
+	}
+
+	var peerinfo models.PeerInfo
+	if res := db.DB.Find(&peerinfo); res.RowsAffected == 0 {
+		result := db.DB.Create(&peerinfo)
+		if result.Error != nil {
+			panic(result.Error)
+		}
+	}
+	// var ip models.IP = models.IP(machines[nodeId].PeerInfo.Address)
+
+	peerinfo.NodeID = nodeId
+	peerinfo.Mid = machines[nodeId].PeerInfo.Mid
+	peerinfo.Key = machines[nodeId].PeerInfo.Key
+	peerinfo.PublicKey = machines[nodeId].PeerInfo.PublicKey
+	// peerinfo.Address = machines[nodeId].PeerInfo.Address
+	result := db.DB.Model(&models.PeerInfo{}).Where("id = ?", peerinfo.ID).Updates(peerinfo)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+
+	machine_index.NodeId = nodeId
+	machine_index.PeerInfo = int(peerinfo.ID)
+	machine_index.AvailableResources = int(available_resources.ID)
+	machine_index.FreeResources = int(freeResources.ID)
+	// machine_index.Ip_Addr = machines[nodeId].PeerInfo.Address
+	// TODO: Add tokenomics address and tokenomics blockchain fields to DB.
+
+	result = db.DB.Model(&models.Machine{}).Where("id = ?", 1).Updates(machine_index)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+
 }

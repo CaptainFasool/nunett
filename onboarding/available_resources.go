@@ -28,6 +28,14 @@ func totalCPUInMHz() float64 {
 	return totalCompute
 }
 
+// fetches the max clock speed of a single core
+// XXX: Assuming all cores have the same clock speed
+func hz_per_cpu() float64 {
+	cores, _ := cpu.Info()
+
+	return cores[0].Mhz
+}
+
 // GetTotalProvisioned returns Provisioned struct with provisioned memory and CPU.
 func GetTotalProvisioned() *models.Provisioned {
 	cores, _ := cpu.Info()
