@@ -16,6 +16,10 @@ func ConnectDatabase() {
 	}
 
 	database.AutoMigrate(&models.VirtualMachine{})
+	database.AutoMigrate(&models.Machine{})
+	database.AutoMigrate(&models.AvailableResources{})
+	database.AutoMigrate(&models.FreeResources{})
+	database.AutoMigrate(&models.PeerInfo{})
 
 	DB = database
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 )
@@ -229,6 +230,21 @@ func StartVM(c *gin.Context) {
 		return
 	}
 
+	var freeRes models.FreeResources
+
+	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+		return
+	}
+
+	// Check if we have enough free resources before running VM
+	if (vm.MemSizeMib > freeRes.Ram) ||
+		(vm.VCPUCount > freeRes.Vcpu) {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "not enough resources available to deploy vm"})
+		return
+	}
+
 	// initialize http client
 	client := NewClient(vm.SocketFile)
 
@@ -237,6 +253,8 @@ func StartVM(c *gin.Context) {
 	vm.State = "running"
 
 	db.DB.Save(&vm)
+
+	telemetry.CalcFreeResources()
 }
 
 // StopVM godoc
@@ -263,6 +281,8 @@ func StopVM(c *gin.Context) {
 	vm.State = "stopped"
 
 	db.DB.Save(&vm)
+
+	telemetry.CalcFreeResources()
 }
 
 // StartCustom godoc
@@ -304,6 +324,32 @@ func StartCustom(c *gin.Context) {
 		panic(result.Error)
 	}
 
+	// PUT /machine-config
+	machineConfigBody := models.MachineConfig{}
+	// TODO: vCPU and memory has to be estimated based on how much capacity is remaining in nunet quota
+	machineConfigBody.MemSizeMib = vm.MemSizeMib
+	machineConfigBody.VCPUCount = vm.VCPUCount
+
+	telemetry.CalcFreeResources()
+
+	var freeRes models.FreeResources
+
+	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+		return
+	}
+
+	// Check if we have enough free resources before running VM
+	if (vm.MemSizeMib > freeRes.Ram) ||
+		(vm.VCPUCount > freeRes.Vcpu) {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "not enough resources available to deploy VM"})
+		return
+	}
+
+	jsonBytes, _ := json.Marshal(machineConfigBody)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
+
 	// POST /init
 	utils.MakeInternalRequest(c, "POST", fmt.Sprintf("/vm/init/%d", vm.ID), nil)
 
@@ -312,7 +358,7 @@ func StartCustom(c *gin.Context) {
 	bootSourceBody.KernelImagePath = body.KernelImagePath
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	jsonBytes, _ := json.Marshal(bootSourceBody)
+	jsonBytes, _ = json.Marshal(bootSourceBody)
 	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", vm.ID), jsonBytes)
 
 	// PUT /drives
@@ -325,15 +371,6 @@ func StartCustom(c *gin.Context) {
 
 	jsonBytes, _ = json.Marshal(drivesBody)
 	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", vm.ID), jsonBytes)
-
-	// PUT /machine-config
-	machineConfigBody := models.MachineConfig{}
-	// TODO: vCPU and memory has to be estimated based on how much capacity is remaining in nunet quota
-	machineConfigBody.MemSizeMib = vm.MemSizeMib
-	machineConfigBody.VCPUCount = vm.VCPUCount
-
-	jsonBytes, _ = json.Marshal(machineConfigBody)
-	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -382,28 +419,6 @@ func StartDefault(c *gin.Context) {
 		panic(result.Error)
 	}
 
-	// POST /init
-	utils.MakeInternalRequest(c, "POST", fmt.Sprintf("/vm/init/%d", vm.ID), nil)
-
-	// PUT /boot-source
-	bootSourceBody := models.BootSource{}
-	bootSourceBody.KernelImagePath = body.KernelImagePath
-	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
-
-	jsonBytes, _ := json.Marshal(bootSourceBody)
-	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", vm.ID), jsonBytes)
-
-	// PUT /drives
-	drivesBody := models.Drives{}
-
-	drivesBody.DriveID = "rootfs"
-	drivesBody.PathOnHost = body.FilesystemPath
-	drivesBody.IsRootDevice = true
-	drivesBody.IsReadOnly = false
-
-	jsonBytes, _ = json.Marshal(drivesBody)
-	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", vm.ID), jsonBytes)
-
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
 	// TODO: vCPU and memory has to be estimated based on how much capacity is remaining in nunet quota
@@ -416,9 +431,47 @@ func StartDefault(c *gin.Context) {
 	if result.Error != nil {
 		panic(result.Error)
 	}
+	telemetry.CalcFreeResources()
 
-	jsonBytes, _ = json.Marshal(machineConfigBody)
+	var freeRes models.FreeResources
+
+	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+		return
+	}
+
+	// Check if we have enough free resources before running VM
+	if (vm.MemSizeMib > freeRes.Ram) ||
+		(vm.VCPUCount > freeRes.Vcpu) {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "not enough resources available to deploy VM"})
+		return
+	}
+
+	jsonBytes, _ := json.Marshal(machineConfigBody)
 	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/machine-config/%d", vm.ID), jsonBytes)
+
+	// POST /init
+	utils.MakeInternalRequest(c, "POST", fmt.Sprintf("/vm/init/%d", vm.ID), nil)
+
+	// PUT /boot-source
+	bootSourceBody := models.BootSource{}
+	bootSourceBody.KernelImagePath = body.KernelImagePath
+	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
+
+	jsonBytes, _ = json.Marshal(bootSourceBody)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/boot-source/%d", vm.ID), jsonBytes)
+
+	// PUT /drives
+	drivesBody := models.Drives{}
+
+	drivesBody.DriveID = "rootfs"
+	drivesBody.PathOnHost = body.FilesystemPath
+	drivesBody.IsRootDevice = true
+	drivesBody.IsReadOnly = false
+
+	jsonBytes, _ = json.Marshal(drivesBody)
+	utils.MakeInternalRequest(c, "PUT", fmt.Sprintf("/vm/drives/%d", vm.ID), jsonBytes)
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}

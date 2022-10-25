@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"context"
+
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/models"

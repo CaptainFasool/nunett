@@ -13,6 +13,10 @@ message peers {
     string peer_address=1;
 }
 
+message nodeID {
+    string node_id = 1;
+}
+
 message DHTUpdateContent {
     string has_gpu = 1;
     string allow_cardano = 2;
@@ -43,7 +47,6 @@ message messageResponse {
 message receivedMessageParams {}
 
 
-
 service NunetAdapter {
     rpc getPeerList(getPeerParams) returns (peers) {}
 
@@ -53,7 +56,7 @@ service NunetAdapter {
     
     rpc receivedMessage(receivedMessageParams) returns (messageResponse) {}
 
-    rpc getSelfPeer(getPeerParams) returns (peers) {}
+    rpc getSelfPeer(getPeerParams) returns (nodeID) {}
 
     rpc updateDHT(DHTUpdateContent) returns (DHTUpdateResponse) {}
 }
