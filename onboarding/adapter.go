@@ -10,8 +10,8 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
+	"strings"
 )
 
 func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.MetadataV2, cardanoPassive string) {
@@ -41,7 +41,7 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 	adapterImage := "registry.gitlab.com/nunet/nunet-adapter"
 	adapterName := adapterPrefix + "-" + hostname
 
-    // truncate adapter name to less than 60 characters for issue #56
+	// truncate adapter name to less than 60 characters for issue #56
 	if len(adapterName) > 60 {
 		adapterName = adapterName[:60]
 	}
@@ -72,17 +72,48 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 		Cmd:      []string{"python", "nunet_adapter.py", "60777"},
 	}
 
-	hostConfig := container.HostConfig{}
-	hostConfig.NetworkMode = container.NetworkMode("host")
+	hostConfig := container.HostConfig{
+		NetworkMode: container.NetworkMode("host"),
+		RestartPolicy: container.RestartPolicy{Name: "always"},
+	}
 
-	log.Println("[DMS Adapter] Creating NuNet Adapter container")
+	existingContainers, err := cli.ContainerList(c, types.ContainerListOptions{All: true})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, container := range existingContainers {
+		if strings.Contains(container.Names[0], adapterName) &&
+		   container.Command == "python nunet_adapter.py 60777" &&
+		   container.HostConfig.NetworkMode == "host" {
+			if strings.EqualFold(container.State, "running") {
+				log.Println("[DMS Adapter] ERROR : There seems to be an adapter container with name: " +
+					adapterName + " with ID " +  container.ID + " already running. Stopping existing container.")
+				err := cli.ContainerStop(c, container.ID, nil)
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				log.Println("[DMS Adapter] ERROR : There seems to be an adapter container with name: " +
+					adapterName + " with ID " +  container.ID +
+					" that is not running (" + container.State + ")" +
+					" Removing container.")
+			}
+			err := cli.ContainerRemove(c, container.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+			if err != nil {
+				panic(err)
+			}
+			break
+		}
+	}
+	log.Println("[DMS Adapter] INFO Creating NuNet Adapter container")
 	resp, err := cli.ContainerCreate(c, &contConfig, &hostConfig, nil, nil, adapterName)
 
 	if err != nil {
 		panic(err)
 	}
-	log.Println("[DMS Adapter] Created NuNet Adapter container")
-	log.Println("[DMS Adapter] Starting NuNet Adapter container")
+	log.Println("[DMS Adapter] INFO : Created NuNet Adapter container")
+	log.Println("[DMS Adapter] INFO : Starting NuNet Adapter container")
 	if err := cli.ContainerStart(c, resp.ID, types.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
@@ -94,10 +125,5 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 			panic(err)
 		}
 	case <-statusCh:
-	}
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
 	}
 }
