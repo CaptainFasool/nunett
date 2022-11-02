@@ -168,91 +168,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/vm/boot-source/:vmID": {
-            "put": {
-                "description": "Configure kernel for the VM.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Configures kernel for the VM.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/vm/drives/:vmID": {
-            "put": {
-                "description": "Configures filesystem for the VM.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Configures filesystem for the VM.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/vm/init/:vmID": {
-            "post": {
-                "description": "Starts the firecracker server for the specific VM. Further configuration are required.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Starts the VM booting process.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/vm/machine-config/:vmID": {
-            "put": {
-                "description": "Configures system spec for the VM like CPU and Memory.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Configures system spec for the VM.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/vm/network-interface/:vmID": {
-            "put": {
-                "description": "Configures network interface on the host.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Configures network interface on the host.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
         "/vm/start-custom": {
             "post": {
                 "description": "This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.",
@@ -272,7 +187,7 @@ const docTemplate = `{
         },
         "/vm/start-default": {
             "post": {
-                "description": "This endpoint is an abstraction of all other endpoints. When invokend, it calls all other endpoints in a sequence.",
+                "description": "Everything except kernel files and filesystem file will be set by DMS itself.",
                 "produces": [
                     "application/json"
                 ],
@@ -280,40 +195,6 @@ const docTemplate = `{
                     "vm"
                 ],
                 "summary": "Start a VM with default configuration.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/vm/start/:vmID": {
-            "post": {
-                "description": "Start the VM.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Start the VM.",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/vm/stop/:vmID": {
-            "post": {
-                "description": "Stop the VM.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vm"
-                ],
-                "summary": "Stop the VM.",
                 "responses": {
                     "200": {
                         "description": ""
@@ -409,7 +290,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.2",
+	Version:          "0.4.3",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

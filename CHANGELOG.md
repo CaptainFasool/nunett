@@ -21,6 +21,17 @@ Types of changes
 
 -->
 
+## [0.4.3](#043)
+
+### Fixed
+- Fix 500 response on `/vm/*` endpoints.
+
+### Removed
+- Remove internal endpoints.
+
+### Changed
+- Refactor `vm` module for speed and readability.
+
 ## [0.4.2](#042)
 
 ### Added

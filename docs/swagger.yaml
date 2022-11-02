@@ -64,7 +64,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.2
+  version: 0.4.3
 paths:
   /free:
     get:
@@ -165,62 +165,6 @@ paths:
         request.
       tags:
       - run
-  /vm/boot-source/:vmID:
-    put:
-      description: Configure kernel for the VM.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-      summary: Configures kernel for the VM.
-      tags:
-      - vm
-  /vm/drives/:vmID:
-    put:
-      description: Configures filesystem for the VM.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-      summary: Configures filesystem for the VM.
-      tags:
-      - vm
-  /vm/init/:vmID:
-    post:
-      description: Starts the firecracker server for the specific VM. Further configuration
-        are required.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-      summary: Starts the VM booting process.
-      tags:
-      - vm
-  /vm/machine-config/:vmID:
-    put:
-      description: Configures system spec for the VM like CPU and Memory.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-      summary: Configures system spec for the VM.
-      tags:
-      - vm
-  /vm/network-interface/:vmID:
-    put:
-      description: Configures network interface on the host.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-      summary: Configures network interface on the host.
-      tags:
-      - vm
   /vm/start-custom:
     post:
       description: This endpoint is an abstraction of all primitive endpoints. When
@@ -235,36 +179,14 @@ paths:
       - vm
   /vm/start-default:
     post:
-      description: This endpoint is an abstraction of all other endpoints. When invokend,
-        it calls all other endpoints in a sequence.
+      description: Everything except kernel files and filesystem file will be set
+        by DMS itself.
       produces:
       - application/json
       responses:
         "200":
           description: ""
       summary: Start a VM with default configuration.
-      tags:
-      - vm
-  /vm/start/:vmID:
-    post:
-      description: Start the VM.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-      summary: Start the VM.
-      tags:
-      - vm
-  /vm/stop/:vmID:
-    post:
-      description: Stop the VM.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-      summary: Stop the VM.
       tags:
       - vm
 swagger: "2.0"
