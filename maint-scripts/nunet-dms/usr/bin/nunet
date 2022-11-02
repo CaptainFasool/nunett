@@ -28,6 +28,8 @@ usage() {
     echo "  wallet        Get Current Wallet Address"
     echo "  onboard       Onboard the device to NuNet"
     echo "  info          Get info about currently onboarded machine"
+    echo "  onboard-gpu   Install NVIDIA GPU driver and Container Runtime"
+    echo "  onboard-ml    Prepare the system for Machine Learning with GPU"
     echo -e "  peer          Interact with currently visible peers\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
@@ -191,7 +193,7 @@ onboard() {
         printf "${INFO_C}Check available resources with 'nunet available --pretty'${NORMAL_C}\n"
         exit
     elif [[ N_ONBOARD_CHAN == "nunet-private-alpha" || N_ONBOARD_CHAN == "nunet-development" ]] ; then
-        printf "$BAD_C}NuNet Channel should be 'nunet-private-alpha' or 'nunet-development'${NORMAL_C}\n"
+        printf "${BAD_C}NuNet Channel should be 'nunet-private-alpha' or 'nunet-development'${NORMAL_C}\n"
 
     else
         N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
@@ -269,7 +271,88 @@ check_adapter_run() {
     fi
 }
 
-cmds=("available" "wallet" "onboard" "info" "peer")
+
+secure_boot_check() {
+    #Check for Secure Boot before proceeding with GPU driver installation, alert user with necessary information if yes.
+    sudo apt install -y mokutil
+    secure_boot_check="$(mokutil --sb-state | grep enabled)"
+    secure_boot="enabled"
+    if grep -q "$secure_boot" <<<"$secure_boot_check"; then
+        printf "${INFO_C}************Important Note!!!************\n"
+        printf "Your system has UEFI Secure Boot enabled.\n"
+        printf "*****************************************\n"
+        printf "a. NVIDIA GPU Driver installation will require you to enroll a password(confirmed twice) as a machine owner key(MOK).\n"
+        printf "b. Reboot your system after finishing the onboarding procedure.\n"
+        printf "c. Make sure you select “Enroll MOK” before Linux boots the next time.\n"
+        printf "d. Remember to enter the same password as the MOK.\n"
+        printf "Driver installation will fail without the above steps.\n"
+        printf "In case you miss any of these steps, you can also manually repeat the process later with the command “sudo update-secureboot-policy --enroll-key” and reboot.\n"
+        printf "Ensure steps a, b, c and d.\n"
+        printf "Resuming installation in a minute...${NORMAL_C}\n"
+        sleep 60
+    fi
+}
+
+
+## Install NVIDIA GPU Drivers and Container Runtime
+onboard-gpu() {
+    nvidia="$(lspci | grep 'VGA compatible controller: NVIDIA' | awk '{print $5}')" # a variable with value "NVIDIA"
+    gpu="$(lspci | grep 'VGA compatible controller: NVIDIA' | awk '{print $8 " " $9 " " $10 " " $11}')" # tries to fetch the gpu name
+    gpu_driver_version="$(nvidia-smi | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')" # the gpu driver version
+    gpu_driver_var="$(nvidia-smi | grep Driver | awk '{print $4}')" # a variable with value "Driver"
+    linux_distro=$(grep -Po "(?<=^ID=).+" /etc/os-release | sed 's/"//g') # we add support for specific linux distributions through this variable.
+    # CHECK IF THERE IS NVIDIA GPU
+    if [ -n "$nvidia" ]; then
+        printf "${GOOD_C}$nvidia $gpu GPU device found! ${NORMAL_C}\n"
+        # IF gpu_driver_var IS not EMPTY WE WILL SKIP DRIVER AND Install container runtime
+        if [ -n "$gpu_driver_var" ]; then #IF $gpu_driver_var is not empty
+            printf "${INFO_C}$gpu_driver_version is already installed. Skipping installation of driver.${NORMAL_C}\n"
+        else
+            secure_boot_check
+            printf "${INFO_C}-----Starting NVIDIA GPU Driver Installation-----${NORMAL_C}\n"
+            if [[ $linux_distro = "ubuntu" ]]; then
+                sudo apt update && sudo apt install -y ubuntu-drivers-common #package required for below command
+                sudo ubuntu-drivers install               #autoinstall is deprecated
+            elif [[ $linux_distro = "kali" ]]; then
+                sudo apt update && sudo apt install -y nvidia-driver
+            else
+                printf "${INFO_C}Currently, only Ubuntu and Kali Linux Distributions are supported. But we will definitely add support for more distros in future.${NORMAL_C}\n"
+            fi
+            gpu_driver_var="$(nvidia-smi | grep Driver | awk '{print $4}')"
+            gpu_driver_version="$(nvidia-smi | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')"
+            if [[ $gpu_driver_var = "Driver" ]]; then
+                printf "${GOOD_C}-----NVIDIA GPU Driver $gpu_driver_version Installed-----${NORMAL_C}\n"
+            else
+                printf "${BAD_C}-----NVIDIA GPU Driver Still Not Found. Please Retry-----${NORMAL_C}\n"
+            fi
+        fi
+
+        printf "${INFO_C}-----Starting NVIDIA Container Runtime Installation-----${NORMAL_C}\n"
+        curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | sudo apt-key add -
+        distribution=$(
+            . /etc/os-release
+            echo $ID$VERSION_ID
+        )
+        curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+        sudo apt update
+        sudo apt install -y nvidia-container-runtime
+
+        sudo systemctl restart docker
+        printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
+    else
+        # IF THERE IS NO NVIDIA GPU THE nvidia VARIABLE WILL BE EMPTY SO WE REPORT MISSING GPU
+        printf "${INFO_C}This machine does not have an NVIDIA GPU. Skipping GPU Driver and Container Runtime Installation.${NORMAL_C}\n"    
+    fi
+}
+
+# Onboarding for ML jobs
+onboard-ml()
+{
+    sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
+    sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
+}
+
+cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml")
 
 if [ $# -eq  0 ] ; then
     usage
