@@ -4,20 +4,20 @@ import (
 	"sync"
 	"time"
 
+	"context"
+	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
+	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/routes"
-	"gitlab.com/nunet/device-management-service/adapter"
-	_ "gitlab.com/nunet/device-management-service/docs"
 	"go.opentelemetry.io/otel"
-	"context"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // @title           Device Management Service
-// @version         0.4.1
+// @version         0.4.2
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -48,7 +48,7 @@ func main() {
 	otel.SetTracerProvider(tp)
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
-			_=err
+			_ = err
 		}
 	}()
 

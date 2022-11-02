@@ -80,7 +80,7 @@ func CalcFreeResources() error {
 // @Tags		telemetry
 // @Produce 	json
 // @Success		200
-//@Router		/free [get]
+// @Router		/free [get]
 func GetFreeResource(c *gin.Context) {
 	err := CalcFreeResources()
 	if err != nil {

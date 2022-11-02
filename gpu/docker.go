@@ -2,13 +2,21 @@ package gpu
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"math"
+	"strings"
 
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/gin-gonic/gin"
+	"github.com/shirou/gopsutil/cpu"
+	"gitlab.com/nunet/device-management-service/models"
+)
+
+const (
+	vcpuToMicroseconds float64 = 100000
 )
 
 func PullImage(ctx context.Context, cli *client.Client, imageName string) {
@@ -21,15 +29,51 @@ func PullImage(ctx context.Context, cli *client.Client, imageName string) {
 	// io.Copy(os.Stdout, out)
 }
 
-func RunContainer(ctx context.Context, cli *client.Client, imgName string, cmd []string) (contID string) {
+func mhzPerCore() float64 {
+	cpus, err := cpu.Info()
+	if err != nil {
+		panic(err)
+	}
+	return cpus[0].Mhz
+}
+
+func round(num float64) int {
+	return int(num + math.Copysign(0.5, num))
+}
+
+func toFixed(num float64, precision int) float64 {
+	output := math.Pow(10, float64(precision))
+	return float64(round(num*output)) / output
+}
+
+func mhzToVCPU(cpuInMhz int) float64 {
+	vcpu := float64(cpuInMhz) / mhzPerCore()
+	return toFixed(vcpu, 2)
+}
+
+func RunContainer(ctx context.Context, cli *client.Client, depReq models.DeploymentRequest) (contID string) {
 	gpuOpts := opts.GpuOpts{}
 	gpuOpts.Set("all")
 
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: "nvidia/cuda:10.0-base",
-		Cmd:   cmd,
-		// Tty:   false,
-	}, &container.HostConfig{Resources: container.Resources{DeviceRequests: gpuOpts.Value()}}, nil, nil, "")
+	modelUrl := depReq.Params.ModelURL
+	packages := strings.Join(depReq.Params.Packages, " ")
+	containerConfig := &container.Config{
+		Image: depReq.Params.ImageID,
+		Cmd:   []string{modelUrl, packages},
+		// Tty:          true,
+	}
+
+	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
+	VCPU := mhzToVCPU(depReq.Constraints.CPU)
+	hostConfig := &container.HostConfig{
+		Resources: container.Resources{
+			DeviceRequests: gpuOpts.Value(),
+			Memory:         memoryMbToBytes,
+			CPUQuota:       int64(VCPU * vcpuToMicroseconds),
+		},
+	}
+
+	resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
 
 	if err != nil {
 		panic(err)
@@ -74,20 +118,9 @@ func DeleteContainer(ctx context.Context, cli *client.Client, contName string) {
 	}
 }
 
-func DeleteImage(ctx context.Context, cli *client.Client, imagID string) {
-	options := types.ImageRemoveOptions{}
-
-	imgDeleteResp, err := cli.ImageRemove(ctx, imagID, options)
-	if err != nil {
-		panic(err)
-	}
-
-	_ = imgDeleteResp // contains hashes of all the images tags and their child
-}
-
 // HandleDockerDeployment does following docker based actions in the sequence:
-// Pull image, run container, get logs, delete container, delete image, send log to the requester
-func HandleDockerDeployment(c *gin.Context) {
+// Pull image, run container, get logs, delete container, send log to the requester
+func HandleDockerDeployment(depReq models.DeploymentRequest) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -95,25 +128,19 @@ func HandleDockerDeployment(c *gin.Context) {
 	}
 
 	// Pull the image
-	// TODO: Where in the flow do we get the image name.
-	imageName := "nvidia/cuda:10.0-base"
+	imageName := depReq.Params.ImageID
 
 	PullImage(ctx, cli, imageName)
 
 	// Run the container.
-	// TODO: What command do we run inside container? Do does the Image comes pre-baked?
-	contID := RunContainer(ctx, cli, imageName, []string{"nvidia-smi"})
+	contID := RunContainer(ctx, cli, depReq)
 
-	// Get the logs.
+	// // Get the logs.
 	logOutput := GetLogs(ctx, cli, contID)
+	fmt.Println(logOutput)
 
 	// Delete the container.
 	DeleteContainer(ctx, cli, contID)
 
-	// Remove the downloaded image.
-	DeleteImage(ctx, cli, imageName)
-
-	// Send back the logs.
-	// TODO: Send message to the requesting peer instead of below stub.
-	c.JSON(200, logOutput)
+	// ToBeImplemented: Send back the logs.
 }
