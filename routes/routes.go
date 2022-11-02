@@ -27,17 +27,8 @@ func SetupRouter() *gin.Engine {
 
 	virtualmachine := v1.Group("/vm")
 	{
-		virtualmachine.POST("/init/:vmID", firecracker.InitVM)
-		virtualmachine.PUT("/boot-source/:vmID", firecracker.BootSource)
-		virtualmachine.PUT("/drives/:vmID", firecracker.Drives)
-		virtualmachine.PUT("/machine-config/:vmID", firecracker.MachineConfig)
-		virtualmachine.PUT("/network-interfaces/:vmID", firecracker.NetworkInterfaces)
-		virtualmachine.PUT("/start/:vmID", firecracker.StartVM)
-		virtualmachine.PUT("/stop/:vmID", firecracker.StopVM)
-
 		virtualmachine.POST("/start-default", firecracker.StartDefault)
 		virtualmachine.POST("/start-custom", firecracker.StartCustom)
-		virtualmachine.POST("/from-config", firecracker.RunFromConfig)
 	}
 
 	// spo and gpu endpoint will merge.

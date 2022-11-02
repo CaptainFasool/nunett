@@ -10,7 +10,6 @@ import (
 )
 
 const DMS_BASE_URL = "http://localhost:9999/api/v1"
-
 const ADAPTER_GRPC_URL = "localhost:60777"
 
 // const ADAPTER_GRPC_URL = "localhost:9998"
