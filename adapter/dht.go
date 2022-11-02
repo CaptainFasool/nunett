@@ -8,14 +8,14 @@ import (
 
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func fetchDhtContents() (*DhtContents, error) {
 	// Set up a connection to the server.
-	address := "localhost:60777"
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -139,8 +139,7 @@ func PeersWithMatchingSpec(peers []Peer, depReq models.DeploymentRequest) []Peer
 // to it. `message` is supposed to be a JSON marshalled in string.
 func SendMessage(nodeID string, message string) (string, error) {
 	// Set up a connection to the server.
-	address := "localhost:9998"
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		// log.Fatalf("did not connect: %v", err)
 		return "", err

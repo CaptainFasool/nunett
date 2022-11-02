@@ -5,11 +5,11 @@ import (
 )
 
 type DeploymentRequest struct {
-	AddressUser string `json:"address_user"`
-	MaxNtx      int    `json:"max_ntx"`
-	Blockchain  string `json:"blockchain"`
-	ServiceType string `json:"service_type"`
-	Timestamp time.Time
+	AddressUser string    `json:"address_user"`
+	MaxNtx      int       `json:"max_ntx"`
+	Blockchain  string    `json:"blockchain"`
+	ServiceType string    `json:"service_type"`
+	Timestamp   time.Time `json:"timestamp"`
 	Params      struct {
 		ImageID  string   `json:"image_id"`
 		ModelURL string   `json:"model_url"`
@@ -24,10 +24,10 @@ type DeploymentRequest struct {
 		Time       int    `json:"time"`
 	} `json:"constraints"`
 	TraceInfo struct {
-		TraceID   string `json:"trace_id"`
-		SpanID   string `json:"span_id"`
-		TraceFlags   string `json:"trace_flags"`
-		TraceStates   string `json:"trace_state"`
+		TraceID     string `json:"trace_id"`
+		SpanID      string `json:"span_id"`
+		TraceFlags  string `json:"trace_flags"`
+		TraceStates string `json:"trace_state"`
 	} `json:"traceinfo"`
 }
 

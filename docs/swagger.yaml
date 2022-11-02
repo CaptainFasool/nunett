@@ -64,8 +64,19 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.0
+  version: 0.4.2
 paths:
+  /free:
+    get:
+      description: Checks and returns the amount of free resources available
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Returns the amount of free resources available
+      tags:
+      - telemetry
   /onboarding/address/new:
     get:
       description: Create a payment address from public key. Return payment address
@@ -124,6 +135,20 @@ paths:
       summary: Returns provisioned capacity on host.
       tags:
       - onboarding
+  /peer/list:
+    get:
+      description: Gets a list of peers the adapter can see within the network and
+        return a list of peer info
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Return list of peers currently connected to
+      tags:
+      - run
   /run/deploy:
     post:
       description: SendDeploymentRequest searches the DHT for non-busy, available
@@ -138,20 +163,6 @@ paths:
             type: string
       summary: Search devices on DHT with appropriate machines and sends a deployment
         request.
-      tags:
-      - run
-  /run/deploy/receive:
-    get:
-      description: Receives the deployment message from the message exchange. And
-        do required actions based on the service_type.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      summary: Receive the deployment message and do the needful.
       tags:
       - run
   /vm/boot-source/:vmID:
