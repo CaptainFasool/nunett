@@ -1,0 +1,81 @@
+- hosts: all
+  become: true
+  name: Deploy DMS to machine
+
+  vars:
+    pip_install_packages:
+      - name: docker
+
+    nunet_dms_version: 0.4.3
+
+    nunet_dms_wallet_address_path: /etc/nunet/wallet.addr
+    nunet_dms_nunet_channel: nunet-development
+    nunet_dms_mem_threshold: 10000
+
+  pre_tasks:
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+  roles:
+    - role: geerlingguy.pip
+
+  tasks:
+    - name: Install dependencies
+      ansible.builtin.package:
+        name:
+          - bc
+        state: present
+
+    # - name: Delete package if already exists
+    #   ansible.builtin.apt:
+    #     name:
+    #       - nunet-dms
+    #     state: absent
+
+    - name: Install package
+      ansible.builtin.apt:
+        deb: "https://gitlab.com/api/v4/projects/35912922/packages/generic/nunet-dms/{{ nunet_dms_version }}/nunet-dms_{{ nunet_dms_version }}_{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}.deb"
+      when: ansible_os_family == "Debian"
+
+    - name: Check if wallet address exists
+      ansible.builtin.stat:
+        path: "{{ nunet_dms_wallet_address_path }}"
+      register: nunet_wallet_file
+
+    - name: Create wallet address if not exists
+      ansible.builtin.shell:
+        cmd: nunet wallet new > "{{ nunet_dms_wallet_address_path }}"
+      register: nunet_wallet
+      when: not nunet_wallet_file.stat.exists
+
+    - name: Get data of wallet address
+      ansible.builtin.slurp:
+        src: "{{ nunet_dms_wallet_address_path }}"
+      register: nunet_wallet
+
+    - name: Onboard machine
+      ansible.builtin.include_tasks: onboard.yaml
+
+    - name: Check that machine is onboarded
+      ansible.builtin.wait_for:
+        port: 9999
+
+    - name: Check that nunet adapter container is running
+      community.docker.docker_container_info:
+        name: "{{ 'testing' if nunet_dms_nunet_channel == 'nunet-development' else 'mainnet' }}-nunet-adapter-{{ ansible_nodename }}"
+      register: nunet_adapter_state
+
+    - name: Manual fix for docker container not starting
+      block:
+        - name: Pull container image if adapter not running
+          community.docker.docker_image:
+            name: "registry.gitlab.com/nunet/nunet-adapter:{{ 'test' if nunet_dms_nunet_channel == 'nunet-development' else 'prod' }}"
+            state: present
+            source: pull
+
+        - name: Re-onboard machine
+          ansible.builtin.include_tasks: onboard.yaml
+      when: not nunet_adapter_state.exists
