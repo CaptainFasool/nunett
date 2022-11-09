@@ -38,13 +38,13 @@ deploy:testnet:
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
+    - ssh-keyscan -H $SSH_JUMP_HOST >> ~/.ssh/known_hosts 2> /dev/null
     - pip install ansible ansible-lint jmespath docker
     - ansible-galaxy role install geerlingguy.docker geerlingguy.pip
   image: python:3
   script: 
     - ansible --version
     - ansible-playbook maint-scripts/playbooks/deploy.yaml -i $ANSIBLE_INVENTORY
-
 
 .git:push:
   after_script:

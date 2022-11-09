@@ -1,7 +1,7 @@
 - name: Onboard machine as a compute provider
-  when: ansible_memtotal_mb > nunet_dms_mem_threshold
-  ansible.builtin.command: 'nunet onboard -m {{ (ansible_memtotal_mb/2) | int }} -c {{ (ansible_processor_cores/2 * 1000) | int }} -n {{ nunet_dms_nunet_channel }} -a {{ (nunet_wallet.content | b64decode | from_json )["address"] }} -C'
+  when: (device_resources.memory/2 | round) > nunet_dms_mem_threshold
+  ansible.builtin.command: 'nunet onboard -m {{ (device_resources.memory/2 | round) | int }} -c {{ (device_resources.cpu/2 | round) | int }} -n {{ nunet_dms_nunet_channel }} -a {{ nunet_wallet.address }} -C'
 
 - name: Onboard machine as a service provider
-  when: ansible_memtotal_mb < nunet_dms_mem_threshold
-  ansible.builtin.command: 'nunet onboard -m {{ (ansible_memtotal_mb/2) | int }} -c {{ (ansible_processor_cores/2 * 1000) | int }} -n {{ nunet_dms_nunet_channel }} -a {{ (nunet_wallet.content | b64decode | from_json )["address"] }}' 
+  when: (device_resources.memory/2 | round) < nunet_dms_mem_threshold
+  ansible.builtin.command: 'nunet onboard -m {{ (device_resources.memory/2 | round) | int }} -c {{ (device_resources.cpu/2 | round) | int }} -n {{ nunet_dms_nunet_channel }} -a {{ nunet_wallet.address }}' 

@@ -54,7 +54,20 @@
     - name: Get data of wallet address
       ansible.builtin.slurp:
         src: "{{ nunet_dms_wallet_address_path }}"
-      register: nunet_wallet
+      register: nunet_wallet_result
+
+    - name: Set wallet data as fact
+      ansible.builtin.set_fact:
+        nunet_wallet: "{{ nunet_wallet_result.content | b64decode | from_json }}"
+
+    - name: Check machine resources
+      ansible.builtin.command:
+        cmd: nunet available
+      register: nunet_available_result
+
+    - name: Save the result as a fact
+      ansible.builtin.set_fact:
+        device_resources: "{{ nunet_available_result.stdout | from_json }}"
 
     - name: Onboard machine
       ansible.builtin.include_tasks: onboard.yaml
@@ -63,12 +76,18 @@
       ansible.builtin.wait_for:
         port: 9999
 
+    - name: Ensure that nunet-dms is started
+      ansible.builtin.systemd:
+        name: nunet-dms
+        state: started
+
     - name: Check that nunet adapter container is running
       community.docker.docker_container_info:
         name: "{{ 'testing' if nunet_dms_nunet_channel == 'nunet-development' else 'mainnet' }}-nunet-adapter-{{ ansible_nodename }}"
       register: nunet_adapter_state
 
     - name: Manual fix for docker container not starting
+      when: not nunet_adapter_state.exists
       block:
         - name: Pull container image if adapter not running
           community.docker.docker_image:
@@ -78,4 +97,3 @@
 
         - name: Re-onboard machine
           ansible.builtin.include_tasks: onboard.yaml
-      when: not nunet_adapter_state.exists
