@@ -28,8 +28,7 @@ build-job:
     - bash maint-scripts/build.sh
 
 deploy:testnet:
-  needs:
-    - build-job
+  stage: deploy
   variables:
      ANSIBLE_HOST_KEY_CHECKING: "false"
   before_script:
