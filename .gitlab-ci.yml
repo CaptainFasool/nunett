@@ -27,7 +27,7 @@ build-job:
     - echo "Building debian archives..."
     - bash maint-scripts/build.sh
 
-deploy:testnet:
+deploy_dev:
   stage: deploy
   variables:
      ANSIBLE_HOST_KEY_CHECKING: "false"
