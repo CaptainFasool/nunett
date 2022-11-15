@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.7](#047)
+
+### Added
+- Send docker logs for running container to GitHub's Gist
+
 ## [0.4.3](#043)
 
 ### Fixed

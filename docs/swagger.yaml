@@ -64,7 +64,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.3
+  version: 0.4.7
 paths:
   /free:
     get:

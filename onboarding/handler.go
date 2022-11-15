@@ -140,8 +140,8 @@ func Onboard(c *gin.Context) {
 		PriceDisk: 0,
 	}
 
-	var avail_resources models.AvailableResources
-	if res := db.DB.Find(&avail_resources); res.RowsAffected == 0 {
+	var availableRes models.AvailableResources
+	if res := db.DB.Find(&availableRes); res.RowsAffected == 0 {
 		result := db.DB.Create(&available_resources)
 		if result.Error != nil {
 			panic(result.Error)
