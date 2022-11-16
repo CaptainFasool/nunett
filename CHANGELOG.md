@@ -21,6 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.8](#073)
+
+### Added
+- Handle onboarding channels for separate networks corresponding to https://gitlab.com/nunet/nunet-adapter/-/issues/108
+- Workaround for #74
+
 ## [0.4.7](#047)
 
 ### Added
