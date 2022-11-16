@@ -26,6 +26,19 @@ Types of changes
 ### Added
 - Send docker logs for running container to GitHub's Gist
 
+## [0.4.5](#045)
+
+### Added
+- Added a grpc-client to access cardano-cli
+- Added a function interface to run cardano-cli commands
+- Removed unused functions
+
+## [0.4.4](#044)
+
+### Added
+- Added command for installing NVIDIA GPU driver and Container Runtime in nunet CLI.
+- Added command for pre-downloading ML docker images in nunet CLI. 
+
 ## [0.4.3](#043)
 
 ### Fixed
