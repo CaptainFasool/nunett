@@ -281,3 +281,8 @@ func UpdateMachinesTable() {
 	}
 
 }
+
+// GetPeerID returns self NodeID from the adapter
+func GetPeerID() (string, error) {
+	return getSelfNodeID()
+}

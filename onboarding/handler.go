@@ -12,6 +12,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
 // GetMetadata      godoc
@@ -160,6 +161,18 @@ func Onboard(c *gin.Context) {
 	})
 
 	time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
+
+	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
+	var NewDeviceOnboardParams = models.NewDeviceOnboarded{
+		PeerID:        statsdb.GetPeerID(),
+		CPU:           float32(available_resources.TotCpuHz),
+		RAM:           float32(available_resources.Ram),
+		Network:       0.0,
+		DedicatedTime: 0.0,
+		Timestamp:     float32(statsdb.GetTimestamp()),
+	}
+
+	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
 
 	c.JSON(http.StatusCreated, metadata)
 }

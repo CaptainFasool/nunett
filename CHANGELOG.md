@@ -26,14 +26,19 @@ Types of changes
 ### Added
 - Send docker logs for running container to GitHub's Gist
 
-## [0.4.5](#045)
+## [0.4.6](#063)
+
+### Added
+- Added stats_db grpc calls.
+
+## [0.4.5](#067)
 
 ### Added
 - Added a grpc-client to access cardano-cli
 - Added a function interface to run cardano-cli commands
 - Removed unused functions
 
-## [0.4.4](#044)
+## [0.4.4](#061)
 
 ### Added
 - Added command for installing NVIDIA GPU driver and Container Runtime in nunet CLI.
@@ -60,3 +65,4 @@ Types of changes
 
 ### Fixed
 - Fix one logical error where DMS on compute provider sent error ack for expired message. 
+

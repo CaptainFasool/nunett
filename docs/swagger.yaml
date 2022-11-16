@@ -64,7 +64,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.7
+  version: 0.4.6
 paths:
   /free:
     get:
@@ -73,7 +73,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Returns the amount of free resources available
       tags:
       - telemetry
@@ -173,7 +173,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Start a VM with custom configuration.
       tags:
       - vm
@@ -185,7 +185,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Start a VM with default configuration.
       tags:
       - vm
