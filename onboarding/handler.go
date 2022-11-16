@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/adapter"
+	//"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
@@ -104,10 +104,12 @@ func Onboard(c *gin.Context) {
 		cardanoPassive = "yes"
 	}
 
-	if capacityForNunet.Channel != "nunet-development" &&
-		capacityForNunet.Channel != "nunet-private-alpha" {
+	if capacityForNunet.Channel != "nunet-staging" &&
+	   capacityForNunet.Channel != "nunet-test" &&
+	   capacityForNunet.Channel != "nunet-team" &&
+	   capacityForNunet.Channel != "nunet-edge" {
 		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "only nunet-development and nunet-private-alpha is supported at the moment"})
+			gin.H{"error": "channel name not supported! nunet-test, nunet-edge, nunet-team and nunet-staging are supported at the moment"})
 		return
 	}
 
@@ -156,11 +158,13 @@ func Onboard(c *gin.Context) {
 
 	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
 
+	//XXX bad method - fix asap
 	time.AfterFunc(50*time.Second, func() {
 		_ = telemetry.CalcFreeResources()
 	})
 
-	time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
+	//XXX bad hack for https://gitlab.com/nunet/device-management-service/-/issues/74
+	//time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
 
 	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
 	var NewDeviceOnboardParams = models.NewDeviceOnboarded{
