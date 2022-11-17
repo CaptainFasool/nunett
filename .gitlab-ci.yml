@@ -26,6 +26,11 @@ build-job:
   script:
     - echo "Building debian archives..."
     - bash maint-scripts/build.sh
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+      - main
+      - staging
 
 deploy_dev:
   stage: deploy
@@ -44,6 +49,11 @@ deploy_dev:
   script: 
     - ansible --version
     - ansible-playbook maint-scripts/playbooks/deploy.yaml -i $ANSIBLE_INVENTORY
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+      - main
+      - staging
 
 .git:push:
   after_script:
@@ -84,5 +94,5 @@ deploy:openapi:
   only:
     refs:
       - $CI_DEFAULT_BRANCH
-      - develop
+      - main
       - staging
