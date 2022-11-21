@@ -45,3 +45,21 @@ type AvailableResources struct {
 	Disk      float64
 	PriceDisk float64
 }
+
+type Services struct {
+	ID                   uint
+	ServiceName          string
+	ContainerID          string
+	ResourceRequirements int
+	ImageID              string
+	// TODO: Add ContainerType field
+
+}
+
+type ServiceResourceRequirements struct {
+	ID   uint
+	CPU  int
+	RAM  int
+	VCPU int
+	HDD  int
+}

@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/cpu"
-	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
 	"gorm.io/gorm"
@@ -21,21 +20,58 @@ func QueryRunningVMs(DB *gorm.DB) []models.VirtualMachine {
 
 }
 
-func CalcUsedResources(vms []models.VirtualMachine) (int, int) {
-	var totalVCPU, totalMemSizeMib, totalCPUMhz int
+func QueryRunningConts(DB *gorm.DB) []models.Services {
+	var services []models.Services
+	result := DB.Find(&services)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+
+	return services
+}
+
+func CalcUsedResourcesVMs(vms []models.VirtualMachine) (int, int) {
+	if len(vms) == 0 {
+		return 0, 0
+	}
+	var tot_VCPU, totalMemSizeMib, totalCPUMhz int
 	for i := 0; i < len(vms); i++ {
-		totalVCPU += vms[i].VCPUCount
+		tot_VCPU += vms[i].VCPUCount
 		totalMemSizeMib += vms[i].MemSizeMib
 	}
 	cores, _ := cpu.Info()
-	totalCPUMhz = totalVCPU * int(cores[0].Mhz)
+	totalCPUMhz = tot_VCPU * int(cores[0].Mhz)
 	return totalCPUMhz, totalMemSizeMib
+}
+
+func CalcUsedResourcesConts(services []models.Services) (int, int) {
+	if len(services) == 0 {
+		return 0, 0
+	}
+	var tot_cpu, tot_mem int
+	for i := 0; i < len(services); i++ {
+		idx := services[i].ResourceRequirements
+		var resourceReq models.ServiceResourceRequirements
+		result := db.DB.Where("id = ?", idx).Find(&resourceReq)
+		if result.Error != nil {
+			panic(result.Error)
+		}
+		tot_cpu += resourceReq.CPU
+		tot_mem += resourceReq.RAM
+	}
+
+	return tot_cpu, tot_mem
 }
 
 func CalcFreeResources() error {
 	vms := QueryRunningVMs(db.DB)
+	conts := QueryRunningConts(db.DB)
 
-	totalCPUUsed, totalMem := CalcUsedResources(vms)
+	tot_cpu_vm, tot_mem_vm := CalcUsedResourcesVMs(vms)
+	tot_cpu_cont, tot_mem_cont := CalcUsedResourcesConts(conts)
+
+	tot_cpu_used := tot_cpu_cont + tot_cpu_vm
+	tot_mem := tot_mem_cont + tot_mem_vm
 
 	var availableRes models.AvailableResources
 	if res := db.DB.Find(&availableRes); res.RowsAffected == 0 {
@@ -45,9 +81,9 @@ func CalcFreeResources() error {
 
 	var freeResource models.FreeResources
 	freeResource.ID = 1
-	freeResource.TotCpuHz = cpuProvisioned - totalCPUUsed
-	freeResource.Ram = memProvisioned - totalMem
-	freeResource.Vcpu = int((cpuProvisioned - int(totalCPUUsed)) / int(cpuHz))
+	freeResource.TotCpuHz = cpuProvisioned - tot_cpu_used
+	freeResource.Ram = memProvisioned - tot_mem
+	freeResource.Vcpu = int((cpuProvisioned - int(tot_cpu_used)) / int(cpuHz))
 	freeResource.PriceCpu = availableRes.PriceCpu
 	freeResource.PriceRam = availableRes.PriceRam
 	freeResource.PriceDisk = availableRes.PriceDisk
@@ -67,10 +103,6 @@ func CalcFreeResources() error {
 		}
 	}
 
-	_, err := adapter.UpdateAvailableResoruces()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -81,6 +113,7 @@ func CalcFreeResources() error {
 // @Produce 	json
 // @Success		200
 // @Router		/free [get]
+
 func GetFreeResource(c *gin.Context) {
 	err := CalcFreeResources()
 	if err != nil {

@@ -14,6 +14,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/google/go-github/github"
 	"github.com/shirou/gopsutil/cpu"
+	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -21,6 +23,19 @@ const (
 	vcpuToMicroseconds float64       = 100000
 	gistUpdateDuration time.Duration = 2 * time.Minute
 )
+
+func freeUsedResources(contID string) {
+	// Remove Service from Services table
+	// and update the available resources table
+	var service []models.Services
+	result := db.DB.Where("container_id = ?", contID).Find(&service)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+	db.DB.Delete(&service)
+
+	telemetry.CalcFreeResources()
+}
 
 func mhzPerCore() float64 {
 	cpus, err := cpu.Info()
@@ -70,6 +85,20 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		},
 	}
 
+	var freeRes models.FreeResources
+
+	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
+		panic("Record not found!")
+
+	}
+
+	// Check if we have enough free resources before running Container
+	if (depReq.Constraints.RAM > freeRes.Ram) ||
+		(depReq.Constraints.CPU > freeRes.TotCpuHz) {
+		panic("Not enough resources available to deploy container")
+
+	}
+
 	resp, err := dc.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
 
 	if err != nil {
@@ -79,6 +108,29 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	if err := dc.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
+
+	// Update db
+	var service models.Services
+	service.ContainerID = resp.ID
+	service.ImageID = depReq.Params.ImageID
+	service.ServiceName = depReq.Params.ImageID
+
+	var resourceRequirements models.ServiceResourceRequirements
+	resourceRequirements.CPU = depReq.Constraints.CPU
+	resourceRequirements.RAM = depReq.Constraints.RAM
+
+	result := db.DB.Create(&resourceRequirements)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+
+	service.ResourceRequirements = int(resourceRequirements.ID)
+	result = db.DB.Create(&service)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+
+	telemetry.CalcFreeResources()
 
 	depRes := models.DeploymentResponse{Success: true}
 	resCh <- depRes
@@ -95,10 +147,12 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 			if err != nil {
 				panic(err)
 			}
+			freeUsedResources(resp.ID)
 			return
 		case <-statusCh: // not running?
 			// get the last logs & exit...
 			updateGist(*createdGist.ID, resp.ID)
+			freeUsedResources(resp.ID)
 			return
 		case <-tick.C:
 			// get the latest logs ...
@@ -106,6 +160,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 			updateGist(*createdGist.ID, resp.ID)
 		}
 	}
+
 }
 
 // cleanFlushInfo takes in bytes.Buffer from docker logs output and for each line

@@ -20,6 +20,15 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.9](#045)
+
+### Added
+- Calculate telemetry of docker containers and update DHT.
+- Missing dependency `bc` in DEBIAN/control
+
+### Changed 
+- Moved DHT update grpc call to run in a separate thread.
+- Image used in ci for building in order to support at least glibc-2.27
 
 ## [0.4.8](#073)
 
