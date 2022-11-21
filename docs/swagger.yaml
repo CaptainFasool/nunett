@@ -64,19 +64,8 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.8
+  version: 0.4.9
 paths:
-  /free:
-    get:
-      description: Checks and returns the amount of free resources available
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      summary: Returns the amount of free resources available
-      tags:
-      - telemetry
   /onboarding/address/new:
     get:
       description: Create a payment address from public key. Return payment address

@@ -7,7 +7,7 @@ include:
   file: ci/templates/Auto-DevOps.gitlab-ci.yml
   ref: develop
 
-image: golang:1.19.1
+image: registry.gitlab.com/nunet/device-management-service/nunet-dms-builder:0.1
 
 unit-test-job:
   stage: unit_tests

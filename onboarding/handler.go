@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	//"gitlab.com/nunet/device-management-service/adapter"
+	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
@@ -105,9 +105,9 @@ func Onboard(c *gin.Context) {
 	}
 
 	if capacityForNunet.Channel != "nunet-staging" &&
-	   capacityForNunet.Channel != "nunet-test" &&
-	   capacityForNunet.Channel != "nunet-team" &&
-	   capacityForNunet.Channel != "nunet-edge" {
+		capacityForNunet.Channel != "nunet-test" &&
+		capacityForNunet.Channel != "nunet-team" &&
+		capacityForNunet.Channel != "nunet-edge" {
 		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "channel name not supported! nunet-test, nunet-edge, nunet-team and nunet-staging are supported at the moment"})
 		return
@@ -126,7 +126,7 @@ func Onboard(c *gin.Context) {
 	err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
 	if err != nil {
 		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "cound not write metadata.json"})
+			gin.H{"error": "could not write metadata.json"})
 		return
 	}
 	// Add available resources to database.
@@ -161,6 +161,14 @@ func Onboard(c *gin.Context) {
 	//XXX bad method - fix asap
 	time.AfterFunc(50*time.Second, func() {
 		_ = telemetry.CalcFreeResources()
+		go func() {
+			for {
+				adapter.UpdateAvailableResoruces()
+				time.Sleep(time.Second * 10)
+			}
+
+		}()
+
 	})
 
 	//XXX bad hack for https://gitlab.com/nunet/device-management-service/-/issues/74

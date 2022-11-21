@@ -13,28 +13,11 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.8"
+        "version": "0.4.9"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
     "paths": {
-        "/free": {
-            "get": {
-                "description": "Checks and returns the amount of free resources available",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "telemetry"
-                ],
-                "summary": "Returns the amount of free resources available",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/onboarding/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
