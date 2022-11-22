@@ -6,8 +6,6 @@
     pip_install_packages:
       - name: docker
 
-    nunet_dms_version: 0.4.3
-
     nunet_dms_wallet_address_path: /etc/nunet/wallet.addr
     nunet_dms_mem_threshold: 10000
 
