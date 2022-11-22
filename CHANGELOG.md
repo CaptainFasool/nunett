@@ -21,6 +21,35 @@ Types of changes
 
 -->
 
+## [0.4.8](#073)
+
+### Added
+- Handle onboarding channels for separate networks corresponding to https://gitlab.com/nunet/nunet-adapter/-/issues/108
+- Workaround for #74
+
+## [0.4.7](#047)
+
+### Added
+- Send docker logs for running container to GitHub's Gist
+
+## [0.4.6](#063)
+
+### Added
+- Added stats_db grpc calls.
+
+## [0.4.5](#067)
+
+### Added
+- Added a grpc-client to access cardano-cli
+- Added a function interface to run cardano-cli commands
+- Removed unused functions
+
+## [0.4.4](#061)
+
+### Added
+- Added command for installing NVIDIA GPU driver and Container Runtime in nunet CLI.
+- Added command for pre-downloading ML docker images in nunet CLI. 
+
 ## [0.4.3](#043)
 
 ### Fixed
@@ -42,3 +71,4 @@ Types of changes
 
 ### Fixed
 - Fix one logical error where DMS on compute provider sent error ack for expired message. 
+

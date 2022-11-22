@@ -22,35 +22,35 @@ func QueryRunningVMs(DB *gorm.DB) []models.VirtualMachine {
 }
 
 func CalcUsedResources(vms []models.VirtualMachine) (int, int) {
-	var tot_vcpu, tot_mem_size_mib, tot_cpu_mhz int
+	var totalVCPU, totalMemSizeMib, totalCPUMhz int
 	for i := 0; i < len(vms); i++ {
-		tot_vcpu += vms[i].VCPUCount
-		tot_mem_size_mib += vms[i].MemSizeMib
+		totalVCPU += vms[i].VCPUCount
+		totalMemSizeMib += vms[i].MemSizeMib
 	}
 	cores, _ := cpu.Info()
-	tot_cpu_mhz = tot_vcpu * int(cores[0].Mhz)
-	return tot_cpu_mhz, tot_mem_size_mib
+	totalCPUMhz = totalVCPU * int(cores[0].Mhz)
+	return totalCPUMhz, totalMemSizeMib
 }
 
 func CalcFreeResources() error {
 	vms := QueryRunningVMs(db.DB)
 
-	tot_cpu_used, tot_mem := CalcUsedResources(vms)
+	totalCPUUsed, totalMem := CalcUsedResources(vms)
 
-	var avail_resources models.AvailableResources
-	if res := db.DB.Find(&avail_resources); res.RowsAffected == 0 {
+	var availableRes models.AvailableResources
+	if res := db.DB.Find(&availableRes); res.RowsAffected == 0 {
 		return res.Error
 	}
-	cpu_provisioned, mem_provisioned, cpu_hz := avail_resources.TotCpuHz, avail_resources.Ram, avail_resources.CpuHz
+	cpuProvisioned, memProvisioned, cpuHz := availableRes.TotCpuHz, availableRes.Ram, availableRes.CpuHz
 
 	var freeResource models.FreeResources
 	freeResource.ID = 1
-	freeResource.TotCpuHz = cpu_provisioned - tot_cpu_used
-	freeResource.Ram = mem_provisioned - tot_mem
-	freeResource.Vcpu = int((cpu_provisioned - int(tot_cpu_used)) / int(cpu_hz))
-	freeResource.PriceCpu = avail_resources.PriceCpu
-	freeResource.PriceRam = avail_resources.PriceRam
-	freeResource.PriceDisk = avail_resources.PriceDisk
+	freeResource.TotCpuHz = cpuProvisioned - totalCPUUsed
+	freeResource.Ram = memProvisioned - totalMem
+	freeResource.Vcpu = int((cpuProvisioned - int(totalCPUUsed)) / int(cpuHz))
+	freeResource.PriceCpu = availableRes.PriceCpu
+	freeResource.PriceRam = availableRes.PriceRam
+	freeResource.PriceDisk = availableRes.PriceDisk
 	// TODO: Calculate remaining disk space
 
 	// Check if we have a previous entry in the table

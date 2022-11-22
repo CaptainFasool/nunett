@@ -2,3 +2,4 @@
 /cmd
 *.db
 maint-scripts/inventory.yaml
+.env
