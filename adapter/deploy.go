@@ -3,133 +3,114 @@ package adapter
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
 	// "gitlab.com/nunet/device-management-service/gpu"
-	"gitlab.com/nunet/device-management-service/gpu"
+
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
-func verifyMessage(message models.DeploymentRequest) error {
+func messageHandler(message string) {
+	/*
+		Preliminary formatting of messages for deployment requests and othre functions.
+		Data structure and specific flags need to be standardized.
 
-	// check message and return error if we need not to process it.
-	if time.Now().Unix()-message.Timestamp.Unix() > 5000 {
-		fmt.Println("----------------------Expired Message------------------------------")
-		return errors.New("message expired")
-	}
-	return nil
-}
+			message contains four sections.
+				- sender: nodeid of sender
+				- mess/ge: the actual message sent
+				- uid: uid of the message
+				- msg_time: date time in iso format
 
-func RequestHandler(message models.DeploymentRequest) error {
-	// check for the service type and call the appropriate handler
-	switch message.ServiceType {
-	case "ml-training-gpu":
-		{
-			// TO DO: call GPU trigger handler
-			fmt.Println("++++++++++++++++++++++++++GPU deployemnt+++++++++++++++++")
-			gpu.HandleDockerDeployment(message)
-			return nil
-		}
-	case "cardano_node":
-		{
-			// TO DO: call cardano_node trigger handler
-			fmt.Println("++++++++++++++++++++++++++Cardano Deployment+++++++++++++++++")
-			return nil
-		}
-	default:
-		{
-			fmt.Println("----------------------Invalid service Type------------------------------")
-			return errors.New("invalid service type")
-		}
-	}
+			deployment request indicated by the prefix: "depreq"
+			options for deployment request:
+				- cardano_node
+				- machine_learning
 
-}
+			acknowledgement of deployment request indicated by the prefix: "ackdepreq"
+			followed by the type of the request then followed by "success" or "fail"
 
-func messageResponseHandler(message string) {
-	// TODO: The following hack should not happen
-	msg := `` + message + ``
-	var messageArray []interface{}
-	msgDoublQuote := strings.Replace(msg, `"`, "`", -1)               // replace double quote with backtick
-	msgSingleQuote := strings.Replace(msgDoublQuote, `'`, `"`, -1)    // replace single quote with double quote
-	formattedMessage := strings.Replace(msgSingleQuote, "`", `'`, -1) // replace backtick with single quote
+		TODO:
+			- error handling
+			- better data structure for functional messages such as deployment requests and results
+	*/
 
-	err := json.Unmarshal([]byte(formattedMessage), &messageArray)
+	messageValue := strings.Replace(message, "'", `"`, -1) // replacing single quote to double quote to unmarshall
+	var adapterMessage models.AdapterMessage
+	json.Unmarshal([]byte(messageValue), &adapterMessage)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	// remove after testing
+	fmt.Println("Parsed Message: ")
+	fmt.Println("Sender: ", adapterMessage.Sender)
+	fmt.Println("Time: ", adapterMessage.Timestamp)
+	fmt.Println("UID: ", adapterMessage.Uid)
+	fmt.Println("Message: ", adapterMessage.Message)
+	// remove after testing
 
-	var deploymentRequest models.DeploymentRequest
-	for _, message := range messageArray {
-		messageObj := message.(map[string]interface{})
-		messageValue := strings.Replace(messageObj["message"].(string), "'", `"`, -1) // replacing single quote to double quote to unmarshall
-		json.Unmarshal([]byte(messageValue), &deploymentRequest)
-		err := verifyMessage(deploymentRequest)
-		if err != nil {
-			continue
-		}
-		err = RequestHandler(deploymentRequest)
-
-		// If RequestHandler concludes that request for deployement has been accepted send a ack message to requester peer
-		// Also in case of error send a message to the peer about failure of request
-		if err != nil {
-			content := fmt.Sprint(err)
-			NunetAdapterBaseClient("SendMessage", "MessageResponse", &models.DeploymentResponse{
-				// FIXME: AddressUser is not a NodeId
-				NodeId:  deploymentRequest.AddressUser,
-				Success: false,
-				Content: content,
-			})
+	if strings.HasPrefix(adapterMessage.Message, "depreq") { // deployment request
+		if strings.HasSuffix(adapterMessage.Message, "cardano_node") { // cardano node
+			// attempt to run vm and reply success or failure
+		} else if strings.HasSuffix(adapterMessage.Message, "machine_learning") { // machine learning
+			// attempt to run a container and reply success or failure
 		} else {
-			NunetAdapterBaseClient("SendMessage", "MessageResponse", &models.DeploymentResponse{
-				// FIXME: AddressUser is not a NodeId
-				NodeId:  deploymentRequest.AddressUser,
-				Success: true,
-			})
+			SendMessage(adapterMessage.Sender, "ackdepreq unknown")
 		}
 	}
 }
 
-func PullMessages() {
-	resp := NunetAdapterBaseClient("ReceivedMessage", "MessageResponse", &models.DeploymentRequest{})
-	messageResponseHandler(resp.(MessageResponse).MessageResponse)
-}
-
-func NunetAdapterBaseClient(request string, response string, data interface{}) interface{} {
-	conn, _ := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func StartMessageReceiver() {
+	kap := keepalive.ClientParameters{
+		Time:                time.Duration(15 * time.Minute), // ping server every 15 minutes
+		Timeout:             time.Duration(60 * time.Second), // close connection after 60 seconds of no-ackowledgement for ping
+		PermitWithoutStream: true,                            // allow keepalive ping even without data
+	}
+	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+		grpc.WithKeepaliveParams(kap)}...)
+	if err != nil {
+		log.Println("[ADAPTER MSG] ERROR: Problem on dial", err.Error())
+	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
 	client := NewNunetAdapterClient(conn)
+	emptyarg := ReceivedMessageParams{}
+	msgStream, err := client.IncomingMessage(context.Background(), &emptyarg)
 
-	// Call the adapter based on request and response params
-	if request == "ReceivedMessage" && response == "MessageResponse" {
-		res, _ := client.ReceivedMessage(ctx, &ReceivedMessageParams{})
-		return res.MessageResponse
-	} else if request == "SendMessage" && response == "MessageResponse" {
-		deployementResponse := data.(models.DeploymentResponse)
-		client.SendMessage(ctx, &MessageParams{
-			NodeId: deployementResponse.NodeId,
-			MessageContent: `{"success":"` + strconv.FormatBool(deployementResponse.Success) +
-				`", "message":"` + deployementResponse.Content + `"}`,
-		})
+	if err != nil {
+		log.Println("[ADAPTER MSG] ERROR: Problem Creating MsgStream! - ", err.Error())
 	}
-	return struct{}{}
-}
 
-func PollAdapter() {
 	for {
-		// Run the function to retrieve messages from adapter in every 10 seconds
-		time.Sleep(time.Second * 10)
-		PullMessages()
+		msg, err := msgStream.Recv()
+		if err == io.EOF {
+			log.Println("[ADAPTER MSG] ERROR: EOF")
+		} else if err != nil {
+			log.Println("[ADAPTER MSG] ERROR: Connection Problem - ", err.Error())
+			conn, err = grpc.Dial(utils.ADAPTER_GRPC_URL,
+				[]grpc.DialOption{
+					grpc.WithTransportCredentials(insecure.NewCredentials()),
+					grpc.WithBlock(),
+					grpc.WithKeepaliveParams(kap)}...)
+			if err != nil {
+				log.Println("[ADAPTER MSG] ERROR: Problem on dial: ", err.Error())
+			}
+			client = NewNunetAdapterClient(conn)
+			msgStream, err = client.IncomingMessage(context.Background(), &emptyarg)
+			if err != nil {
+				log.Println("[ADAPTER MSG] ERROR: Problem Creating MsgStream on refresh. - ", err.Error())
+			}
+			time.Sleep(5 * time.Second)
+		} else {
+			log.Println("[ADAPTER MSG] INFO: Received Message: ", msg)
+			messageHandler(msg.MessageResponse)
+		}
 	}
 }
