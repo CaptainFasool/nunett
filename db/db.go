@@ -20,6 +20,8 @@ func ConnectDatabase() {
 	database.AutoMigrate(&models.AvailableResources{})
 	database.AutoMigrate(&models.FreeResources{})
 	database.AutoMigrate(&models.PeerInfo{})
+	database.AutoMigrate(&models.Services{})
+	database.AutoMigrate(&models.ServiceResourceRequirements{})
 
 	DB = database
 }

@@ -7,17 +7,16 @@ import (
 	"net/http"
 
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	// "gitlab.com/nunet/device-management-service/firecracker/telemetry"
 )
 
 func GetMetadata() models.Metadata {
-	resp, err := http.Get("http://localhost:9999/api/v1/onboarding/metadata")
+	resp, err := http.Get(utils.DMS_BASE_URL + "/onboarding/metadata")
 	if err != nil {
 		panic(err)
 	}
@@ -31,32 +30,6 @@ func GetMetadata() models.Metadata {
 	}
 	fmt.Println(metadata.Reserved)
 	return metadata
-}
-
-// newExporter returns a console exporter.
-func newExporter(w io.Writer) (tracesdk.SpanExporter, error) {
-	return stdouttrace.New(
-		stdouttrace.WithWriter(w),
-		// Use human-readable output.
-		stdouttrace.WithPrettyPrint(),
-		// Do not print timestamps for the demo.
-		stdouttrace.WithoutTimestamps(),
-	)
-}
-
-func newResource() *resource.Resource {
-	metadata := GetMetadata()
-	deviceName := metadata.Name
-	environment := metadata.Network
-	r, _ := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(deviceName),
-			attribute.String("environment", environment),
-		),
-	)
-	return r
 }
 
 func TracerProvider(url string) (*tracesdk.TracerProvider, error) {

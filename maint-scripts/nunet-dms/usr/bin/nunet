@@ -63,7 +63,10 @@ onboard_usage() {
     echo "Options:"
     echo "    -m, --memory           Amount of memory in Megabytes"
     echo "    -c, --cpu              Amount of CPU in Megahertz"
-    echo "    -n, --nunet-channel    NuNet channel to onboard the machine to (nunet-private-alpha, nunet-development)"
+    echo "    -n, --nunet-channel    NuNet channel to onboard the machine to:"
+    echo "                             OPTIONS"
+    echo "                               'nunet-test' - Development branch for Community Testers"
+    echo "                               'nunet-staging' - Staging branch for Community Testers"
     echo "    -a, --address          Wallet Address (Public Key)"
     echo "    -C, --cardano          Allow deployment of a Cardano Node"
     echo "    -v, --verbose          Verbose output"
@@ -184,17 +187,28 @@ onboard() {
     N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
     N_AVAILABLE_CPU=$(echo $N_AVAILABLE_RES | jq ".cpu")
     N_AVAILABLE_CPU=$(printf "%.0f" $(echo $N_AVAILABLE_CPU | bc)) # rounding in case of decimal values cpu freq such as cloud
-    if [[ N_ONBOARD_MEM -gt $((N_AVAILABLE_MEM*9/10)) || N_ONBOARD_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
+    if [[ $N_ONBOARD_MEM -gt $((N_AVAILABLE_MEM*9/10)) || $N_ONBOARD_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
         printf "${BAD_C}Memory should be between 10%% and 90%% of the available memory ($((N_AVAILABLE_MEM/10)) and $((N_AVAILABLE_MEM*9/10))) ${NORMAL_C}\n"
         printf "${INFO_C}Check available resources with 'nunet available --pretty'${NORMAL_C}\n"
         exit
-    elif [[ N_ONBOARD_CPU -gt $((N_AVAILABLE_CPU*9/10)) || N_ONBOARD_CPU -lt $((N_AVAILABLE_CPU/10)) ]] ; then
+    elif [[ $N_ONBOARD_CPU -gt $((N_AVAILABLE_CPU*9/10)) || $N_ONBOARD_CPU -lt $((N_AVAILABLE_CPU/10)) ]] ; then
         printf "${BAD_C}CPU should be between 10%% and 90%% of the available CPU ($((N_AVAILABLE_CPU/10)) and $((N_AVAILABLE_CPU*9/10))) ${NORMAL_C}\n"
         printf "${INFO_C}Check available resources with 'nunet available --pretty'${NORMAL_C}\n"
         exit
-    elif [[ N_ONBOARD_CHAN == "nunet-private-alpha" || N_ONBOARD_CHAN == "nunet-development" ]] ; then
-        printf "${BAD_C}NuNet Channel should be 'nunet-private-alpha' or 'nunet-development'${NORMAL_C}\n"
-
+    elif [[ "$N_ONBOARD_CHAN" != "nunet-test" && "$N_ONBOARD_CHAN" != "nunet-staging" && "$N_ONBOARD_CHAN" != "nunet-team" && "$N_ONBOARD_CHAN" != "nunet-edge" ]] ; then
+        printf "${BAD_C}NuNet Channel should be 'nunet-test' or 'nunet-staging' not $N_ONBOARD_CHAN ${NORMAL_C}\n"
+        exit
+    elif [[ "$N_ONBOARD_CHAN" == "nunet-team" || "$N_ONBOARD_CHAN" == "nunet-edge" ]] ; then
+        while true; do
+            read -p "Are you sure you want to join $N_ONBOARD_CHAN?? (yes/no) " chan_resp
+            case $chan_resp in
+                yes ) echo "Proceeding with onboarding to $N_ONBOARD_CHAN channel";
+                    break;;
+                no) echo "Exiting...";
+                    exit;;
+                *) echo "Only 'yes' or 'no' please";;
+            esac
+        done
     else
         N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
             -d "{\"memory\": $N_ONBOARD_MEM, \"cpu\": $N_ONBOARD_CPU, \

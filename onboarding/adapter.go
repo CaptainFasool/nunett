@@ -12,6 +12,8 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
+	"gitlab.com/nunet/device-management-service/adapter"
 )
 
 func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.MetadataV2, cardanoPassive string) {
@@ -19,22 +21,47 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 	var deploymentType string
 	var tokenomicsApiName string
 	var adapterPrefix string
-	if metadata.Network == "nunet-development" {
+	if metadata.Network == "nunet-test" {
 		adapterImageTag = "test"
-		adapterPrefix = "testing-nunet-adapter"
+		adapterPrefix = "nunet-adapter-test"
 		deploymentType = "test"
 		tokenomicsApiName = "testing-tokenomics"
 		if os.Getenv("OS_RELEASE") == "raspbian" {
 			adapterImageTag = "arm-test"
 		}
-	}
-	if metadata.Network == "nunet-private-alpha" {
-		adapterImageTag = "latest"
-		adapterPrefix = "nunet-adapter"
-		deploymentType = "prod"
-		tokenomicsApiName = "tokenomics"
+	} else if metadata.Network == "nunet-staging" {
+		adapterImageTag = "staging"
+		adapterPrefix = "nunet-adapter-staging"
+		deploymentType = "staging"
+		tokenomicsApiName = "staging-tokenomics"
 		if os.Getenv("OS_RELEASE") == "raspbian" {
-			adapterImageTag = "arm-latest"
+			adapterImageTag = "arm-staging"
+		}
+	} else if metadata.Network == "nunet-edge" {
+		adapterImageTag = "edge"
+		adapterPrefix = "nunet-adapter-edge"
+		deploymentType = "edge"
+		tokenomicsApiName = "edge-tokenomics"
+		if os.Getenv("OS_RELEASE") == "raspbian" {
+			adapterImageTag = "arm-edge"
+		}
+	} else if metadata.Network == "nunet-team" {
+		adapterImageTag = "team"
+		adapterPrefix = "nunet-adapter-team"
+		deploymentType = "team"
+		tokenomicsApiName = "team-tokenomics"
+		if os.Getenv("OS_RELEASE") == "raspbian" {
+			adapterImageTag = "arm-team"
+		}
+	} else {
+		log.Println("[DMS Adapter] ERROR No such channel " + metadata.Network)
+		log.Println("[DMS Adapter] INFO  Onboarding with nunet-test channel")
+		adapterImageTag = "test"
+		adapterPrefix = "nunet-adapter-test"
+		deploymentType = "test"
+		tokenomicsApiName = "testing-tokenomics"
+		if os.Getenv("OS_RELEASE") == "raspbian" {
+			adapterImageTag = "arm-test"
 		}
 	}
 
@@ -54,13 +81,13 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 		panic(err)
 	}
 
-	log.Println("[DMS Adapter] Start pulling nunet-adapter image")
+	log.Println("[DMS Adapter] INFO  Start pulling nunet-adapter image")
 	reader, err := cli.ImagePull(c, fmt.Sprintf("%s:%s", adapterImage, adapterImageTag), types.ImagePullOptions{})
 	if err != nil {
 		panic(err)
 	}
 	io.Copy(ioutil.Discard, reader)
-	log.Println("[DMS Adapter] Done pulling nunet-adapter image")
+	log.Println("[DMS Adapter] INFO  Done pulling nunet-adapter image")
 
 	envVars := []string{fmt.Sprintf("tokenomics_api_name=%s", tokenomicsApiName),
 		fmt.Sprintf("deployment_type=%s", deploymentType)}
@@ -87,14 +114,14 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 		   container.Command == "python nunet_adapter.py 60777" &&
 		   container.HostConfig.NetworkMode == "host" {
 			if strings.EqualFold(container.State, "running") {
-				log.Println("[DMS Adapter] ERROR : There seems to be an adapter container with name: " +
+				log.Println("[DMS Adapter] ERROR There seems to be an adapter container with name: " +
 					adapterName + " with ID " +  container.ID + " already running. Stopping existing container.")
 				err := cli.ContainerStop(c, container.ID, nil)
 				if err != nil {
 					panic(err)
 				}
 			} else {
-				log.Println("[DMS Adapter] ERROR : There seems to be an adapter container with name: " +
+				log.Println("[DMS Adapter] ERROR There seems to be an adapter container with name: " +
 					adapterName + " with ID " +  container.ID +
 					" that is not running (" + container.State + ")" +
 					" Removing container.")
@@ -106,17 +133,19 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 			break
 		}
 	}
-	log.Println("[DMS Adapter] INFO Creating NuNet Adapter container")
+	log.Println("[DMS Adapter] INFO  Creating NuNet Adapter container")
 	resp, err := cli.ContainerCreate(c, &contConfig, &hostConfig, nil, nil, adapterName)
 
 	if err != nil {
 		panic(err)
 	}
-	log.Println("[DMS Adapter] INFO : Created NuNet Adapter container")
-	log.Println("[DMS Adapter] INFO : Starting NuNet Adapter container")
+	log.Println("[DMS Adapter] INFO  Created NuNet Adapter container")
+	log.Println("[DMS Adapter] INFO  Starting NuNet Adapter container")
 	if err := cli.ContainerStart(c, resp.ID, types.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
+	//XXX bad hack for https://gitlab.com/nunet/device-management-service/-/issues/74
+	time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
 
 	statusCh, errCh := cli.ContainerWait(c, resp.ID, container.WaitConditionNotRunning)
 	select {

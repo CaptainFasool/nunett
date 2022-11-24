@@ -164,8 +164,7 @@ func SendMessage(nodeID string, message string) (string, error) {
 }
 
 func UpdateAvailableResoruces() (string, error) {
-	address := "localhost:60777"
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", err
 	}
@@ -204,8 +203,7 @@ func UpdateAvailableResoruces() (string, error) {
 
 func getSelfNodeID() (string, error) {
 	// Set up a connection to the server.
-	address := "localhost:60777"
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", err
 	}
@@ -282,4 +280,9 @@ func UpdateMachinesTable() {
 		panic(result.Error)
 	}
 
+}
+
+// GetPeerID returns self NodeID from the adapter
+func GetPeerID() (string, error) {
+	return getSelfNodeID()
 }

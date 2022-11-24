@@ -31,9 +31,6 @@ func SetupRouter() *gin.Engine {
 		virtualmachine.POST("/start-custom", firecracker.StartCustom)
 	}
 
-	// spo and gpu endpoint will merge.
-	// devices endpoint will go away and exist as a function only
-
 	run := v1.Group("/run")
 	{
 		run.POST("/deploy", machines.SendDeploymentRequest)
