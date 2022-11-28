@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	// "gitlab.com/nunet/device-management-service/gpu"
-
+	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 	grpc "google.golang.org/grpc"
@@ -19,50 +19,61 @@ import (
 )
 
 func messageHandler(message string) {
-	/*
-		Preliminary formatting of messages for deployment requests and othre functions.
-		Data structure and specific flags need to be standardized.
+	messageValue := strings.Replace(message, `'`, `"`, -1)      // replacing single quote to double quote to unmarshall
+	messageValue = strings.Replace(messageValue, `"{`, `{`, -1) // necessary because json becomes string in route and contains "key" : "{\"key\" : \"value\"}"
+	messageValue = strings.Replace(messageValue, `}"`, `}`, -1) // necessary because json becomes string in route and contains "key" : "{\"key\" : \"value\"}"
 
-			message contains four sections.
-				- sender: nodeid of sender
-				- mess/ge: the actual message sent
-				- uid: uid of the message
-				- msg_time: date time in iso format
-
-			deployment request indicated by the prefix: "depreq"
-			options for deployment request:
-				- cardano_node
-				- machine_learning
-
-			acknowledgement of deployment request indicated by the prefix: "ackdepreq"
-			followed by the type of the request then followed by "success" or "fail"
-
-		TODO:
-			- error handling
-			- better data structure for functional messages such as deployment requests and results
-	*/
-
-	messageValue := strings.Replace(message, "'", `"`, -1) // replacing single quote to double quote to unmarshall
 	var adapterMessage models.AdapterMessage
-	json.Unmarshal([]byte(messageValue), &adapterMessage)
 
-	// remove after testing
-	fmt.Println("Parsed Message: ")
-	fmt.Println("Sender: ", adapterMessage.Sender)
-	fmt.Println("Time: ", adapterMessage.Timestamp)
-	fmt.Println("UID: ", adapterMessage.Uid)
-	fmt.Println("Message: ", adapterMessage.Message)
-	// remove after testing
-
-	if strings.HasPrefix(adapterMessage.Message, "depreq") { // deployment request
-		if strings.HasSuffix(adapterMessage.Message, "cardano_node") { // cardano node
-			// attempt to run vm and reply success or failure
-		} else if strings.HasSuffix(adapterMessage.Message, "machine_learning") { // machine learning
-			// attempt to run a container and reply success or failure
-		} else {
-			SendMessage(adapterMessage.Sender, "ackdepreq unknown")
-		}
+	err := json.Unmarshal([]byte(messageValue), &adapterMessage)
+	if err != nil {
+		fmt.Println("            ", err)
+		log.Println("Unable to parse received message: " + err.Error())
 	}
+
+	if adapterMessage.Message.ServiceType == "cardano_node" {
+		// dowload kernel and filesystem files place them somewhere
+		// TODO : organize fc files
+		utils.DownloadFile("https://d.nunet.io/fc/vmlinux", "/etc/nunet/vmlinux")
+		utils.DownloadFile("https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4", "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4")
+
+		// makerequest to start-default with downloaded files.
+		type StartDefaultBody struct {
+			KernelImagePath string `json:"kernel_image_path"`
+			FilesystemPath  string `json:"filesystem_path"`
+		}
+		startDefaultBody := &StartDefaultBody{
+			KernelImagePath: "/etc/nunet/vmlinux",
+			FilesystemPath:  "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4",
+		}
+		jsonBody, _ := json.Marshal(startDefaultBody)
+
+		resp := utils.MakeInternalRequest(&gin.Context{}, "POST", "/vm/start-default", jsonBody)
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(string(respBody))
+
+		selfNodeId, _ := getSelfNodeID()
+		depResp := models.DeploymentResponse{
+			NodeId:  selfNodeId,
+			Success: true,
+			Content: "Cardano Node Deployed",
+		}
+		jsonDepResp, _ := json.Marshal(depResp)
+		SendMessage(adapterMessage.Sender, string(jsonDepResp))
+
+	} else if adapterMessage.Message.ServiceType == "ml-training-gpu" {
+		depResp := models.DeploymentResponse{}
+		depResp = docker.HandleDeployment(adapterMessage.Message, depResp)
+
+		jsonDepResp, _ := json.Marshal(depResp)
+		SendMessage(adapterMessage.Sender, string(jsonDepResp))
+	} else {
+		log.Println("Error: Uknown service type - ", adapterMessage.Message.ServiceType)
+	}
+
 }
 
 func StartMessageReceiver() {
