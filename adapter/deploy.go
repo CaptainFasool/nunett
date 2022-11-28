@@ -34,17 +34,27 @@ func messageHandler(message string) {
 	if adapterMessage.Message.ServiceType == "cardano_node" {
 		// dowload kernel and filesystem files place them somewhere
 		// TODO : organize fc files
-		utils.DownloadFile("https://d.nunet.io/fc/vmlinux", "/etc/nunet/vmlinux")
-		utils.DownloadFile("https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4", "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4")
+		kernelFileUrl := "https://d.nunet.io/fc/vmlinux"
+		kernelFilePath := "/etc/nunet/vmlinux"
+		filesystemUrl := "https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4"
+		filesystemPath := "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4"
+
+		err = utils.DownloadFile(kernelFileUrl, kernelFilePath)
+		if err != nil {
+			log.Println("Error: Downloading ", kernelFileUrl, " - ", err.Error())
+		}
+		err = utils.DownloadFile(filesystemUrl, filesystemPath)
+		if err != nil {
+			log.Println("Error: Downloading ", filesystemUrl, " - ", err.Error())
+		}
 
 		// makerequest to start-default with downloaded files.
-		type StartDefaultBody struct {
+		startDefaultBody := struct {
 			KernelImagePath string `json:"kernel_image_path"`
 			FilesystemPath  string `json:"filesystem_path"`
-		}
-		startDefaultBody := &StartDefaultBody{
-			KernelImagePath: "/etc/nunet/vmlinux",
-			FilesystemPath:  "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4",
+		}{
+			KernelImagePath: kernelFilePath,
+			FilesystemPath:  filesystemPath,
 		}
 		jsonBody, _ := json.Marshal(startDefaultBody)
 
