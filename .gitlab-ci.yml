@@ -26,6 +26,34 @@ build-job:
   script:
     - echo "Building debian archives..."
     - bash maint-scripts/build.sh
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+      - main
+      - staging
+
+deploy_dev:
+  stage: deploy
+  variables:
+     ANSIBLE_HOST_KEY_CHECKING: "false"
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client python3-apt -y )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $SSH_JUMP_HOST >> ~/.ssh/known_hosts 2> /dev/null
+    - pip install ansible ansible-lint jmespath docker
+    - ansible-galaxy role install geerlingguy.docker geerlingguy.pip
+  image: python:3
+  script: 
+    - ansible --version
+    - ansible-playbook maint-scripts/playbooks/deploy.yaml -i $ANSIBLE_INVENTORY
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+      - main
+      - staging
 
 .git:push:
   after_script:
@@ -66,5 +94,5 @@ deploy:openapi:
   only:
     refs:
       - $CI_DEFAULT_BRANCH
-      - develop
+      - main
       - staging
