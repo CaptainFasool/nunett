@@ -16,33 +16,45 @@ For end users, these are installed as part of .deb package. these prerequisites 
 
 ### Setup Development Environment
 
-On Debian-based systems, this command should get you ready with the installation.
+You can install Go using the following commands below on both Debian or RHEL based systems.
+
+#### Install Go based on official documentation (Debian/RHEL based system)
+```
+wget https://go.dev/dl/go1.19.3.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.19.3.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+source $HOME/.profile
+```
+#### Install additional dependencies on Debian based system
 
 ```
-sudo apt install build-essential curl golang jq
+sudo apt install build-essential curl jq
 ```
 
-Similarly, on RHEL based system, the equivalent command would be:
+#### Install additional dependencies on RHEL based system
 
 ```
-sudo yum group install "Development Tools"
-sudo yum install curl golang jq
+sudo yum install curl jq
 ```
 
-Please make sure you have the appropriate Go version installed. We work with and test against the latest Go release. You can find the version we are using in the go.mod file.
+Please make sure you have the appropriate Go version installed, with the `go version` command. We work with and test against the latest Go release.
 
 ### Build and Run the server
 
 
-If you have Go installed, next install the packages:
+If you have Go installed, download the develop branch from this repository:
+
+    git clone -b develop https://gitlab.com/nunet/device-management-service.git dms && cd dms
+
+Next, install the packages:
 
     go install
 
-and then run the main.go
+and then run main.go
 
     sudo go run main.go
 
-Notice that I'm using `sudo` as the onboarding process writes some configuration files to `/etc/nunet`.
+Notice we're using `sudo` as the onboarding process writes some configuration files to `/etc/nunet`.
 
 Note about firecracker VMs. DMS also depends on binaries such as `firecracker` and one custom build binary, source code of which is stored in ./maint-script directory. Store them somewhere in $PATH.
 
