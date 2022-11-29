@@ -1,6 +1,7 @@
 /dist
 /cmd
 *.db
+maint-scripts/inventory.yaml
 *.log
 *.json
 .env

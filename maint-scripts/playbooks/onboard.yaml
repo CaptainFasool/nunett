@@ -1,0 +1,7 @@
+- name: Onboard machine as a compute provider
+  when: (device_resources.memory/2 | round) > nunet_dms_mem_threshold
+  ansible.builtin.command: 'nunet onboard -m {{ (device_resources.memory/2 | round) | int }} -c {{ (device_resources.cpu/2 | round) | int }} -n {{ nunet_dms_nunet_channel }} -a {{ nunet_wallet.address }} -C'
+
+- name: Onboard machine as a service provider
+  when: (device_resources.memory/2 | round) < nunet_dms_mem_threshold
+  ansible.builtin.command: 'nunet onboard -m {{ (device_resources.memory/2 | round) | int }} -c {{ (device_resources.cpu/2 | round) | int }} -n {{ nunet_dms_nunet_channel }} -a {{ nunet_wallet.address }}' 
