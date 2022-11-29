@@ -37,7 +37,7 @@ const docTemplate = `{
                 "summary": "Returns the amount of free resources available",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -157,7 +157,7 @@ const docTemplate = `{
                 "summary": "Sends a command to specific node and prints back response.",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -194,7 +194,7 @@ const docTemplate = `{
                 "summary": "Start a VM with custom configuration.",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -211,7 +211,7 @@ const docTemplate = `{
                 "summary": "Start a VM with default configuration.",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -304,7 +304,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.10",
+	Version:          "0.4.11",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

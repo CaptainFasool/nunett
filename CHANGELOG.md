@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.11](#0411)
+
+### Added
+- Passing fields required for Remote Shell authorization on VMs.
 
 ## [0.4.10](#0410)
 

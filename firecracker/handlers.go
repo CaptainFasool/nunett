@@ -106,6 +106,20 @@ func StartCustom(c *gin.Context) {
 
 	NetworkInterfaces(c, vm, networkInterfacesBody)
 
+	mmdsConfigBody := models.MMDSConfig{}
+	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
+
+	SetupMMDS(c, vm, mmdsConfigBody)
+
+	mmdsMsg := models.MMDSMsg{}
+	mmdsMetadata := models.MMDSMetadata{}
+	//TODO: Currently passing fake data will be replaced with information from Deployment Request
+	mmdsMetadata.NodeId = "12343124-3423425234-23423534234"
+	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
+	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
+
+	PassMMDSMsg(c, vm, mmdsMsg)
+
 	StartVM(c, vm)
 }
 
@@ -185,6 +199,20 @@ func StartDefault(c *gin.Context) {
 
 	NetworkInterfaces(c, vm, networkInterfacesBody)
 
+	mmdsConfigBody := models.MMDSConfig{}
+	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
+
+	SetupMMDS(c, vm, mmdsConfigBody)
+
+	mmdsMsg := models.MMDSMsg{}
+	mmdsMetadata := models.MMDSMetadata{}
+	//TODO: Currently passing fake data will be replaced with information from Deployment Request
+	mmdsMetadata.NodeId = "12343124-3423425234-23423534234"
+	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
+	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
+
+	PassMMDSMsg(c, vm, mmdsMsg)
+
 	StartVM(c, vm)
 }
 
@@ -246,6 +274,20 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	networkInterfacesBody.HostDevName = vm.TapDevice
 
 	NetworkInterfaces(c, vm, networkInterfacesBody)
+
+	mmdsConfigBody := models.MMDSConfig{}
+	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
+
+	SetupMMDS(c, vm, mmdsConfigBody)
+
+	mmdsMsg := models.MMDSMsg{}
+	mmdsMetadata := models.MMDSMetadata{}
+	//TODO: Currently passing fake data will be replaced with information from Deployment Request
+	mmdsMetadata.NodeId = "12343124-3423425234-23423534234"
+	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
+	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
+
+	PassMMDSMsg(c, vm, mmdsMsg)
 
 	// POST /start
 

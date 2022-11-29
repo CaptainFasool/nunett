@@ -11,9 +11,11 @@ type DeploymentRequest struct {
 	ServiceType string    `json:"service_type"`
 	Timestamp   time.Time `json:"timestamp"`
 	Params      struct {
-		ImageID  string   `json:"image_id"`
-		ModelURL string   `json:"model_url"`
-		Packages []string `json:"packages"`
+		ImageID   string   `json:"image_id"`
+		ModelURL  string   `json:"model_url"`
+		Packages  []string `json:"packages"`
+		NodeID    string   `json:"node_id"`
+		PublicKey string   `json:"public_key"`
 	} `json:"params"`
 	Constraints struct {
 		Complexity string `json:"complexity"`
