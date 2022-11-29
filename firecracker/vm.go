@@ -108,6 +108,20 @@ func NetworkInterfaces(c *gin.Context, vm models.VirtualMachine, ni models.Netwo
 	utils.MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, ERR_MACHINE_CONFIG_REQ)
 }
 
+func SetupMMDS(c *gin.Context, vm models.VirtualMachine, mmds models.MMDSConfig) {
+
+	jsonBytes, _ := json.Marshal(mmds)
+	client := NewClient(vm.SocketFile)
+	utils.MakeRequest(c, client, "http://localhost/mmds/config", jsonBytes, ERR_MMDS_CONFIG)
+}
+
+func PassMMDSMsg(c *gin.Context, vm models.VirtualMachine, mmdsMsg models.MMDSMsg) {
+
+	jsonBytes, _ := json.Marshal(mmdsMsg)
+	client := NewClient(vm.SocketFile)
+	utils.MakeRequest(c, client, "http://localhost/mmds", jsonBytes, ERR_MMDS_MSG)
+}
+
 func StartVM(c *gin.Context, vm models.VirtualMachine) {
 	var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
 

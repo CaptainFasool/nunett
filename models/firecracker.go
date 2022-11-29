@@ -23,6 +23,23 @@ type NetworkInterfaces struct {
 	HostDevName string `json:"host_dev_name"`
 }
 
+type MMDSConfig struct {
+	NetworkInterface []string `json:"network_interfaces"`
+}
+
+type MMDSMsg struct {
+	Latest struct {
+		Metadata struct {
+			MMDSMetadata
+		} `json:"meta-data"`
+	} `json:"latest"`
+}
+
+type MMDSMetadata struct {
+	NodeId string `json:"node_id"`
+	PKey   string `json:"pkey"`
+}
+
 type Actions struct {
 	ActionType string `json:"action_type"`
 }
