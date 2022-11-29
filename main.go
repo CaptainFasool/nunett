@@ -9,6 +9,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
+	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/routes"
 	"go.opentelemetry.io/otel"
 
@@ -17,7 +18,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.9
+// @version         0.4.10
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -35,6 +36,7 @@ func main() {
 	wg.Add(1)
 
 	go startServer(wg)
+	go internal.SendCommandForExecution()
 
 	// Poll messages from the adapter
 	// go adapter.PollAdapter()

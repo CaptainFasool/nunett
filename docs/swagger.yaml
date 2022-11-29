@@ -64,8 +64,19 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.9
+  version: 0.4.10
 paths:
+  /free:
+    get:
+      description: Checks and returns the amount of free resources available
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Returns the amount of free resources available
+      tags:
+      - telemetry
   /onboarding/address/new:
     get:
       description: Create a payment address from public key. Return payment address
@@ -124,7 +135,7 @@ paths:
       summary: Returns provisioned capacity on host.
       tags:
       - onboarding
-  /peer/list:
+  /peers/list:
     get:
       description: Gets a list of peers the adapter can see within the network and
         return a list of peer info
@@ -138,6 +149,15 @@ paths:
       summary: Return list of peers currently connected to
       tags:
       - run
+  /peers/ws:
+    get:
+      description: Sends a command to specific node and prints back response.
+      responses:
+        "200":
+          description: ""
+      summary: Sends a command to specific node and prints back response.
+      tags:
+      - peers
   /run/deploy:
     post:
       description: SendDeploymentRequest searches the DHT for non-busy, available
@@ -162,7 +182,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Start a VM with custom configuration.
       tags:
       - vm
@@ -174,7 +194,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Start a VM with default configuration.
       tags:
       - vm

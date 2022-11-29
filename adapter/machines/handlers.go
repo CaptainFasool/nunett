@@ -77,7 +77,7 @@ func SendDeploymentRequest(c *gin.Context) {
 // @Tags         run
 // @Produce      json
 // @Success      200  {string}	string
-// @Router       /peer/list [get]
+// @Router       /peers/list [get]
 func ListPeers(c *gin.Context) {
 	response, err := adapter.FetchMachines()
 	if err != nil {

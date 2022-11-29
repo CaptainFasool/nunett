@@ -20,7 +20,13 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
-## [0.4.9](#045)
+
+## [0.4.10](#0410)
+
+### Added
+- Ping-pong websocket implementation. This connection will be used to send commands and receive output from remote shell.
+
+## [0.4.9](#049)
 
 ### Added
 - Calculate telemetry of docker containers and update DHT.
@@ -30,7 +36,7 @@ Types of changes
 - Moved DHT update grpc call to run in a separate thread.
 - Image used in ci for building in order to support at least glibc-2.27
 
-## [0.4.8](#073)
+## [0.4.8](#048)
 
 ### Added
 - Handle onboarding channels for separate networks corresponding to https://gitlab.com/nunet/nunet-adapter/-/issues/108
@@ -41,19 +47,19 @@ Types of changes
 ### Added
 - Send docker logs for running container to GitHub's Gist
 
-## [0.4.6](#063)
+## [0.4.6](#046)
 
 ### Added
 - Added stats_db grpc calls.
 
-## [0.4.5](#067)
+## [0.4.5](#045)
 
 ### Added
 - Added a grpc-client to access cardano-cli
 - Added a function interface to run cardano-cli commands
 - Removed unused functions
 
-## [0.4.4](#061)
+## [0.4.4](#044)
 
 ### Added
 - Added command for installing NVIDIA GPU driver and Container Runtime in nunet CLI.
