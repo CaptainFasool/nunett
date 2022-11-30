@@ -49,6 +49,10 @@ do
     rm -rf $archDir/firecracker-v1.1.1-x86_64.tgz
     # including firecracker ends
 
+    #install websocat 
+    wget -qO $archDir/usr/bin/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl
+    chmod a+x $archDir/usr/bin/websocat
+
     find $archDir -name .gitkeep | xargs rm
     chmod -R 755 $archDir
     dpkg-deb --build --root-owner-group $archDir $outputDir
