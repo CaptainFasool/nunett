@@ -30,6 +30,7 @@ usage() {
     echo "  info          Get info about currently onboarded machine"
     echo "  onboard-gpu   Install NVIDIA GPU driver and Container Runtime"
     echo "  onboard-ml    Prepare the system for Machine Learning with GPU"
+    echo "  shell         Send commands and receive answers to a vm instance via DMS"
     echo -e "  peer          Interact with currently visible peers\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
@@ -366,7 +367,19 @@ onboard-ml()
     sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
 }
 
-cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml")
+## shell websocket connection  
+
+shell(){
+    # echo "to install on ubuntu run the following:"
+    # echo "sudo wget -qO /usr/local/bin/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl"
+    if [[ "$1" = "--node-id" &&  $# -eq 2 ]]; then
+        websocat ws://127.0.0.1:9999/api/v1/peers/ws?nodeID=$2
+    else
+        echo "Please enter a --node-id <the-node-id>"
+    fi
+}
+
+cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell")
 
 if [ $# -eq  0 ] ; then
     usage
