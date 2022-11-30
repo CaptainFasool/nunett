@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-import "google/protobuf/empty.proto";
-
 option go_package = "gitlab.com/nunet/device-management-service/adapter";
 
 
@@ -55,6 +53,8 @@ service NunetAdapter {
     rpc sendMessage(messageParams) returns (messageResponse) {}
     
     rpc receivedMessage(receivedMessageParams) returns (messageResponse) {}
+
+    rpc incomingMessage(receivedMessageParams) returns (stream messageResponse) {}
 
     rpc getSelfPeer(getPeerParams) returns (nodeID) {}
 

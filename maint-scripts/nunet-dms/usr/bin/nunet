@@ -198,18 +198,19 @@ onboard() {
     elif [[ "$N_ONBOARD_CHAN" != "nunet-test" && "$N_ONBOARD_CHAN" != "nunet-staging" && "$N_ONBOARD_CHAN" != "nunet-team" && "$N_ONBOARD_CHAN" != "nunet-edge" ]] ; then
         printf "${BAD_C}NuNet Channel should be 'nunet-test' or 'nunet-staging' not $N_ONBOARD_CHAN ${NORMAL_C}\n"
         exit
-    elif [[ "$N_ONBOARD_CHAN" == "nunet-team" || "$N_ONBOARD_CHAN" == "nunet-edge" ]] ; then
-        while true; do
-            read -p "Are you sure you want to join $N_ONBOARD_CHAN?? (yes/no) " chan_resp
-            case $chan_resp in
-                yes ) echo "Proceeding with onboarding to $N_ONBOARD_CHAN channel";
-                    break;;
-                no) echo "Exiting...";
-                    exit;;
-                *) echo "Only 'yes' or 'no' please";;
-            esac
-        done
     else
+        if [[ "$N_ONBOARD_CHAN" == "nunet-team" || "$N_ONBOARD_CHAN" == "nunet-edge" ]] ; then
+            while true; do
+                read -p "Are you sure you want to join $N_ONBOARD_CHAN?? (yes/no) " chan_resp
+                case $chan_resp in
+                    yes ) echo "Proceeding with onboarding to $N_ONBOARD_CHAN channel";
+                        break;;
+                    no) echo "Exiting...";
+                        exit;;
+                    *) echo "Only 'yes' or 'no' please";;
+                esac
+            done
+        fi
         N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
             -d "{\"memory\": $N_ONBOARD_MEM, \"cpu\": $N_ONBOARD_CPU, \
             \"channel\":\"$N_ONBOARD_CHAN\", \"payment_addr\": \"$N_ONBOARD_ADD\", \

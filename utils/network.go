@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -15,7 +14,7 @@ const ADAPTER_GRPC_URL = "localhost:60777"
 // const ADAPTER_GRPC_URL = "localhost:9998"
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
-func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) {
+func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) http.Response {
 	req, err := http.NewRequest(methodType, DMS_BASE_URL+internalEndpoint, bytes.NewBuffer(body))
 	if err != nil {
 		panic(err)
@@ -35,7 +34,7 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 		// return
 	}
 
-	fmt.Println(resp)
+	return *resp
 }
 
 func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, errMsg string) {
