@@ -18,7 +18,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.12
+// @version         0.4.13
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -40,6 +40,7 @@ func main() {
 
 	// Poll messages from the adapter
 	// go adapter.PollAdapter()
+	go adapter.StartMessageReceiver()
 
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
