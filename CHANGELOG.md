@@ -21,6 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.13](#60)
+
+### Added
+- New grpc service for incoming messages and message receiver 
+- Preliminary deployment request handler for cardano and gpu usecases
+
 ## [0.4.12](#69)
 
 ### Added
