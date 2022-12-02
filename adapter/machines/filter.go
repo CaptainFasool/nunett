@@ -1,13 +1,12 @@
 package machines
 
 import (
-	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
 // FilterPeers searches for available compute providers given specific parameters in depReq.
-func FilterPeers(c *gin.Context, depReq models.DeploymentRequest) ([]adapter.Peer, error) {
+func FilterPeers(depReq models.DeploymentRequest) ([]adapter.Peer, error) {
 	machines, err := adapter.FetchMachines()
 	if err != nil {
 		return nil, err

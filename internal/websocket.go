@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgradeConnection = websocket.Upgrader{
+var UpgradeConnection = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
@@ -45,7 +45,7 @@ func HandleWebSocket(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"message": "nodeID not provided"})
 	}
 
-	ws, err := upgradeConnection.Upgrade(c.Writer, c.Request, nil)
+	ws, err := UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("Failed to set websocket upgrade: %+v\n", err)
 		return
