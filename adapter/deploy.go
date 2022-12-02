@@ -18,6 +18,19 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+func sendDeploymentResponse(address string, success bool, message string) {
+	selfNodeId, err := getSelfNodeID()
+	if err != nil {
+		log.Println("Error: Unable to get self node id. ", err)
+	}
+	jsonDepResp, _ := json.Marshal(models.DeploymentResponse{
+		NodeId:  selfNodeId,
+		Success: success,
+		Content: message,
+	})
+	SendMessage(address, string(jsonDepResp))
+}
+
 func messageHandler(message string) {
 	messageValue := strings.Replace(message, `'`, `"`, -1)      // replacing single quote to double quote to unmarshall
 	messageValue = strings.Replace(messageValue, `"{`, `{`, -1) // necessary because json becomes string in route and contains "key" : "{\"key\" : \"value\"}"
@@ -28,7 +41,7 @@ func messageHandler(message string) {
 	err := json.Unmarshal([]byte(messageValue), &adapterMessage)
 	if err != nil {
 		fmt.Println("            ", err)
-		log.Println("Unable to parse received message: " + err.Error())
+		log.Println("Error: Unable to parse received message: " + err.Error())
 	}
 
 	if adapterMessage.Message.ServiceType == "cardano_node" {
@@ -42,10 +55,16 @@ func messageHandler(message string) {
 		err = utils.DownloadFile(kernelFileUrl, kernelFilePath)
 		if err != nil {
 			log.Println("Error: Downloading ", kernelFileUrl, " - ", err.Error())
+			sendDeploymentResponse(adapterMessage.Sender,
+				false,
+				fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", kernelFileUrl))
 		}
 		err = utils.DownloadFile(filesystemUrl, filesystemPath)
 		if err != nil {
 			log.Println("Error: Downloading ", filesystemUrl, " - ", err.Error())
+			sendDeploymentResponse(adapterMessage.Sender,
+				false,
+				fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", filesystemUrl))
 		}
 
 		// makerequest to start-default with downloaded files.
@@ -62,26 +81,18 @@ func messageHandler(message string) {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Println(err)
+			sendDeploymentResponse(adapterMessage.Sender, false, "Cardano Node Deployment Failed. Unable to spawn VM.")
 		}
 		log.Println(string(respBody))
-
-		selfNodeId, _ := getSelfNodeID()
-		depResp := models.DeploymentResponse{
-			NodeId:  selfNodeId,
-			Success: true,
-			Content: "Cardano Node Deployed",
-		}
-		jsonDepResp, _ := json.Marshal(depResp)
-		SendMessage(adapterMessage.Sender, string(jsonDepResp))
 
 	} else if adapterMessage.Message.ServiceType == "ml-training-gpu" {
 		depResp := models.DeploymentResponse{}
 		depResp = docker.HandleDeployment(adapterMessage.Message, depResp)
-
 		jsonDepResp, _ := json.Marshal(depResp)
 		SendMessage(adapterMessage.Sender, string(jsonDepResp))
 	} else {
 		log.Println("Error: Uknown service type - ", adapterMessage.Message.ServiceType)
+		sendDeploymentResponse(adapterMessage.Sender, false, "Unknown service type.")
 	}
 
 }
