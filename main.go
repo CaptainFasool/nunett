@@ -38,8 +38,7 @@ func main() {
 	go startServer(wg)
 	go internal.SendCommandForExecution()
 
-	// Poll messages from the adapter
-	// go adapter.PollAdapter()
+	// Start listening for new messages coming via adapter
 	go adapter.StartMessageReceiver()
 
 	// wait for server to start properly before sending requests below

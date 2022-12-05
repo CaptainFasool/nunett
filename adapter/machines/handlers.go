@@ -17,7 +17,7 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-type WSMessage struct {
+type wsMessage struct {
 	Action  string          `json:"action"`
 	Message json.RawMessage `json:"message"`
 }
@@ -25,10 +25,8 @@ type WSMessage struct {
 // HandleDeploymentRequest  godoc
 // @Summary      Search devices on DHT with appropriate machines and sends a deployment request.
 // @Description  HandleDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine
-// @Tags         run
-// @Produce      json
 // @Success      200  {string}  string
-// @Router       /run/deploy [post]
+// @Router       /run/deploy [get]
 func HandleDeploymentRequest(c *gin.Context) {
 	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -43,10 +41,10 @@ func HandleDeploymentRequest(c *gin.Context) {
 
 	conn := internal.WebSocketConnection{Conn: ws}
 
-	go ListenForDeploymentRequest(&conn)
+	go listenForDeploymentRequest(&conn)
 }
 
-func ListenForDeploymentRequest(conn *internal.WebSocketConnection) {
+func listenForDeploymentRequest(conn *internal.WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("Error:", fmt.Sprintf("%v", r))
@@ -61,13 +59,13 @@ func ListenForDeploymentRequest(conn *internal.WebSocketConnection) {
 			return
 		}
 
-		HandleWebsocketAction(p)
+		handleWebsocketAction(p)
 	}
 }
 
-func HandleWebsocketAction(payload []byte) {
+func handleWebsocketAction(payload []byte) {
 	// convert json to go values
-	var m WSMessage
+	var m wsMessage
 	err := json.Unmarshal(payload, &m)
 	if err != nil {
 		log.Printf("wrong message payload: %v", err)
@@ -75,14 +73,14 @@ func HandleWebsocketAction(payload []byte) {
 
 	switch m.Action {
 	case "deployment-request":
-		err := SendDeploymentRequest(m.Message)
+		err := sendDeploymentRequest(m.Message)
 		if err != nil {
 			fmt.Printf("%v", err)
 		}
 	}
 }
 
-func SendDeploymentRequest(requestParams []byte) error {
+func sendDeploymentRequest(requestParams []byte) error {
 	// parse the body, get service type, and filter devices
 	var depReq models.DeploymentRequest
 	if err := json.Unmarshal(requestParams, &depReq); err != nil {
@@ -99,8 +97,6 @@ func SendDeploymentRequest(requestParams []byte) error {
 	if err != nil {
 		return err
 	}
-
-	return nil
 
 	//create a new span
 	_, span := otel.Tracer("SendDeploymentRequest").Start(context.Background(), "SendDeploymentRequest")
@@ -136,7 +132,7 @@ func SendDeploymentRequest(requestParams []byte) error {
 // @Description  Gets a list of peers the adapter can see within the network and return a list of peer info
 // @Tags         run
 // @Produce      json
-// @Success      200  {string}	string
+// @Success      200  {string}  string
 // @Router       /peers/list [get]
 func ListPeers(c *gin.Context) {
 	response, err := adapter.FetchMachines()

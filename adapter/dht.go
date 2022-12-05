@@ -15,7 +15,7 @@ import (
 
 func fetchDhtContents() (*DhtContents, error) {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.AdapterGrpcURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func PeersWithMatchingSpec(peers []Peer, depReq models.DeploymentRequest) []Peer
 // to it. `message` is supposed to be a JSON marshalled in string.
 func SendMessage(nodeID string, message string) (string, error) {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.AdapterGrpcURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		// log.Fatalf("did not connect: %v", err)
 		return "", err
@@ -164,7 +164,7 @@ func SendMessage(nodeID string, message string) (string, error) {
 }
 
 func UpdateAvailableResoruces() (string, error) {
-	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.AdapterGrpcURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", err
 	}
@@ -203,7 +203,7 @@ func UpdateAvailableResoruces() (string, error) {
 
 func getSelfNodeID() (string, error) {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.AdapterGrpcURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", err
 	}

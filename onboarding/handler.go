@@ -79,7 +79,7 @@ func Onboard(c *gin.Context) {
 	metadata.UpdateTimestamp = currentTime
 	metadata.Resource.MemoryMax = int64(totalMem)
 	metadata.Resource.TotalCore = int64(numCores)
-	metadata.Resource.CpuMax = int64(totalCpu)
+	metadata.Resource.CPUMax = int64(totalCpu)
 
 	// read the request body to fill rest of the fields
 

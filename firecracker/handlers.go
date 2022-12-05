@@ -33,12 +33,12 @@ func NewClient(sockFile string) *http.Client {
 }
 
 // StartCustom godoc
-// @Summary		Start a VM with custom configuration.
-// @Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
-// @Tags		vm
-// @Produce 	json
-// @Success		200
-// @Router		/vm/start-custom [post]
+// @Summary      Start a VM with custom configuration.
+// @Description  This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
+// @Tags         vm
+// @Produce      json
+// @Success      200
+// @Router       /vm/start-custom [post]
 func StartCustom(c *gin.Context) {
 	type StartCustomBody struct {
 		KernelImagePath string `json:"kernel_image_path"`
@@ -71,14 +71,14 @@ func StartCustom(c *gin.Context) {
 		panic(result.Error)
 	}
 
-	InitVM(c, vm)
+	initVM(c, vm)
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
 	bootSourceBody.KernelImagePath = body.KernelImagePath
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	BootSource(c, vm, bootSourceBody)
+	bootSource(c, vm, bootSourceBody)
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -88,7 +88,7 @@ func StartCustom(c *gin.Context) {
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
-	Drives(c, vm, drivesBody)
+	drives(c, vm, drivesBody)
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -96,7 +96,7 @@ func StartCustom(c *gin.Context) {
 	machineConfigBody.MemSizeMib = vm.MemSizeMib
 	machineConfigBody.VCPUCount = vm.VCPUCount
 
-	MachineConfig(c, vm, machineConfigBody)
+	machineConfig(c, vm, machineConfigBody)
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -104,12 +104,12 @@ func StartCustom(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 
-	NetworkInterfaces(c, vm, networkInterfacesBody)
+	networkInterfaces(c, vm, networkInterfacesBody)
 
 	mmdsConfigBody := models.MMDSConfig{}
 	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
 
-	SetupMMDS(c, vm, mmdsConfigBody)
+	setupMMDS(c, vm, mmdsConfigBody)
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
@@ -118,18 +118,18 @@ func StartCustom(c *gin.Context) {
 	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
-	PassMMDSMsg(c, vm, mmdsMsg)
+	passMMDSMsg(c, vm, mmdsMsg)
 
-	StartVM(c, vm)
+	startVM(c, vm)
 }
 
 // StartDefault godoc
-// @Summary		Start a VM with default configuration.
-// @Description	Everything except kernel files and filesystem file will be set by DMS itself.
-// @Tags		vm
-// @Produce 	json
-// @Success		200
-// @Router		/vm/start-default [post]
+// @Summary      Start a VM with default configuration.
+// @Description  Everything except kernel files and filesystem file will be set by DMS itself.
+// @Tags         vm
+// @Produce      json
+// @Success      200
+// @Router       /vm/start-default [post]
 func StartDefault(c *gin.Context) {
 	type StartDefaultBody struct {
 		KernelImagePath string `json:"kernel_image_path"`
@@ -157,14 +157,14 @@ func StartDefault(c *gin.Context) {
 		panic(result.Error)
 	}
 
-	InitVM(c, vm)
+	initVM(c, vm)
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
 	bootSourceBody.KernelImagePath = body.KernelImagePath
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	BootSource(c, vm, bootSourceBody)
+	bootSource(c, vm, bootSourceBody)
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -174,7 +174,7 @@ func StartDefault(c *gin.Context) {
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
-	Drives(c, vm, drivesBody)
+	drives(c, vm, drivesBody)
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -189,7 +189,7 @@ func StartDefault(c *gin.Context) {
 		panic(result.Error)
 	}
 
-	MachineConfig(c, vm, machineConfigBody)
+	machineConfig(c, vm, machineConfigBody)
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -197,12 +197,12 @@ func StartDefault(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 
-	NetworkInterfaces(c, vm, networkInterfacesBody)
+	networkInterfaces(c, vm, networkInterfacesBody)
 
 	mmdsConfigBody := models.MMDSConfig{}
 	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
 
-	SetupMMDS(c, vm, mmdsConfigBody)
+	setupMMDS(c, vm, mmdsConfigBody)
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
@@ -211,9 +211,9 @@ func StartDefault(c *gin.Context) {
 	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
-	PassMMDSMsg(c, vm, mmdsMsg)
+	passMMDSMsg(c, vm, mmdsMsg)
 
-	StartVM(c, vm)
+	startVM(c, vm)
 }
 
 func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
@@ -247,7 +247,7 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	bootSourceBody.KernelImagePath = vm.BootSource
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	BootSource(c, vm, bootSourceBody)
+	bootSource(c, vm, bootSourceBody)
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -257,7 +257,7 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
-	Drives(c, vm, drivesBody)
+	drives(c, vm, drivesBody)
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -265,7 +265,7 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	machineConfigBody.MemSizeMib = 256
 	machineConfigBody.VCPUCount = 2
 
-	Drives(c, vm, drivesBody)
+	drives(c, vm, drivesBody)
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -273,12 +273,12 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = vm.TapDevice
 
-	NetworkInterfaces(c, vm, networkInterfacesBody)
+	networkInterfaces(c, vm, networkInterfacesBody)
 
 	mmdsConfigBody := models.MMDSConfig{}
 	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
 
-	SetupMMDS(c, vm, mmdsConfigBody)
+	setupMMDS(c, vm, mmdsConfigBody)
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
@@ -287,9 +287,9 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
-	PassMMDSMsg(c, vm, mmdsMsg)
+	passMMDSMsg(c, vm, mmdsMsg)
 
 	// POST /start
 
-	StartVM(c, vm)
+	startVM(c, vm)
 }
