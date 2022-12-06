@@ -32,11 +32,11 @@ deploy_dev:
     CI_PARENT_JOB: dms
   trigger:
     project: nunet/nunet-infra
-  only:
-    refs:
-      - $CI_DEFAULT_BRANCH
-      - main
-      - staging
+  # only:
+  #   refs:
+  #     - $CI_DEFAULT_BRANCH
+  #     - main
+  #     - staging
 
 .git:push:
   after_script:
