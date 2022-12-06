@@ -29,7 +29,7 @@ Build:
 Deploy DMS:
   stage: deploy
   variables:
-    CI_PARENT_JOB: dms
+    CI_PARENT_PROJECT: dms
   trigger:
     forward:
       yaml_variables: true
