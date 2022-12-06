@@ -31,7 +31,11 @@ Deploy DMS:
   variables:
     CI_PARENT_JOB: dms
   trigger:
+    forward:
+      yaml_variables: true
+      pipeline_variables: true
     project: nunet/nunet-infra
+    branch: 131-create-ci-cd-stage-deploy
   # only:
   #   refs:
   #     - $CI_DEFAULT_BRANCH
