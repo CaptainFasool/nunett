@@ -9,13 +9,13 @@ include:
 
 image: golang:1.19.1
 
-unit-test-job:
-  stage: unit_tests
-  script:
-    - echo "Running unit tests..."
-    - go test -cover ./...
+# unit-test-job:
+#   stage: unit_tests
+#   script:
+#     - echo "Running unit tests..."
+#     - go test -cover ./...
 
-build-job:
+Build:
   stage: build
   script:
     - echo "Building debian archives..."
