@@ -9,12 +9,6 @@ include:
 
 image: golang:1.19.1
 
-# unit-test-job:
-#   stage: unit_tests
-#   script:
-#     - echo "Running unit tests..."
-#     - go test -cover ./...
-
 Build:
   stage: build
   script:
@@ -36,11 +30,9 @@ Deploy DMS:
       pipeline_variables: true
     project: nunet/nunet-infra
     branch: 131-create-ci-cd-stage-deploy
-  # only:
-  #   refs:
-  #     - $CI_DEFAULT_BRANCH
-  #     - main
-  #     - staging
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
 
 .git:push:
   after_script:
