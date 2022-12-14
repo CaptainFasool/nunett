@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.14](#78)
+
+### Added
+- New gRPC service for retreiving Master Community's public key
 
 ## [0.4.13](#60)
 

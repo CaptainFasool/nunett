@@ -286,3 +286,29 @@ func UpdateMachinesTable() {
 func GetPeerID() (string, error) {
 	return getSelfNodeID()
 }
+
+func getMasterPKey() (string, error) {
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	client := NewNunetAdapterClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := client.GetMasterPkey(ctx, &GetPkey{})
+	if err != nil {
+		return "", err
+	}
+
+	return r.PublicKey, nil
+}
+
+// GetMasterPKey returns Master Community's public key from the adapter
+func GetMasterPKey() (string, error) {
+	return getMasterPKey()
+}

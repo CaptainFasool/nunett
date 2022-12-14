@@ -51,6 +51,8 @@ func messageHandler(message string) {
 		kernelFilePath := "/etc/nunet/vmlinux"
 		filesystemUrl := "https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4"
 		filesystemPath := "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4"
+		pKey := adapterMessage.Message.Params.PublicKey
+		nodeId := adapterMessage.Message.Params.NodeID
 
 		err = utils.DownloadFile(kernelFileUrl, kernelFilePath)
 		if err != nil {
@@ -71,9 +73,13 @@ func messageHandler(message string) {
 		startDefaultBody := struct {
 			KernelImagePath string `json:"kernel_image_path"`
 			FilesystemPath  string `json:"filesystem_path"`
+			PublicKey       string `json:"public_key"`
+			NodeID          string `json:"node_id"`
 		}{
 			KernelImagePath: kernelFilePath,
 			FilesystemPath:  filesystemPath,
+			PublicKey:       pKey,
+			NodeID:          nodeId,
 		}
 		jsonBody, _ := json.Marshal(startDefaultBody)
 
