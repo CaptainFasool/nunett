@@ -28,6 +28,17 @@ func SendDeploymentRequest(c *gin.Context) {
 			"error": "invalid deployment request body",
 		})
 	}
+	// add node_id and public_key in deployment request
+	pKey, err := adapter.GetMasterPKey()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "unable to get public key"})
+	}
+	selfNodeId, err := adapter.GetPeerID()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Unable to get self node id."})
+	}
+	depReq.Params.NodeID = selfNodeId
+	depReq.Params.PublicKey = pKey
 
 	// check if the pricing matched
 	if estimatedNtx := CalculateStaticNtxGpu(depReq); estimatedNtx > float64(depReq.MaxNtx) {
