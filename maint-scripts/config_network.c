@@ -15,8 +15,6 @@ int main(int argc, char **argv) {
     system(comm);
     snprintf(comm, sizeof(comm), "echo 1 > /proc/sys/net/ipv4/ip_forward");
     system(comm);
-    snprintf(comm, sizeof(comm), "iptables -t nat -C POSTROUTING -o %s -j MASQUERADE || iptables -t nat -A POSTROUTING -o %s -j MASQUERADE ",main_interface,main_interface);
-    system(comm);
     snprintf(comm, sizeof(comm), "iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT ");
     system(comm);
     snprintf(comm, sizeof(comm), "iptables -C FORWARD -i %s -o %s -j ACCEPT || iptables -A FORWARD -i %s -o %s -j ACCEPT",vm_interface,main_interface,vm_interface,main_interface);

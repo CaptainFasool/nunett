@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+## [0.4.18](#89)
+
+### Fixed
+- Fixed VM network config
+
 ## [0.4.17](documentation#19)
 
 ### Added
