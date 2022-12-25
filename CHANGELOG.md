@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+## [0.4.15](#63)
+
+### Added
+- Implementation of deployement request status information propagation to statsdb for ML job deployment.
+
 ## [0.4.14](#78)
 
 ### Added

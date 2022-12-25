@@ -6,9 +6,12 @@ import (
 	"io"
 	"log"
 	"math"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/KyleBanks/dockerstats"
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -17,6 +20,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
 const (
@@ -109,6 +113,29 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		panic(err)
 	}
 
+	peerIDOfServiceHost := depReq.Params.NodeID
+	status := "started"
+	var requestTracker models.RequestTracker
+
+	if res := db.DB.Where("node_id = ?", peerIDOfServiceHost).Find(&requestTracker); res.RowsAffected == 0 {
+		panic("Service Not Found for Deployment")
+	}
+	ServiceRunParams := models.ServiceRun{
+		CallID:              requestTracker.CallID,
+		PeerIDOfServiceHost: peerIDOfServiceHost,
+		Status:              status,
+		Timestamp:           float32(statsdb.GetTimestamp()),
+	}
+
+	statsdb.ServiceRun(ServiceRunParams)
+	//update RequestTracker
+	requestTracker.Status = status
+	requestTracker.RequestID = resp.ID
+	res := db.DB.Model(&models.RequestTracker{}).Where("node_id = ?", peerIDOfServiceHost).Updates(requestTracker)
+	if res.Error != nil {
+		panic(res.Error)
+	}
+
 	// Update db
 	var service models.Services
 	service.ContainerID = resp.ID
@@ -139,7 +166,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	defer tick.Stop()
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-
+	maxUsedRAM, maxUsedCPU := 0.0, 0.0
 	for {
 		select {
 		case err := <-errCh:
@@ -147,16 +174,85 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 			if err != nil {
 				panic(err)
 			}
+			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
+				panic("Service Not Found for Deployment")
+			}
+
+			ServiceRunParams.CallID = requestTracker.CallID
+			ServiceRunParams.PeerIDOfServiceHost = requestTracker.NodeID
+			ServiceRunParams.Status = "unknown"
+			ServiceRunParams.Timestamp = float32(statsdb.GetTimestamp())
+
+			statsdb.ServiceRun(ServiceRunParams)
+			requestTracker.Status = "unknown"
+			res := db.DB.Model(&models.RequestTracker{}).Where("request_id = ?", resp.ID).Updates(requestTracker)
+			if res.Error != nil {
+				panic(res.Error)
+			}
 			freeUsedResources(resp.ID)
 			return
 		case <-statusCh: // not running?
 			// get the last logs & exit...
 			updateGist(*createdGist.ID, resp.ID)
+			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
+				panic("Service Not Found for Deployment")
+			}
+			if depRes.Success {
+				ServiceCallParams := models.ServiceCall{
+					CallID:              requestTracker.CallID,
+					PeerIDOfServiceHost: requestTracker.NodeID,
+					ServiceID:           requestTracker.ServiceType,
+					CPUUsed:             float32(maxUsedCPU),
+					MaxRAM:              float32(depReq.Constraints.Vram),
+					MemoryUsed:          float32(maxUsedRAM),
+					NetworkBwUsed:       0.0,
+					TimeTaken:           0.0,
+					Status:              "success",
+					Timestamp:           float32(statsdb.GetTimestamp()),
+				}
+				statsdb.ServiceCall(ServiceCallParams)
+				requestTracker.Status = "success"
+			} else if !depRes.Success {
+				ServiceRunParams.CallID = requestTracker.CallID
+				ServiceRunParams.PeerIDOfServiceHost = requestTracker.NodeID
+				ServiceRunParams.Status = "failed"
+				ServiceRunParams.Timestamp = float32(statsdb.GetTimestamp())
+
+				statsdb.ServiceRun(ServiceRunParams)
+				requestTracker.Status = "failed"
+			}
+
+			res := db.DB.Model(&models.RequestTracker{}).Where("request_id = ?", resp.ID).Updates(requestTracker)
+			if res.Error != nil {
+				panic(res.Error)
+			}
 			freeUsedResources(resp.ID)
 			return
 		case <-tick.C:
 			// get the latest logs ...
 			log.Println("updating gist")
+
+			contID := requestTracker.RequestID[:12]
+			stats, err := dockerstats.Current()
+			if err != nil {
+				panic(err)
+			}
+
+			for _, s := range stats {
+				if s.Container == contID {
+					usedRAM := strings.Split(s.Memory.Raw, "MiB")
+					usedCPU := strings.Split(s.CPU, "%")
+					ramFloat64, _ := strconv.ParseFloat(usedRAM[0], 64)
+					cpuFloat64, _ := strconv.ParseFloat(usedCPU[0], 64)
+					cpuFloat64 = cpuUsage(cpuFloat64, float64(hostConfig.CPUQuota))
+					if ramFloat64 > maxUsedRAM {
+						maxUsedRAM = ramFloat64
+					}
+					if cpuFloat64 > maxUsedCPU {
+						maxUsedCPU = cpuFloat64
+					}
+				}
+			}
 			updateGist(*createdGist.ID, resp.ID)
 		}
 	}
@@ -188,6 +284,7 @@ func PullImage(imageName string) {
 	}
 
 	defer out.Close()
+	io.Copy(os.Stdout, out)
 }
 
 // GetLogs return logs from the container io.ReadCloser. It's the caller duty
@@ -203,6 +300,10 @@ func GetLogs(contName string) (logOutput io.ReadCloser) {
 	}
 
 	return out
+}
+
+func cpuUsage(cpu float64, maxCPU float64) float64 {
+	return maxCPU * cpu / 100
 }
 
 // HandleDeployment does following docker based actions in the sequence:

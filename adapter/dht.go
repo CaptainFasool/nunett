@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	fmt "fmt"
+	"log"
 	"time"
 
 	"gitlab.com/nunet/device-management-service/db"
@@ -283,8 +284,15 @@ func UpdateMachinesTable() {
 }
 
 // GetPeerID returns self NodeID from the adapter
-func GetPeerID() (string, error) {
-	return getSelfNodeID()
+func GetPeerID() string {
+	// return getSelfNodeID()
+	NodeID, err := getSelfNodeID()
+
+	if err != nil {
+		log.Print("unable to get Node ID")
+	}
+
+	return NodeID
 }
 
 func getMasterPKey() (string, error) {

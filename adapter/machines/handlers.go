@@ -33,11 +33,9 @@ func SendDeploymentRequest(c *gin.Context) {
 	if err != nil {
 		c.JSON(500, gin.H{"error": "unable to get public key"})
 	}
-	selfNodeId, err := adapter.GetPeerID()
-	if err != nil {
-		c.JSON(500, gin.H{"error": "Unable to get self node id."})
-	}
-	depReq.Params.NodeID = selfNodeId
+	selfNodeID := adapter.GetPeerID()
+
+	depReq.Params.NodeID = selfNodeID
 	depReq.Params.PublicKey = pKey
 
 	// check if the pricing matched

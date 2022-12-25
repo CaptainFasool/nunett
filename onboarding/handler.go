@@ -176,7 +176,7 @@ func Onboard(c *gin.Context) {
 
 	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
 	var NewDeviceOnboardParams = models.NewDeviceOnboarded{
-		PeerID:        statsdb.GetPeerID(),
+		PeerID:        adapter.GetPeerID(),
 		CPU:           float32(available_resources.TotCpuHz),
 		RAM:           float32(available_resources.Ram),
 		Network:       0.0,

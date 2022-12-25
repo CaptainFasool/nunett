@@ -92,3 +92,12 @@ type NtxPayment struct {
 	PeerID      string
 	Timestamp   float32
 }
+
+// RequestTracker defines the schema of the data to be saved in db for tracking the status of the deployement request
+type RequestTracker struct {
+	ServiceType string
+	NodeID      string
+	CallID      float32
+	Status      string
+	RequestID   string
+}
