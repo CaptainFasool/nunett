@@ -4,6 +4,11 @@ The backend of the device management app.
 
 Note: This README is intended for developers. For end users, please check our [Wiki section](https://gitlab.com/nunet/device-management-service/-/wikis/home).
 
+For a quick install, you can use the following script:
+```
+curl -L https://inst.dms.nunet.io | sh
+```
+
 ## Getting Started with Development
 
 Operations done via Device Management Service (DMS) depends on packages such as:

@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.17](documentation#19)
+
+### Added
+- CLI command to collect log and return path
+
 ## [0.4.16](#80)
 
 ### Added
