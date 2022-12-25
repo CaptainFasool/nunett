@@ -31,7 +31,8 @@ usage() {
     echo "  onboard-gpu   Install NVIDIA GPU driver and Container Runtime"
     echo "  onboard-ml    Prepare the system for Machine Learning with GPU"
     echo "  shell         Send commands and receive answers to a vm instance via DMS"
-    echo -e "  peer          Interact with currently visible peers\n"
+    echo "  peer          Interact with currently visible peers"
+    echo -e "  log           Returns the path of an archive containing all log files\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -269,6 +270,7 @@ peer() {
     fi
 }
 
+
 check_dms_run() {
     N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":$DMS_PORT")
     if [[ ! $? -eq 0 ]] ; then
@@ -380,7 +382,39 @@ shell(){
     fi
 }
 
-cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell")
+log(){
+	echo -e "Collecting logs.. \n"
+	mkdir -m 777 -p /tmp/nunet-log/dms-log
+	mkdir -m 777 -p /tmp/nunet-log/adapter-log
+	nunet_log_dir='/tmp/nunet-log'
+	# collect DMS log and save it to files based on boot number
+	num_of_boot=$(journalctl -u nunet-dms  --list-boots -r | wc -l)
+	for (( num=1; num<$num_of_boot; num++))
+	do
+		if [[ "$(journalctl -u nunet-dms -b $num | sed -n 2p)" != '-- No entries --' ]]; then
+			journalctl -u nunet-dms -b $num > $nunet_log_dir/dms-log/dms_log.$num
+		fi
+	done
+	#access adapter log
+	cont_id=$(docker ps | grep nunet-adapter | awk '{ print $1 }')
+	if [ -z "$cont_id" ]; then
+		printf "Looks like NuNet Adapter is not running." > $nunet_log_dir/adapter-log/nunet-adapter.log
+	else
+		docker cp $cont_id:/NUNET-ADAPTER/nunet-adapter.log $nunet_log_dir/adapter-log/nunet-adapter.log
+	fi
+	
+	#archive all the logs and retorn path
+	tar -cf $nunet_log_dir/nunet-log.tar --exclude=$nunet_log_dir/nunet-log.tar -P $nunet_log_dir 
+	if [ $? -eq 0 ]; then
+   		rm -r $nunet_log_dir/dms-log
+		rm -r $nunet_log_dir/adapter-log
+	fi
+
+	echo -e "$nunet_log_dir/nunet-log.tar \n"
+	
+}
+
+cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "log")
 
 if [ $# -eq  0 ] ; then
     usage
