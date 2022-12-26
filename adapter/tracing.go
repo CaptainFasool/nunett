@@ -16,7 +16,7 @@ import (
 )
 
 func GetMetadata() models.Metadata {
-	resp, err := http.Get(utils.DMS_BASE_URL + "/onboarding/metadata")
+	resp, err := http.Get(utils.DMSBaseURL + "/onboarding/metadata")
 	if err != nil {
 		panic(err)
 	}

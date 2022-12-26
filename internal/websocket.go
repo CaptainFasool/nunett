@@ -1,4 +1,4 @@
-// internal modules is a work in progress. It is planned to accomodate
+// Package internal is a work in progress. It is planned to accomodate
 // modules such as db and models.
 package internal
 
@@ -11,7 +11,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgradeConnection = websocket.Upgrader{
+// UpgradeConnection is generic protocol upgrader for entire DMS.
+var UpgradeConnection = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
@@ -34,24 +35,24 @@ var commandChan = make(chan Command)
 var clients = make(map[WebSocketConnection]string)
 
 // HandleWebSocket godoc
-// @Summary		Sends a command to specific node and prints back response.
-// @Description	Sends a command to specific node and prints back response.
-// @Tags		peers
-// @Success		200
-// @Router		/peers/ws [get]
+// @Summary      Sends a command to specific node and prints back response.
+// @Description  Sends a command to specific node and prints back response.
+// @Tags         peers
+// @Success      200
+// @Router       /peers/ws [get]
 func HandleWebSocket(c *gin.Context) {
-	nodeId := c.Query("nodeID")
-	if nodeId == "" {
+	nodeID := c.Query("nodeID")
+	if nodeID == "" {
 		c.AbortWithStatusJSON(400, gin.H{"message": "nodeID not provided"})
 	}
 
-	ws, err := upgradeConnection.Upgrade(c.Writer, c.Request, nil)
+	ws, err := UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("Failed to set websocket upgrade: %+v\n", err)
 		return
 	}
 
-	welcomeMessage := fmt.Sprintf("Enter the commands that you wish to send to %s and press return.", nodeId)
+	welcomeMessage := fmt.Sprintf("Enter the commands that you wish to send to %s and press return.", nodeID)
 
 	err = ws.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
 	if err != nil {
@@ -59,7 +60,7 @@ func HandleWebSocket(c *gin.Context) {
 	}
 
 	conn := WebSocketConnection{Conn: ws}
-	clients[conn] = nodeId
+	clients[conn] = nodeID
 
 	go ListenForWs(&conn)
 }

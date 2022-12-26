@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.18"
+        "version": "0.4.19"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -30,7 +30,7 @@
                 "summary": "Returns the amount of free resources available",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -150,20 +150,14 @@
                 "summary": "Sends a command to specific node and prints back response.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
         },
         "/run/deploy": {
-            "post": {
-                "description": "SendDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "run"
-                ],
+            "get": {
+                "description": "HandleDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
                 "summary": "Search devices on DHT with appropriate machines and sends a deployment request.",
                 "responses": {
                     "200": {
@@ -187,7 +181,7 @@
                 "summary": "Start a VM with custom configuration.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -204,7 +198,7 @@
                 "summary": "Start a VM with default configuration.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }

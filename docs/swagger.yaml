@@ -64,7 +64,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.18
+  version: 0.4.19
 paths:
   /free:
     get:
@@ -73,7 +73,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Returns the amount of free resources available
       tags:
       - telemetry
@@ -154,17 +154,15 @@ paths:
       description: Sends a command to specific node and prints back response.
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Sends a command to specific node and prints back response.
       tags:
       - peers
   /run/deploy:
-    post:
-      description: SendDeploymentRequest searches the DHT for non-busy, available
+    get:
+      description: HandleDeploymentRequest searches the DHT for non-busy, available
         devices with appropriate metadata. Then sends a deployment request to the
         first machine
-      produces:
-      - application/json
       responses:
         "200":
           description: OK
@@ -172,8 +170,6 @@ paths:
             type: string
       summary: Search devices on DHT with appropriate machines and sends a deployment
         request.
-      tags:
-      - run
   /vm/start-custom:
     post:
       description: This endpoint is an abstraction of all primitive endpoints. When
@@ -182,7 +178,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Start a VM with custom configuration.
       tags:
       - vm
@@ -194,7 +190,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Start a VM with default configuration.
       tags:
       - vm

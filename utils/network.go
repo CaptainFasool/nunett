@@ -8,14 +8,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const DMS_BASE_URL = "http://localhost:9999/api/v1"
-const ADAPTER_GRPC_URL = "localhost:60777"
+const (
+	// DMSBaseURL is base of all API endpoints on DMS
+	DMSBaseURL = "http://localhost:9999/api/v1"
+	// AdapterGrpcURL is DMS connects to nunet-adapter
+	AdapterGrpcURL = "localhost:60777"
+)
 
 // const ADAPTER_GRPC_URL = "localhost:9998"
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
 func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) http.Response {
-	req, err := http.NewRequest(methodType, DMS_BASE_URL+internalEndpoint, bytes.NewBuffer(body))
+	req, err := http.NewRequest(methodType, DMSBaseURL+internalEndpoint, bytes.NewBuffer(body))
 	if err != nil {
 		panic(err)
 	}
