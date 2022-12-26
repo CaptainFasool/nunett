@@ -8,11 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
 // GetMetadata      godoc
@@ -79,7 +76,7 @@ func Onboard(c *gin.Context) {
 	metadata.UpdateTimestamp = currentTime
 	metadata.Resource.MemoryMax = int64(totalMem)
 	metadata.Resource.TotalCore = int64(numCores)
-	metadata.Resource.CpuMax = int64(totalCpu)
+	metadata.Resource.CPUMax = int64(totalCpu)
 
 	// read the request body to fill rest of the fields
 
@@ -158,34 +155,6 @@ func Onboard(c *gin.Context) {
 
 	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
 
-	//XXX bad method - fix asap
-	time.AfterFunc(50*time.Second, func() {
-		_ = telemetry.CalcFreeResources()
-		go func() {
-			for {
-				adapter.UpdateAvailableResoruces()
-				time.Sleep(time.Second * 10)
-			}
-
-		}()
-
-	})
-
-	//XXX bad hack for https://gitlab.com/nunet/device-management-service/-/issues/74
-	//time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
-
-	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
-	var NewDeviceOnboardParams = models.NewDeviceOnboarded{
-		PeerID:        adapter.GetPeerID(),
-		CPU:           float32(available_resources.TotCpuHz),
-		RAM:           float32(available_resources.Ram),
-		Network:       0.0,
-		DedicatedTime: 0.0,
-		Timestamp:     float32(statsdb.GetTimestamp()),
-	}
-
-	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
-
 	c.JSON(http.StatusCreated, metadata)
 }
 
@@ -215,5 +184,3 @@ func CreatePaymentAddress(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, pair)
 }
-
-// https://github.com/swaggo/swag

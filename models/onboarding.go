@@ -29,17 +29,17 @@ type Metadata struct {
 	Name     string `json:"name,omitempty"`
 	Resource struct {
 		UpdateTimestamp int     `json:"update_timestamp,omitempty"`
-		RamMax          int     `json:"ram_max,omitempty"`
+		RAMMax          int     `json:"ram_max,omitempty"`
 		TotalCore       int     `json:"total_core,omitempty"`
-		CpuMax          float32 `json:"cpu_max,omitempty"`
-		CpuUsage        float32 `json:"cpu_usage,omitempty"`
+		CPUMax          float32 `json:"cpu_max,omitempty"`
+		CPUUsage        float32 `json:"cpu_usage,omitempty"`
 	} `json:"resource,omitempty"`
 	Available struct {
 		UpdateTimestamp int `json:"update_timestamp,omitempty"`
-		Ram             int `json:"ram,omitempty"`
+		RAM             int `json:"ram,omitempty"`
 	} `json:"available,omitempty"`
 	Reserved struct {
-		Cpu    int `json:"cpu,omitempty"`
+		CPU    int `json:"cpu,omitempty"`
 		Memory int `json:"memory,omitempty"`
 	} `json:"reserved,omitempty"`
 	Network   string `json:"network,omitempty"`
@@ -53,7 +53,7 @@ type MetadataV2 struct {
 	Resource        struct {
 		MemoryMax int64 `json:"memory_max,omitempty"`
 		TotalCore int64 `json:"total_core,omitempty"`
-		CpuMax    int64 `json:"cpu_max,omitempty"`
+		CPUMax    int64 `json:"cpu_max,omitempty"`
 	} `json:"resource,omitempty"`
 	Available struct {
 		CPU    int64 `json:"cpu,omitempty"`

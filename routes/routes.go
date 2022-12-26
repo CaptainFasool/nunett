@@ -29,10 +29,7 @@ func SetupRouter() *gin.Engine {
 		virtualmachine.POST("/start-custom", firecracker.StartCustom)
 	}
 
-	run := v1.Group("/run")
-	{
-		run.POST("/deploy", machines.SendDeploymentRequest)
-	}
+	v1.GET("/run/deploy", machines.HandleDeploymentRequest)
 
 	tele := v1.Group("/telemetry")
 	{

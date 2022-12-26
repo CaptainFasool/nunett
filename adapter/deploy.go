@@ -21,12 +21,12 @@ import (
 )
 
 func sendDeploymentResponse(address string, success bool, message string) {
-	selfNodeId, err := getSelfNodeID()
+	selfNodeID, err := getSelfNodeID()
 	if err != nil {
 		log.Println("Error: Unable to get self node id. ", err)
 	}
 	jsonDepResp, _ := json.Marshal(models.DeploymentResponse{
-		NodeId:  selfNodeId,
+		NodeId:  selfNodeID,
 		Success: success,
 		Content: message,
 	})
@@ -49,26 +49,26 @@ func messageHandler(message string) {
 	if adapterMessage.Message.ServiceType == "cardano_node" {
 		// dowload kernel and filesystem files place them somewhere
 		// TODO : organize fc files
-		kernelFileUrl := "https://d.nunet.io/fc/vmlinux"
+		kernelFileURL := "https://d.nunet.io/fc/vmlinux"
 		kernelFilePath := "/etc/nunet/vmlinux"
-		filesystemUrl := "https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4"
+		filesystemURL := "https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4"
 		filesystemPath := "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4"
 		pKey := adapterMessage.Message.Params.PublicKey
 		nodeId := adapterMessage.Message.Params.NodeID
 
-		err = utils.DownloadFile(kernelFileUrl, kernelFilePath)
+		err = utils.DownloadFile(kernelFileURL, kernelFilePath)
 		if err != nil {
-			log.Println("Error: Downloading ", kernelFileUrl, " - ", err.Error())
+			log.Println("Error: Downloading ", kernelFileURL, " - ", err.Error())
 			sendDeploymentResponse(adapterMessage.Sender,
 				false,
-				fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", kernelFileUrl))
+				fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", kernelFileURL))
 		}
-		err = utils.DownloadFile(filesystemUrl, filesystemPath)
+		err = utils.DownloadFile(filesystemURL, filesystemPath)
 		if err != nil {
-			log.Println("Error: Downloading ", filesystemUrl, " - ", err.Error())
+			log.Println("Error: Downloading ", filesystemURL, " - ", err.Error())
 			sendDeploymentResponse(adapterMessage.Sender,
 				false,
-				fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", filesystemUrl))
+				fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", filesystemURL))
 		}
 
 		// makerequest to start-default with downloaded files.
@@ -142,7 +142,7 @@ func StartMessageReceiver() {
 		Timeout:             time.Duration(60 * time.Second), // close connection after 60 seconds of no-ackowledgement for ping
 		PermitWithoutStream: true,                            // allow keepalive ping even without data
 	}
-	conn, err := grpc.Dial(utils.ADAPTER_GRPC_URL, []grpc.DialOption{
+	conn, err := grpc.Dial(utils.AdapterGrpcURL, []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
 		grpc.WithKeepaliveParams(kap)}...)
@@ -165,7 +165,7 @@ func StartMessageReceiver() {
 			log.Println("[ADAPTER MSG] ERROR: EOF")
 		} else if err != nil {
 			log.Println("[ADAPTER MSG] ERROR: Connection Problem - ", err.Error())
-			conn, err = grpc.Dial(utils.ADAPTER_GRPC_URL,
+			conn, err = grpc.Dial(utils.AdapterGrpcURL,
 				[]grpc.DialOption{
 					grpc.WithTransportCredentials(insecure.NewCredentials()),
 					grpc.WithBlock(),

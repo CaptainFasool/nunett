@@ -47,7 +47,7 @@ func GenerateSocketFile(n int) string {
 	return prefix + string(s) + ".socket"
 }
 
-func InitVM(c *gin.Context, vm models.VirtualMachine) {
+func initVM(c *gin.Context, vm models.VirtualMachine) {
 	cmd := exec.Command("firecracker", "--api-sock", vm.SocketFile)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
 	// output, _ := cmd.CombinedOutput() // for debugging purpose
@@ -70,14 +70,14 @@ func InitVM(c *gin.Context, vm models.VirtualMachine) {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func BootSource(c *gin.Context, vm models.VirtualMachine, bs models.BootSource) {
+func bootSource(c *gin.Context, vm models.VirtualMachine, bs models.BootSource) {
 	jsonBytes, _ := json.Marshal(bs)
 	client := NewClient(vm.SocketFile)
 
 	utils.MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, ERR_BOOTSOURCE_REQ)
 }
 
-func Drives(c *gin.Context, vm models.VirtualMachine, d models.Drives) {
+func drives(c *gin.Context, vm models.VirtualMachine, d models.Drives) {
 	jsonBytes, _ := json.Marshal(d)
 
 	client := NewClient(vm.SocketFile)
@@ -86,7 +86,7 @@ func Drives(c *gin.Context, vm models.VirtualMachine, d models.Drives) {
 
 }
 
-func MachineConfig(c *gin.Context, vm models.VirtualMachine, mc models.MachineConfig) {
+func machineConfig(c *gin.Context, vm models.VirtualMachine, mc models.MachineConfig) {
 	jsonBytes, _ := json.Marshal(mc)
 
 	client := NewClient(vm.SocketFile)
@@ -94,7 +94,7 @@ func MachineConfig(c *gin.Context, vm models.VirtualMachine, mc models.MachineCo
 	utils.MakeRequest(c, client, "http://localhost/machine-config", jsonBytes, ERR_MACHINE_CONFIG_REQ)
 }
 
-func NetworkInterfaces(c *gin.Context, vm models.VirtualMachine, ni models.NetworkInterfaces) {
+func networkInterfaces(c *gin.Context, vm models.VirtualMachine, ni models.NetworkInterfaces) {
 	err := networking.ConfigureTapByName(vm.TapDevice)
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, errors.New("error configuring network"))
@@ -108,21 +108,21 @@ func NetworkInterfaces(c *gin.Context, vm models.VirtualMachine, ni models.Netwo
 	utils.MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, ERR_MACHINE_CONFIG_REQ)
 }
 
-func SetupMMDS(c *gin.Context, vm models.VirtualMachine, mmds models.MMDSConfig) {
+func setupMMDS(c *gin.Context, vm models.VirtualMachine, mmds models.MMDSConfig) {
 
 	jsonBytes, _ := json.Marshal(mmds)
 	client := NewClient(vm.SocketFile)
 	utils.MakeRequest(c, client, "http://localhost/mmds/config", jsonBytes, ERR_MMDS_CONFIG)
 }
 
-func PassMMDSMsg(c *gin.Context, vm models.VirtualMachine, mmdsMsg models.MMDSMsg) {
+func passMMDSMsg(c *gin.Context, vm models.VirtualMachine, mmdsMsg models.MMDSMsg) {
 
 	jsonBytes, _ := json.Marshal(mmdsMsg)
 	client := NewClient(vm.SocketFile)
 	utils.MakeRequest(c, client, "http://localhost/mmds", jsonBytes, ERR_MMDS_MSG)
 }
 
-func StartVM(c *gin.Context, vm models.VirtualMachine) {
+func startVM(c *gin.Context, vm models.VirtualMachine) {
 	var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
 
 	var freeRes models.FreeResources
@@ -157,7 +157,7 @@ func StartVM(c *gin.Context, vm models.VirtualMachine) {
 	})
 }
 
-func StopVM(c *gin.Context, vm models.VirtualMachine) {
+func stopVM(c *gin.Context, vm models.VirtualMachine) {
 	var jsonBytes = []byte(`{"action_type": "SendCtrlAltDel"}`)
 
 	// initialize http client
