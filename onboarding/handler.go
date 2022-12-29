@@ -119,13 +119,31 @@ func Onboard(c *gin.Context) {
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
-	file, _ := json.MarshalIndent(metadata, "", " ")
-	err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
-	if err != nil {
-		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "could not write metadata.json"})
-		return
+	if !fileExists("/etc/nunet/metadataV2.json") {
+		file, _ := json.MarshalIndent(metadata, "", " ")
+		err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+		if err != nil {
+			c.JSON(http.StatusBadRequest,
+				gin.H{"error": "could not write metadata.json"})
+			return
+		}
+	} else {
+		content, err := os.ReadFile("/etc/nunet/metadataV2.json")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError,
+				gin.H{"error": "metadata.json does not exists or not readable"})
+			return
+		}
+		var metadata2 models.MetadataV2
+		err = json.Unmarshal(content, &metadata2)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError,
+				gin.H{"error": "unable to parse metadata.json"})
+			return
+		}
+		metadata.NodeID = metadata2.NodeID
 	}
+
 	// Add available resources to database.
 
 	available_resources := models.AvailableResources{
@@ -183,4 +201,12 @@ func CreatePaymentAddress(c *gin.Context) {
 			gin.H{"message": "error creating address"})
 	}
 	c.JSON(http.StatusOK, pair)
+}
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }

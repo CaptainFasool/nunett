@@ -1,10 +1,12 @@
 package onboarding
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -158,15 +160,30 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 	}()
 	adapter.UpdateMachinesTable()
 
-	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
-	var NewDeviceOnboardParams = models.NewDeviceOnboarded{
-		PeerID:        adapter.GetPeerID(),
-		CPU:           float32(metadata.Reserved.CPU),
-		RAM:           float32(metadata.Reserved.Memory),
-		Network:       0.0,
-		DedicatedTime: 0.0,
-		Timestamp:     float32(statsdb.GetTimestamp()),
+	if len(metadata.NodeID) == 0 {
+		metadata.NodeID = adapter.GetPeerID()
+
+		// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
+		NewDeviceOnboardParams := models.NewDeviceOnboarded{
+			PeerID:        metadata.NodeID,
+			CPU:           float32(metadata.Reserved.CPU),
+			RAM:           float32(metadata.Reserved.Memory),
+			Network:       0.0,
+			DedicatedTime: 0.0,
+			Timestamp:     float32(statsdb.GetTimestamp()),
+		}
+		statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+	} else {
+		statsdb.DeviceResourceChange(metadata)
 	}
 
-	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+	go statsdb.HeartBeat(metadata.NodeID)
+
+	file, _ := json.MarshalIndent(metadata, "", " ")
+	err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	if err != nil {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "could not write metadata.json"})
+		return
+	}
 }
