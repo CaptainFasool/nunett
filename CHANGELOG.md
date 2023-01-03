@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.20](#88)
+
+### Changed
+- implemented DeviceStatus and DeviceResource grpc calls
+
 
 ## [0.4.19](#75)
 
