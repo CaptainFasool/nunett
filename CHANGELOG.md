@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.20](#65)
+
+### Changed
+- Send the deployment response container log gist URL to GPU ML user.
+
 ## [0.4.19](#75)
 
 ### Changed
