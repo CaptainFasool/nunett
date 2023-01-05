@@ -134,6 +134,8 @@ func StartDefault(c *gin.Context) {
 	type StartDefaultBody struct {
 		KernelImagePath string `json:"kernel_image_path"`
 		FilesystemPath  string `json:"filesystem_path"`
+		PublicKey       string `json:"public_key"`
+		NodeID          string `json:"node_id"`
 	}
 
 	body := StartDefaultBody{}
@@ -206,9 +208,8 @@ func StartDefault(c *gin.Context) {
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
-	//TODO: Currently passing fake data will be replaced with information from Deployment Request
-	mmdsMetadata.NodeId = "12343124-3423425234-23423534234"
-	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
+	mmdsMetadata.NodeId = body.NodeID
+	mmdsMetadata.PKey = body.PublicKey
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
 	passMMDSMsg(c, vm, mmdsMsg)

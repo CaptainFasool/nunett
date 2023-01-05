@@ -86,6 +86,15 @@ func sendDeploymentRequest(requestParams []byte) error {
 	if err := json.Unmarshal(requestParams, &depReq); err != nil {
 		return errors.New("invalid deployment request body")
 	}
+	// add node_id and public_key in deployment request
+	pKey, err := adapter.GetMasterPKey()
+	if err != nil {
+		return err
+	}
+	selfNodeID := adapter.GetPeerID()
+
+	depReq.Params.NodeID = selfNodeID
+	depReq.Params.PublicKey = pKey
 
 	// check if the pricing matched
 	if estimatedNtx := CalculateStaticNtxGpu(depReq); estimatedNtx > float64(depReq.MaxNtx) {

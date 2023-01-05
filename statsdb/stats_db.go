@@ -4,9 +4,9 @@ import (
 	"context"
 	"flag"
 	"log"
+	"math/rand"
 	"time"
 
-	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/models"
 	pb "gitlab.com/nunet/device-management-service/statsdb/event_listener_spec"
 	"google.golang.org/grpc"
@@ -14,53 +14,22 @@ import (
 )
 
 var (
-	addr = flag.String("addr", "65.108.205.60:50051", "the address to connect to")
+	addr = flag.String("addr", "stats-event-listener.dev.nunet.io:80", "the address to connect to")
 )
 
-// GetPeerID returns self Node ID from the adapter
-func GetPeerID() string {
-	NodeID, err := adapter.GetPeerID()
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
-	if err != nil {
-		log.Print("unable to get Node ID")
-	}
-
-	return NodeID
+// GetCallID returns a call ID to track the deployement request
+func GetCallID() float32 {
+	return rand.Float32()
 }
 
 // GetTimestamp returns current unix timestamp
 func GetTimestamp() int64 {
 	return time.Now().Unix()
 }
-
-// NOTE:- **Not removing the hardcoded data kept at the moment for testing purpose **
-// var New_device_onboard_params = models.NewDeviceOnboarded{
-// 	PeerID:        "test-peer-id-1234567890",
-// 	CPU:           4342.0,
-// 	RAM:           1223.0,
-// 	Network:       76.0,
-// 	DedicatedTime: 12.0,
-// 	Timestamp:     6876344.0,
-// }
-// var Service_call_params = models.ServiceCall{
-// 	CallID:              6.808776152033109e+16,
-// 	PeerIDOfServiceHost: "test-peer-id-1234567890",
-// 	ServiceID:           "test-service-id",
-// 	CPUUsed:             2345.0,
-// 	MaxRAM:              3231.0,
-// 	MemoryUsed:          2313.0,
-// 	NetworkBwUsed:       23.0,
-// 	TimeTaken:           12.0,
-// 	Status:              "accepted",
-// 	Timestamp:           5.5,
-// }
-
-// var Service_run_params = models.ServiceRun{
-// 	CallID:              6.808776152033109e+16,
-// 	PeerIDOfServiceHost: "test-peer-id-123456778",
-// 	Status:              "success",
-// 	Timestamp:           5.5,
-// }
 
 // NewDeviceOnboarded sends the newly onboarded telemetry info to the stats db via grpc call.
 func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {

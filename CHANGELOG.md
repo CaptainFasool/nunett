@@ -21,6 +21,37 @@ Types of changes
 
 -->
 
+## [0.4.19](#75)
+
+### Changed
+- Remove random amount of wait in `Onboard` handler.
+- Move telemetry code to `InstallRunAdapter` for faster request-response cycle.
+
+## [0.4.18](#89)
+
+### Fixed
+- Fixed VM network config
+
+## [0.4.17](documentation#19)
+
+### Added
+- CLI command to collect log and return path
+
+## [0.4.16](#80)
+
+### Added
+- CLI command to collect log and return path
+
+## [0.4.15](#63)
+
+### Added
+- Implementation of deployement request status information propagation to statsdb for ML job deployment.
+
+## [0.4.14](#78)
+
+### Added
+- New gRPC service for retreiving Master Community's public key
+
 ## [0.4.13](#60)
 
 ### Added
@@ -59,30 +90,30 @@ Types of changes
 - Handle onboarding channels for separate networks corresponding to https://gitlab.com/nunet/nunet-adapter/-/issues/108
 - Workaround for #74
 
-## [0.4.7](#047)
+## [0.4.7](#64)
 
 ### Added
 - Send docker logs for running container to GitHub's Gist
 
-## [0.4.6](#046)
+## [0.4.6](#63)
 
 ### Added
 - Added stats_db grpc calls.
 
-## [0.4.5](#045)
+## [0.4.5](#67)
 
 ### Added
 - Added a grpc-client to access cardano-cli
 - Added a function interface to run cardano-cli commands
 - Removed unused functions
 
-## [0.4.4](#044)
+## [0.4.4](#61)
 
 ### Added
 - Added command for installing NVIDIA GPU driver and Container Runtime in nunet CLI.
 - Added command for pre-downloading ML docker images in nunet CLI. 
 
-## [0.4.3](#043)
+## [0.4.3](#66)
 
 ### Fixed
 - Fix 500 response on `/vm/*` endpoints.
@@ -94,7 +125,7 @@ Types of changes
 - Refactor `vm` module for speed and readability.
 - the websocat installation to include $archdir
 
-## [0.4.2](#0412)
+## [0.4.2](#57)
 
 ### Added
 - Trigger docker deployment 

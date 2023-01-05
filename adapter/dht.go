@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	fmt "fmt"
+	"log"
 	"time"
 
 	"gitlab.com/nunet/device-management-service/db"
@@ -15,7 +16,10 @@ import (
 
 func fetchDhtContents() (*DhtContents, error) {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(utils.AdapterGrpcURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(utils.AdapterGrpcURL, []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	}...)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +30,7 @@ func fetchDhtContents() (*DhtContents, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	r, err := client.GetDhtContent(ctx, &GetDhtParams{})
+	r, err := client.GetDhtContent(ctx, &GetDhtParams{}, grpc.WaitForReady(true))
 
 	if err != nil {
 		return nil, err
@@ -283,6 +287,39 @@ func UpdateMachinesTable() {
 }
 
 // GetPeerID returns self NodeID from the adapter
-func GetPeerID() (string, error) {
-	return getSelfNodeID()
+func GetPeerID() string {
+	// return getSelfNodeID()
+	NodeID, err := getSelfNodeID()
+
+	if err != nil {
+		log.Print("unable to get Node ID")
+	}
+
+	return NodeID
+}
+
+func getMasterPKey() (string, error) {
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(utils.AdapterGrpcURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	client := NewNunetAdapterClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := client.GetMasterPkey(ctx, &GetPkey{})
+	if err != nil {
+		return "", err
+	}
+
+	return r.PublicKey, nil
+}
+
+// GetMasterPKey returns Master Community's public key from the adapter
+func GetMasterPKey() (string, error) {
+	return getMasterPKey()
 }

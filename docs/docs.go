@@ -37,7 +37,7 @@ const docTemplate = `{
                 "summary": "Returns the amount of free resources available",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -157,20 +157,14 @@ const docTemplate = `{
                 "summary": "Sends a command to specific node and prints back response.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
         },
         "/run/deploy": {
-            "post": {
-                "description": "SendDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "run"
-                ],
+            "get": {
+                "description": "HandleDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
                 "summary": "Search devices on DHT with appropriate machines and sends a deployment request.",
                 "responses": {
                     "200": {
@@ -194,7 +188,7 @@ const docTemplate = `{
                 "summary": "Start a VM with custom configuration.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -211,7 +205,7 @@ const docTemplate = `{
                 "summary": "Start a VM with default configuration.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -304,7 +298,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.13",
+	Version:          "0.4.19",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

@@ -14,10 +14,12 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/adapter"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
-// InstallRunAdapter takens in metadata and try to run nunet-adapter on current machine.
+// InstallRunAdapter takes in metadata and try to run nunet-adapter on current machine.
 func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.MetadataV2, cardanoPassive string) {
 	var adapterImageTag string
 	var deploymentType string
@@ -146,15 +148,25 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 	if err := cli.ContainerStart(c, resp.ID, types.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
-	//XXX bad hack for https://gitlab.com/nunet/device-management-service/-/issues/74
-	time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
 
-	statusCh, errCh := cli.ContainerWait(c, resp.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			panic(err)
+	telemetry.CalcFreeResources()
+	go func() {
+		for {
+			adapter.UpdateAvailableResoruces()
+			time.Sleep(time.Second * 10)
 		}
-	case <-statusCh:
+	}()
+	adapter.UpdateMachinesTable()
+
+	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
+	var NewDeviceOnboardParams = models.NewDeviceOnboarded{
+		PeerID:        adapter.GetPeerID(),
+		CPU:           float32(metadata.Reserved.CPU),
+		RAM:           float32(metadata.Reserved.Memory),
+		Network:       0.0,
+		DedicatedTime: 0.0,
+		Timestamp:     float32(statsdb.GetTimestamp()),
 	}
+
+	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
 }

@@ -42,6 +42,12 @@ message messageResponse {
     string message_response=1;
 }
 
+message getPkey {}
+
+message Pkey {
+    string public_key = 1;
+}
+
 message receivedMessageParams {}
 
 
@@ -59,5 +65,7 @@ service NunetAdapter {
     rpc getSelfPeer(getPeerParams) returns (nodeID) {}
 
     rpc updateDHT(DHTUpdateContent) returns (DHTUpdateResponse) {}
+
+    rpc getMasterPkey(getPkey) returns (Pkey) {}
 }
 
