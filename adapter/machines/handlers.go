@@ -132,8 +132,8 @@ func sendDeploymentRequest(requestParams []byte) error {
 // @Description  Gets a list of peers the adapter can see within the network and return a list of peer info
 // @Tags         run
 // @Produce      json
-// @Success      200  {string}  string
-// @Router       /peers/list [get]
+// @Success      200  {string}	string
+// @Router       /peers [get]
 func ListPeers(c *gin.Context) {
 	response, err := adapter.FetchMachines()
 	if err != nil {

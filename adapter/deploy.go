@@ -21,7 +21,7 @@ import (
 func sendDeploymentResponse(address string, success bool, message string) {
 	selfNodeID, err := getSelfNodeID()
 	if err != nil {
-		log.Println("Error: Unable to get self node id. ", err)
+		zlog.Error(fmt.Sprintf("Unable to get self node id: %v ", err))
 	}
 	jsonDepResp, _ := json.Marshal(models.DeploymentResponse{
 		NodeId:  selfNodeID,

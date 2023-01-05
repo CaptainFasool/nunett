@@ -8,11 +8,11 @@ import (
 
 var err error
 
-type logger struct {
+type Logger struct {
 	*zap.Logger
 }
 
-func (l *logger) init() error {
+func (l *Logger) init() error {
 	if os.Getenv("MODE") == "development" {
 		l.Logger, err = zap.NewDevelopment()
 	} else {
@@ -22,9 +22,9 @@ func (l *logger) init() error {
 	return err
 }
 
-// New takes in a package to initlialize the new logger in.
-func New(pkg string) *logger {
-	Log := &logger{}
+// New takes in a package to initlialize the new Logger in.
+func New(pkg string) *Logger {
+	Log := &Logger{}
 	err = Log.init()
 	if err != nil {
 		panic(err)
