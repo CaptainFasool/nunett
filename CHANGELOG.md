@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.21](#93)
+
+### Changed
+- Enable GPU onboarding for WSL users
+
 ## [0.4.20](#95)
 
 ### Changed
