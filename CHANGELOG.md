@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.20](#95)
+
+### Changed
+- Refactor logger
+
 ## [0.4.19](#75)
 
 ### Changed

@@ -15,8 +15,6 @@ const (
 	AdapterGrpcURL = "localhost:60777"
 )
 
-// const ADAPTER_GRPC_URL = "localhost:9998"
-
 // MakeInternalRequest is a helper method to make call to DMS's own API
 func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) http.Response {
 	req, err := http.NewRequest(methodType, DMSBaseURL+internalEndpoint, bytes.NewBuffer(body))
