@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.22](#81)
+
+### Added
+- Enable wallet creation for the Cardano blockchain
+
 ## [0.4.21](#93)
 
 ### Changed

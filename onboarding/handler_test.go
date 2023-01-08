@@ -12,11 +12,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreatePaymentAddressRoute(t *testing.T) {
+func TestCardanoAddressRoute(t *testing.T) {
 	router := routes.SetupRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/onboarding/address/new", nil)
+	router.ServeHTTP(w, req)
+
+	resp := w.Result()
+	body, _ := io.ReadAll(resp.Body)
+
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Contains(t, string(body), "address")
+	assert.Contains(t, string(body), "mnemonic")
+
+	var jsonMap map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &jsonMap)
+
+	assert.NotEmpty(t, jsonMap)
+}
+
+func TestEthereumAddressRoute(t *testing.T) {
+	router := routes.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/onboarding/address/new?blockchain=ethereum", nil)
 	router.ServeHTTP(w, req)
 
 	resp := w.Result()

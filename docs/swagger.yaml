@@ -1,8 +1,10 @@
 basePath: /api/v1
 definitions:
-  models.AddressPrivKey:
+  models.BlockchainAddressPrivKey:
     properties:
       address:
+        type: string
+      mnemonic:
         type: string
       private_key:
         type: string
@@ -64,7 +66,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.21
+  version: 0.4.22
 paths:
   /free:
     get:
@@ -87,7 +89,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.AddressPrivKey'
+            $ref: '#/definitions/models.BlockchainAddressPrivKey'
       summary: Create a new payment address.
       tags:
       - onboarding

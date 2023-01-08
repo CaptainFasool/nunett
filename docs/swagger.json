@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.21"
+        "version": "0.4.22"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -49,7 +49,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.AddressPrivKey"
+                            "$ref": "#/definitions/models.BlockchainAddressPrivKey"
                         }
                     }
                 }
@@ -205,10 +205,13 @@
         }
     },
     "definitions": {
-        "models.AddressPrivKey": {
+        "models.BlockchainAddressPrivKey": {
             "type": "object",
             "properties": {
                 "address": {
+                    "type": "string"
+                },
+                "mnemonic": {
                     "type": "string"
                 },
                 "private_key": {
