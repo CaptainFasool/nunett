@@ -314,14 +314,64 @@ secure_boot_check() {
 
 ## Install NVIDIA GPU Drivers and Container Runtime
 onboard-gpu() {
+
+    # WSL code block
+
+    # Use the uname command with the -a option to get system information
+    system_info=$(uname -a)
+
+    # Use grep to search for the string "microsoft" in the system information
+    if echo "$system_info" | grep -qi "microsoft"; then
+    # The string "microsoft" was found, so this is a WSL console
+        printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have installed the latest Windows Driver for your NVIDIA GPU before proceeding.${NORMAL_C}\n"
+        sleep 5 # adding some time to read the message
+
+        # Check if nvidia-smi is in stalled
+        if ! command -v nvidia-smi > /dev/null; then
+          printf "${BAD_C}Error: nvidia-smi is not installed. Make sure you have installed the latest Windows Driver for your NVIDIA GPU and try again."
+          exit
+        fi
+
+        # Run nvidia-smi -L and save all NVIDIA GPU names on the machine
+        nvidia_gpu_names=$(nvidia-smi -L)
+        if [[ $nvidia_smi_output =~ "No devices were found" ]]; then
+           printf "${BAD_C}Error: No NVIDIA GPUs were detected.${NORMAL_C}"
+           exit
+        else
+           printf "${GOOD_C}NVIDIA GPU(s) detected.${NORMAL_C}\n"
+           # Print the GPU names
+           printf "${INFO_C}Available GPU(s):\n$nvidia_gpu_names${NORMAL_C}\n"
+           printf "${INFO_C}-----Starting NVIDIA Container Runtime Installation-----${NORMAL_C}\n"
+           sleep 5 # add some time to see available GPUs on the machine
+           curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | sudo apt-key add -
+           distribution=$(
+               . /etc/os-release
+               echo $ID$VERSION_ID
+           )
+           curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+           sudo apt-get update
+           sudo apt -y install nvidia-container-runtime
+           sudo systemctl restart docker
+           printf "${INFO_C}Note: For best performance without sharing resources, a dedicated Linux machine is highly recommended for running ML jobs on NuNet.${NORMAL_C}\n"
+           sleep 5
+           printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
+           exit
+         fi
+    fi
+
+    #Linux code block
+
     nvidia="$(lspci | grep 'VGA compatible controller: NVIDIA' | awk '{print $5}')" # a variable with value "NVIDIA"
     gpu="$(lspci | grep 'VGA compatible controller: NVIDIA' | awk '{print $8 " " $9 " " $10 " " $11}')" # tries to fetch the gpu name
+    all_gpus=$(nvidia-smi -L)
     gpu_driver_version="$(nvidia-smi | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')" # the gpu driver version
     gpu_driver_var="$(nvidia-smi | grep Driver | awk '{print $4}')" # a variable with value "Driver"
     linux_distro=$(grep -Po "(?<=^ID=).+" /etc/os-release | sed 's/"//g') # we add support for specific linux distributions through this variable.
     # CHECK IF THERE IS NVIDIA GPU
     if [ -n "$nvidia" ]; then
         printf "${GOOD_C}$nvidia $gpu GPU device found! ${NORMAL_C}\n"
+        printf "${INFO_C}All available GPU(s):\n$all_gpus ${NORMAL_C}\n"
+        sleep 3 #adding some time for the onboarder to see all GPUs on the machine
         # IF gpu_driver_var IS not EMPTY WE WILL SKIP DRIVER AND Install container runtime
         if [ -n "$gpu_driver_var" ]; then #IF $gpu_driver_var is not empty
             printf "${INFO_C}$gpu_driver_version is already installed. Skipping installation of driver.${NORMAL_C}\n"
@@ -354,7 +404,6 @@ onboard-gpu() {
         curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
         sudo apt update
         sudo apt install -y nvidia-container-runtime
-
         sudo systemctl restart docker
         printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
     else
