@@ -64,7 +64,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.19
+  version: 0.4.20
 paths:
   /free:
     get:
@@ -135,7 +135,7 @@ paths:
       summary: Returns provisioned capacity on host.
       tags:
       - onboarding
-  /peers/list:
+  /peers:
     get:
       description: Gets a list of peers the adapter can see within the network and
         return a list of peer info
