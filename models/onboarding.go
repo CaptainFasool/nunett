@@ -1,10 +1,11 @@
 package models
 
-// AddressPrivKey holds Ethereum wallet address and private key from which the
+// BlockchainAddressPrivKey holds Ethereum wallet address and private key from which the
 // address is derived.
-type AddressPrivKey struct {
+type BlockchainAddressPrivKey struct {
 	Address    string `json:"address,omitempty"`
 	PrivateKey string `json:"private_key,omitempty"`
+	Mnemonic   string `json:"mnemonic,omitempty"`
 }
 
 // CapacityForNunet is a struct required in request body for the onboarding

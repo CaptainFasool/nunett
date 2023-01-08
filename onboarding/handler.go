@@ -174,10 +174,19 @@ func ProvisionedCapacity(c *gin.Context) {
 // @Description  Create a payment address from public key. Return payment address and private key.
 // @Tags         onboarding
 // @Produce      json
-// @Success      200  {object}  models.AddressPrivKey
+// @Success      200  {object}  models.BlockchainAddressPrivKey
 // @Router       /onboarding/address/new [get]
 func CreatePaymentAddress(c *gin.Context) {
-	pair, err := GetAddressAndPrivateKey()
+	blockChain := c.DefaultQuery("blockchain", "cardano")
+
+	var pair *models.BlockchainAddressPrivKey
+	var err error
+	if blockChain == "ethereum" {
+		pair, err = GetEthereumAddressAndPrivateKey()
+	} else if blockChain == "cardano" {
+		pair, err = GetCardanoAddressAndMnemonic()
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
 			gin.H{"message": "error creating address"})

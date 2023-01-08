@@ -56,7 +56,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.AddressPrivKey"
+                            "$ref": "#/definitions/models.BlockchainAddressPrivKey"
                         }
                     }
                 }
@@ -212,10 +212,13 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "models.AddressPrivKey": {
+        "models.BlockchainAddressPrivKey": {
             "type": "object",
             "properties": {
                 "address": {
+                    "type": "string"
+                },
+                "mnemonic": {
                     "type": "string"
                 },
                 "private_key": {
@@ -298,7 +301,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.21",
+	Version:          "0.4.22",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

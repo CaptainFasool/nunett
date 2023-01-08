@@ -51,10 +51,12 @@ wallet_usage() {
     echo -e "Usage: $SELF_NAME wallet COMMAND [OPTIONS] \n"
     echo -e "Manage blockchain wallet.\n"
     echo "Options:"
+    echo "    -c, --cardano    Create a new Cardano wallet address."
+    echo "    -e, --ethereum  Create a new Ethereum wallet address."
     echo "    -v, --verbose    Verbose output"
     echo -e "    -p, --pretty     Prettified JSON output\n"
     echo "Commands:"
-    echo -e "  new         Create a new wallet address. Returns public and private keys.\n"
+	echo -e "  new         Create a new wallet address. Returns public and private keys.\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -129,8 +131,11 @@ wallet() {
                 "-v" | "--verbose")
                     NVERBOSE_OUT=1
                     ;;
-                "new")
-                    N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/address/new)
+                "-c"|"--cardano")
+                    N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/address/new?blockchain=cardano)
+                    ;;
+                "-e"|"--ethereum")
+                    N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/address/new?blockchain=ethereum)
                     ;;
                 *)
                     printf "${BAD_C}Bad argument \"$avarg\" for 'wallet' Command. ${NORMAL_C}\n\n"
