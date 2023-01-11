@@ -34,7 +34,6 @@ type DeploymentRequest struct {
 }
 
 type DeploymentResponse struct {
-	NodeId  string
 	Success bool
 	Content string
 }
