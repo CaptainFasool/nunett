@@ -3,12 +3,13 @@ package adapter
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
+	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -32,9 +33,23 @@ func messageHandler(message string) {
 	// to unmarshal on
 	// TODO: For each message_type, unmarshal `message` and send it to specific channel
 	case "DeploymentRequest":
-		fmt.Println("deployment request received")
+		zlog.Info("deployment request received")
+
+		var depReq models.DeploymentRequest
+		mapstructure.Decode(objmap["message"], &depReq)
+
+		// send the depReq to DepReqQueue
+		DepReqQueue <- depReq
+
 	case "DeploymentResponse":
-		fmt.Println("deployment response received")
+		zlog.Info("deployment response received")
+
+		var depRes models.DeploymentResponse
+		mapstructure.Decode(objmap["message"], &depRes)
+
+		// send the depRes to depReq queue
+		DepResQueue <- depRes
+
 	}
 
 }
