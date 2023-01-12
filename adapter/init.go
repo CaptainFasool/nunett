@@ -8,8 +8,8 @@ import (
 var (
 	zlog *logger.Logger
 
-	DepReqQueue = make(chan models.DeploymentRequest)
-	DepResQueue = make(chan models.DeploymentResponse)
+	DepReqQueue = make(chan models.AdapterMessage)
+	DepResQueue = make(chan models.AdapterMessage)
 )
 
 func init() {

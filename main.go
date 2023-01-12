@@ -10,6 +10,7 @@ import (
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal"
+	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/routes"
 	"go.opentelemetry.io/otel"
 
@@ -40,6 +41,8 @@ func main() {
 
 	// Start listening for new messages coming via adapter
 	go adapter.StartMessageReceiver()
+	// Process deployment request worker
+	go messaging.DeploymentWorker()
 
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
