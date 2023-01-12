@@ -20,6 +20,7 @@ Build:
       - $CI_DEFAULT_BRANCH
       - main
       - staging
+      - develop
 
 Deploy DMS:
   stage: deploy
