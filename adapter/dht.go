@@ -321,3 +321,25 @@ func getMasterPKey() (string, error) {
 func GetMasterPKey() (string, error) {
 	return getMasterPKey()
 }
+
+// ExcuteCommand Receives a string command which is executed by adapter on a remote shell.
+func ExecuteCommand(cmd string) (string, error) {
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(utils.AdapterGrpcURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	client := NewNunetAdapterClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := client.ExecuteCommand(ctx, &Command{Command: cmd})
+
+	if err != nil {
+		return "", err
+	}
+	return r.Response, nil
+}

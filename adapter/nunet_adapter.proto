@@ -50,6 +50,13 @@ message Pkey {
 
 message receivedMessageParams {}
 
+message Command {
+    string command = 1;
+}
+
+message Response {
+    string response = 1;
+}
 
 service NunetAdapter {
     rpc getPeerList(getPeerParams) returns (peers) {}
@@ -67,5 +74,7 @@ service NunetAdapter {
     rpc updateDHT(DHTUpdateContent) returns (DHTUpdateResponse) {}
 
     rpc getMasterPkey(getPkey) returns (Pkey) {}
+
+    rpc executeCommand(Command) returns (Response) {}
 }
 

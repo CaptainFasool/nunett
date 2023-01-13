@@ -7,7 +7,6 @@ import (
 	"io"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mitchellh/mapstructure"
 	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
@@ -31,8 +30,11 @@ func DeploymentWorker() {
 			var adapterMessage models.AdapterMessage
 			var depReq models.DeploymentRequest
 
-			mapstructure.Decode(msg, &adapterMessage)
-			mapstructure.Decode(msg.Data.Message, &depReq)
+			jsonMsg, _ := json.Marshal(msg)
+			json.Unmarshal(jsonMsg, &adapterMessage)
+
+			jsonDataMsg, _ := json.Marshal(msg.Data.Message)
+			json.Unmarshal(jsonDataMsg, &depReq)
 
 			sender := adapterMessage.Sender
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"gitlab.com/nunet/device-management-service/adapter"
 )
 
 // UpgradeConnection is generic protocol upgrader for entire DMS.
@@ -94,12 +95,10 @@ func SendCommandForExecution() {
 	for {
 		command := <-commandChan
 		log.Printf("%v", command)
-		// TO BE IMPLEMENTED
-		// send command
-
-		// fetch result
-
-		// send back result
-		command.Conn.WriteMessage(websocket.TextMessage, []byte(command.Command))
+		resp, err := adapter.ExecuteCommand(command.Command)
+		if err != nil {
+			log.Println(err)
+		}
+		command.Conn.WriteMessage(websocket.TextMessage, []byte(resp))
 	}
 }

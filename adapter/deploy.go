@@ -20,6 +20,8 @@ func messageHandler(message string) {
 	messageValue = strings.Replace(messageValue, `"{`, `{`, -1) // necessary because json becomes string in route and contains "key" : "{\"key\" : \"value\"}"
 	messageValue = strings.Replace(messageValue, `}"`, `}`, -1) // necessary because json becomes string in route and contains "key" : "{\"key\" : \"value\"}"
 
+	fmt.Println("-----------", messageValue)
+
 	// interpret the kind of message and push it to specific queue
 	adapterMessage := models.AdapterMessage{}
 	if err := json.Unmarshal([]byte(messageValue), &adapterMessage); err != nil {
