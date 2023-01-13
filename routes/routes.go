@@ -39,8 +39,8 @@ func SetupRouter() *gin.Engine {
 	peer := v1.Group("/peers")
 	{
 		peer.GET("", machines.ListPeers)
-		peer.GET("/ws", internal.HandleWebSocket)
-		// peer.GET("/shell", internal.HandleWebSocket)
+		// peer.GET("/ws", internal.HandleWebSocket)
+		peer.GET("/shell", internal.HandleWebSocket)
 		// peer.GET("/log", internal.HandleWebSocket)
 	}
 
