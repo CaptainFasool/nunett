@@ -375,7 +375,7 @@ onboard-ml()
 shell(){
     # echo "to install on ubuntu run the following:"
     # echo "sudo wget -qO /usr/local/bin/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl"
-    websocat ws://127.0.0.1:9999/api/v1/shell
+    websocat ws://127.0.0.1:9999/api/v1/peers/shell
 }
 
 log(){

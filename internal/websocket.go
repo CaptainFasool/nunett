@@ -42,18 +42,13 @@ var clients = make(map[WebSocketConnection]string)
 // @Success      200
 // @Router       /peers/ws [get]
 func HandleWebSocket(c *gin.Context) {
-	nodeID := c.Query("nodeID")
-	if nodeID == "" {
-		c.AbortWithStatusJSON(400, gin.H{"message": "nodeID not provided"})
-	}
-
 	ws, err := UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("Failed to set websocket upgrade: %+v\n", err)
 		return
 	}
 
-	welcomeMessage := fmt.Sprintf("Enter the commands that you wish to send to %s and press return.", nodeID)
+	welcomeMessage := fmt.Sprintf("Enter the commands here")
 
 	err = ws.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
 	if err != nil {
@@ -61,8 +56,6 @@ func HandleWebSocket(c *gin.Context) {
 	}
 
 	conn := WebSocketConnection{Conn: ws}
-	clients[conn] = nodeID
-
 	go ListenForWs(&conn)
 }
 
