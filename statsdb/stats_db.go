@@ -2,9 +2,10 @@ package statsdb
 
 import (
 	"context"
-	"flag"
+	"encoding/json"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 
 	"gitlab.com/nunet/device-management-service/models"
@@ -13,9 +14,42 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var (
-	addr = flag.String("addr", "stats-event-listener.dev.nunet.io:80", "the address to connect to")
-)
+func getAddress() string {
+
+	content, err := os.ReadFile("/etc/nunet/metadataV2.json")
+	if err != nil {
+		panic(err)
+	}
+
+	var metadata models.MetadataV2
+	err = json.Unmarshal(content, &metadata)
+	if err != nil {
+		panic(err)
+	}
+
+	var (
+		addr             string
+		nunetStagingAddr string = "stats-event-listener.staging.nunet.io:80"
+		nunetTestAddr    string = "stats-event-listener.test.nunet.io:80"
+		nunetEdgeAddr    string = "stats-event-listener.edge.nunet.io:80"
+		nunetTeamAddr    string = "stats-event-listener.team.nunet.io:80"
+		localAddr        string = "127.0.0.1:50051"
+	)
+
+	if metadata.Network == "nunet-staging" {
+		addr = nunetStagingAddr
+	} else if metadata.Network == "nunet-test" {
+		addr = nunetTestAddr
+	} else if metadata.Network == "nunet-edge" {
+		addr = nunetEdgeAddr
+	} else if metadata.Network == "nunet-team" {
+		addr = nunetTeamAddr
+	} else {
+		addr = localAddr
+	}
+
+	return addr
+}
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -33,7 +67,7 @@ func GetTimestamp() int64 {
 
 // NewDeviceOnboarded sends the newly onboarded telemetry info to the stats db via grpc call.
 func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
-	conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -59,7 +93,7 @@ func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 
 // ServiceCall sends the info of the service call made to dms to stats via grpc call.
 func ServiceCall(inputData models.ServiceCall) {
-	conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -89,7 +123,7 @@ func ServiceCall(inputData models.ServiceCall) {
 
 // ServiceRun sends the status info of the service process on host machine to stats via grpc call.
 func ServiceRun(inputData models.ServiceRun) {
-	conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -109,4 +143,60 @@ func ServiceRun(inputData models.ServiceRun) {
 		log.Fatalf("connection failed: %v", err)
 	}
 	log.Printf("Responding: %s", res.Response)
+}
+
+// HeartBeat pings the statsdb in every 10s for detacting live status of device via grpc call.
+func HeartBeat(peerID string, addr string) {
+	for {
+		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
+
+		client := pb.NewEventListenerClient(conn)
+
+		res, err := client.HeartBeat(context.Background(), &pb.HeartBeatInput{
+			PeerId: peerID,
+		})
+
+		if err != nil {
+			log.Fatalf("connection failed: %v", err)
+		}
+		log.Printf("Responding: %s", res.PeerId)
+
+		time.Sleep(10 * time.Second)
+	}
+
+}
+
+// DeviceResourceChange sends the reonboarding info with new data to statsdb via grpc call.
+func DeviceResourceChange(inputData *models.MetadataV2) {
+
+	DeviceResourceParams := pb.DeviceResource{
+		Cpu:           float32(inputData.Reserved.CPU),
+		Ram:           float32(inputData.Reserved.Memory),
+		Network:       0.0,
+		DedicatedTime: 0.0,
+	}
+
+	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+
+	client := pb.NewEventListenerClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	res, err := client.DeviceResourceChange(ctx, &pb.DeviceResourceChangeInput{
+		PeerId:                   inputData.NodeID,
+		ChangedAttributeAndValue: &DeviceResourceParams,
+		Timestamp:                float32(GetTimestamp()),
+	})
+
+	if err != nil {
+		log.Fatalf("connection failed: %v", err)
+	}
+
+	log.Printf("Responding: %s", res.PeerId)
 }

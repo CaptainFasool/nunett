@@ -122,6 +122,14 @@ message NtxPaymentOutput{
     string response = 1;
 }
 
+message HeartBeatInput{
+    string peer_id = 1;
+}
+
+message HeartBeatOutput{
+    string peer_id = 1;
+}
+
 service EventListener {
 
     // New Procedures
@@ -144,5 +152,8 @@ service EventListener {
     rpc service_remove(ServiceRemoveInput) returns (ServiceRemoveOutput) {}
     
     rpc ntx_payment(NtxPaymentInput) returns (NtxPaymentOutput) {}
+
+    rpc heart_beat(HeartBeatInput) returns (HeartBeatOutput) {}
+
 }
 

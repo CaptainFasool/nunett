@@ -66,4 +66,5 @@ type MetadataV2 struct {
 	} `json:"reserved,omitempty"`
 	Network   string `json:"network,omitempty"`
 	PublicKey string `json:"public_key,omitempty"`
+	NodeID    string `json:"node_id,omitempty"`
 }
