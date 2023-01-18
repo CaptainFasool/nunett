@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.23](#90)
+
+### Changed
+- Separated StatsDB GRPC address for different onboarding channels
 
 ## [0.4.22](#81)
 

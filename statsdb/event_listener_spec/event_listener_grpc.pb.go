@@ -33,6 +33,7 @@ type EventListenerClient interface {
 	ServiceRun(ctx context.Context, in *ServiceRunInput, opts ...grpc.CallOption) (*ServiceRunOutput, error)
 	ServiceRemove(ctx context.Context, in *ServiceRemoveInput, opts ...grpc.CallOption) (*ServiceRemoveOutput, error)
 	NtxPayment(ctx context.Context, in *NtxPaymentInput, opts ...grpc.CallOption) (*NtxPaymentOutput, error)
+	HeartBeat(ctx context.Context, in *HeartBeatInput, opts ...grpc.CallOption) (*HeartBeatOutput, error)
 }
 
 type eventListenerClient struct {
@@ -133,6 +134,15 @@ func (c *eventListenerClient) NtxPayment(ctx context.Context, in *NtxPaymentInpu
 	return out, nil
 }
 
+func (c *eventListenerClient) HeartBeat(ctx context.Context, in *HeartBeatInput, opts ...grpc.CallOption) (*HeartBeatOutput, error) {
+	out := new(HeartBeatOutput)
+	err := c.cc.Invoke(ctx, "/EventListener/heart_beat", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EventListenerServer is the server API for EventListener service.
 // All implementations must embed UnimplementedEventListenerServer
 // for forward compatibility
@@ -148,6 +158,7 @@ type EventListenerServer interface {
 	ServiceRun(context.Context, *ServiceRunInput) (*ServiceRunOutput, error)
 	ServiceRemove(context.Context, *ServiceRemoveInput) (*ServiceRemoveOutput, error)
 	NtxPayment(context.Context, *NtxPaymentInput) (*NtxPaymentOutput, error)
+	HeartBeat(context.Context, *HeartBeatInput) (*HeartBeatOutput, error)
 	mustEmbedUnimplementedEventListenerServer()
 }
 
@@ -184,6 +195,9 @@ func (UnimplementedEventListenerServer) ServiceRemove(context.Context, *ServiceR
 }
 func (UnimplementedEventListenerServer) NtxPayment(context.Context, *NtxPaymentInput) (*NtxPaymentOutput, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NtxPayment not implemented")
+}
+func (UnimplementedEventListenerServer) HeartBeat(context.Context, *HeartBeatInput) (*HeartBeatOutput, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HeartBeat not implemented")
 }
 func (UnimplementedEventListenerServer) mustEmbedUnimplementedEventListenerServer() {}
 
@@ -378,6 +392,24 @@ func _EventListener_NtxPayment_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EventListener_HeartBeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HeartBeatInput)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EventListenerServer).HeartBeat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/EventListener/heart_beat",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EventListenerServer).HeartBeat(ctx, req.(*HeartBeatInput))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EventListener_ServiceDesc is the grpc.ServiceDesc for EventListener service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -424,6 +456,10 @@ var EventListener_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ntx_payment",
 			Handler:    _EventListener_NtxPayment_Handler,
+		},
+		{
+			MethodName: "heart_beat",
+			Handler:    _EventListener_HeartBeat_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
