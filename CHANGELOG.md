@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.24](#85)
+
+### Added
+- Unit tests for /onboarding REST endpoints
+
+
 ## [0.4.23](#90)
 
 ### Changed
