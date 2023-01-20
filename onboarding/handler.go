@@ -8,8 +8,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
 // GetMetadata      godoc
@@ -20,6 +23,10 @@ import (
 // @Success      200  {array}        models.Metadata
 // @Router       /onboarding/metadata [get]
 func GetMetadata(c *gin.Context) {
+	// check if the request has any body data
+	// if it has return that body  and skip the below code
+	// just for the test cases
+
 	// read the info
 	content, err := os.ReadFile("/etc/nunet/metadataV2.json")
 	if err != nil {
@@ -179,6 +186,34 @@ func Onboard(c *gin.Context) {
 	}
 
 	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
+
+	//XXX bad method - fix asap
+	time.AfterFunc(50*time.Second, func() {
+		_ = telemetry.CalcFreeResources()
+		go func() {
+			for {
+				adapter.UpdateAvailableResoruces()
+				time.Sleep(time.Second * 10)
+			}
+
+		}()
+
+	})
+
+	//XXX bad hack for https://gitlab.com/nunet/device-management-service/-/issues/74
+	//time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
+
+	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
+	var NewDeviceOnboardParams = models.NewDeviceOnboarded{
+		PeerID:        adapter.GetPeerID(),
+		CPU:           float32(available_resources.TotCpuHz),
+		RAM:           float32(available_resources.Ram),
+		Network:       0.0,
+		DedicatedTime: 0.0,
+		Timestamp:     float32(statsdb.GetTimestamp()),
+	}
+
+	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
 
 	c.JSON(http.StatusCreated, metadata)
 }
