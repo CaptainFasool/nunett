@@ -9,12 +9,14 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
 func SetUpRouter() *gin.Engine {
-	router := gin.Default()
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
 	v1 := router.Group("/api/v1")
 
 	onboardingRoute := v1.Group("/onboarding")
@@ -91,6 +93,9 @@ func TestOnboardEmptyRequest(t *testing.T) {
 }
 
 func TestOnboard_CardanoCapacityTooLow(t *testing.T) {
+	onboarding.FS = afero.NewMemMapFs()
+	onboarding.AFS = &afero.Afero{Fs: onboarding.FS}
+	onboarding.AFS.Mkdir("/etc/nunet", 0777)
 	expectedResponse := `{"error":"cardano node requires 10000MB of RAM and 6000MHz CPU"}`
 	router := SetUpRouter()
 	w := httptest.NewRecorder()

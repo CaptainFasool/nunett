@@ -15,7 +15,6 @@ type CapacityForNunet struct {
 	Channel        string `json:"channel,omitempty"`
 	PaymentAddress string `json:"payment_addr,omitempty"`
 	Cardano        bool   `json:"cardano,omitempty"`
-	TEST           bool   `json:"test,omitempty"`
 }
 
 // Provisioned struct holds data about how much total resource
