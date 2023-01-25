@@ -13,7 +13,12 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
+
+	"github.com/spf13/afero"
 )
+
+var FS afero.Fs = afero.NewOsFs()
+var AFS *afero.Afero = &afero.Afero{Fs: FS}
 
 // GetMetadata      godoc
 // @Summary      Get current device info.
@@ -28,7 +33,7 @@ func GetMetadata(c *gin.Context) {
 	// just for the test cases
 
 	// read the info
-	content, err := os.ReadFile("/etc/nunet/metadataV2.json")
+	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
 			gin.H{"error": "metadata.json does not exists or not readable"})
@@ -61,7 +66,7 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
-	_, err := os.Stat("/etc/nunet")
+	_, err := AFS.Stat("/etc/nunet")
 	if os.IsNotExist(err) {
 		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "/etc/nunet does not exist. is nunet onboaded successfully?"})
@@ -128,14 +133,14 @@ func Onboard(c *gin.Context) {
 
 	if !fileExists("/etc/nunet/metadataV2.json") {
 		file, _ := json.MarshalIndent(metadata, "", " ")
-		err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+		err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
 		if err != nil {
 			c.JSON(http.StatusBadRequest,
 				gin.H{"error": "could not write metadata.json"})
 			return
 		}
 	} else {
-		content, err := os.ReadFile("/etc/nunet/metadataV2.json")
+		content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError,
 				gin.H{"error": "metadata.json does not exists or not readable"})
@@ -150,7 +155,7 @@ func Onboard(c *gin.Context) {
 		}
 		metadata.NodeID = metadata2.NodeID
 		file, _ := json.MarshalIndent(metadata, "", " ")
-		err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+		err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
 		if err != nil {
 			c.JSON(http.StatusBadRequest,
 				gin.H{"error": "could not write metadata.json"})
@@ -255,7 +260,7 @@ func CreatePaymentAddress(c *gin.Context) {
 }
 
 func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
+	info, err := AFS.Stat(filename)
 	if os.IsNotExist(err) {
 		return false
 	}

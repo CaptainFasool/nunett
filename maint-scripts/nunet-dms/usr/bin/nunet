@@ -48,15 +48,21 @@ available_usage() {
 }
 
 wallet_usage() {
-    echo -e "Usage: $SELF_NAME wallet COMMAND [OPTIONS] \n"
+    echo -e "Usage: $SELF_NAME wallet COMMAND \n"
     echo -e "Manage blockchain wallet.\n"
-    echo "Options:"
-    echo "    -c, --cardano    Create a new Cardano wallet address."
-    echo "    -e, --ethereum  Create a new Ethereum wallet address."
-    echo "    -v, --verbose    Verbose output"
-    echo -e "    -p, --pretty     Prettified JSON output\n"
     echo "Commands:"
 	echo -e "  new         Create a new wallet address. Returns public and private keys.\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+wallet_new_usage() {
+    echo -e "Usage: $SELF_NAME wallet new [OPTIONS] \n"
+    echo -e "Create new blockchain wallet.\n"
+    echo "Options:"
+    echo "    -c, --cardano    Create a new Cardano wallet address."
+    echo "    -e, --ethereum   Create a new Ethereum wallet address."
+    echo "    -p, --pretty     Pretty Print Output"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -118,43 +124,61 @@ available() {
     fi
 }
 
-wallet() {
-    if [[ ${#@} -ge 4 || ${#@} -lt 1 ]] ; then
-        wallet_usage
-    else
-        avargs=($@)
-        for avarg in "${avargs[@]}"; do
-            case $avarg in
-                "-p" | "--pretty")
-                    NPRETTY_OUT=1
-                    ;;
-                "-v" | "--verbose")
-                    NVERBOSE_OUT=1
-                    ;;
-                "-c"|"--cardano")
-                    N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/address/new?blockchain=cardano)
-                    ;;
-                "-e"|"--ethereum")
-                    N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/address/new?blockchain=ethereum)
-                    ;;
-                *)
-                    printf "${BAD_C}Bad argument \"$avarg\" for 'wallet' Command. ${NORMAL_C}\n\n"
-                    wallet_usage
-                    exit
-                    ;;
-            esac
-        done
+wallet_new() {
+    if [[ ${#@} -lt 1 ]] ; then
+        wallet_new_usage
     fi
 
-    if [[ N_CREATE_WALLET == "" ]] ; then
+    N_WALLET_NEW_OPTS=$(getopt -a -n nunet-wallet-new -o ecp --long ethereum,cardano,pretty -- "$@")
+    eval set -- "$N_WALLET_NEW_OPTS"
+
+    while :
+        do
+            case "$1" in
+                -c | --cardano)       N_CREATE_WALLET_CARDANO=1  ; shift ;;
+                -e | --ethereum)      N_CREATE_WALLET_ETHEREUM=1   ; shift ;;
+                -p | --pretty)        N_CREATE_WALLET_PRETTY=1    ; shift ;;
+                --) shift; break ;;
+                *) echo "Unexpected option: $1."
+                    wallet_new_usage ;;
+            esac
+    done
+
+    if [[ $N_CREATE_WALLET_ETHEREUM -eq 1 && $N_CREATE_WALLET_CARDANO -eq 1 ]] ; then
+        printf "${BAD_C}Error! Can not create both Ethereum and Cardano Wallets.${NORMAL_C}\n"
+        wallet_new_usage
+        exit
+    fi
+
+    if [[ $N_CREATE_WALLET_ETHEREUM -eq 1 ]] ; then
+        N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/address/new?blockchain=ethereum)
+    elif [[ $N_CREATE_WALLET_CARDANO -eq 1 ]] ; then
+        N_CREATE_WALLET=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/address/new?blockchain=cardano)
+    fi
+
+    if [[ $N_CREATE_WALLET_PRETTY -eq 1 ]] ; then
+        echo $N_CREATE_WALLET | jq
+    else
+        echo $N_CREATE_WALLET
+    fi
+
+}
+
+wallet() {
+    if [[ ${#@} -lt 1 ]] ; then
+        wallet_usage
+    fi
+
+    args=($@)
+    subcmd=$1
+
+    walletsubcmds=("new") # list of sub-sub-commands for wallet sub-command
+
+    if [[ " ${walletsubcmds[*]} " =~ " ${subcmd} " ]] ; then
+       wallet_$subcmd ${args[@]:1}
+    else
         printf "${BAD_C}Not yet implemented. Only 'wallet new' at this time.${NORMAL_C}\n"
         wallet_usage
-    else
-        if [[ $NPRETTY_OUT -eq 1 ]] ; then
-            echo $N_CREATE_WALLET | jq
-        else
-            echo $N_CREATE_WALLET
-        fi
     fi
 }
 
@@ -275,26 +299,6 @@ peer() {
     fi
 }
 
-
-check_dms_run() {
-    N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":$DMS_PORT")
-    if [[ ! $? -eq 0 ]] ; then
-        printf "${BAD_C}Looks like NuNet DMS is not running."
-        printf "Please check with ${INFO_C}'systemctl status nunet-dms.service'${NORMAL_C}\n"
-        exit
-    fi
-}
-
-check_adapter_run() {
-    N_CHECK_ADAPTER=$(ss -tnlp 2>/dev/null | grep ":$ADAPTER_PORT")
-    if [[ ! $? -eq 0 ]] ; then
-        printf "${BAD_C}Looks like NuNet Adapter is not running."
-        printf "Please check with ${INFO_C}'docker ps -a | grep adapter'${NORMAL_C}\n"
-        exit
-    fi
-}
-
-
 secure_boot_check() {
     #Check for Secure Boot before proceeding with GPU driver installation, alert user with necessary information if yes.
     sudo apt install -y mokutil
@@ -315,7 +319,6 @@ secure_boot_check() {
         sleep 60
     fi
 }
-
 
 ## Install NVIDIA GPU Drivers and Container Runtime
 onboard-gpu() {
@@ -467,6 +470,25 @@ log(){
 	echo -e "$nunet_log_dir/nunet-log.tar \n"
 	
 }
+
+check_dms_run() {
+    N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":$DMS_PORT")
+    if [[ ! $? -eq 0 ]] ; then
+        printf "${BAD_C}Looks like NuNet DMS is not running."
+        printf "Please check with ${INFO_C}'systemctl status nunet-dms.service'${NORMAL_C}\n"
+        exit
+    fi
+}
+
+check_adapter_run() {
+    N_CHECK_ADAPTER=$(ss -tnlp 2>/dev/null | grep ":$ADAPTER_PORT")
+    if [[ ! $? -eq 0 ]] ; then
+        printf "${BAD_C}Looks like NuNet Adapter is not running."
+        printf "Please check with ${INFO_C}'docker ps -a | grep adapter'${NORMAL_C}\n"
+        exit
+    fi
+}
+
 
 cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "log")
 
