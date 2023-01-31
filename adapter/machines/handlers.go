@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"context"
@@ -30,13 +29,13 @@ type wsMessage struct {
 func HandleDeploymentRequest(c *gin.Context) {
 	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("Failed to set websocket upgrade: %+v\n", err)
+		zlog.Error(fmt.Sprintf("Failed to set websocket upgrade: %+v\n", err))
 		return
 	}
 
 	err = ws.WriteMessage(websocket.TextMessage, []byte("You are connected to DMS for GPU deployment."))
 	if err != nil {
-		log.Println(err)
+		zlog.Error(err.Error())
 	}
 
 	conn := internal.WebSocketConnection{Conn: ws}
@@ -47,16 +46,42 @@ func HandleDeploymentRequest(c *gin.Context) {
 func listenForDeploymentRequest(conn *internal.WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("Error:", fmt.Sprintf("%v", r))
+			zlog.Error(fmt.Sprintf("%v", r))
 		}
 	}()
 
 	for {
 		_, p, err := conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
+			zlog.Error(err.Error())
 			conn.Close()
 			return
+		}
+
+		// 1. check if DepResQueue has anything
+		select {
+		case adapterMsg, ok := <-adapter.DepResQueue:
+			if ok {
+				zlog.Info("Deployment response received. Sending it to connected websocket client")
+				var depRes models.DeploymentResponse
+
+				jsonDataMsg, _ := json.Marshal(adapterMsg.Data.Message)
+				json.Unmarshal(jsonDataMsg, &depRes)
+				msg, _ := json.Marshal(depRes)
+
+				// 2. Send the content to the client connected
+				wsResponse := wsMessage{
+					Action:  "deployment-response",
+					Message: msg,
+				}
+
+				msg, _ = json.Marshal(wsResponse)
+				conn.WriteJSON(msg)
+			} else {
+				fmt.Println("Channel closed!")
+			}
+		default:
+			fmt.Println("Channel has not responses.")
 		}
 
 		handleWebsocketAction(p)
@@ -68,14 +93,14 @@ func handleWebsocketAction(payload []byte) {
 	var m wsMessage
 	err := json.Unmarshal(payload, &m)
 	if err != nil {
-		log.Printf("wrong message payload: %v", err)
+		zlog.Error(fmt.Sprintf("wrong message payload: %v", err))
 	}
 
 	switch m.Action {
 	case "deployment-request":
 		err := sendDeploymentRequest(m.Message)
 		if err != nil {
-			fmt.Printf("%v", err)
+			zlog.Error(err.Error())
 		}
 	}
 }
