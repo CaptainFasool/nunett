@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.26](#92)
+
+### Changed
+- Send the deployment response container log gist URL to GPU ML user.
+
 ## [0.4.25](#111)
 
 ### Added

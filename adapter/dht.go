@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	fmt "fmt"
-	"log"
 	"time"
 
 	"gitlab.com/nunet/device-management-service/db"
@@ -145,7 +144,6 @@ func SendMessage(nodeID string, message string) (string, error) {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(utils.AdapterGrpcURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		// log.Fatalf("did not connect: %v", err)
 		return "", err
 	}
 	defer conn.Close()
@@ -292,7 +290,7 @@ func GetPeerID() string {
 	NodeID, err := getSelfNodeID()
 
 	if err != nil {
-		log.Print("unable to get Node ID")
+		zlog.Error("unable to get Node ID")
 	}
 
 	return NodeID
