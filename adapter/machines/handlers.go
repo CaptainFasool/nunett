@@ -1,12 +1,11 @@
 package machines
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
-
-	"context"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -41,6 +40,7 @@ func HandleDeploymentRequest(c *gin.Context) {
 	conn := internal.WebSocketConnection{Conn: ws}
 
 	go listenForDeploymentRequest(&conn)
+	go listenForDeploymentResponse(&conn)
 }
 
 func listenForDeploymentRequest(conn *internal.WebSocketConnection) {
@@ -58,6 +58,12 @@ func listenForDeploymentRequest(conn *internal.WebSocketConnection) {
 			return
 		}
 
+		handleWebsocketAction(p)
+	}
+}
+
+func listenForDeploymentResponse(conn *internal.WebSocketConnection) {
+	for {
 		// 1. check if DepResQueue has anything
 		select {
 		case adapterMsg, ok := <-adapter.DepResQueue:
@@ -72,19 +78,15 @@ func listenForDeploymentRequest(conn *internal.WebSocketConnection) {
 				// 2. Send the content to the client connected
 				wsResponse := wsMessage{
 					Action:  "deployment-response",
-					Message: msg,
+					Message: json.RawMessage(msg),
 				}
 
 				msg, _ = json.Marshal(wsResponse)
-				conn.WriteJSON(msg)
+				conn.WriteJSON(string(msg))
 			} else {
-				fmt.Println("Channel closed!")
+				zlog.Info("Channel closed!")
 			}
-		default:
-			fmt.Println("Channel has not responses.")
 		}
-
-		handleWebsocketAction(p)
 	}
 }
 
@@ -105,10 +107,10 @@ func handleWebsocketAction(payload []byte) {
 	}
 }
 
-func sendDeploymentRequest(requestParams []byte) error {
+func sendDeploymentRequest(requestParams json.RawMessage) error {
 	// parse the body, get service type, and filter devices
 	var depReq models.DeploymentRequest
-	if err := json.Unmarshal(requestParams, &depReq); err != nil {
+	if err := json.Unmarshal([]byte(requestParams), &depReq); err != nil {
 		return errors.New("invalid deployment request body")
 	}
 	// add node_id and public_key in deployment request
