@@ -82,7 +82,7 @@ func listenForDeploymentResponse(conn *internal.WebSocketConnection) {
 				}
 
 				msg, _ = json.Marshal(wsResponse)
-				conn.WriteJSON(string(msg))
+				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
 				zlog.Info("Channel closed!")
 			}
