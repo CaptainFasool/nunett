@@ -1,4 +1,7 @@
+![latest release version](https://gitlab.com/nunet/device-management-service/-/badges/release.svg) ![unit tests](https://gitlab.com/nunet/device-management-service/badges/develop/pipeline.svg) ![coverage](https://gitlab.com/nunet/device-management-service/badges/develop/coverage.svg)
+
 # device-management-service
+
 
 The backend of the device management app.
 
