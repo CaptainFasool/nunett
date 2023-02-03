@@ -179,7 +179,7 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 	// 	statsdb.DeviceResourceChange(metadata)
 	// }
 
-	// go statsdb.HeartBeat(metadata.NodeID, metadata.Network)
+	go statsdb.HeartBeat(metadata.NodeID)
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
 	err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)

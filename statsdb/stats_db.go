@@ -146,9 +146,9 @@ func ServiceRun(inputData models.ServiceRun) {
 }
 
 // HeartBeat pings the statsdb in every 10s for detacting live status of device via grpc call.
-func HeartBeat(peerID string, addr string) {
+func HeartBeat(peerID string) {
 	for {
-		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Fatalf("did not connect: %v", err)
 		}
