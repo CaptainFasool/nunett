@@ -20,6 +20,8 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.28](#116)
+
 ## [0.4.27](#103)
 
 ### Added
