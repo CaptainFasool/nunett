@@ -20,10 +20,16 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
-## [0.4.26](#92)
+## [0.4.27](#103)
 
+### Added
+- Libp2p node 
+-  `nunet peer list` prints peers found by the libp2p node 
+
+## [0.4.26](#92)
 ### Changed
-- Send the deployment response container log gist URL to GPU ML user.
+
+Send the deployment response container log gist URL to GPU ML user.
 
 ## [0.4.25](#111)
 

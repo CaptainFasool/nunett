@@ -270,7 +270,6 @@ info() {
 }
 
 peer() {
-    check_adapter_run
     if [[ ${#@} -ge 2 || ${#@} -lt 1 ]] ; then
         peer_usage
     else
@@ -295,7 +294,7 @@ peer() {
     elif [[ N_LIST_PEERS == "" ]] ; then
         printf "${BAD_C}No peers available. Please try again in a few minutes.${NORMAL_C}\n"
     else
-        echo $N_LIST_PEERS | jq --raw-output '["Node-ID", "Public-Key"], ["-------", "----------"], (.[] | [.peer_info.nodeID, .peer_info.public_key]) | @tsv' | column -t
+        echo $N_LIST_PEERS | jq --raw-output '["Peer-ID", "Listen-Addresses"], ["-------", "----------"], (.[] | [.ID, .Addrs[] | select(length > 0)]) | @tsv' | column -t
     fi
 }
 

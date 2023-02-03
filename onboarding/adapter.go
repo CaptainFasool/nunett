@@ -173,11 +173,13 @@ func InstallRunAdapter(c *gin.Context, hostname string, metadata *models.Metadat
 			Timestamp:     float32(statsdb.GetTimestamp()),
 		}
 		statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
-	} else {
-		statsdb.DeviceResourceChange(metadata)
 	}
+	// XXX Disabled because of https://gitlab.com/nunet/device-management-service/-/issues/116
+	// else {
+	// 	statsdb.DeviceResourceChange(metadata)
+	// }
 
-	go statsdb.HeartBeat(metadata.NodeID, metadata.Network)
+	// go statsdb.HeartBeat(metadata.NodeID, metadata.Network)
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
 	err = os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
