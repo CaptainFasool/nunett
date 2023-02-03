@@ -11,6 +11,7 @@ import (
 	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
 
@@ -189,6 +190,13 @@ func Onboard(c *gin.Context) {
 			panic(result.Error)
 		}
 	}
+
+	priv, pub, err := libp2p.GenerateKey(0)
+	if err != nil {
+		panic(err)
+	}
+	libp2p.SaveKey(priv, pub)
+	libp2p.RunNode(priv)
 
 	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
 

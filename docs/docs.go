@@ -130,7 +130,7 @@ const docTemplate = `{
         },
         "/peers": {
             "get": {
-                "description": "Gets a list of peers the adapter can see within the network and return a list of peer info",
+                "description": "Gets a list of peers the libp2p node can see within the network and return a list of peers",
                 "produces": [
                     "application/json"
                 ],
@@ -301,7 +301,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.26",
+	Version:          "0.4.27",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

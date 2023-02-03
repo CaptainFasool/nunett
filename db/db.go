@@ -23,6 +23,7 @@ func ConnectDatabase() {
 	database.AutoMigrate(&models.Services{})
 	database.AutoMigrate(&models.ServiceResourceRequirements{})
 	database.AutoMigrate(&models.RequestTracker{})
+	database.AutoMigrate(&models.Libp2pInfo{})
 
 	DB = database
 }
