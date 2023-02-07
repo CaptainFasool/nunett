@@ -20,6 +20,15 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.28](#104)
+
+### Changed
+- Improvement on discoverability
+- Increase deadline on getSelfNodeID 
+- Remove unnecessary code
+### Added
+- Missing Dependencies on Deb Package
+
 ## [0.4.27](#103)
 
 ### Added

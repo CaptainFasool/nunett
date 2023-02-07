@@ -20,13 +20,13 @@ func CheckOnboarding() {
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
 	if result.Error != nil {
-		panic(result.Error)
+		zlog.Sugar().Fatalf("Error Reading Database for Node Info: %s\n", result.Error.Error())
 	}
 	if libp2pInfo.PrivateKey != nil {
 		// Recreate private key
 		priv, err := crypto.UnmarshalPrivateKey(libp2pInfo.PrivateKey)
 		if err != nil {
-			panic(err)
+			zlog.Sugar().Fatalf("Error Reading Privatekey: %s\n", err.Error())
 		}
 		RunNode(priv)
 	}
@@ -37,11 +37,11 @@ func RunNode(priv crypto.PrivKey) {
 
 	host, dht, err := NewHost(ctx, 9000, priv)
 	if err != nil {
-		panic(err)
+		zlog.Sugar().Fatalf("Error Creating Host: %s\n", err.Error())
 	}
 	err = Bootstrap(ctx, host, dht)
 	if err != nil {
-		panic(err)
+		zlog.Sugar().Fatalf("Error During Bootstrap: %s\n", err.Error())
 	}
 	go Discover(ctx, host, dht, "nunet")
 	Node = host
@@ -61,7 +61,7 @@ func ListPeers(c *gin.Context) {
 	peers, err := getPeers(Ctx, Node, DHT, "nunet")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "can not fetch peers"})
-		panic(err)
+		zlog.Sugar().Fatalf("Error Can Not Fetch Peers: %s\n", err.Error())
 	}
 	c.JSON(200, peers)
 
