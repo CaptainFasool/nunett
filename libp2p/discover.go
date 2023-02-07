@@ -2,7 +2,6 @@ package libp2p
 
 import (
 	"context"
-	"log"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -29,7 +28,7 @@ func Discover(ctx context.Context, h host.Host, idht *dht.IpfsDHT, rendezvous st
 
 			peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
 			if err != nil {
-				log.Fatal(err)
+				zlog.Sugar().Fatalf("Error Discovering Peers: %s\n", err.Error())
 			}
 			for _, p := range peers {
 				if p.ID == h.ID() {
@@ -49,10 +48,10 @@ func Discover(ctx context.Context, h host.Host, idht *dht.IpfsDHT, rendezvous st
 func getPeers(ctx context.Context, h host.Host, idht *dht.IpfsDHT, rendezvous string) ([]peer.AddrInfo, error) {
 
 	routingDiscovery := drouting.NewRoutingDiscovery(idht)
-	dutil.Advertise(ctx, routingDiscovery, "nunet")
-	peers, err := dutil.FindPeers(ctx, routingDiscovery, "nunet")
+	dutil.Advertise(ctx, routingDiscovery, rendezvous)
+	peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
 	if err != nil {
-		panic(err)
+		zlog.Sugar().Errorf("Error Finding Peers: %s\n", err.Error())
 	}
 	return peers, nil
 }
