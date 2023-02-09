@@ -41,8 +41,11 @@ available_usage() {
     echo -e "Usage: $SELF_NAME available [OPTIONS]\n"
     echo -e "Command line interface for the NuNet Device Management Service.\n"
     echo "Options:"
-    echo "    -v, --verbose    Verbose output"
-    echo -e "    -p, --pretty     Prettified JSON output\n"
+    echo "    -v, --verbose          Verbose output"
+    echo "    -p, --pretty           Prettified JSON output"
+    echo "    -gpu, --gpu-status     Check GPU Status in real time"
+    echo "    -ct, --cuda-tensor     Check availability of CUDA and Tensor Cores"
+    echo -e "    -h, --help             This Menu\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -51,7 +54,7 @@ wallet_usage() {
     echo -e "Usage: $SELF_NAME wallet COMMAND \n"
     echo -e "Manage blockchain wallet.\n"
     echo "Commands:"
-	echo -e "  new         Create a new wallet address. Returns public and private keys.\n"
+    echo -e "  new         Create a new wallet address. Returns public and private keys.\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -94,19 +97,83 @@ peer_usage() {
     exit
 }
 
+gpu_status() {
+    if ! command -v nvidia-smi > /dev/null; then
+        printf "${BAD_C}No 'nvidia-smi' command ${NORMAL_C}\n"
+        exit
+    fi
+
+    while :
+    do
+        clear
+        printf "${INFO_C}========== NuNet GPU Status ==========\n\n${NORMAL_C}"
+
+        printf "${GOOD_C}GPU Utilization:${INFO_C}\n"
+        nvidia-smi --query-gpu=index,name,utilization.gpu --format=csv,noheader
+
+        printf "${GOOD_C}\nMemory Utilization:${INFO_C}\n"
+        nvidia-smi --query-gpu=index,name,utilization.memory --format=csv,noheader
+
+        printf "${GOOD_C}\nMemory Free:${INFO_C}\n"
+        nvidia-smi --query-gpu=index,name,memory.free --format=csv,noheader
+
+        printf "${GOOD_C}\nMemory Capacity:${INFO_C}\n"
+        nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader
+
+        printf "${GOOD_C}\nTemperature:${INFO_C}\n"
+        nvidia-smi --query-gpu=index,temperature.gpu --format=csv,noheader | awk '{printf "GPU %d: %d°C\n", $1, $2}'
+
+        printf "${GOOD_C}\nPower Draw:${INFO_C}\n"
+        nvidia-smi --query-gpu=index,name,power.draw --format=csv,noheader
+
+        printf "${NORMAL_C}\nPress [CTRL+C] to exit..\n"
+        sleep 5
+    done
+}
+
+check_cuda_tensor() {
+    printf "${INFO_C}Notice! This command might download a large OCI Image to query Cuda and Tensor Cores.\n${NORMAL_C}"
+    while true; do
+        read -p "Are you sure you want to proceed?? (yes/no) " check_cuda_resp
+        case $check_cuda_resp in
+            yes )  printf "${INFO_C} Proceeding to image download...\n${NORMAL_C}";
+                # XXX: it's better we implement this through the DMS in future;;
+                docker run -ti --rm --entrypoint "" --gpus all registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch python check-cuda-and-tensor-cores-availability.py
+                ;;
+            no) echo "Exiting...";
+                exit;;
+            *) echo "Only 'yes' or 'no' please";;
+        esac
+    done
+}
+
+
 available() {
-    if [[ ${#@} -ge 3 ]] ; then
+    if [[ ${#@} -ge 6 ]] ; then
         printf "\n${BAD_C}Wrong number of arguments to 'available' command${NORMAL_C}\n"
+        available_usage
         exit
     else
         avargs=($@)
         for avarg in "${avargs[@]}"; do
             case $avarg in
+                "-h" | "--help")
+                    available_usage
+                    ;;
                 "-p" | "--pretty")
                     NPRETTY_OUT=1
                     ;;
                 "-v" | "--verbose")
                     NVERBOSE_OUT=1
+                    ;;
+                "-gpu" | "--gpu-status")
+                    gpu_status
+                    printf "${NORMAL_C}"
+                    ;;
+                "-ct" | "--cuda-tensor")
+                    check_cuda_tensor
+                    printf "${NORMAL_C}"
+                    exit
                     ;;
                 *)
                     printf "${BAD_C}Bad argument \"$avarg\" for 'available' Command. ${NORMAL_C}\n"
@@ -259,6 +326,55 @@ onboard() {
 
 }
 
+gpu_info() {
+
+    # Use the uname command with the -a option to get system information
+    system_info=$(uname -a)
+
+    # Use grep to search for the string "microsoft" in the system information
+    if echo "$system_info" | grep -qi "microsoft"; then
+    # The string "microsoft" was found, so this is a WSL console
+        printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have an NVIDIA GPU and have installed the latest Windows Driver for your NVIDIA GPU before proceeding.${NORMAL_C}\n"
+        sleep 5 # adding some time to read the message
+    else
+        # Check if nvidia-smi is installed
+        if ! command -v nvidia-smi > /dev/null; then
+          exit
+        fi
+
+        # Run nvidia-smi -L and save all NVIDIA GPU names on the machine
+        nvidia_gpu_names=$(nvidia-smi -L)
+        if [[ $nvidia_smi_output =~ "No devices were found" ]]; then
+           printf "${BAD_C}Error: No NVIDIA GPUs were detected.${NORMAL_C}"
+           exit
+        else
+           printf "${GOOD_C}\nNVIDIA GPU(s) detected.${NORMAL_C}\n"
+           # Print the GPU names
+           printf "${INFO_C}Available GPU(s):\n$nvidia_gpu_names${NORMAL_C}\n"
+           ml_info
+        fi
+    fi
+
+}
+
+ml_info() {
+
+    tensorflow_image="registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow"
+    pytorch_image="registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch"
+
+    if docker images | grep -q "$tensorflow_image"; then
+        printf "${GOOD_C}This machine is prepared to run TensorFlow ML jobs on NuNet.${NORMAL_C}\n"
+    else
+        printf "${BAD_C}NuNet TensorFlow ML image not detected. Please run 'nunet onboard-ml' command to prepare the machine for TensorFlow ML jobs.${NORMAL_C}\n"
+    fi
+
+    if docker images | grep -q "$pytorch_image"; then
+        printf "${GOOD_C}This machine is prepared to run PyTorch ML jobs on NuNet.${NORMAL_C}\n"
+    else
+        printf "${BAD_C}NuNet PyTorch ML image not detected. Please run 'nunet onboard-ml' command to prepare the machine for PyTorch ML jobs.${NORMAL_C}\n"
+    fi
+}
+
 info() {
     N_INFO=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/metadata)
     N_INFO_ERR_MSG=$(echo $N_INFO | jq '. | select(.error != null) | .error')
@@ -267,6 +383,7 @@ info() {
     else
         echo $N_INFO | jq
     fi
+    gpu_info
 }
 
 peer() {
@@ -414,7 +531,7 @@ onboard-gpu() {
         printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
     else
         # IF THERE IS NO NVIDIA GPU THE nvidia VARIABLE WILL BE EMPTY SO WE REPORT MISSING GPU
-        printf "${INFO_C}This machine does not have an NVIDIA GPU. Skipping GPU Driver and Container Runtime Installation.${NORMAL_C}\n"    
+        printf "${INFO_C}This machine does not have an NVIDIA GPU. Skipping GPU Driver and Container Runtime Installation.${NORMAL_C}\n"
     fi
 }
 
@@ -423,6 +540,7 @@ onboard-ml()
 {
     sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
     sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
+    ml_info
 }
 
 ## shell websocket connection  
@@ -438,35 +556,35 @@ shell(){
 }
 
 log(){
-	echo -e "Collecting logs.. \n"
-	mkdir -m 777 -p /tmp/nunet-log/dms-log
-	mkdir -m 777 -p /tmp/nunet-log/adapter-log
-	nunet_log_dir='/tmp/nunet-log'
-	# collect DMS log and save it to files based on boot number
-	num_of_boot=$(journalctl -u nunet-dms  --list-boots -r | wc -l)
-	for (( num=1; num<$num_of_boot; num++))
-	do
-		if [[ "$(journalctl -u nunet-dms -b $num | sed -n 2p)" != '-- No entries --' ]]; then
-			journalctl -u nunet-dms -b $num > $nunet_log_dir/dms-log/dms_log.$num
-		fi
-	done
-	#access adapter log
-	cont_id=$(docker ps | grep nunet-adapter | awk '{ print $1 }')
-	if [ -z "$cont_id" ]; then
-		printf "Looks like NuNet Adapter is not running." > $nunet_log_dir/adapter-log/nunet-adapter.log
-	else
-		docker cp $cont_id:/NUNET-ADAPTER/nunet-adapter.log $nunet_log_dir/adapter-log/nunet-adapter.log
-	fi
-	
-	#archive all the logs and retorn path
-	tar -cf $nunet_log_dir/nunet-log.tar --exclude=$nunet_log_dir/nunet-log.tar -P $nunet_log_dir 
-	if [ $? -eq 0 ]; then
-   		rm -r $nunet_log_dir/dms-log
-		rm -r $nunet_log_dir/adapter-log
-	fi
+    echo -e "Collecting logs.. \n"
+    mkdir -m 777 -p /tmp/nunet-log/dms-log
+    mkdir -m 777 -p /tmp/nunet-log/adapter-log
+    nunet_log_dir='/tmp/nunet-log'
+    # collect DMS log and save it to files based on boot number
+    num_of_boot=$(journalctl -u nunet-dms  --list-boots -r | wc -l)
+    for (( num=1; num<$num_of_boot; num++))
+    do
+        if [[ "$(journalctl -u nunet-dms -b $num | sed -n 2p)" != '-- No entries --' ]]; then
+            journalctl -u nunet-dms -b $num > $nunet_log_dir/dms-log/dms_log.$num
+        fi
+    done
+    #access adapter log
+    cont_id=$(docker ps | grep nunet-adapter | awk '{ print $1 }')
+    if [ -z "$cont_id" ]; then
+        printf "Looks like NuNet Adapter is not running." > $nunet_log_dir/adapter-log/nunet-adapter.log
+    else
+        docker cp $cont_id:/NUNET-ADAPTER/nunet-adapter.log $nunet_log_dir/adapter-log/nunet-adapter.log
+    fi
 
-	echo -e "$nunet_log_dir/nunet-log.tar \n"
-	
+    #archive all the logs and retorn path
+    tar -cf $nunet_log_dir/nunet-log.tar --exclude=$nunet_log_dir/nunet-log.tar -P $nunet_log_dir
+    if [ $? -eq 0 ]; then
+           rm -r $nunet_log_dir/dms-log
+        rm -r $nunet_log_dir/adapter-log
+    fi
+
+    echo -e "$nunet_log_dir/nunet-log.tar \n"
+
 }
 
 check_dms_run() {
