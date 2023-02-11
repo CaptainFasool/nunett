@@ -15,8 +15,12 @@ Build:
   script:
     - echo "Building debian archives..."
     - bash maint-scripts/build.sh
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "${CI_DEFAULT_BRANCH}"'
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+      - main
+      - staging
+      - develop
 
 Deploy DMS:
   stage: deploy
