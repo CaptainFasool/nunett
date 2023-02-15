@@ -8,12 +8,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 
 	"github.com/spf13/afero"
 )
@@ -199,34 +196,6 @@ func Onboard(c *gin.Context) {
 	libp2p.RunNode(priv)
 
 	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
-
-	//XXX bad method - fix asap
-	time.AfterFunc(50*time.Second, func() {
-		_ = telemetry.CalcFreeResources()
-		go func() {
-			for {
-				adapter.UpdateAvailableResoruces()
-				time.Sleep(time.Second * 10)
-			}
-
-		}()
-
-	})
-
-	//XXX bad hack for https://gitlab.com/nunet/device-management-service/-/issues/74
-	//time.AfterFunc(1*time.Minute, adapter.UpdateMachinesTable)
-
-	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
-	var NewDeviceOnboardParams = models.NewDeviceOnboarded{
-		PeerID:        adapter.GetPeerID(),
-		CPU:           float32(available_resources.TotCpuHz),
-		RAM:           float32(available_resources.Ram),
-		Network:       0.0,
-		DedicatedTime: 0.0,
-		Timestamp:     float32(statsdb.GetTimestamp()),
-	}
-
-	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
 
 	c.JSON(http.StatusCreated, metadata)
 }

@@ -20,7 +20,24 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
-## [0.4.28](#116)
+## [0.4.30](#116)
+
+## [0.4.29](nunet/ml-on-gpu/ml-on-gpu-service#14)
+### Changed
+- Updated nunet info command to detect GPUs
+- Updated nunet onboard-ml to detect ML images after the command is run
+### Added
+- New nunet available --gpu-status command to show GPUs metrics in real-time
+- New nunet available --cuda-tensor command to check availability of CUDA and Tensor Cores
+
+## [0.4.28](#104)
+
+### Changed
+- Improvement on discoverability
+- Increase deadline on getSelfNodeID 
+- Remove unnecessary code
+### Added
+- Missing Dependencies on Deb Package
 
 ## [0.4.27](#103)
 
