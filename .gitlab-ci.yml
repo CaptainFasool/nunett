@@ -77,3 +77,23 @@ deploy:openapi:
       - $CI_DEFAULT_BRANCH
       - main
       - staging
+
+
+Deploy:
+  stage: deploy
+  variables:
+     ANSIBLE_HOST_KEY_CHECKING: "false"
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client python3-apt -y )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - pip install ansible ansible-lint jmespath docker
+    - ansible-galaxy role install geerlingguy.docker geerlingguy.pip
+  image: python:3
+  script: 
+    - ansible --version
+    - ansible-playbook deploy/playbook.yaml -i $ANSIBLE_INVENTORY
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
