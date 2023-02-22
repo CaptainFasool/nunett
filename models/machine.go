@@ -69,3 +69,31 @@ type Libp2pInfo struct {
 	PrivateKey []byte `json:"private_key"`
 	PublicKey  []byte `json:"public_key"`
 }
+
+type gpu struct {
+	Name string
+	Vram int
+}
+
+type resources struct {
+	TotCpuHz  float64
+	PriceCpu  float64
+	Ram       int
+	PriceRam  float64
+	Vcpu      int
+	Disk      float64
+	PriceDisk float64
+}
+
+type PeerData struct {
+	PeerID               string        `json:"peer_id"`
+	HasGpu               bool          `json:"has_gpu"`
+	AllowCardano         bool          `json:"allow_cardano"`
+	GpuInfo              gpu           `json:"gpu_info"`
+	TokenomicsAddress    string        `json:"tokenomics_addrs"`
+	TokenomicsBlockchain string        `json:"tokenomics_blockchain"`
+	AvailableResources   FreeResources `json:"available_resources"`
+	Services             []Services    `json:"services"`
+}
+
+type Machines map[string]PeerData

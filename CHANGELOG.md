@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.30](#106)
+
+### Added
+- Implemented DHT on libp2p with similar schema to the nunet adapter
+- Helper functions to query the libp2p DHT
+
 ## [0.4.29](nunet/ml-on-gpu/ml-on-gpu-service#14)
 ### Changed
 - Updated nunet info command to detect GPUs
