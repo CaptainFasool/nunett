@@ -129,6 +129,8 @@ func sendDeploymentRequest(requestParams json.RawMessage) error {
 	}
 
 	// filter peers based on passed criteria
+	// TODO: Replace with the following
+	// peers := libp2p.FilterPeers(depReq, libp2p.Node)
 	peers, err := FilterPeers(depReq)
 	if err != nil {
 		return err
@@ -152,7 +154,7 @@ func sendDeploymentRequest(requestParams json.RawMessage) error {
 	if err != nil {
 		return errors.New("error converting deployment request body to string")
 	}
-
+	// TODO: Replace with libp2p messaging
 	response, err := adapter.SendMessage(selectedNode.PeerInfo.NodeID, string(out))
 	if err != nil {
 		return errors.New("cannot send message to the peer")
