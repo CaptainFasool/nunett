@@ -171,7 +171,6 @@ func sendDeploymentRequest(requestParams json.RawMessage) error {
 // @Tags         run
 // @Produce      json
 // @Success      200  {string}	string
-// @Router       /peers [get]
 func ListPeers(c *gin.Context) {
 	response, err := adapter.FetchMachines()
 	if err != nil {

@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.31](#107)
+
+### Added
+- Deployment request with libp2p messaging
+- Simple chat between peers using CLI
 ## [0.4.30](#106)
 
 ### Added

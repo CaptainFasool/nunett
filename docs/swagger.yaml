@@ -66,7 +66,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.29
+  version: 0.4.31
 paths:
   /free:
     get:
@@ -75,7 +75,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Returns the amount of free resources available
       tags:
       - telemetry
@@ -150,13 +150,66 @@ paths:
             type: string
       summary: Return list of peers currently connected to
       tags:
-      - run
+      - p2p
+  /peers/chat:
+    get:
+      description: Get a list of chat requests from peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: List chat requests
+      tags:
+      - chat
+  /peers/chat/clear:
+    get:
+      description: Clear chat request streams from peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Clear chat requests
+      tags:
+      - chat
+  /peers/chat/join:
+    get:
+      description: Join a chat session started by a peer
+      responses:
+        "200":
+          description: ""
+      summary: Join chat with a peer
+      tags:
+      - chat
+  /peers/chat/start:
+    get:
+      description: Start chat session with a peer
+      responses:
+        "200":
+          description: ""
+      summary: Start chat with a peer
+      tags:
+      - chat
+  /peers/self:
+    get:
+      description: Gets self peer info of libp2p node
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Return self peer info
+      tags:
+      - p2p
   /peers/ws:
     get:
       description: Sends a command to specific node and prints back response.
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Sends a command to specific node and prints back response.
       tags:
       - peers
@@ -180,7 +233,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Start a VM with custom configuration.
       tags:
       - vm
@@ -192,7 +245,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: ""
       summary: Start a VM with default configuration.
       tags:
       - vm

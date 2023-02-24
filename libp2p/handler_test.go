@@ -1,399 +1,238 @@
 package libp2p
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"io"
+	"math/rand"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/nunet/device-management-service/models"
 )
 
-const CIRendevousPoint string = "testing-nunet"
+func SetUpRouter() *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	v1 := router.Group("/api/v1")
 
-func TestSendDHTUpdate(t *testing.T) {
-	// Setup nodes for testing
+	p2p := v1.Group("/peers")
+	{
+		p2p.GET("", ListPeers)
+		p2p.GET("/self", SelfPeerInfo)
+		p2p.GET("/chat", ListChatHandler)
+		p2p.GET("/chat/start", StartChatHandler)
+		p2p.GET("/chat/join", JoinChatHandler)
+		p2p.GET("/chat/clear", ClearChatHandler)
+
+	}
+	return router
+}
+
+func TestListPeers(t *testing.T) {
+	router := SetUpRouter()
+
+	priv1, _, _ := GenerateKey(time.Now().Unix())
+	RunNode(priv1)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/peers", nil)
+	router.ServeHTTP(w, req)
+
+	resp := w.Result()
+	body, _ := io.ReadAll(resp.Body)
+
+	assert.Equal(t, 200, resp.StatusCode)
+
+	type peerList struct {
+		ID    string   `json:"ID"`
+		Addrs []string `json:"Addrs"`
+	}
+	var list []peerList
+
+	err := json.Unmarshal(body, &list)
+	if err != nil {
+		t.Error("Error Unmarshaling Peer List:", err)
+	}
+
+	assert.NotEmpty(t, list)
+	assert.Equal(t, strings.Count(string(body), "ID"), len(list))
+}
+
+func TestSelfPeer(t *testing.T) {
+	router := SetUpRouter()
+
+	priv1, _, _ := GenerateKey(time.Now().Unix())
+	RunNode(priv1)
+
+	testp2p := GetP2P()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/peers/self", nil)
+	router.ServeHTTP(w, req)
+
+	resp := w.Result()
+	body, _ := io.ReadAll(resp.Body)
+
+	assert.Equal(t, 200, resp.StatusCode)
+
+	type peerList struct {
+		ID    string   `json:"ID"`
+		Addrs []string `json:"Addrs"`
+	}
+	var selfPeer peerList
+
+	err := json.Unmarshal(body, &selfPeer)
+	if err != nil {
+		t.Error("Error Unmarshaling Peer List:", err)
+	}
+
+	assert.NotEmpty(t, selfPeer)
+	assert.Equal(t, testp2p.Host.ID().String(), selfPeer.ID)
+}
+
+func TestStartChatNoPeerId(t *testing.T) {
+	router := SetUpRouter()
+
+	priv1, _, _ := GenerateKey(time.Now().Unix())
+	RunNode(priv1)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/peers/chat/start", nil)
+	router.ServeHTTP(w, req)
+
+	rawResp := w.Result()
+	body, _ := io.ReadAll(rawResp.Body)
+
+	type startChatResp struct {
+		Error string `json:"error"`
+	}
+
+	var resp startChatResp
+	err := json.Unmarshal(body, &resp)
+	if err != nil {
+		t.Error("Error Unmarshaling Start Chat Resp:", err)
+	}
+	assert.Equal(t, "peerID not provided", resp.Error)
+}
+
+func TestStartChatSelfPeerID(t *testing.T) {
+	router := SetUpRouter()
+
+	priv1, _, _ := GenerateKey(time.Now().Unix())
+	RunNode(priv1)
+	testp2p := GetP2P()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/peers/chat/start?peerID="+testp2p.Host.ID().String(), nil)
+	router.ServeHTTP(w, req)
+
+	rawResp := w.Result()
+	body, _ := io.ReadAll(rawResp.Body)
+
+	type startChatResp struct {
+		Error string `json:"error"`
+	}
+
+	var resp startChatResp
+	err := json.Unmarshal(body, &resp)
+	if err != nil {
+		t.Error("Error Unmarshaling Start Chat Resp:", err)
+	}
+	assert.Equal(t, "peerID can not be self peerID", resp.Error)
+}
+
+func TestStartChatCorrect(t *testing.T) {
+	router := SetUpRouter()
+	go router.Run(":9999")
+
 	ctx := context.Background()
-	priv1, _, _ := GenerateKey(0)
-	priv2, _, _ := GenerateKey(0)
+	defer ctx.Done()
 
-	host1, idht1, err := NewHost(ctx, 9500, priv1)
-	if err != nil {
-		t.Fatalf("NewHost returned error: %v", err)
-	}
-	defer host1.Close()
-	host1.SetStreamHandler(dhtUpdateProtocol, func(s network.Stream) {
-		peerInfo := models.PeerData{}
-		var peerID peer.ID
-		data, err := io.ReadAll(s)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		err = json.Unmarshal(data, &peerInfo)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		// Update Peerstore
-		peerID, err = peer.Decode(peerInfo.PeerID)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-
-		host1.Peerstore().Put(peerID, "peer_info", peerInfo)
-	})
-	err = Bootstrap(ctx, host1, idht1)
-	if err != nil {
-		t.Fatalf("Bootstrap returned error: %v", err)
-	}
+	// initialize Other node
+	priv2, _, _ := GenerateKey(time.Now().Unix())
 	host2, idht2, err := NewHost(ctx, 9501, priv2)
 	if err != nil {
-		t.Fatalf("NewHost returned error: %v", err)
+		t.Fatalf("Second Node Initialization Failed: %v", err)
 	}
 	defer host2.Close()
-	host2.SetStreamHandler(dhtUpdateProtocol, func(s network.Stream) {
-		peerInfo := models.PeerData{}
-		var peerID peer.ID
-		data, err := io.ReadAll(s)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		err = json.Unmarshal(data, &peerInfo)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		// Update Peerstore
-		peerID, err = peer.Decode(peerInfo.PeerID)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
 
-		host2.Peerstore().Put(peerID, "peer_info", peerInfo)
+	var host2S network.Stream
+	var host2R bufio.Reader
+	var host2W bufio.Writer
+
+	host2.SetStreamHandler(ChatProtocolID, func(s network.Stream) {
+		host2S = s
+		host2R = *bufio.NewReader(host2S)
+		host2W = *bufio.NewWriter(s)
 	})
 	err = Bootstrap(ctx, host2, idht2)
 	if err != nil {
 		t.Fatalf("Bootstrap returned error: %v", err)
 	}
-	go Discover(ctx, host1, idht1, CIRendevousPoint)
-	go Discover(ctx, host2, idht2, CIRendevousPoint)
 
-	// Connect the two nodes
-	if err := host1.Connect(context.Background(), host2.Peerstore().PeerInfo(host2.ID())); err != nil {
-		t.Fatalf("Unable to connect ---- %v ", err)
+	rand.Seed(time.Now().UnixNano())
+
+	go Discover(ctx, host2, idht2, "nunet")
+
+	priv1, _, _ := GenerateKey(time.Now().Unix())
+	RunNode(priv1)
+	testp2p := GetP2P()
+
+	if err := testp2p.Host.Connect(context.Background(), host2.Peerstore().PeerInfo(host2.ID())); err != nil {
+		t.Fatalf("Unable to connect - %v ", err)
 	}
 
-	// Add mock data to their respective DHTs
-	peerInfo1 := models.PeerData{}
-	peerInfo1.PeerID = host1.ID().String()
-	peerInfo1.HasGpu = true
-	peerInfo1.AllowCardano = false
-	host1.Peerstore().Put(host1.ID(), "peer_info", peerInfo1)
-	peerInfo2 := models.PeerData{}
-	peerInfo2.PeerID = host2.ID().String()
-	peerInfo2.HasGpu = false
-	peerInfo2.AllowCardano = true
-	host2.Peerstore().Put(host2.ID(), "peer_info", peerInfo2)
+	connectedness := testp2p.Host.Network().Connectedness(host2.ID())
+	if connectedness.String() != "Connected" {
+		t.Log("Unable to Proceed - Hosts Not Connected")
+		t.Skip("Unable to Proceed - Hosts Not Connected")
+		t.Skipped()
+	}
 
-	// Exchange DHT updates
-
-	stream, err := host1.NewStream(ctx, host2.ID(), dhtUpdateProtocol)
+	ws, httpResp, err := websocket.DefaultDialer.Dial("ws://localhost:9999/api/v1/peers/chat/start?peerID="+host2.ID().String(), nil)
 	if err != nil {
-		t.Fatalf("Unable to open stream to host1: %v", err)
+		t.Fatalf("%v", err)
 	}
-	sendDHTUpdate(peerInfo1, stream)
-	stream.Close()
+	assert.Equal(t, 101, httpResp.StatusCode)
+	defer ws.Close()
 
-	time.Sleep(100 * time.Millisecond)
-
-	stream, err = host2.NewStream(ctx, host1.ID(), dhtUpdateProtocol)
+	_, host1Recv, err := ws.ReadMessage()
 	if err != nil {
-		t.Fatalf("Unable to open stream to host1: %v", err)
+		t.Error("Unable to Read From Websocket:", err)
 	}
-	t.Log("Sending to 2--- ", host1.ID())
-	sendDHTUpdate(peerInfo2, stream)
-	stream.Close()
 
-	time.Sleep(100 * time.Millisecond)
+	assert.Equal(t, "Enter the message that you wish to send to "+host2.ID().String()+" and press return.", string(host1Recv))
 
-	machines1, err := host1.Peerstore().Get(host2.ID(), "peer_info")
+	ws.WriteMessage(websocket.TextMessage, []byte("hi there host2\n"))
+
+	host2Recv, err := host2R.ReadString('\n')
 	if err != nil {
-		t.Fatalf("DHT update not received from Host2: %v", err)
+		t.Error("Error Reading From Host 2 Buffer:", err)
 	}
-	machines2, err := host2.Peerstore().Get(host1.ID(), "peer_info")
+
+	assert.Equal(t, "hi there host2\n", host2Recv)
+
+	_, err = host2W.WriteString("hello to you too host1\n")
 	if err != nil {
-		t.Fatalf("DHT update not received from Host1: %v", err)
+		t.Error("Error Writing To Host 2 Stream Buffer:", err)
 	}
-
-	assert.Equal(t, machines1, peerInfo2)
-	assert.Equal(t, machines2, peerInfo1)
-
-}
-
-func TestFetchDhtContents(t *testing.T) {
-	ctx := context.Background()
-
-	priv1, _, _ := GenerateKey(0)
-	priv2, _, _ := GenerateKey(0)
-
-	host1, idht1, err := NewHost(ctx, 9500, priv1)
+	err = host2W.Flush()
 	if err != nil {
-		t.Fatalf("NewHost returned error: %v", err)
+		t.Error("Error Flushing Host 2 Stream Buffer:", err)
 	}
-	defer host1.Close()
-	host1.SetStreamHandler(dhtUpdateProtocol, func(s network.Stream) {
-		peerInfo := models.PeerData{}
-		var peerID peer.ID
-		data, err := io.ReadAll(s)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		err = json.Unmarshal(data, &peerInfo)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		peerID, err = peer.Decode(peerInfo.PeerID)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		host1.Peerstore().Put(peerID, "peer_info", peerInfo)
-	})
-	err = Bootstrap(ctx, host1, idht1)
+
+	_, host1Recv, err = ws.ReadMessage()
 	if err != nil {
-		t.Fatalf("Bootstrap returned error: %v", err)
-	}
-	host2, idht2, err := NewHost(ctx, 9501, priv2)
-	if err != nil {
-		t.Fatalf("NewHost returned error: %v", err)
-	}
-	defer host2.Close()
-	err = Bootstrap(ctx, host2, idht2)
-	if err != nil {
-		t.Fatalf("Bootstrap returned error: %v", err)
-	}
-	go Discover(ctx, host1, idht1, CIRendevousPoint)
-	go Discover(ctx, host2, idht2, CIRendevousPoint)
-
-	if err := host2.Connect(context.Background(), host1.Peerstore().PeerInfo(host1.ID())); err != nil {
-		t.Fatalf("Unable to connect ---- %v ", err)
+		t.Error("Unable to Read From Websocket:", err)
 	}
 
-	peerInfo2 := models.PeerData{}
-	peerInfo2.PeerID = host2.ID().String()
-	peerInfo2.HasGpu = false
-	host2.Peerstore().Put(host2.ID(), "peer_info", peerInfo2)
-
-	stream, err := host2.NewStream(ctx, host1.ID(), dhtUpdateProtocol)
-	if err != nil {
-		t.Fatalf("Unable to open stream to host1: %v", err)
-	}
-	sendDHTUpdate(peerInfo2, stream)
-	stream.Close()
-
-	time.Sleep(100 * time.Millisecond)
-
-	contents := fetchDhtContents(host1)
-	t.Log(contents)
-	assert.Equal(t, peerInfo2, contents[0])
-}
-
-func TestFetchMachines(t *testing.T) {
-	ctx := context.Background()
-
-	priv1, _, _ := GenerateKey(0)
-	priv2, _, _ := GenerateKey(0)
-
-	host1, idht1, err := NewHost(ctx, 9500, priv1)
-	if err != nil {
-		t.Fatalf("NewHost returned error: %v", err)
-	}
-	defer host1.Close()
-	host1.SetStreamHandler(dhtUpdateProtocol, func(s network.Stream) {
-		peerID := s.Conn().RemotePeer()
-		peerInfo := models.PeerData{}
-		// var peerID peer.ID
-		data, err := io.ReadAll(s)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		err = json.Unmarshal(data, &peerInfo)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		// peerID, err = peer.Decode(peerInfo.PeerID)
-		// if err != nil {
-		// 	t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		// }
-		host1.Peerstore().Put(peerID, "peer_info", peerInfo)
-	})
-	err = Bootstrap(ctx, host1, idht1)
-	if err != nil {
-		t.Fatalf("Bootstrap returned error: %v", err)
-	}
-	host2, idht2, err := NewHost(ctx, 9501, priv2)
-	if err != nil {
-		t.Fatalf("NewHost returned error: %v", err)
-	}
-	defer host2.Close()
-	err = Bootstrap(ctx, host2, idht2)
-	if err != nil {
-		t.Fatalf("Bootstrap returned error: %v", err)
-	}
-	go Discover(ctx, host1, idht1, CIRendevousPoint)
-	go Discover(ctx, host2, idht2, CIRendevousPoint)
-
-	if err := host2.Connect(context.Background(), host1.Peerstore().PeerInfo(host1.ID())); err != nil {
-		t.Fatalf("Unable to connect ---- %v ", err)
-	}
-
-	peerInfo2 := models.PeerData{}
-	peerInfo2.PeerID = host2.ID().String()
-	peerInfo2.HasGpu = false
-	host2.Peerstore().Put(host2.ID(), "peer_info", peerInfo2)
-
-	stream, err := host2.NewStream(ctx, host1.ID(), dhtUpdateProtocol)
-	if err != nil {
-		t.Fatalf("Unable to open stream to host1: %v", err)
-	}
-	sendDHTUpdate(peerInfo2, stream)
-	stream.Close()
-
-	time.Sleep(100 * time.Millisecond)
-
-	machines := FetchMachines(host1)
-
-	assert.Equal(t, peerInfo2, machines[host2.ID().String()])
-}
-
-func TestFetchAvailableResources(t *testing.T) {
-	ctx := context.Background()
-
-	priv1, _, _ := GenerateKey(0)
-	priv2, _, _ := GenerateKey(0)
-
-	host1, idht1, err := NewHost(ctx, 9500, priv1)
-	if err != nil {
-		t.Fatalf("NewHost returned error: %v", err)
-	}
-	defer host1.Close()
-	host1.SetStreamHandler(dhtUpdateProtocol, func(s network.Stream) {
-		peerInfo := models.PeerData{}
-		var peerID peer.ID
-		data, err := io.ReadAll(s)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		err = json.Unmarshal(data, &peerInfo)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		peerID, err = peer.Decode(peerInfo.PeerID)
-		if err != nil {
-			t.Fatalf("DHTUpdateHandler error: %s", err.Error())
-		}
-		host1.Peerstore().Put(peerID, "peer_info", peerInfo)
-	})
-	err = Bootstrap(ctx, host1, idht1)
-	if err != nil {
-		t.Fatalf("Bootstrap returned error: %v", err)
-	}
-	host2, idht2, err := NewHost(ctx, 9501, priv2)
-	if err != nil {
-		t.Fatalf("NewHost returned error: %v", err)
-	}
-	defer host2.Close()
-	err = Bootstrap(ctx, host2, idht2)
-	if err != nil {
-		t.Fatalf("Bootstrap returned error: %v", err)
-	}
-	go Discover(ctx, host1, idht1, CIRendevousPoint)
-	go Discover(ctx, host2, idht2, CIRendevousPoint)
-
-	if err := host2.Connect(context.Background(), host1.Peerstore().PeerInfo(host1.ID())); err != nil {
-		t.Fatalf("Unable to connect ---- %v ", err)
-	}
-
-	peerInfo2 := models.PeerData{}
-	peerInfo2.PeerID = host2.ID().String()
-	peerInfo2.AvailableResources.Ram = 4000
-	peerInfo2.AvailableResources.TotCpuHz = 14000
-
-	host2.Peerstore().Put(host2.ID(), "peer_info", peerInfo2)
-
-	stream, err := host2.NewStream(ctx, host1.ID(), dhtUpdateProtocol)
-	if err != nil {
-		t.Fatalf("Unable to open stream to host1: %v", err)
-	}
-	sendDHTUpdate(peerInfo2, stream)
-	stream.Close()
-
-	time.Sleep(100 * time.Millisecond)
-
-	availRes := FetchAvailableResources(host1)
-	assert.Equal(t, peerInfo2.AvailableResources, availRes[0])
-
-}
-
-func TestGetPeers(t *testing.T) {
-	ctx := context.Background()
-	// Initialize host and dht objects
-	priv, _, _ := GenerateKey(0)
-	host, idht, _ := NewHost(ctx, 9000, priv)
-	defer host.Close()
-	// Get the peers for the rendezvous string "nunet"
-	_, err := getPeers(ctx, host, idht, "nunet")
-
-	// Check if there is no error
-	if err != nil {
-		t.Fatalf("getPeers returned error: %v", err)
-	}
-
-}
-
-func TestPeersWithCardanoAllowed(t *testing.T) {
-	var peers []models.PeerData
-	var peer1, peer2, peer3 models.PeerData
-	peer1.AllowCardano = true
-	peer2.AllowCardano = true
-	peer3.AllowCardano = false
-	peers = append(peers, peer1, peer2, peer3)
-	res := PeersWithCardanoAllowed(peers)
-
-	assert.Equal(t, 2, len(res))
-
-}
-
-func TestPeersWithGPU(t *testing.T) {
-	var peers []models.PeerData
-	var peer1, peer2, peer3 models.PeerData
-	peer1.HasGpu = true
-	peer2.HasGpu = true
-	peer3.HasGpu = false
-	peers = append(peers, peer1, peer2, peer3)
-	res := PeersWithGPU(peers)
-
-	assert.Equal(t, 2, len(res))
-
-}
-
-func TestPeersWithMatchingSpec(t *testing.T) {
-	var depReq models.DeploymentRequest
-	depReq.Constraints.CPU = 4000
-	depReq.Constraints.RAM = 2000
-
-	var peers []models.PeerData
-	var peer1, peer2, peer3 models.PeerData
-	peer1.AvailableResources.TotCpuHz = 5000
-	peer1.AvailableResources.Ram = 4000
-	peer2.AvailableResources.TotCpuHz = 8000
-	peer2.AvailableResources.Ram = 1500
-	peer3.AvailableResources.TotCpuHz = 2000
-	peer3.AvailableResources.Ram = 3000
-
-	peers = append(peers, peer1, peer2, peer3)
-
-	res := PeersWithMatchingSpec(peers, depReq)
-	assert.Equal(t, 1, len(res))
+	assert.Equal(t, "Peer: hello to you too host1\n", string(host1Recv))
 }

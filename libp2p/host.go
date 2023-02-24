@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
@@ -21,6 +22,64 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
 )
+
+type DMSp2p struct {
+	Host host.Host
+	DHT  *dht.IpfsDHT
+}
+
+func DMSp2pInit(node host.Host, dht *dht.IpfsDHT) *DMSp2p {
+	return &DMSp2p{Host: node, DHT: dht}
+}
+
+var p2p DMSp2p
+
+func GetP2P() DMSp2p {
+	return p2p
+}
+
+func CheckOnboarding() {
+	// Checks for saved metadata and create a new host
+	var libp2pInfo models.Libp2pInfo
+	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+	if libp2pInfo.PrivateKey != nil {
+		// Recreate private key
+		priv, err := crypto.UnmarshalPrivateKey(libp2pInfo.PrivateKey)
+		if err != nil {
+			panic(err)
+		}
+		RunNode(priv)
+		go UpdateDHT()
+	}
+}
+
+func RunNode(priv crypto.PrivKey) {
+	ctx := context.Background()
+
+	host, dht, err := NewHost(ctx, 9000, priv)
+	if err != nil {
+		panic(err)
+	}
+
+	p2p = *DMSp2pInit(host, dht)
+
+	err = p2p.BootstrapNode(ctx)
+
+	host.SetStreamHandler(DHTProtocolID, dhtUpdateHandler)
+	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
+	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
+
+	go p2p.StartDiscovery(ctx, "nunet")
+
+	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
+		peerInfo := models.PeerData{}
+		peerInfo.PeerID = host.ID().String()
+		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
+	}
+}
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {
 	var r io.Reader
@@ -119,7 +178,7 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey) (host.Host, *dh
 		return nil, nil, err
 	}
 
-	zlog.Sugar().Infof("Self Peer Info %s ------ %s\n", host.ID(), host.Addrs())
+	zlog.Sugar().Infof("Self Peer Info %s -> %s\n", host.ID(), host.Addrs())
 
 	return host, idht, nil
 }
