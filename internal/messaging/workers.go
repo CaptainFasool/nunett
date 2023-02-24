@@ -10,41 +10,40 @@ import (
 	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func sendDeploymentResponse(address string, success bool, message string) {
+func sendDeploymentResponse(success bool, message string, close bool) {
 	jsonDepResp, _ := json.Marshal(models.DeploymentResponse{
 		Success: success,
 		Content: message,
 	})
-	adapter.SendMessage(address, string(jsonDepResp))
+	err := libp2p.DeploymentResponse(string(jsonDepResp), close)
+	if err != nil {
+		zlog.Sugar().Errorln("Error Sending Deployment Response - ", err.Error())
+	}
 }
 
 func DeploymentWorker() {
 	for {
 		select {
-		case msg := <-adapter.DepReqQueue:
-			var adapterMessage models.AdapterMessage
+		case msg := <-libp2p.DepReqQueue:
 			var depReq models.DeploymentRequest
 
-			jsonMsg, _ := json.Marshal(msg)
-			json.Unmarshal(jsonMsg, &adapterMessage)
-
-			jsonDataMsg, _ := json.Marshal(msg.Data.Message)
+			jsonDataMsg, _ := json.Marshal(msg)
 			json.Unmarshal(jsonDataMsg, &depReq)
 
-			sender := adapterMessage.Sender
-
+			sender := depReq.AddressUser
 			if depReq.ServiceType == "cardano_node" {
 				handleCardanoDeployment(depReq, sender)
 			} else if depReq.ServiceType == "ml-training-gpu" {
 				handleGpuDeployment(depReq, sender)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
-				sendDeploymentResponse(sender, false, "Unknown service type.")
+				sendDeploymentResponse(false, "Unknown service type.", true)
 			}
 		}
 	}
@@ -53,26 +52,22 @@ func DeploymentWorker() {
 func handleCardanoDeployment(depReq models.DeploymentRequest, sender string) {
 	// dowload kernel and filesystem files place them somewhere
 	// TODO : organize fc files
-	kernelFileURL := "https://d.nunet.io/fc/vmlinux"
-	kernelFilePath := "/etc/nunet/vmlinux"
-	filesystemURL := "https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4"
-	filesystemPath := "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4"
 	pKey := depReq.Params.PublicKey
 	nodeId := depReq.Params.NodeID
 
-	err := utils.DownloadFile(kernelFileURL, kernelFilePath)
+	err := utils.DownloadFile(utils.KernelFileURL, utils.KernelFilePath)
 	if err != nil {
-		zlog.Error(fmt.Sprintf("Downloading %s, - %s", kernelFileURL, err.Error()))
-		sendDeploymentResponse(sender,
-			false,
-			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", kernelFileURL))
+		zlog.Error(fmt.Sprintf("Downloading %s, - %s", utils.KernelFileURL, err.Error()))
+		sendDeploymentResponse(false,
+			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.KernelFileURL), true)
+		return
 	}
-	err = utils.DownloadFile(filesystemURL, filesystemPath)
+	err = utils.DownloadFile(utils.FilesystemURL, utils.FilesystemPath)
 	if err != nil {
-		zlog.Error(fmt.Sprintf("Downloading %s - %s", filesystemURL, err.Error()))
-		sendDeploymentResponse(sender,
-			false,
-			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", filesystemURL))
+		zlog.Error(fmt.Sprintf("Downloading %s - %s", utils.FilesystemURL, err.Error()))
+		sendDeploymentResponse(false,
+			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.FilesystemURL), true)
+		return
 	}
 
 	// makerequest to start-default with downloaded files.
@@ -82,20 +77,21 @@ func handleCardanoDeployment(depReq models.DeploymentRequest, sender string) {
 		PublicKey       string `json:"public_key"`
 		NodeID          string `json:"node_id"`
 	}{
-		KernelImagePath: kernelFilePath,
-		FilesystemPath:  filesystemPath,
+		KernelImagePath: utils.KernelFilePath,
+		FilesystemPath:  utils.FilesystemPath,
 		PublicKey:       pKey,
 		NodeID:          nodeId,
 	}
 	jsonBody, _ := json.Marshal(startDefaultBody)
 
 	resp := utils.MakeInternalRequest(&gin.Context{}, "POST", "/vm/start-default", jsonBody)
-	respBody, err := io.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
 	if err != nil {
 		zlog.Error(err.Error())
-		sendDeploymentResponse(sender, false, "Cardano Node Deployment Failed. Unable to spawn VM.")
+		sendDeploymentResponse(false, "Cardano Node Deployment Failed. Unable to spawn VM.", true)
+		return
 	}
-	zlog.Error(string(respBody))
+	sendDeploymentResponse(true, "Cardano Node Deployment Successful.", false)
 }
 
 func handleGpuDeployment(depReq models.DeploymentRequest, sender string) {

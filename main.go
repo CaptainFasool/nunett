@@ -9,7 +9,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
-	"gitlab.com/nunet/device-management-service/internal"
+	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
 	"go.opentelemetry.io/otel"
@@ -19,7 +19,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.30
+// @version         0.4.31
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -37,10 +37,12 @@ func main() {
 	wg.Add(1)
 
 	go startServer(wg)
-	go internal.SendCommandForExecution()
+	// go internal.SendCommandForExecution()
 
 	// Start listening for new messages coming via adapter
-	go adapter.StartMessageReceiver()
+	// go adapter.StartMessageReceiver()
+
+	go messaging.DeploymentWorker()
 
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)

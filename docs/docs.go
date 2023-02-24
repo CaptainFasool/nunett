@@ -37,7 +37,7 @@ const docTemplate = `{
                 "summary": "Returns the amount of free resources available",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -135,9 +135,91 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "run"
+                    "p2p"
                 ],
                 "summary": "Return list of peers currently connected to",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/peers/chat": {
+            "get": {
+                "description": "Get a list of chat requests from peers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "List chat requests",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/peers/chat/clear": {
+            "get": {
+                "description": "Clear chat request streams from peers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Clear chat requests",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/peers/chat/join": {
+            "get": {
+                "description": "Join a chat session started by a peer",
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Join chat with a peer",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/peers/chat/start": {
+            "get": {
+                "description": "Start chat session with a peer",
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Start chat with a peer",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/peers/self": {
+            "get": {
+                "description": "Gets self peer info of libp2p node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "p2p"
+                ],
+                "summary": "Return self peer info",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -157,7 +239,7 @@ const docTemplate = `{
                 "summary": "Sends a command to specific node and prints back response.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -188,7 +270,7 @@ const docTemplate = `{
                 "summary": "Start a VM with custom configuration.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -205,7 +287,7 @@ const docTemplate = `{
                 "summary": "Start a VM with default configuration.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": ""
                     }
                 }
             }
@@ -301,7 +383,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.29",
+	Version:          "0.4.31",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

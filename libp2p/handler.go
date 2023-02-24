@@ -2,275 +2,202 @@ package libp2p
 
 import (
 	"bufio"
-	"context"
-	"encoding/json"
-	"io"
+	"fmt"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/gorilla/websocket"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/models"
+	"github.com/multiformats/go-multiaddr"
+	"gitlab.com/nunet/device-management-service/internal"
 )
 
-const dhtUpdateProtocol = protocol.ID("/nunet/dms/dht/0.0.1")
-
-var Node host.Host
-var DHT *dht.IpfsDHT
-var Ctx context.Context
-
-func fetchDhtContents(node host.Host) []models.PeerData {
-	var dhtContent []models.PeerData
-	var PeerInfo models.PeerData
-	for _, peer := range node.Peerstore().Peers() {
-		if node.ID() == peer {
-			// skip if peerID matches our ID
-			continue
-		}
-		peerData, err := node.Peerstore().Get(peer, "peer_info")
-		if err != nil {
-			// skip error since we might not have an entry for all peers
-			continue
-		}
-		if Data, ok := peerData.(models.PeerData); ok {
-			PeerInfo = models.PeerData(Data)
-		}
-		dhtContent = append(dhtContent, PeerInfo)
-	}
-	return dhtContent
-}
-
-// FetchMachines returns Machines on DHT.
-func FetchMachines(node host.Host) models.Machines {
-	machines := make(models.Machines)
-	dhtContent := fetchDhtContents(node)
-	for _, peerData := range dhtContent {
-		id := peerData.PeerID
-		machines[id] = peerData
-	}
-
-	return machines
-}
-
-// FetchAvailableResources returns AvailableResources on DHT.
-func FetchAvailableResources(node host.Host) []models.FreeResources {
-
-	var availableResources []models.FreeResources
-	dhtContent := fetchDhtContents(node)
-	for _, peerData := range dhtContent {
-		availableResources = append(availableResources, peerData.AvailableResources)
-	}
-
-	return availableResources
-}
-
-// PeersWithCardanoAllowed is a filter function which returns a slice of
-// PeerData based on allow_cardano metadata on peer.
-func PeersWithCardanoAllowed(peers []models.PeerData) []models.PeerData {
-	var cardanoAllowedPeers []models.PeerData
-
-	for _, peer := range peers {
-		if peer.AllowCardano {
-			cardanoAllowedPeers = append(cardanoAllowedPeers, peer)
-		}
-	}
-	return cardanoAllowedPeers
-}
-
-// PeersWithGPU is a filter function which returns a slice of
-// PeerData based on has_gpu metadata on peer.
-func PeersWithGPU(peers []models.PeerData) []models.PeerData {
-	var peersWithGPU []models.PeerData
-
-	for _, peer := range peers {
-		if peer.HasGpu {
-			peersWithGPU = append(peersWithGPU, peer)
-		}
-	}
-	return peersWithGPU
-}
-
-// PeersWithMatchingSpec takes in a depReq which has minimum spec specified to
-// run a job. Then it matches it against the peers available.
-func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequest) []models.PeerData {
-	constraints := depReq.Constraints
-
-	var peerWithMachingSpec []models.PeerData
-
-	for _, peer := range peers {
-		prAvRes := peer.AvailableResources
-		if prAvRes.TotCpuHz > constraints.CPU && prAvRes.Ram > constraints.RAM {
-			peerWithMachingSpec = append(peerWithMachingSpec, peer)
-		}
-	}
-	return peerWithMachingSpec
-}
-
-// FilterPeers searches for available compute providers given specific parameters in depReq.
-func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerData {
-	machines := FetchMachines(node)
-
-	var peers []models.PeerData
-
-	for _, val := range machines {
-		peers = append(peers, val)
-	}
-
-	peers = PeersWithMatchingSpec(peers, depReq)
-	if depReq.ServiceType == "ml-training-gpu" {
-		peers = PeersWithGPU(peers)
-	}
-
-	if depReq.ServiceType == "cardano_node" {
-		peers = PeersWithCardanoAllowed(peers)
-	}
-
-	return peers
-}
-
-func CheckOnboarding() {
-	// Checks for saved metadata and create a new host
-	var libp2pInfo models.Libp2pInfo
-	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
-	if result.Error != nil {
-		panic(result.Error)
-	}
-	if libp2pInfo.PrivateKey != nil {
-		// Recreate private key
-		priv, err := crypto.UnmarshalPrivateKey(libp2pInfo.PrivateKey)
-		if err != nil {
-			panic(err)
-		}
-		RunNode(priv)
-		go UpdateDHT()
-	}
-}
-
-func RunNode(priv crypto.PrivKey) {
-	ctx := context.Background()
-
-	host, dht, err := NewHost(ctx, 9000, priv)
-	if err != nil {
-		panic(err)
-	}
-	host.SetStreamHandler(dhtUpdateProtocol, dhtUpdateHandler)
-	err = Bootstrap(ctx, host, dht)
-	if err != nil {
-		panic(err)
-	}
-	go Discover(ctx, host, dht, "nunet")
-	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
-		peerInfo := models.PeerData{}
-		peerInfo.PeerID = host.ID().String()
-		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
-	}
-
-	Node = host
-	DHT = dht
-	Ctx = ctx
-}
-
-func sendDHTUpdate(peerInfo models.PeerData, s network.Stream) {
-	w := bufio.NewWriter(s)
-	data, err := json.Marshal(peerInfo)
-	if err != nil {
-		zlog.Sugar().Infof("SendDHTUpdate error: %s", err.Error())
-	}
-	n, err := w.Write(data)
-	if n != len(data) {
-		zlog.Sugar().Infof("SendDHTUpdate error: %s", err.Error())
-	}
-	if err != nil {
-		zlog.Sugar().Infof("SendDHTUpdate error: %s", err.Error())
-	}
-	err = w.Flush()
-	if err != nil {
-		zlog.Sugar().Infof("SendDHTUpdate error: %s", err.Error())
-	}
-}
-
-func dhtUpdateHandler(s network.Stream) {
-	peerInfo := models.PeerData{}
-	var peerID peer.ID
-	data, err := io.ReadAll(s)
-	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
-	}
-	err = json.Unmarshal(data, &peerInfo)
-	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
-	}
-	// Update Peerstore
-	peerID, err = peer.Decode(peerInfo.PeerID)
-	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
-	}
-	Node.Peerstore().Put(peerID, "peer_info", peerInfo)
-}
-
-func UpdateDHT() {
-	// Get existing entry from Peerstore
-	var PeerInfo models.PeerData
-	PeerInfo.PeerID = Node.ID().String()
-	peerData, err := Node.Peerstore().Get(Node.ID(), "peer_info")
-	if err != nil {
-		zlog.Sugar().Infof("UpdateAvailableResources error: %s", err.Error())
-	}
-	if Data, ok := peerData.(models.PeerData); ok {
-		PeerInfo = models.PeerData(Data)
-	}
-
-	//Get freeResources from DB
-	var freeResources models.FreeResources
-	if err := db.DB.Where("id = ?", 1).First(&freeResources).Error; err != nil {
-		panic(err)
-
-	}
-	// Update Free Resources
-	PeerInfo.AvailableResources = freeResources
-
-	// Update Services
-	var services []models.Services
-	result := db.DB.Find(&services)
-	if result.Error != nil {
-		panic(result.Error)
-	}
-	PeerInfo.Services = services
-
-	// Update peerstore with updated data
-	Node.Peerstore().Put(Node.ID(), "peer_info", PeerInfo)
-
-	// Broadcast updated peer_info to connected nodes
-	for _, peer := range Node.Network().Peers() {
-		stream, err := Node.NewStream(Ctx, peer, dhtUpdateProtocol)
-		// Ignoring error because some peers might not support specified protocol
-		if err != nil {
-			continue
-		}
-		sendDHTUpdate(PeerInfo, stream)
-		stream.Close()
-
-	}
-}
+var clients = make(map[internal.WebSocketConnection]string)
 
 // ListPeers  godoc
 // @Summary      Return list of peers currently connected to
 // @Description  Gets a list of peers the libp2p node can see within the network and return a list of peers
-// @Tags         run
+// @Tags         p2p
 // @Produce      json
 // @Success      200  {string}	string
 // @Router       /peers [get]
 func ListPeers(c *gin.Context) {
-
-	peers, err := getPeers(Ctx, Node, DHT, "nunet")
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+	peers, err := p2p.getPeers(c, "nunet")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "can not fetch peers"})
-		panic(err)
+		zlog.Sugar().Fatalf("Error Can Not Fetch Peers: %s\n", err.Error())
+		return
 	}
 	c.JSON(200, peers)
 
+}
+
+// SelfPeerInfo  godoc
+// @Summary      Return self peer info
+// @Description  Gets self peer info of libp2p node
+// @Tags         p2p
+// @Produce      json
+// @Success      200  {string}	string
+// @Router       /peers/self [get]
+func SelfPeerInfo(c *gin.Context) {
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+
+	out := struct {
+		ID    string
+		Addrs []multiaddr.Multiaddr
+	}{
+		p2p.Host.ID().String(),
+		p2p.Host.Addrs(),
+	}
+
+	c.JSON(200, out)
+}
+
+// ListChatHandler  godoc
+// @Summary      List chat requests
+// @Description  Get a list of chat requests from peers
+// @Tags         chat
+// @Produce      json
+// @Success      200
+// @Router       /peers/chat [get]
+func ListChatHandler(c *gin.Context) {
+	chatRequests, err := incomingChatRequests()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, chatRequests)
+}
+
+// ClearChatHandler  godoc
+// @Summary      Clear chat requests
+// @Description  Clear chat request streams from peers
+// @Tags         chat
+// @Produce      json
+// @Success      200
+// @Router       /peers/chat/clear [get]
+func ClearChatHandler(c *gin.Context) {
+	if err := clearIncomingChatRequests(); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound Chat Requests."})
+}
+
+// StartChatHandler  godoc
+// @Summary      Start chat with a peer
+// @Description  Start chat session with a peer
+// @Tags         chat
+// @Success      200
+// @Router       /peers/chat/start [get]
+func StartChatHandler(c *gin.Context) {
+	peerID := c.Query("peerID")
+
+	if len(peerID) == 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peerID not provided"})
+		return
+	}
+	if peerID == p2p.Host.ID().String() {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peerID can not be self peerID"})
+		return
+	}
+
+	p, err := peer.Decode(peerID)
+	if err != nil {
+		zlog.Sugar().Errorln("Could not decode string ID to peerID:", err)
+		c.AbortWithStatusJSON(400, gin.H{"error": "Could not decode string ID to peerID"})
+		return
+	}
+
+	stream, err := p2p.Host.NewStream(c, p, protocol.ID(ChatProtocolID))
+	if err != nil {
+		zlog.Sugar().Errorln("Could not create stream with peer - ", err)
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Could not create stream with peer - %v", err)})
+		return
+	}
+
+	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to set websocket upgrade: %+v\n", err)
+		return
+	}
+
+	welcomeMessage := fmt.Sprintf("Enter the message that you wish to send to %s and press return.", peerID)
+
+	err = ws.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
+	if err != nil {
+		zlog.Sugar().Error(err)
+	}
+
+	conn := internal.WebSocketConnection{Conn: ws}
+	clients[conn] = peerID
+
+	r := bufio.NewReader(stream)
+	w := bufio.NewWriter(stream)
+
+	go SockReadStreamWrite(&conn, stream, w)
+	go StreamReadSockWrite(&conn, stream, r)
+}
+
+// JoinChatHandler  godoc
+// @Summary      Join chat with a peer
+// @Description  Join a chat session started by a peer
+// @Tags         chat
+// @Success      200
+// @Router       /peers/chat/join [get]
+func JoinChatHandler(c *gin.Context) {
+
+	streamReqID := c.Query("streamID")
+	if streamReqID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "Stream ID not provided"})
+		return
+	}
+
+	streamID, err := strconv.Atoi(streamReqID)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Invalid Stream ID: %v", streamReqID)})
+		return
+	}
+
+	if streamID >= len(inboundChatStreams) {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Unknown Stream ID: %v", streamID)})
+		return
+	}
+
+	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to set websocket upgrade: %+v\n", err)
+		return
+	}
+
+	welcomeMessage := "Enter the message that you wish to send and press return."
+
+	err = ws.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
+	if err != nil {
+		zlog.Sugar().Error(err)
+	}
+
+	conn := internal.WebSocketConnection{Conn: ws}
+	clients[conn] = streamReqID
+
+	stream := inboundChatStreams[int(streamID)]
+	copy(inboundChatStreams[streamID:], inboundChatStreams[streamID+1:])
+	inboundChatStreams[len(inboundChatStreams)-1] = nil
+	inboundChatStreams = inboundChatStreams[:len(inboundChatStreams)-1]
+
+	r := bufio.NewReader(stream)
+	w := bufio.NewWriter(stream)
+
+	go SockReadStreamWrite(&conn, stream, w)
+	go StreamReadSockWrite(&conn, stream, r)
 }

@@ -5,7 +5,6 @@ import (
 	"gitlab.com/nunet/device-management-service/adapter/machines"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
-	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
@@ -37,11 +36,15 @@ func SetupRouter() *gin.Engine {
 		tele.GET("/free", telemetry.GetFreeResource)
 	}
 
-	peer := v1.Group("/peers")
+	p2p := v1.Group("/peers")
 	{
 		// peer.GET("", machines.ListPeers)
-		peer.GET("", libp2p.ListPeers)
-		peer.GET("/ws", internal.HandleWebSocket)
+		p2p.GET("", libp2p.ListPeers)
+		p2p.GET("/self", libp2p.SelfPeerInfo)
+		p2p.GET("/chat", libp2p.ListChatHandler)
+		p2p.GET("/chat/start", libp2p.StartChatHandler)
+		p2p.GET("/chat/join", libp2p.JoinChatHandler)
+		p2p.GET("/chat/clear", libp2p.ClearChatHandler)
 		// peer.GET("/shell", internal.HandleWebSocket)
 		// peer.GET("/log", internal.HandleWebSocket)
 	}
