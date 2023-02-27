@@ -66,7 +66,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.31
+  version: 0.4.32
 paths:
   /free:
     get:
@@ -75,7 +75,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Returns the amount of free resources available
       tags:
       - telemetry
@@ -158,7 +158,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: List chat requests
       tags:
       - chat
@@ -169,7 +169,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Clear chat requests
       tags:
       - chat
@@ -178,7 +178,7 @@ paths:
       description: Join a chat session started by a peer
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Join chat with a peer
       tags:
       - chat
@@ -187,7 +187,7 @@ paths:
       description: Start chat session with a peer
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Start chat with a peer
       tags:
       - chat
@@ -209,7 +209,7 @@ paths:
       description: Sends a command to specific node and prints back response.
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Sends a command to specific node and prints back response.
       tags:
       - peers
@@ -233,7 +233,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Start a VM with custom configuration.
       tags:
       - vm
@@ -245,7 +245,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: Start a VM with default configuration.
       tags:
       - vm

@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.31"
+        "version": "0.4.32"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -30,7 +30,7 @@
                 "summary": "Returns the amount of free resources available",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -153,7 +153,7 @@
                 "summary": "List chat requests",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -170,7 +170,7 @@
                 "summary": "Clear chat requests",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -184,7 +184,7 @@
                 "summary": "Join chat with a peer",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -198,7 +198,7 @@
                 "summary": "Start chat with a peer",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -232,7 +232,7 @@
                 "summary": "Sends a command to specific node and prints back response.",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -263,7 +263,7 @@
                 "summary": "Start a VM with custom configuration.",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
@@ -280,7 +280,7 @@
                 "summary": "Start a VM with default configuration.",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }

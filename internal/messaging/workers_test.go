@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
@@ -25,6 +26,14 @@ func TestDepReq(t *testing.T) {
 	// initialize first node
 	defer ctx.Done()
 	priv1, _, _ := libp2p.GenerateKey(time.Now().Unix())
+	var metadata models.MetadataV2
+	metadata.AllowCardano = false
+	meta, _ := json.Marshal(metadata)
+	libp2p.FS = afero.NewMemMapFs()
+	libp2p.AFS = &afero.Afero{Fs: libp2p.FS}
+	// create test files and directories
+	libp2p.AFS.MkdirAll("/etc/nunet", 0755)
+	afero.WriteFile(libp2p.AFS, "/etc/nunet/metadataV2.json", meta, 0644)
 
 	libp2p.RunNode(priv1)
 
@@ -53,19 +62,17 @@ func TestDepReq(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	if err := host2.Connect(context.Background(), p2p.Host.Peerstore().PeerInfo(p2p.Host.ID())); err != nil {
-		t.Logf("Unable to connect - %v ", err)
+		t.Errorf("Unable to connect - %v ", err)
 	}
 
 	connectedness := host2.Network().Connectedness(p2p.Host.ID())
 	if connectedness.String() != "Connected" {
-		t.Log("Unable to Proceed - Hosts Not Connected - Skipping")
 		t.Skip("Unable to Proceed - Hosts Not Connected")
 		t.Skipped()
 	}
 
 	stream, err := host2.NewStream(ctx, p2p.Host.ID(), protocol.ID(libp2p.DepReqProtocolID))
 	if err != nil {
-		t.Logf("Error Creating Stream From Second Node to First Node: %v", err)
 		t.Skipf("Error Creating Stream From Second Node to First Node: %v", err)
 		t.Skipped()
 	}

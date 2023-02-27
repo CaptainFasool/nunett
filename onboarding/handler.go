@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 
@@ -109,6 +110,7 @@ func Onboard(c *gin.Context) {
 			return
 		}
 		cardanoPassive = "yes"
+		metadata.AllowCardano = true
 	}
 
 	if capacityForNunet.Channel != "nunet-staging" &&
@@ -192,6 +194,7 @@ func Onboard(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
+	telemetry.CalcFreeResources()
 	libp2p.SaveKey(priv, pub)
 	libp2p.RunNode(priv)
 

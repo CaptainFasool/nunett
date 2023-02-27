@@ -514,6 +514,7 @@ chat() {
     fi
 }
 
+
 secure_boot_check() {
     #Check for Secure Boot before proceeding with GPU driver installation, alert user with necessary information if yes.
     sudo apt install -y mokutil
