@@ -7,5 +7,5 @@ import (
 var zlog *logger.Logger
 
 func init() {
-	zlog = logger.New("adapter/machines")
+	zlog = logger.New("libp2p/machines")
 }

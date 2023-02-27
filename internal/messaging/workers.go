@@ -7,7 +7,6 @@ import (
 	"io"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -132,9 +131,6 @@ func handleGpuDeployment(depReq models.DeploymentRequest, sender string) {
 	b, _ := json.Marshal(&depResp)
 	_ = json.Unmarshal(b, &m)
 
-	var genericMsg models.GenericMessage
-	genericMsg.Type = "DeploymentResponse"
-	genericMsg.Message = m
-	jsonGenericMsg, _ := json.Marshal(genericMsg)
-	adapter.SendMessage(sender, string(jsonGenericMsg))
+	jsonGenericMsg, _ := json.Marshal(m)
+	sendDeploymentResponse(depResp.Success, string(jsonGenericMsg), false)
 }

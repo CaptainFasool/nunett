@@ -12,6 +12,7 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 
 	"github.com/spf13/afero"
 )
@@ -102,14 +103,13 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
-	cardanoPassive := "no"
+	metadata.AllowCardano = false
 	if capacityForNunet.Cardano {
 		if capacityForNunet.Memory < 10000 || capacityForNunet.CPU < 6000 {
 			c.JSON(http.StatusBadRequest,
 				gin.H{"error": "cardano node requires 10000MB of RAM and 6000MHz CPU"})
 			return
 		}
-		cardanoPassive = "yes"
 		metadata.AllowCardano = true
 	}
 
@@ -198,7 +198,20 @@ func Onboard(c *gin.Context) {
 	libp2p.SaveKey(priv, pub)
 	libp2p.RunNode(priv)
 
-	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
+	if len(metadata.NodeID) == 0 {
+		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
+
+		// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
+		NewDeviceOnboardParams := models.NewDeviceOnboarded{
+			PeerID:        metadata.NodeID,
+			CPU:           float32(metadata.Reserved.CPU),
+			RAM:           float32(metadata.Reserved.Memory),
+			Network:       0.0,
+			DedicatedTime: 0.0,
+			Timestamp:     float32(statsdb.GetTimestamp()),
+		}
+		statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+	}
 
 	c.JSON(http.StatusCreated, metadata)
 }

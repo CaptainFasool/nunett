@@ -15,7 +15,6 @@ SELF_NAME=$(basename $0)
 
 DMS_HOST=localhost
 DMS_PORT=9999
-ADAPTER_PORT=60777
 
 usage() {
     echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
@@ -659,7 +658,6 @@ shell(){
 log(){
     echo -e "Collecting logs.. \n"
     mkdir -m 777 -p /tmp/nunet-log/dms-log
-    mkdir -m 777 -p /tmp/nunet-log/adapter-log
     nunet_log_dir='/tmp/nunet-log'
     # collect DMS log and save it to files based on boot number
     num_of_boot=$(journalctl -u nunet-dms  --list-boots -r | wc -l)
@@ -669,19 +667,11 @@ log(){
             journalctl -u nunet-dms -b $num > $nunet_log_dir/dms-log/dms_log.$num
         fi
     done
-    #access adapter log
-    cont_id=$(docker ps | grep nunet-adapter | awk '{ print $1 }')
-    if [ -z "$cont_id" ]; then
-        printf "Looks like NuNet Adapter is not running." > $nunet_log_dir/adapter-log/nunet-adapter.log
-    else
-        docker cp $cont_id:/NUNET-ADAPTER/nunet-adapter.log $nunet_log_dir/adapter-log/nunet-adapter.log
-    fi
 
     #archive all the logs and retorn path
     tar -cf $nunet_log_dir/nunet-log.tar --exclude=$nunet_log_dir/nunet-log.tar -P $nunet_log_dir
     if [ $? -eq 0 ]; then
            rm -r $nunet_log_dir/dms-log
-        rm -r $nunet_log_dir/adapter-log
     fi
 
     echo -e "$nunet_log_dir/nunet-log.tar \n"
@@ -693,15 +683,6 @@ check_dms_run() {
     if [[ ! $? -eq 0 ]] ; then
         printf "${BAD_C}Looks like NuNet DMS is not running."
         printf "Please check with ${INFO_C}'systemctl status nunet-dms.service'${NORMAL_C}\n"
-        exit
-    fi
-}
-
-check_adapter_run() {
-    N_CHECK_ADAPTER=$(ss -tnlp 2>/dev/null | grep ":$ADAPTER_PORT")
-    if [[ ! $? -eq 0 ]] ; then
-        printf "${BAD_C}Looks like NuNet Adapter is not running."
-        printf "Please check with ${INFO_C}'docker ps -a | grep adapter'${NORMAL_C}\n"
         exit
     fi
 }

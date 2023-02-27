@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
@@ -19,7 +18,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.32
+// @version         0.4.33
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -37,10 +36,6 @@ func main() {
 	wg.Add(1)
 
 	go startServer(wg)
-	// go internal.SendCommandForExecution()
-
-	// Start listening for new messages coming via adapter
-	// go adapter.StartMessageReceiver()
 
 	go messaging.DeploymentWorker()
 
@@ -48,7 +43,7 @@ func main() {
 	time.Sleep(time.Second * 5)
 
 	//export traces to jaeger
-	tp, _ := adapter.TracerProvider("http://testserver.nunet.io:14268/api/traces")
+	tp, _ := libp2p.TracerProvider("http://testserver.nunet.io:14268/api/traces")
 
 	otel.SetTracerProvider(tp)
 	defer func() {

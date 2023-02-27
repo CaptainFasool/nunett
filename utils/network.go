@@ -11,8 +11,6 @@ import (
 const (
 	// DMSBaseURL is base of all API endpoints on DMS
 	DMSBaseURL = "http://localhost:9999/api/v1"
-	// AdapterGrpcURL is DMS connects to nunet-adapter
-	AdapterGrpcURL = "localhost:60777"
 )
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
