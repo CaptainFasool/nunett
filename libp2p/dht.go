@@ -60,7 +60,7 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 	return nil
 }
 
-func dhtUpdateHandler(s network.Stream) {
+func DhtUpdateHandler(s network.Stream) {
 	peerInfo := models.PeerData{}
 	var peerID peer.ID
 	data, err := io.ReadAll(s)
@@ -79,7 +79,7 @@ func dhtUpdateHandler(s network.Stream) {
 	p2p.Host.Peerstore().Put(peerID, "peer_info", peerInfo)
 }
 
-func sendDHTUpdate(peerInfo models.PeerData, s network.Stream) {
+func SendDHTUpdate(peerInfo models.PeerData, s network.Stream) {
 	w := bufio.NewWriter(s)
 	data, err := json.Marshal(peerInfo)
 	if err != nil {
@@ -140,21 +140,11 @@ func UpdateDHT() {
 		if err != nil {
 			continue
 		}
-		sendDHTUpdate(PeerInfo, stream)
+		SendDHTUpdate(PeerInfo, stream)
 		stream.Close()
 
 	}
-	p2p.Host.SetStreamHandler(DHTProtocolID, dhtUpdateHandler)
-	err = p2p.BootstrapNode(ctx)
-	if err != nil {
-		panic(err)
-	}
-	go p2p.StartDiscovery(ctx, "nunet")
-	if _, err := p2p.Host.Peerstore().Get(p2p.Host.ID(), "peer_info"); err != nil {
-		peerInfo := models.PeerData{}
-		peerInfo.PeerID = p2p.Host.ID().String()
-		p2p.Host.Peerstore().Put(p2p.Host.ID(), "peer_info", peerInfo)
-	}
+
 }
 
 func fetchDhtContents(node host.Host) []models.PeerData {

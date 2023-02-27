@@ -15,7 +15,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/nunet/device-management-service/models"
 )
 
 func SetUpRouter() *gin.Engine {
@@ -40,6 +42,14 @@ func TestListPeers(t *testing.T) {
 	router := SetUpRouter()
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
+	var metadata models.MetadataV2
+	metadata.AllowCardano = false
+	msg, _ := json.Marshal(metadata)
+	FS = afero.NewMemMapFs()
+	AFS = &afero.Afero{Fs: FS}
+	// create test files and directories
+	AFS.MkdirAll("/etc/nunet", 0755)
+	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
 	RunNode(priv1)
 
 	w := httptest.NewRecorder()
@@ -70,6 +80,14 @@ func TestSelfPeer(t *testing.T) {
 	router := SetUpRouter()
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
+	var metadata models.MetadataV2
+	metadata.AllowCardano = false
+	msg, _ := json.Marshal(metadata)
+	FS = afero.NewMemMapFs()
+	AFS = &afero.Afero{Fs: FS}
+	// create test files and directories
+	AFS.MkdirAll("/etc/nunet", 0755)
+	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
 	RunNode(priv1)
 
 	testp2p := GetP2P()
@@ -102,6 +120,14 @@ func TestStartChatNoPeerId(t *testing.T) {
 	router := SetUpRouter()
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
+	var metadata models.MetadataV2
+	metadata.AllowCardano = false
+	msg, _ := json.Marshal(metadata)
+	FS = afero.NewMemMapFs()
+	AFS = &afero.Afero{Fs: FS}
+	// create test files and directories
+	AFS.MkdirAll("/etc/nunet", 0755)
+	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
 	RunNode(priv1)
 
 	w := httptest.NewRecorder()
@@ -127,6 +153,14 @@ func TestStartChatSelfPeerID(t *testing.T) {
 	router := SetUpRouter()
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
+	var metadata models.MetadataV2
+	metadata.AllowCardano = false
+	msg, _ := json.Marshal(metadata)
+	FS = afero.NewMemMapFs()
+	AFS = &afero.Afero{Fs: FS}
+	// create test files and directories
+	AFS.MkdirAll("/etc/nunet", 0755)
+	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
 	RunNode(priv1)
 	testp2p := GetP2P()
 
@@ -183,6 +217,14 @@ func TestStartChatCorrect(t *testing.T) {
 	go Discover(ctx, host2, idht2, "nunet")
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
+	var metadata models.MetadataV2
+	metadata.AllowCardano = false
+	msg, _ := json.Marshal(metadata)
+	FS = afero.NewMemMapFs()
+	AFS = &afero.Afero{Fs: FS}
+	// create test files and directories
+	AFS.MkdirAll("/etc/nunet", 0755)
+	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
 	RunNode(priv1)
 	testp2p := GetP2P()
 
@@ -217,7 +259,6 @@ func TestStartChatCorrect(t *testing.T) {
 	if err != nil {
 		t.Error("Error Reading From Host 2 Buffer:", err)
 	}
-
 	assert.Equal(t, "hi there host2\n", host2Recv)
 
 	_, err = host2W.WriteString("hello to you too host1\n")
@@ -233,6 +274,5 @@ func TestStartChatCorrect(t *testing.T) {
 	if err != nil {
 		t.Error("Unable to Read From Websocket:", err)
 	}
-
 	assert.Equal(t, "Peer: hello to you too host1\n", string(host1Recv))
 }

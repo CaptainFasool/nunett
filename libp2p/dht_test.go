@@ -116,7 +116,7 @@ func TestSendDHTUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to open stream to host1: %v", err)
 	}
-	sendDHTUpdate(peerInfo1, stream)
+	SendDHTUpdate(peerInfo1, stream)
 	stream.Close()
 
 	time.Sleep(100 * time.Millisecond)
@@ -126,7 +126,7 @@ func TestSendDHTUpdate(t *testing.T) {
 		t.Fatalf("Unable to open stream to host1: %v", err)
 	}
 	t.Log("Sending to 2--- ", host1.ID())
-	sendDHTUpdate(peerInfo2, stream)
+	SendDHTUpdate(peerInfo2, stream)
 	stream.Close()
 
 	time.Sleep(100 * time.Millisecond)
@@ -203,7 +203,7 @@ func TestFetchDhtContents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to open stream to host1: %v", err)
 	}
-	sendDHTUpdate(peerInfo2, stream)
+	SendDHTUpdate(peerInfo2, stream)
 	stream.Close()
 
 	time.Sleep(100 * time.Millisecond)
@@ -271,7 +271,7 @@ func TestFetchMachines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to open stream to host1: %v", err)
 	}
-	sendDHTUpdate(peerInfo2, stream)
+	SendDHTUpdate(peerInfo2, stream)
 	stream.Close()
 
 	time.Sleep(100 * time.Millisecond)
@@ -340,7 +340,7 @@ func TestFetchAvailableResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to open stream to host1: %v", err)
 	}
-	sendDHTUpdate(peerInfo2, stream)
+	SendDHTUpdate(peerInfo2, stream)
 	stream.Close()
 
 	time.Sleep(100 * time.Millisecond)

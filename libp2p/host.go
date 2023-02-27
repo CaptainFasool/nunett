@@ -3,6 +3,7 @@ package libp2p
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"io"
 	mrand "math/rand"
@@ -19,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
+	"github.com/spf13/afero"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
 )
@@ -33,6 +35,8 @@ func DMSp2pInit(node host.Host, dht *dht.IpfsDHT) *DMSp2p {
 }
 
 var p2p DMSp2p
+var FS afero.Fs = afero.NewOsFs()
+var AFS *afero.Afero = &afero.Afero{Fs: FS}
 
 func GetP2P() DMSp2p {
 	return p2p
@@ -52,7 +56,6 @@ func CheckOnboarding() {
 			panic(err)
 		}
 		RunNode(priv)
-		go UpdateDHT()
 	}
 }
 
@@ -67,18 +70,47 @@ func RunNode(priv crypto.PrivKey) {
 	p2p = *DMSp2pInit(host, dht)
 
 	err = p2p.BootstrapNode(ctx)
+	if err != nil {
+		zlog.Sugar().Fatalf("Bootstraping failed: %s\n", err)
+	}
 
-	host.SetStreamHandler(DHTProtocolID, dhtUpdateHandler)
+	host.SetStreamHandler(protocol.ID(DHTProtocolID), DhtUpdateHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 
 	go p2p.StartDiscovery(ctx, "nunet")
 
+	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
+	if err != nil {
+		zlog.Sugar().Fatalf("metadata.json does not exists or not readable: %s\n", err)
+	}
+	var metadata2 models.MetadataV2
+	err = json.Unmarshal(content, &metadata2)
+	if err != nil {
+		zlog.Sugar().Fatalf("unable to parse metadata.json: %s\n", err)
+	}
+
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
 		peerInfo := models.PeerData{}
 		peerInfo.PeerID = host.ID().String()
+		peerInfo.AllowCardano = metadata2.AllowCardano
 		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
 	}
+
+	// Broadcast DHT updates every 15 minutes
+	ticker := time.NewTicker(15 * time.Minute)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				UpdateDHT()
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {
