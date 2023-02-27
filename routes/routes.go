@@ -2,10 +2,10 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/adapter/machines"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/libp2p/machines"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
 

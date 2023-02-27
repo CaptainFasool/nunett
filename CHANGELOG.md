@@ -20,13 +20,14 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.33](#119)
+
+### Removed
+- Removed all NuNet Adapter usage and installation
 ## [0.4.32](#129)
 
 ### Added
 - Sending DHT updates periodically
-
-
-
 ## [0.4.31](#107)
 
 ### Added

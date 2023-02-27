@@ -144,7 +144,6 @@ func UpdateDHT() {
 		stream.Close()
 
 	}
-
 }
 
 func fetchDhtContents(node host.Host) []models.PeerData {
@@ -232,26 +231,4 @@ func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequ
 		}
 	}
 	return peerWithMachingSpec
-}
-
-// FilterPeers searches for available compute providers given specific parameters in depReq.
-func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerData {
-	machines := FetchMachines(node)
-
-	var peers []models.PeerData
-
-	for _, val := range machines {
-		peers = append(peers, val)
-	}
-
-	peers = PeersWithMatchingSpec(peers, depReq)
-	if depReq.ServiceType == "ml-training-gpu" {
-		peers = PeersWithGPU(peers)
-	}
-
-	if depReq.ServiceType == "cardano_node" {
-		peers = PeersWithCardanoAllowed(peers)
-	}
-
-	return peers
 }

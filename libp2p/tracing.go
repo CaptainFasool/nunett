@@ -1,4 +1,4 @@
-package adapter
+package libp2p
 
 import (
 	"encoding/json"

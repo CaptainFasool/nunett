@@ -2,17 +2,21 @@ package libp2p
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/gorilla/websocket"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
 var inboundChatStreams []network.Stream
 var inboundDepReqStream network.Stream
+var outboundDepReqStream network.Stream
 
 type openStream struct {
 	ID         int
@@ -64,6 +68,36 @@ func depReqStreamHandler(stream network.Stream) {
 	}
 }
 
+func DeploymentResponseListener(stream network.Stream) {
+	defer func() {
+		if r := recover(); r != nil {
+			zlog.Sugar().Info("Connection Error: %v\n", r)
+			if stream != nil {
+				stream.Close()
+			}
+		}
+	}()
+
+	r := bufio.NewReader(stream)
+	for {
+		resp, err := readData(r)
+
+		if err != nil {
+			panic(err)
+		} else if resp == "" {
+			// do nothing
+		} else {
+			depRespMessage := models.DeploymentResponse{}
+			err = json.Unmarshal([]byte(resp), &depRespMessage)
+			if err != nil {
+				panic(err)
+			} else {
+				DepResQueue <- depRespMessage
+			}
+		}
+	}
+}
+
 func DeploymentResponse(msg string, close bool) error {
 	if inboundDepReqStream == nil {
 		return fmt.Errorf("No Inbound Deployment Request to Respond to.")
@@ -90,6 +124,43 @@ func DeploymentResponse(msg string, close bool) error {
 	}
 
 	return nil
+}
+
+func SendDeploymentRequest(ctx context.Context, peerData models.PeerData, depReq models.DeploymentRequest) (network.Stream, error) {
+	zlog.Info("Creating a new depReq!")
+
+	// limit to 1 request
+	if outboundDepReqStream != nil {
+		return nil, fmt.Errorf("Error: Couldn't Create Deployment Request. A request already in progress.")
+	}
+
+	peerID, err := peer.Decode(peerData.PeerID)
+	if err != nil {
+		return nil, fmt.Errorf("Error: Couldn't Decode Input PeerID '%s', : %v", peerData.PeerID, err)
+	}
+
+	outboundDepReqStream, err := GetP2P().Host.NewStream(ctx, peerID, protocol.ID(DepReqProtocolID))
+	if err != nil {
+		return nil, fmt.Errorf("Error: Couldn't Create Deployment Request Stream: %v", err)
+	}
+
+	msg, err := json.Marshal(depReq)
+	if err != nil {
+		return nil, fmt.Errorf("Error: Couldn't Convert Deployment Request to JSON: %v", err)
+	}
+
+	w := bufio.NewWriter(outboundDepReqStream)
+
+	_, err = w.WriteString(fmt.Sprintf("%s\n", msg))
+	if err != nil {
+		return nil, fmt.Errorf("Error: Couldn't Write Deployment Request to Stream: %v", err)
+	}
+	err = w.Flush()
+	if err != nil {
+		return nil, fmt.Errorf("Error: Couldn't Flush Deployment Request to Stream: %v", err)
+	}
+
+	return outboundDepReqStream, nil
 }
 
 func chatStreamHandler(stream network.Stream) {
