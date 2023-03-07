@@ -13,6 +13,8 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type wsMessage struct {
@@ -26,6 +28,9 @@ type wsMessage struct {
 // @Success      200  {string}  string
 // @Router       /run/deploy [get]
 func HandleDeploymentRequest(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/run/deploy"))
+
 	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		zlog.Error(fmt.Sprintf("Failed to set websocket upgrade: %+v\n", err))

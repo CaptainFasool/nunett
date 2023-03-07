@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // UpgradeConnection is generic protocol upgrader for entire DMS.
@@ -41,6 +43,9 @@ var clients = make(map[WebSocketConnection]string)
 // @Success      200
 // @Router       /peers/ws [get]
 func HandleWebSocket(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/ws"))
+
 	nodeID := c.Query("nodeID")
 	if nodeID == "" {
 		c.AbortWithStatusJSON(400, gin.H{"message": "nodeID not provided"})

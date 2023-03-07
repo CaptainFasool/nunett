@@ -13,6 +13,8 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/spf13/afero"
 )
@@ -31,6 +33,9 @@ func GetMetadata(c *gin.Context) {
 	// check if the request has any body data
 	// if it has return that body  and skip the below code
 	// just for the test cases
+
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/metadata"))
 
 	// read the info
 	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
@@ -60,6 +65,9 @@ func GetMetadata(c *gin.Context) {
 // @Success      200  {array}  models.Metadata
 // @Router       /onboarding/onboard [post]
 func Onboard(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/onboard"))
+
 	// check if request body is empty
 	if c.Request.ContentLength == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "request body is empty"})
@@ -224,6 +232,9 @@ func Onboard(c *gin.Context) {
 // @Success      200  {object}  models.Provisioned
 // @Router       /onboarding/provisioned [get]
 func ProvisionedCapacity(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/provisioned"))
+
 	c.JSON(http.StatusOK, GetTotalProvisioned())
 }
 
@@ -235,6 +246,10 @@ func ProvisionedCapacity(c *gin.Context) {
 // @Success      200  {object}  models.BlockchainAddressPrivKey
 // @Router       /onboarding/address/new [get]
 func CreatePaymentAddress(c *gin.Context) {
+	// send telemetry data
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/address/new"))
+
 	blockChain := c.DefaultQuery("blockchain", "cardano")
 
 	var pair *models.BlockchainAddressPrivKey

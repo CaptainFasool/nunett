@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.34](#115)
+
+### Added
+- Instrumentation
 ## [0.4.33](#119)
 
 ### Removed
