@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -56,19 +57,23 @@ func TestDepReq(t *testing.T) {
 
 	testRendezvous := utils.RandomString(10)
 
-	go libp2p.Discover(ctx, p2p.Host, p2p.DHT, testRendezvous)
+	go libp2p.Discover(context.Background(), p2p.Host, p2p.DHT, testRendezvous)
 	go libp2p.Discover(ctx, host2, idht2, testRendezvous)
 
-	time.Sleep(3 * time.Second)
+	host2.Peerstore().AddAddrs(p2p.Host.ID(), p2p.Host.Addrs(), peerstore.PermanentAddrTTL)
+	host2.Peerstore().AddPubKey(p2p.Host.ID(), p2p.Host.Peerstore().PubKey(p2p.Host.ID()))
 
-	if err := host2.Connect(context.Background(), p2p.Host.Peerstore().PeerInfo(p2p.Host.ID())); err != nil {
+	if err := host2.Connect(ctx, p2p.Host.Peerstore().PeerInfo(p2p.Host.ID())); err != nil {
 		t.Errorf("Unable to connect - %v ", err)
 	}
+	time.Sleep(3 * time.Second)
 
-	connectedness := host2.Network().Connectedness(p2p.Host.ID())
-	if connectedness.String() != "Connected" {
-		t.Skip("Unable to Proceed - Hosts Not Connected")
-		t.Skipped()
+	for host2.Network().Connectedness(p2p.Host.ID()).String() != "Connected" {
+		if err := host2.Connect(ctx, p2p.Host.Peerstore().PeerInfo(p2p.Host.ID())); err != nil {
+			t.Errorf("Unable to connect - %v ", err)
+		}
+		time.Sleep(1 * time.Second)
+
 	}
 
 	stream, err := host2.NewStream(ctx, p2p.Host.ID(), protocol.ID(libp2p.DepReqProtocolID))
@@ -80,12 +85,6 @@ func TestDepReq(t *testing.T) {
 	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 
 	wrongDepReqServType := `{"address_user": "foobar-address", "service_type": "BAD_SERVICE_TYPE_FOR_TEST"}`
-	stream, err = host2.NewStream(ctx, p2p.Host.ID(), protocol.ID(libp2p.DepReqProtocolID))
-	if err != nil {
-		t.Fatalf("Error Creating Second Stream From Second Node to First Node: %v", err)
-	}
-
-	rw = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 
 	rw.WriteString(fmt.Sprintf("%v\n", wrongDepReqServType))
 	rw.Flush()
