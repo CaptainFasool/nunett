@@ -24,23 +24,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/free": {
-            "get": {
-                "description": "Checks and returns the amount of free resources available",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "telemetry"
-                ],
-                "summary": "Returns the amount of free resources available",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/onboarding/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
@@ -257,6 +240,23 @@ const docTemplate = `{
                 }
             }
         },
+        "/telemetry/free": {
+            "get": {
+                "description": "Checks and returns the amount of free resources available",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "telemetry"
+                ],
+                "summary": "Returns the amount of free resources available",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/vm/start-custom": {
             "post": {
                 "description": "This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.",
@@ -382,7 +382,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.33",
+	Version:          "0.4.34",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

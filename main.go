@@ -9,8 +9,10 @@ import (
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
+	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -18,7 +20,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.33
+// @version         0.4.34
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -34,6 +36,9 @@ import (
 func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
+
+	cleanup := tracing.InitTracer()
+	defer cleanup(context.Background())
 
 	go startServer(wg)
 
@@ -64,6 +69,8 @@ func startServer(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	router := routes.SetupRouter()
+	router.Use(otelgin.Middleware(tracing.ServiceName))
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	db.ConnectDatabase()

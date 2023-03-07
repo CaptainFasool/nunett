@@ -11,6 +11,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/internal"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var clients = make(map[internal.WebSocketConnection]string)
@@ -23,6 +25,9 @@ var clients = make(map[internal.WebSocketConnection]string)
 // @Success      200  {string}	string
 // @Router       /peers [get]
 func ListPeers(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers"))
+
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
@@ -45,6 +50,9 @@ func ListPeers(c *gin.Context) {
 // @Success      200  {string}	string
 // @Router       /peers/self [get]
 func SelfPeerInfo(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/self"))
+
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
@@ -69,6 +77,9 @@ func SelfPeerInfo(c *gin.Context) {
 // @Success      200
 // @Router       /peers/chat [get]
 func ListChatHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/chat"))
+
 	chatRequests, err := incomingChatRequests()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -86,6 +97,9 @@ func ListChatHandler(c *gin.Context) {
 // @Success      200
 // @Router       /peers/chat/clear [get]
 func ClearChatHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/chat/clear"))
+
 	if err := clearIncomingChatRequests(); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -101,6 +115,9 @@ func ClearChatHandler(c *gin.Context) {
 // @Success      200
 // @Router       /peers/chat/start [get]
 func StartChatHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/chat/start"))
+
 	peerID := c.Query("peerID")
 
 	if len(peerID) == 0 {
@@ -156,6 +173,8 @@ func StartChatHandler(c *gin.Context) {
 // @Success      200
 // @Router       /peers/chat/join [get]
 func JoinChatHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/chat/join"))
 
 	streamReqID := c.Query("streamID")
 	if streamReqID == "" {

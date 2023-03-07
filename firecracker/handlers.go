@@ -18,6 +18,8 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
 	"gitlab.com/nunet/device-management-service/models"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func NewClient(sockFile string) *http.Client {
@@ -40,6 +42,9 @@ func NewClient(sockFile string) *http.Client {
 // @Success      200
 // @Router       /vm/start-custom [post]
 func StartCustom(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/vm/start-custom"))
+
 	type StartCustomBody struct {
 		KernelImagePath string `json:"kernel_image_path"`
 		FilesystemPath  string `json:"filesystem_path"`
@@ -131,6 +136,9 @@ func StartCustom(c *gin.Context) {
 // @Success      200
 // @Router       /vm/start-default [post]
 func StartDefault(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/vm/start-default"))
+
 	type StartDefaultBody struct {
 		KernelImagePath string `json:"kernel_image_path"`
 		FilesystemPath  string `json:"filesystem_path"`

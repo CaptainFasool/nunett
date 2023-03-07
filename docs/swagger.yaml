@@ -66,19 +66,8 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.33
+  version: 0.4.34
 paths:
-  /free:
-    get:
-      description: Checks and returns the amount of free resources available
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      summary: Returns the amount of free resources available
-      tags:
-      - telemetry
   /onboarding/address/new:
     get:
       description: Create a payment address from public key. Return payment address
@@ -225,6 +214,17 @@ paths:
             type: string
       summary: Search devices on DHT with appropriate machines and sends a deployment
         request.
+  /telemetry/free:
+    get:
+      description: Checks and returns the amount of free resources available
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Returns the amount of free resources available
+      tags:
+      - telemetry
   /vm/start-custom:
     post:
       description: This endpoint is an abstraction of all primitive endpoints. When

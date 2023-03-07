@@ -7,6 +7,8 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 )
 
@@ -112,8 +114,11 @@ func CalcFreeResources() error {
 // @Tags         telemetry
 // @Produce      json
 // @Success      200
-// @Router       /free [get]
+// @Router       /telemetry/free [get]
 func GetFreeResource(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/telemetry/free"))
+
 	err := CalcFreeResources()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
