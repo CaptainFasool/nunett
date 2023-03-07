@@ -9,6 +9,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/models"
 )
@@ -93,9 +94,22 @@ func TestSendDHTUpdate(t *testing.T) {
 	go Discover(ctx, host1, idht1, CIRendevousPoint)
 	go Discover(ctx, host2, idht2, CIRendevousPoint)
 
+	host1.Peerstore().AddAddrs(host2.ID(), host2.Addrs(), peerstore.PermanentAddrTTL)
+	host1.Peerstore().AddPubKey(host2.ID(), host2.Peerstore().PubKey(host2.ID()))
+
 	// Connect the two nodes
-	if err := host1.Connect(context.Background(), host2.Peerstore().PeerInfo(host2.ID())); err != nil {
+	if err := host1.Connect(ctx, host2.Peerstore().PeerInfo(host2.ID())); err != nil {
 		t.Fatalf("Unable to connect ---- %v ", err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	for host1.Network().Connectedness(host2.ID()).String() != "Connected" {
+		if err := host1.Connect(ctx, host2.Peerstore().PeerInfo(host2.ID())); err != nil {
+			t.Errorf("Unable to connect - %v ", err)
+		}
+		time.Sleep(1 * time.Second)
+
 	}
 
 	// Add mock data to their respective DHTs
@@ -190,8 +204,21 @@ func TestFetchDhtContents(t *testing.T) {
 	go Discover(ctx, host1, idht1, CIRendevousPoint)
 	go Discover(ctx, host2, idht2, CIRendevousPoint)
 
-	if err := host2.Connect(context.Background(), host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+	host2.Peerstore().AddAddrs(host1.ID(), host1.Addrs(), peerstore.PermanentAddrTTL)
+	host2.Peerstore().AddPubKey(host1.ID(), host1.Peerstore().PubKey(host1.ID()))
+
+	if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
 		t.Fatalf("Unable to connect ---- %v ", err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	for host2.Network().Connectedness(host1.ID()).String() != "Connected" {
+		if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+			t.Errorf("Unable to connect - %v ", err)
+		}
+		time.Sleep(1 * time.Second)
+
 	}
 
 	peerInfo2 := models.PeerData{}
@@ -258,8 +285,21 @@ func TestFetchMachines(t *testing.T) {
 	go Discover(ctx, host1, idht1, CIRendevousPoint)
 	go Discover(ctx, host2, idht2, CIRendevousPoint)
 
-	if err := host2.Connect(context.Background(), host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+	host2.Peerstore().AddAddrs(host1.ID(), host1.Addrs(), peerstore.PermanentAddrTTL)
+	host2.Peerstore().AddPubKey(host1.ID(), host1.Peerstore().PubKey(host1.ID()))
+
+	if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
 		t.Fatalf("Unable to connect ---- %v ", err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	for host2.Network().Connectedness(host1.ID()).String() != "Connected" {
+		if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+			t.Errorf("Unable to connect - %v ", err)
+		}
+		time.Sleep(1 * time.Second)
+
 	}
 
 	peerInfo2 := models.PeerData{}
@@ -325,8 +365,21 @@ func TestFetchAvailableResources(t *testing.T) {
 	go Discover(ctx, host1, idht1, CIRendevousPoint)
 	go Discover(ctx, host2, idht2, CIRendevousPoint)
 
-	if err := host2.Connect(context.Background(), host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+	host2.Peerstore().AddAddrs(host1.ID(), host1.Addrs(), peerstore.PermanentAddrTTL)
+	host2.Peerstore().AddPubKey(host1.ID(), host1.Peerstore().PubKey(host1.ID()))
+
+	if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
 		t.Fatalf("Unable to connect ---- %v ", err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	for host2.Network().Connectedness(host1.ID()).String() != "Connected" {
+		if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+			t.Errorf("Unable to connect - %v ", err)
+		}
+		time.Sleep(1 * time.Second)
+
 	}
 
 	peerInfo2 := models.PeerData{}

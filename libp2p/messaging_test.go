@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -53,18 +54,24 @@ func TestChat(t *testing.T) {
 		t.Fatalf("Bootstrap returned error: %v", err)
 	}
 
-	go Discover(ctx, host1, idht1, CIRendevousPoint)
+	go Discover(context.Background(), host1, idht1, CIRendevousPoint)
 	go Discover(ctx, host2, idht2, CIRendevousPoint)
 
-	if err := host2.Connect(context.Background(), host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+	host2.Peerstore().AddAddrs(host1.ID(), host1.Addrs(), peerstore.PermanentAddrTTL)
+	host2.Peerstore().AddPubKey(host1.ID(), host1.Peerstore().PubKey(host1.ID()))
+
+	if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
 		t.Errorf("Unable to connect ---- %v ", err)
 	}
 
-	connectedness := host2.Network().Connectedness(host1.ID())
-	if connectedness.String() != "Connected" {
-		t.Log("Unable to Proceed - Hosts Not Connected")
-		t.Skip("Unable to Proceed - Hosts Not Connected")
-		t.Skipped()
+	time.Sleep(1 * time.Second)
+
+	for host2.Network().Connectedness(host1.ID()).String() != "Connected" {
+		if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+			t.Errorf("Unable to connect - %v ", err)
+		}
+		time.Sleep(1 * time.Second)
+
 	}
 
 	stream, err := host2.NewStream(ctx, host1.ID(), protocol.ID(ChatProtocolID))
@@ -134,17 +141,21 @@ func TestWrongFormatDepReq(t *testing.T) {
 	go Discover(ctx, host1, idht1, testRendezvous)
 	go Discover(ctx, host2, idht2, testRendezvous)
 
-	if err := host2.Connect(context.Background(), host1.Peerstore().PeerInfo(host1.ID())); err != nil {
-		t.Log("Unable to Proceed - Hosts Not Connected")
-		t.Skip("Unable to Proceed - Hosts Not Connected")
-		t.Skipped()
+	host2.Peerstore().AddAddrs(host1.ID(), host1.Addrs(), peerstore.PermanentAddrTTL)
+	host2.Peerstore().AddPubKey(host1.ID(), host1.Peerstore().PubKey(host1.ID()))
+
+	if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+		t.Errorf("Unable to connect ---- %v ", err)
 	}
 
-	connectedness := host2.Network().Connectedness(host1.ID())
-	if connectedness.String() != "Connected" {
-		t.Log("Unable to Proceed - Hosts Not Connected")
-		t.Skip("Unable to Proceed - Hosts Not Connected")
-		t.Skipped()
+	time.Sleep(1 * time.Second)
+
+	for host2.Network().Connectedness(host1.ID()).String() != "Connected" {
+		if err := host2.Connect(ctx, host1.Peerstore().PeerInfo(host1.ID())); err != nil {
+			t.Errorf("Unable to connect - %v ", err)
+		}
+		time.Sleep(1 * time.Second)
+
 	}
 
 	stream, err := host2.NewStream(ctx, host1.ID(), protocol.ID(DepReqProtocolID))

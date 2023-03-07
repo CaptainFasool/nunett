@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/models"
@@ -228,15 +229,21 @@ func TestStartChatCorrect(t *testing.T) {
 	RunNode(priv1)
 	testp2p := GetP2P()
 
-	if err := testp2p.Host.Connect(context.Background(), host2.Peerstore().PeerInfo(host2.ID())); err != nil {
+	testp2p.Host.Peerstore().AddAddrs(host2.ID(), host2.Addrs(), peerstore.PermanentAddrTTL)
+	testp2p.Host.Peerstore().AddPubKey(host2.ID(), host2.Peerstore().PubKey(host2.ID()))
+
+	if err := testp2p.Host.Connect(ctx, host2.Peerstore().PeerInfo(host2.ID())); err != nil {
 		t.Fatalf("Unable to connect - %v ", err)
 	}
 
-	connectedness := testp2p.Host.Network().Connectedness(host2.ID())
-	if connectedness.String() != "Connected" {
-		t.Log("Unable to Proceed - Hosts Not Connected")
-		t.Skip("Unable to Proceed - Hosts Not Connected")
-		t.Skipped()
+	time.Sleep(1 * time.Second)
+
+	for testp2p.Host.Network().Connectedness(host2.ID()).String() != "Connected" {
+		if err := testp2p.Host.Connect(ctx, host2.Peerstore().PeerInfo(host2.ID())); err != nil {
+			t.Errorf("Unable to connect - %v ", err)
+		}
+		time.Sleep(1 * time.Second)
+
 	}
 
 	ws, httpResp, err := websocket.DefaultDialer.Dial("ws://localhost:9999/api/v1/peers/chat/start?peerID="+host2.ID().String(), nil)
