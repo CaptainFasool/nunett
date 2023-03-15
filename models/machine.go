@@ -68,6 +68,7 @@ type Libp2pInfo struct {
 	ID         uint   `json:"id"`
 	PrivateKey []byte `json:"private_key"`
 	PublicKey  []byte `json:"public_key"`
+	ServerMode bool   `json:"server_mode"`
 }
 
 type Gpu struct {

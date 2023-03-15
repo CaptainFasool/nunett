@@ -36,13 +36,13 @@ func TestDepReq(t *testing.T) {
 	libp2p.AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(libp2p.AFS, "/etc/nunet/metadataV2.json", meta, 0644)
 
-	libp2p.RunNode(priv1)
+	libp2p.RunNode(priv1, true)
 
 	p2p := libp2p.GetP2P()
 
 	// initialize second node
 	priv2, _, _ := libp2p.GenerateKey(time.Now().Unix())
-	host2, idht2, err := libp2p.NewHost(ctx, 9501, priv2)
+	host2, idht2, err := libp2p.NewHost(ctx, 9501, priv2, true)
 	if err != nil {
 		t.Fatalf("Second Node Initialization Failed: %v", err)
 	}

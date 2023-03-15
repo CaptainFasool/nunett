@@ -51,7 +51,7 @@ func TestListPeers(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1)
+	RunNode(priv1, true)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/peers", nil)
@@ -89,7 +89,7 @@ func TestSelfPeer(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1)
+	RunNode(priv1, true)
 
 	testp2p := GetP2P()
 
@@ -129,7 +129,7 @@ func TestStartChatNoPeerId(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1)
+	RunNode(priv1, true)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/peers/chat/start", nil)
@@ -162,7 +162,7 @@ func TestStartChatSelfPeerID(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1)
+	RunNode(priv1, true)
 	testp2p := GetP2P()
 
 	w := httptest.NewRecorder()
@@ -193,7 +193,7 @@ func TestStartChatCorrect(t *testing.T) {
 
 	// initialize Other node
 	priv2, _, _ := GenerateKey(time.Now().Unix())
-	host2, idht2, err := NewHost(ctx, 9501, priv2)
+	host2, idht2, err := NewHost(ctx, 9501, priv2, true)
 	if err != nil {
 		t.Fatalf("Second Node Initialization Failed: %v", err)
 	}
@@ -226,7 +226,7 @@ func TestStartChatCorrect(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1)
+	RunNode(priv1, true)
 	testp2p := GetP2P()
 
 	testp2p.Host.Peerstore().AddAddrs(host2.ID(), host2.Addrs(), peerstore.PermanentAddrTTL)

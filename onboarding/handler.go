@@ -13,6 +13,7 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -101,7 +102,7 @@ func Onboard(c *gin.Context) {
 	// read the request body to fill rest of the fields
 
 	// get capacity user want to rent to NuNet
-	var capacityForNunet models.CapacityForNunet
+	capacityForNunet := models.CapacityForNunet{ServerMode: true}
 	c.BindJSON(&capacityForNunet)
 
 	if (capacityForNunet.Memory > int64(totalMem)) &&
@@ -209,8 +210,9 @@ func Onboard(c *gin.Context) {
 		panic(err)
 	}
 	telemetry.CalcFreeResources()
-	libp2p.SaveKey(priv, pub)
-	libp2p.RunNode(priv)
+	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
+
+	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 
 	if len(metadata.NodeID) == 0 {
 		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
