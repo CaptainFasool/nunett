@@ -66,7 +66,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.38
+  version: 0.4.39
 paths:
   /onboarding/address/new:
     get:
@@ -202,6 +202,12 @@ paths:
       summary: Sends a command to specific node and prints back response.
       tags:
       - peers
+  /run/claim:
+    get:
+      description: HandleClaimCardanoTokens takes request from the compute provider,
+        talks with Oracle and releases tokens if conditions are met.
+      responses: {}
+      summary: Get NTX tokens for work done.
   /run/deploy:
     get:
       description: HandleDeploymentRequest searches the DHT for non-busy, available
@@ -214,6 +220,17 @@ paths:
             type: string
       summary: Search devices on DHT with appropriate machines and sends a deployment
         request.
+  /run/send-status:
+    post:
+      description: HandleSendStatus is used by webapps to send status of blockchain
+        activities. Such as if tokens have been put in escrow account and account
+        creation.
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Sends blockchain status of contract creation.
   /telemetry/free:
     get:
       description: Checks and returns the amount of free resources available

@@ -226,10 +226,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/run/claim": {
+            "get": {
+                "description": "HandleClaimCardanoTokens takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.",
+                "summary": "Get NTX tokens for work done.",
+                "responses": {}
+            }
+        },
         "/run/deploy": {
             "get": {
                 "description": "HandleDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
                 "summary": "Search devices on DHT with appropriate machines and sends a deployment request.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/run/send-status": {
+            "post": {
+                "description": "HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.",
+                "summary": "Sends blockchain status of contract creation.",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -382,7 +403,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.38",
+	Version:          "0.4.39",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

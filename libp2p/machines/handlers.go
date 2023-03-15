@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -149,6 +151,8 @@ func sendDeploymentRequest(ctx context.Context, requestParams json.RawMessage) e
 	selectedNode := peers[0]
 	depReq.Timestamp = time.Now()
 
+	// send these for to oracle: service and compute provider user address, price, max tokens amount, type of blockchain (cardano or ethereum)
+
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, selectedNode, depReq)
 	if err != nil {
 		return err
@@ -160,4 +164,30 @@ func sendDeploymentRequest(ctx context.Context, requestParams json.RawMessage) e
 	go libp2p.DeploymentResponseListener(depReqStream)
 
 	return nil
+}
+
+type BlockchainStatusBody struct {
+	TransactionType   string `json:"transaction_type"`
+	TransactionStatus string `json:"transaction_status"`
+}
+
+// HandleSendStatus  godoc
+// @Summary      Sends blockchain status of contract creation.
+// @Description  HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.
+// @Success      200  {string}  string
+// @Router       /run/send-status [post]
+func HandleSendStatus(c *gin.Context) {
+	// TODO: This is a stub function. Replace the logic to talk with Oracle.
+	rand.Seed(time.Now().Unix())
+
+	body := BlockchainStatusBody{}
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	status := []string{"success", "error"}
+	randomStatus := status[rand.Intn(len(status))]
+
+	c.JSON(200, gin.H{"message": randomStatus})
 }

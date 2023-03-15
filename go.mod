@@ -8,6 +8,7 @@ require (
 	github.com/docker/docker v20.10.18+incompatible
 	github.com/ethereum/go-ethereum v1.10.18
 	github.com/fivebinaries/go-cardano-serialization v0.0.0-20220907134105-ec9b85086588
+	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.8.2
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/gorilla/websocket v1.5.0

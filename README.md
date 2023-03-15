@@ -14,63 +14,47 @@ curl -L https://inst.dms.nunet.io | sh
 
 ## Getting Started with Development
 
-Operations done via Device Management Service (DMS) depends on packages such as:
-
-- docker
-- iptables
-- ip
-
-For end users, these are installed as part of .deb package. these prerequisites will be taken care of, otherwise, you need to install them manually.
-
-### Setup Development Environment
-
-You can install Go using the following commands below on both Debian or RHEL based systems.
-
-#### Install Go based on official documentation (Debian/RHEL based system)
-```
-wget https://go.dev/dl/go1.19.3.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.19.3.linux-amd64.tar.gz
-export PATH=$PATH:/usr/local/go/bin
-source $HOME/.profile
-```
-#### Install additional dependencies on Debian based system
+The cleanest way to setup development environment is to build a deb package out of this repository and let the installer do the work for you.
 
 ```
 sudo apt install build-essential curl jq iproute2
 ```
 
-#### Install additional dependencies on RHEL based system
+### Prerequisites
+
+To build the deb, you'd be required to install these two packages:
 
 ```
-sudo yum install curl jq
+sudo snap install go
+sudo apt install build-essential
 ```
 
-Please make sure you have the appropriate Go version installed, with the `go version` command. We work with and test against the latest Go release.
+### Build, Install & Setup Dev Env
 
-### Build and Run the server
+We provide a dev-setup shell script to ease the process of getting started. It does the following:
 
+1. Setup `pre-commit` hook which runs test before every commit.
+2. Build .deb file and installs it.
+3. Stops the `nunet-dms` service so that we can run main.go directly.
 
-If you have Go installed, download the develop branch from this repository:
+Run the script as follows:
 
-    git clone -b develop https://gitlab.com/nunet/device-management-service.git dms && cd dms
+```
+bash maint-script/dev-setup.sh
+```
 
-Next, install the packages:
+Once the env is setup, run the DMS as follows:
 
-    go install
-
-and then run main.go
-
-    sudo go run main.go
+```
+sudo go run main.go
+```
 
 Notice we're using `sudo` as the onboarding process writes some configuration files to `/etc/nunet`.
 
-Note about firecracker VMs. DMS also depends on binaries such as `firecracker` and one custom build binary, source code of which is stored in ./maint-script directory. Store them somewhere in $PATH.
+### Onboarding
 
+You don't necessarily need to onboard for development, but that depends which part you're workin on.
 
-## Onboarding Operations/Endpoints
+Onboarding instructions can be found at [Onboarding Wiki](https://gitlab.com/nunet/device-management-service/-/wikis/Onboarding)
 
-Refer to [wiki/Onboarding](https://gitlab.com/nunet/device-management-service/-/wikis/Onboarding)
-
-## VM Management
-
-Refer to [wiki/VM-Management](https://gitlab.com/nunet/device-management-service/-/wikis/VM-Management)
+**Note**: A [Postman collection](https://gitlab.com/nunet/device-management-service/-/snippets/2507804) is there to help you get starting with REST endpoints exploration.
