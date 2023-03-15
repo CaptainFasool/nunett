@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.38"
+        "version": "0.4.39"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -220,10 +220,31 @@
                 }
             }
         },
+        "/run/claim": {
+            "get": {
+                "description": "HandleClaimCardanoTokens takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.",
+                "summary": "Get NTX tokens for work done.",
+                "responses": {}
+            }
+        },
         "/run/deploy": {
             "get": {
                 "description": "HandleDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
                 "summary": "Search devices on DHT with appropriate machines and sends a deployment request.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/run/send-status": {
+            "post": {
+                "description": "HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.",
+                "summary": "Sends blockchain status of contract creation.",
                 "responses": {
                     "200": {
                         "description": "OK",

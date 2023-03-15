@@ -21,6 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.39](#124)
+
+### Added
+- Included pre-commit hook and a dev-setup.sh.
+### Changed
+- Fix for CORS error.
 ## [0.4.38](#133)
 
 ### Added

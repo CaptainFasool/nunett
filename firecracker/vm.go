@@ -21,6 +21,8 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
+// RunPreviouslyRunningVMs runs `runFromConfig` for every firecracker VM record found in
+// local DB which are marked `running`.
 func RunPreviouslyRunningVMs() error {
 	var vms []models.VirtualMachine
 
@@ -36,6 +38,7 @@ func RunPreviouslyRunningVMs() error {
 	return nil
 }
 
+// GenerateSocketFile generates a path for socket file to be used for communication with firecracker.
 func GenerateSocketFile(n int) string {
 	prefix := "/etc/nunet/sockets/"
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
