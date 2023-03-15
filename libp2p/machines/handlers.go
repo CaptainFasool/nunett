@@ -119,9 +119,9 @@ func sendDeploymentRequest(ctx context.Context, requestParams json.RawMessage) e
 		return errors.New("invalid deployment request body")
 	}
 	// add node_id and public_key in deployment request
-	pKey, err := libp2p.GetP2P().Host.ID().ExtractPublicKey()
+	pKey, err := libp2p.GetPublicKey()
 	if err != nil {
-		return fmt.Errorf("Unable to Extract Public Key: %v", err)
+		return fmt.Errorf("Unable to Obtain Public Key: %v", err)
 	}
 	selfNodeID := libp2p.GetP2P().Host.ID().String()
 
