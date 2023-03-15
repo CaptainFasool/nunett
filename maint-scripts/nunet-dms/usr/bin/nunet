@@ -302,6 +302,7 @@ onboard() {
             esac
     done
 
+
     # validation
     [[ -z $N_ONBOARD_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && onboard_usage
     [[ -z $N_ONBOARD_MEM ]] && printf "${BAD_C}Error: -m | --memory must be specified.${NORMAL_C}\n" && onboard_usage

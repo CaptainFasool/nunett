@@ -195,3 +195,13 @@ require (
 	gotest.tools/v3 v3.3.0 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
+
+require (
+	github.com/NVIDIA/go-nvml v0.12.0-1
+	github.com/libp2p/go-libp2p-core v0.20.1
+	go.opentelemetry.io/otel v1.11.0
+	go.opentelemetry.io/otel/exporters/jaeger v1.11.0
+	go.opentelemetry.io/otel/sdk v1.11.0
+	go.opentelemetry.io/otel/trace v1.11.0 // indirect
+
+)

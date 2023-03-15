@@ -36,7 +36,7 @@ source $HOME/.profile
 #### Install additional dependencies on Debian based system
 
 ```
-sudo apt install build-essential curl jq
+sudo apt install build-essential curl jq iproute2
 ```
 
 #### Install additional dependencies on RHEL based system

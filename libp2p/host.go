@@ -94,6 +94,14 @@ func RunNode(priv crypto.PrivKey) {
 		peerInfo := models.PeerData{}
 		peerInfo.PeerID = host.ID().String()
 		peerInfo.AllowCardano = metadata2.AllowCardano
+		if len(metadata2.GpuInfo) == 0 {
+			peerInfo.HasGpu = false
+			peerInfo.GpuInfo = metadata2.GpuInfo
+		} else {
+			peerInfo.GpuInfo = metadata2.GpuInfo
+			peerInfo.HasGpu = true
+		}
+
 		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
 	}
 

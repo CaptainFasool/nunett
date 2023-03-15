@@ -3,7 +3,6 @@ package statsdb
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"math/rand"
 	"os"
 	"time"
@@ -66,10 +65,10 @@ func GetTimestamp() int64 {
 }
 
 // NewDeviceOnboarded sends the newly onboarded telemetry info to the stats db via grpc call.
-func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
+func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) error {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		zlog.Sugar().Fatalf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -86,16 +85,19 @@ func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 	})
 
 	if err != nil {
-		log.Fatalf("connection failed: %v", err)
+		zlog.Sugar().Infof("connection failed: %v", err)
+		return err
+
 	}
-	log.Printf("Responding: %s", res.PeerId)
+	zlog.Sugar().Infof("Responding: %s", res.PeerId)
+	return nil
 }
 
 // ServiceCall sends the info of the service call made to dms to stats via grpc call.
 func ServiceCall(inputData models.ServiceCall) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		zlog.Sugar().Fatalf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -115,9 +117,9 @@ func ServiceCall(inputData models.ServiceCall) {
 	})
 
 	if err != nil {
-		log.Fatalf("connection failed: %v", err)
+		zlog.Sugar().Fatalf("connection failed: %v", err)
 	}
-	log.Printf("Responding: %s", res.Response)
+	zlog.Sugar().Infof("Responding: %s", res.Response)
 
 }
 
@@ -125,7 +127,7 @@ func ServiceCall(inputData models.ServiceCall) {
 func ServiceRun(inputData models.ServiceRun) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		zlog.Sugar().Fatalf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -140,9 +142,9 @@ func ServiceRun(inputData models.ServiceRun) {
 	})
 
 	if err != nil {
-		log.Fatalf("connection failed: %v", err)
+		zlog.Sugar().Fatalf("connection failed: %v", err)
 	}
-	log.Printf("Responding: %s", res.Response)
+	zlog.Sugar().Infof("Responding: %s", res.Response)
 }
 
 // HeartBeat pings the statsdb in every 10s for detacting live status of device via grpc call.
@@ -150,7 +152,7 @@ func HeartBeat(peerID string, addr string) {
 	for {
 		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			log.Fatalf("did not connect: %v", err)
+			zlog.Sugar().Fatalf("did not connect: %v", err)
 		}
 
 		client := pb.NewEventListenerClient(conn)
@@ -160,9 +162,9 @@ func HeartBeat(peerID string, addr string) {
 		})
 
 		if err != nil {
-			log.Fatalf("connection failed: %v", err)
+			zlog.Sugar().Fatalf("connection failed: %v", err)
 		}
-		log.Printf("Responding: %s", res.PeerId)
+		zlog.Sugar().Infof("Responding: %s", res.PeerId)
 
 		time.Sleep(10 * time.Second)
 	}
@@ -181,7 +183,7 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		zlog.Sugar().Fatalf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -195,8 +197,8 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 	})
 
 	if err != nil {
-		log.Fatalf("connection failed: %v", err)
+		zlog.Sugar().Fatalf("connection failed: %v", err)
 	}
 
-	log.Printf("Responding: %s", res.PeerId)
+	zlog.Sugar().Infof("Responding: %s", res.PeerId)
 }
