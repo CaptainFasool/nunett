@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+## [0.4.38](#133)
+
+### Added
+- Use public key from DB instead of attempting to extract from ID
 ## [0.4.37](#105)
 
 ### Added
