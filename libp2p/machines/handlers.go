@@ -39,7 +39,7 @@ func HandleDeploymentRequest(c *gin.Context) {
 		return
 	}
 
-	err = ws.WriteMessage(websocket.TextMessage, []byte("You are connected to DMS for GPU deployment."))
+	err = ws.WriteMessage(websocket.TextMessage, []byte("{\"action\": \"connected\", \"message\": \"You are connected to DMS for docker (GPU/CPU) deployment.\""))
 	if err != nil {
 		zlog.Error(err.Error())
 	}
