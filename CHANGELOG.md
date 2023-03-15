@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.35](#132)
+
+### Added
+- Detect GPU while onboarding and update GPU flag on DHT
+
 ## [0.4.34](#115)
 
 ### Added

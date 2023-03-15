@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 	"sync"
 	"testing"
 
@@ -218,11 +219,14 @@ func (s *MyTestSuite) TestNunetInfoNoMetadataCLI() {
 	s.Contains(string(out), "metadata.json does not exists or not readable")
 }
 
-func (s *MyTestSuite) TestNunetInfoCLI() {
-	onboarding.FS = afero.NewMemMapFs()
-	onboarding.AFS = &afero.Afero{Fs: onboarding.FS}
-	onboarding.AFS.Mkdir("/etc/nunet", 0777)
-	expectedJsonString := `{
+func (s *MyTestSuite) TestNunetInfoCLICPU() {
+	gpu, _ := onboarding.Check_gpu()
+	if len(gpu) == 0 {
+
+		onboarding.FS = afero.NewMemMapFs()
+		onboarding.AFS = &afero.Afero{Fs: onboarding.FS}
+		onboarding.AFS.Mkdir("/etc/nunet", 0777)
+		expectedJsonString := `{
 		"name": "TestMachineData",
 		"update_timestamp": 11111111111,
 		"resource": {
@@ -239,16 +243,67 @@ func (s *MyTestSuite) TestNunetInfoCLI() {
 		 "memory": 1
 		},
 		"network": "test-data",
-		"public_key": "test-address"}`
-	onboarding.AFS.WriteFile("/etc/nunet/metadataV2.json", []byte(expectedJsonString), 0644)
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
+		"public_key": "test-address"
+		}`
+		onboarding.AFS.WriteFile("/etc/nunet/metadataV2.json", []byte(expectedJsonString), 0644)
+		out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
+		var expectedMetadata, receivedMetadata models.MetadataV2
 
-	var expectedMetadata, receivedMetadata models.MetadataV2
+		err := json.Unmarshal(out, &receivedMetadata)
+		s.Nil(err)
+		err = json.Unmarshal([]byte(expectedJsonString), &expectedMetadata)
+		s.Nil(err)
+		s.Equal(expectedMetadata, receivedMetadata)
+	} else {
+		s.T().Skip("Skipping tests because GPUs are available.")
+	}
+}
 
-	err := json.Unmarshal(out, &receivedMetadata)
-	s.Nil(err)
+func (s *MyTestSuite) TestNunetInfoCLIGPU() {
+	gpu, _ := onboarding.Check_gpu()
+	if len(gpu) > 0 {
+		onboarding.FS = afero.NewMemMapFs()
+		onboarding.AFS = &afero.Afero{Fs: onboarding.FS}
+		onboarding.AFS.Mkdir("/etc/nunet", 0777)
+		expectedJsonString := `{
+		"name": "TestMachineData",
+		"update_timestamp": 11111111111,
+		"resource": {
+		 "memory_max": 1,
+		 "total_core": 1,
+		 "cpu_max": 1
+		},
+		"available": {
+		 "cpu": 1,
+		 "memory": 1
+		},
+		"reserved": {
+		 "cpu": 1,
+		 "memory": 1
+		},
+		"network": "test-data",
+		"gpu_info":[{
+			"name":"",
+			"tot_vram": 0,
+			"free_vram": 0
+		}]
+		}`
+		onboarding.AFS.WriteFile("/etc/nunet/metadataV2.json", []byte(expectedJsonString), 0644)
+		out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
+		var expectedMetadata, receivedMetadata models.MetadataV2
 
-	err = json.Unmarshal([]byte(expectedJsonString), &expectedMetadata)
-	s.Nil(err)
-	s.Equal(expectedMetadata, receivedMetadata)
+		output := string(out)
+		index := strings.LastIndex(output, "}")
+		js := output[:index+1]
+		fmt.Println(js)
+		bArray := []byte(js)
+		err := json.Unmarshal(bArray, &receivedMetadata)
+		s.Nil(err)
+		gpu_log := output[index+1:]
+		s.Contains(gpu_log, gpu[0].Name)
+		err = json.Unmarshal([]byte(expectedJsonString), &expectedMetadata)
+		s.Nil(err)
+		s.Equal(expectedMetadata, receivedMetadata)
+	}
+
 }

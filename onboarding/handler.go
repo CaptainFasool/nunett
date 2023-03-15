@@ -120,6 +120,12 @@ func Onboard(c *gin.Context) {
 		}
 		metadata.AllowCardano = true
 	}
+	gpu_info, err := Check_gpu()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": "unable to detect GPU"})
+	}
+	metadata.GpuInfo = gpu_info
 
 	if capacityForNunet.Channel != "nunet-staging" &&
 		capacityForNunet.Channel != "nunet-test" &&
@@ -218,7 +224,10 @@ func Onboard(c *gin.Context) {
 			DedicatedTime: 0.0,
 			Timestamp:     float32(statsdb.GetTimestamp()),
 		}
-		statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+		err = statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+		if err != nil {
+			zlog.Sugar().Infof("NewDeviceOnboarded error: %s", err.Error())
+		}
 	}
 
 	c.JSON(http.StatusCreated, metadata)
