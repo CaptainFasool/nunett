@@ -75,7 +75,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	err = p2p.BootstrapNode(ctx)
 	if err != nil {
-		zlog.Sugar().Fatalf("Bootstraping failed: %s\n", err)
+		zlog.Sugar().Errorf("Bootstraping failed: %s\n", err)
 	}
 
 	host.SetStreamHandler(protocol.ID(DHTProtocolID), DhtUpdateHandler)
@@ -86,12 +86,12 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
 	if err != nil {
-		zlog.Sugar().Fatalf("metadata.json does not exists or not readable: %s\n", err)
+		zlog.Sugar().Errorf("metadata.json does not exists or not readable: %s\n", err)
 	}
 	var metadata2 models.MetadataV2
 	err = json.Unmarshal(content, &metadata2)
 	if err != nil {
-		zlog.Sugar().Fatalf("unable to parse metadata.json: %s\n", err)
+		zlog.Sugar().Errorf("unable to parse metadata.json: %s\n", err)
 	}
 
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
@@ -109,8 +109,8 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
 	}
 
-	// Broadcast DHT updates every 15 minutes
-	ticker := time.NewTicker(15 * time.Minute)
+	// Broadcast DHT updates every 30 seconds
+	ticker := time.NewTicker(30 * time.Second)
 	quit := make(chan struct{})
 	go func() {
 		for {

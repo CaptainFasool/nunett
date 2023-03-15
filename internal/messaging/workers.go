@@ -11,7 +11,8 @@ import (
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
+
+	//"gitlab.com/nunet/device-management-service/statsdb" //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -96,24 +97,24 @@ func handleCardanoDeployment(depReq models.DeploymentRequest, sender string) {
 func handleGpuDeployment(depReq models.DeploymentRequest, sender string) {
 	depResp := models.DeploymentResponse{}
 
-	callID := statsdb.GetCallID()
+	callID := float32(1234) //statsdb.GetCallID() //XXX: Using dummy value until StatsDB works - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 	peerIDOfServiceHost := depReq.Params.NodeID
-	timeStamp := float32(statsdb.GetTimestamp())
+	//timeStamp := float32(statsdb.GetTimestamp()) //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 	status := "accepted"
 
-	ServiceCallParams := models.ServiceCall{
-		CallID:              callID,
-		PeerIDOfServiceHost: peerIDOfServiceHost,
-		ServiceID:           depReq.ServiceType,
-		CPUUsed:             float32(depReq.Constraints.CPU),
-		MaxRAM:              float32(depReq.Constraints.Vram),
-		MemoryUsed:          float32(depReq.Constraints.RAM),
-		NetworkBwUsed:       0.0,
-		TimeTaken:           0.0,
-		Status:              status,
-		Timestamp:           timeStamp,
-	}
-	statsdb.ServiceCall(ServiceCallParams)
+	// ServiceCallParams := models.ServiceCall{ //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+	// 	CallID:              callID,
+	// 	PeerIDOfServiceHost: peerIDOfServiceHost,
+	// 	ServiceID:           depReq.ServiceType,
+	// 	CPUUsed:             float32(depReq.Constraints.CPU),
+	// 	MaxRAM:              float32(depReq.Constraints.Vram),
+	// 	MemoryUsed:          float32(depReq.Constraints.RAM),
+	// 	NetworkBwUsed:       0.0,
+	// 	TimeTaken:           0.0,
+	// 	Status:              status,
+	// 	Timestamp:           timeStamp,
+	// }
+	// statsdb.ServiceCall(ServiceCallParams) //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 
 	requestTracker := models.RequestTracker{
 		ServiceType: depReq.ServiceType,

@@ -20,6 +20,13 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.40](#137)
+
+### Added
+- Reduced DHT update interval
+
+### Removed
+- Calls to StatsDB in GPU deployment. Refer to #138
 
 ## [0.4.39](#124)
 
