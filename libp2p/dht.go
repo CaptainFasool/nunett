@@ -48,8 +48,9 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 		return err
 	}
 
-	for _, p := range dht.GetDefaultBootstrapPeerAddrInfos() {
-		if err := node.Connect(ctx, p); err != nil {
+	for _, nb := range NuNetBootstrapPeers {
+		p, _ := peer.AddrInfoFromP2pAddr(nb)
+		if err := node.Connect(ctx, *p); err != nil {
 			zlog.Sugar().Errorf("failed to connect to bootstrap node %v\n", p.ID)
 		} else {
 			zlog.Sugar().Infof("Connected to Bootstrap Node %v\n", p.ID)
