@@ -68,7 +68,7 @@ func GetTimestamp() int64 {
 func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) error {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Fatalf("did not connect: %v", err)
+		zlog.Sugar().Errorf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -97,7 +97,7 @@ func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) error {
 func ServiceCall(inputData models.ServiceCall) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Fatalf("did not connect: %v", err)
+		zlog.Sugar().Errorf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -117,7 +117,7 @@ func ServiceCall(inputData models.ServiceCall) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Fatalf("connection failed: %v", err)
+		zlog.Sugar().Errorf("connection failed: %v", err)
 	}
 	zlog.Sugar().Infof("Responding: %s", res.Response)
 
@@ -127,7 +127,7 @@ func ServiceCall(inputData models.ServiceCall) {
 func ServiceRun(inputData models.ServiceRun) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Fatalf("did not connect: %v", err)
+		zlog.Sugar().Errorf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -142,7 +142,7 @@ func ServiceRun(inputData models.ServiceRun) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Fatalf("connection failed: %v", err)
+		zlog.Sugar().Errorf("connection failed: %v", err)
 	}
 	zlog.Sugar().Infof("Responding: %s", res.Response)
 }
@@ -152,7 +152,7 @@ func HeartBeat(peerID string, addr string) {
 	for {
 		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			zlog.Sugar().Fatalf("did not connect: %v", err)
+			zlog.Sugar().Errorf("did not connect: %v", err)
 		}
 
 		client := pb.NewEventListenerClient(conn)
@@ -162,7 +162,7 @@ func HeartBeat(peerID string, addr string) {
 		})
 
 		if err != nil {
-			zlog.Sugar().Fatalf("connection failed: %v", err)
+			zlog.Sugar().Errorf("connection failed: %v", err)
 		}
 		zlog.Sugar().Infof("Responding: %s", res.PeerId)
 
@@ -183,7 +183,7 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Fatalf("did not connect: %v", err)
+		zlog.Sugar().Errorf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -197,7 +197,7 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Fatalf("connection failed: %v", err)
+		zlog.Sugar().Errorf("connection failed: %v", err)
 	}
 
 	zlog.Sugar().Infof("Responding: %s", res.PeerId)

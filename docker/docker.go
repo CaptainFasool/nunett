@@ -21,7 +21,7 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
+	//"gitlab.com/nunet/device-management-service/statsdb" //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 )
 
 const (
@@ -122,14 +122,14 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	if res := db.DB.Where("node_id = ?", peerIDOfServiceHost).Find(&requestTracker); res.RowsAffected == 0 {
 		panic("Service Not Found for Deployment")
 	}
-	ServiceRunParams := models.ServiceRun{
-		CallID:              requestTracker.CallID,
-		PeerIDOfServiceHost: peerIDOfServiceHost,
-		Status:              status,
-		Timestamp:           float32(statsdb.GetTimestamp()),
-	}
+	// ServiceRunParams := models.ServiceRun{  //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+	// 	CallID:              requestTracker.CallID,
+	// 	PeerIDOfServiceHost: peerIDOfServiceHost,
+	// 	Status:              status,
+	// 	Timestamp:           float32(statsdb.GetTimestamp()),
+	// }
 
-	statsdb.ServiceRun(ServiceRunParams)
+	//statsdb.ServiceRun(ServiceRunParams) //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 	//update RequestTracker
 	requestTracker.Status = status
 	requestTracker.RequestID = resp.ID
@@ -181,12 +181,12 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 				panic("Service Not Found for Deployment")
 			}
 
-			ServiceRunParams.CallID = requestTracker.CallID
-			ServiceRunParams.PeerIDOfServiceHost = requestTracker.NodeID
-			ServiceRunParams.Status = "unknown"
-			ServiceRunParams.Timestamp = float32(statsdb.GetTimestamp())
+			// ServiceRunParams.CallID = requestTracker.CallID  //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+			// ServiceRunParams.PeerIDOfServiceHost = requestTracker.NodeID
+			// ServiceRunParams.Status = "unknown"
+			// ServiceRunParams.Timestamp = float32(statsdb.GetTimestamp())
 
-			statsdb.ServiceRun(ServiceRunParams)
+			// statsdb.ServiceRun(ServiceRunParams) //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 			requestTracker.Status = "unknown"
 			res := db.DB.Model(&models.RequestTracker{}).Where("request_id = ?", resp.ID).Updates(requestTracker)
 			if res.Error != nil {
@@ -201,27 +201,27 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 				panic("Service Not Found for Deployment")
 			}
 			if depRes.Success {
-				ServiceCallParams := models.ServiceCall{
-					CallID:              requestTracker.CallID,
-					PeerIDOfServiceHost: requestTracker.NodeID,
-					ServiceID:           requestTracker.ServiceType,
-					CPUUsed:             float32(maxUsedCPU),
-					MaxRAM:              float32(depReq.Constraints.Vram),
-					MemoryUsed:          float32(maxUsedRAM),
-					NetworkBwUsed:       0.0,
-					TimeTaken:           0.0,
-					Status:              "success",
-					Timestamp:           float32(statsdb.GetTimestamp()),
-				}
-				statsdb.ServiceCall(ServiceCallParams)
+				// ServiceCallParams := models.ServiceCall{   //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+				// 	CallID:              requestTracker.CallID,
+				// 	PeerIDOfServiceHost: requestTracker.NodeID,
+				// 	ServiceID:           requestTracker.ServiceType,
+				// 	CPUUsed:             float32(maxUsedCPU),
+				// 	MaxRAM:              float32(depReq.Constraints.Vram),
+				// 	MemoryUsed:          float32(maxUsedRAM),
+				// 	NetworkBwUsed:       0.0,
+				// 	TimeTaken:           0.0,
+				// 	Status:              "success",
+				// 	Timestamp:           float32(statsdb.GetTimestamp()),
+				// }
+				// statsdb.ServiceCall(ServiceCallParams)
 				requestTracker.Status = "success"
 			} else if !depRes.Success {
-				ServiceRunParams.CallID = requestTracker.CallID
-				ServiceRunParams.PeerIDOfServiceHost = requestTracker.NodeID
-				ServiceRunParams.Status = "failed"
-				ServiceRunParams.Timestamp = float32(statsdb.GetTimestamp())
+				// ServiceRunParams.CallID = requestTracker.CallID   //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+				// ServiceRunParams.PeerIDOfServiceHost = requestTracker.NodeID
+				// ServiceRunParams.Status = "failed"
+				// ServiceRunParams.Timestamp = float32(statsdb.GetTimestamp())
 
-				statsdb.ServiceRun(ServiceRunParams)
+				// statsdb.ServiceRun(ServiceRunParams)
 				requestTracker.Status = "failed"
 			}
 
