@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.37](#105)
+
+### Added
+- NuNet Hosted Bootstrap Servers
 ## [0.4.36](#135)
 
 ### Added
