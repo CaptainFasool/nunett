@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.36](#135)
+
+### Added
+- Server mode to disable local network scan on datacenters
 ## [0.4.35](#132)
 
 ### Added

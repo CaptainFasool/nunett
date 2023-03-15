@@ -82,6 +82,9 @@ onboard_usage() {
     echo "                               'nunet-staging' - Staging branch for Community Testers"
     echo "    -a, --address          Wallet Address (Public Key)"
     echo "    -C, --cardano          Allow deployment of a Cardano Node"
+    echo "    -l, --local-enable     Enable Using Private Addresses. By default, server mode is enabled"
+    echo "                           which prevents the DMS from scanning local networkk. It's recommended"
+    echo "                           that users don't enable local addresses when running in datacenters."
     echo "    -v, --verbose          Verbose output"
     echo -e "    -p, --pretty           Prettified JSON output\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
@@ -277,10 +280,11 @@ wallet() {
 }
 
 onboard() {
-    N_ONBOARD_OPTS=$(getopt -a -n nunet-onboard -o m:c:n:a:Cvp: --long memory:,cpu:,nunet-channel:,address:,cardano,verbose,pretty -- "$@")
+    N_ONBOARD_OPTS=$(getopt -a -n nunet-onboard -o m:c:n:a:Clvp: --long memory:,cpu:,nunet-channel:,address:,cardano,local-enable,verbose,pretty -- "$@")
     eval set -- "$N_ONBOARD_OPTS"
 
     N_ONBOARD_CARDANO=false
+    N_ONBOARD_SERVER_MODE=true
 
     if [[ ${#@} -le 1 ]] ; then
         onboard_usage
@@ -289,13 +293,14 @@ onboard() {
     while :
         do
             case "$1" in
-                -m | --memory)        N_ONBOARD_MEM="$2"  ; shift 2 ;;
-                -c | --cpu)           N_ONBOARD_CPU="$2"  ; shift 2 ;;
-                -n | --nunet-channel) N_ONBOARD_CHAN="$2" ; shift 2 ;;
-                -a | --address)       N_ONBOARD_ADD="$2"  ; shift 2 ;;
-                -C | --cardano)       N_ONBOARD_CARDANO=true ; shift ;;
-                -v | --verbose)       N_ONBOARD_VERBOSE=1 ; shift ;;
-                -p | --pretty)        N_ONBOARD_PRETTY=1  ; shift ;;
+                -m | --memory)        N_ONBOARD_MEM="$2"         ; shift 2 ;;
+                -c | --cpu)           N_ONBOARD_CPU="$2"         ; shift 2 ;;
+                -n | --nunet-channel) N_ONBOARD_CHAN="$2"        ; shift 2 ;;
+                -a | --address)       N_ONBOARD_ADD="$2"         ; shift 2 ;;
+                -C | --cardano)       N_ONBOARD_CARDANO=true     ; shift ;;
+                -l | --local-enable)        N_ONBOARD_SERVER_MODE=false ; shift ;;
+                -v | --verbose)       N_ONBOARD_VERBOSE=1        ; shift ;;
+                -p | --pretty)        N_ONBOARD_PRETTY=1         ; shift ;;
                 --) shift; break ;;
                 *) echo "Unexpected option: $1."
                     onboard_usage ;;
@@ -340,7 +345,7 @@ onboard() {
         N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
             -d "{\"memory\": $N_ONBOARD_MEM, \"cpu\": $N_ONBOARD_CPU, \
             \"channel\":\"$N_ONBOARD_CHAN\", \"payment_addr\": \"$N_ONBOARD_ADD\", \
-            \"cardano\": $N_ONBOARD_CARDANO}" \
+            \"cardano\": $N_ONBOARD_CARDANO, \"server_mode\": $N_ONBOARD_SERVER_MODE}" \
             $DMS_HOST:$DMS_PORT/api/v1/onboarding/onboard)
         # check if error
         N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq '. | select(.error != null) | .error')
