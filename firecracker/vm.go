@@ -16,10 +16,13 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
+// RunPreviouslyRunningVMs runs `runFromConfig` for every firecracker VM record found in
+// local DB which are marked `running`.
 func RunPreviouslyRunningVMs() error {
 	var vms []models.VirtualMachine
 
@@ -35,6 +38,7 @@ func RunPreviouslyRunningVMs() error {
 	return nil
 }
 
+// GenerateSocketFile generates a path for socket file to be used for communication with firecracker.
 func GenerateSocketFile(n int) string {
 	prefix := "/etc/nunet/sockets/"
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -150,6 +154,7 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 	db.DB.Save(&vm)
 
 	telemetry.CalcFreeResources()
+	libp2p.UpdateDHT()
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "VM started successfully.",
@@ -170,4 +175,5 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 	db.DB.Save(&vm)
 
 	telemetry.CalcFreeResources()
+	libp2p.UpdateDHT()
 }

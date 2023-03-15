@@ -15,7 +15,6 @@ SELF_NAME=$(basename $0)
 
 DMS_HOST=localhost
 DMS_PORT=9999
-ADAPTER_PORT=60777
 
 usage() {
     echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
@@ -32,6 +31,7 @@ usage() {
     echo "  onboard-ml    Prepare the system for Machine Learning with GPU"
     echo "  shell         Send commands and receive answers to a vm instance via DMS"
     echo "  peer          Interact with currently visible peers"
+    echo "  chat          Start,Join or List Chat Requests"
     echo -e "  log           Returns the path of an archive containing all log files\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
@@ -82,6 +82,9 @@ onboard_usage() {
     echo "                               'nunet-staging' - Staging branch for Community Testers"
     echo "    -a, --address          Wallet Address (Public Key)"
     echo "    -C, --cardano          Allow deployment of a Cardano Node"
+    echo "    -l, --local-enable     Enable Using Private Addresses. By default, server mode is enabled"
+    echo "                           which prevents the DMS from scanning local networkk. It's recommended"
+    echo "                           that users don't enable local addresses when running in datacenters."
     echo "    -v, --verbose          Verbose output"
     echo -e "    -p, --pretty           Prettified JSON output\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
@@ -92,7 +95,34 @@ peer_usage() {
     echo -e "Usage: $SELF_NAME peer COMMAND [OPTIONS] \n"
     echo -e "Interact with connected peers.\n"
     echo "Commands:"
-    echo -e "  list         List visible peers.\n"
+    echo "  list         List visible peers."
+    echo -e "  self         Show self peer info.\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+chat_usage() {
+    echo -e "Usage: $SELF_NAME chat COMMAND \n"
+    echo -e "Chat With Peers.\n"
+    echo "Commands:"
+    echo "  start        Start Chat With Peer."
+    echo "  list         List Open Chat Requests."
+    echo "  clear        Clear Open Chat Requests."
+    echo -e "  join         Join a Chat Stream Using Request ID."
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+chat_start_usage() {
+    echo -e "Usage: $SELF_NAME chat start <PEER_ID> \n"
+    echo -e "Start a chat request to PEER_ID.\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+chat_join_usage() {
+    echo -e "Usage: $SELF_NAME chat join <REQUEST_ID> \n"
+    echo -e "Join a chat request by another peer.\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -250,10 +280,11 @@ wallet() {
 }
 
 onboard() {
-    N_ONBOARD_OPTS=$(getopt -a -n nunet-onboard -o m:c:n:a:Cvp: --long memory:,cpu:,nunet-channel:,address:,cardano,verbose,pretty -- "$@")
+    N_ONBOARD_OPTS=$(getopt -a -n nunet-onboard -o m:c:n:a:Clvp: --long memory:,cpu:,nunet-channel:,address:,cardano,local-enable,verbose,pretty -- "$@")
     eval set -- "$N_ONBOARD_OPTS"
 
     N_ONBOARD_CARDANO=false
+    N_ONBOARD_SERVER_MODE=true
 
     if [[ ${#@} -le 1 ]] ; then
         onboard_usage
@@ -262,18 +293,20 @@ onboard() {
     while :
         do
             case "$1" in
-                -m | --memory)        N_ONBOARD_MEM="$2"  ; shift 2 ;;
-                -c | --cpu)           N_ONBOARD_CPU="$2"  ; shift 2 ;;
-                -n | --nunet-channel) N_ONBOARD_CHAN="$2" ; shift 2 ;;
-                -a | --address)       N_ONBOARD_ADD="$2"  ; shift 2 ;;
-                -C | --cardano)       N_ONBOARD_CARDANO=true ; shift ;;
-                -v | --verbose)       N_ONBOARD_VERBOSE=1 ; shift ;;
-                -p | --pretty)        N_ONBOARD_PRETTY=1  ; shift ;;
+                -m | --memory)        N_ONBOARD_MEM="$2"         ; shift 2 ;;
+                -c | --cpu)           N_ONBOARD_CPU="$2"         ; shift 2 ;;
+                -n | --nunet-channel) N_ONBOARD_CHAN="$2"        ; shift 2 ;;
+                -a | --address)       N_ONBOARD_ADD="$2"         ; shift 2 ;;
+                -C | --cardano)       N_ONBOARD_CARDANO=true     ; shift ;;
+                -l | --local-enable)        N_ONBOARD_SERVER_MODE=false ; shift ;;
+                -v | --verbose)       N_ONBOARD_VERBOSE=1        ; shift ;;
+                -p | --pretty)        N_ONBOARD_PRETTY=1         ; shift ;;
                 --) shift; break ;;
                 *) echo "Unexpected option: $1."
                     onboard_usage ;;
             esac
     done
+
 
     # validation
     [[ -z $N_ONBOARD_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && onboard_usage
@@ -312,7 +345,7 @@ onboard() {
         N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
             -d "{\"memory\": $N_ONBOARD_MEM, \"cpu\": $N_ONBOARD_CPU, \
             \"channel\":\"$N_ONBOARD_CHAN\", \"payment_addr\": \"$N_ONBOARD_ADD\", \
-            \"cardano\": $N_ONBOARD_CARDANO}" \
+            \"cardano\": $N_ONBOARD_CARDANO, \"server_mode\": $N_ONBOARD_SERVER_MODE}" \
             $DMS_HOST:$DMS_PORT/api/v1/onboarding/onboard)
         # check if error
         N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq '. | select(.error != null) | .error')
@@ -396,6 +429,9 @@ peer() {
                 "list")
                     N_LIST_PEERS=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers)
                     ;;
+                "self")
+                    N_SELF_PEER=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/self)
+                    ;;
                 *)
                     printf "${BAD_C}Bad argument \"$avarg\" for 'peer' Command. ${NORMAL_C}\n\n"
                     peer_usage
@@ -405,14 +441,84 @@ peer() {
         done
     fi
 
-    if [[ ! -z $N_LIST_PEERS_ERR_MSG ]] ; then
-        printf "${BAD_C}Error: $N_LIST_PEERS_ERR_MSG ${NORMAL_C}\n"
-    elif [[ N_LIST_PEERS == "" ]] ; then
-        printf "${BAD_C}No peers available. Please try again in a few minutes.${NORMAL_C}\n"
-    else
-        echo $N_LIST_PEERS | jq --raw-output '["Peer-ID", "Listen-Addresses"], ["-------", "----------"], (.[] | [.ID, .Addrs[] | select(length > 0)]) | @tsv' | column -t
+    if [[ -v N_LIST_PEERS ]] ; then
+        N_LIST_PEERS_ERR_MSG=$(echo $N_LIST_PEERS | jq '. | select(.error != null) | .error' 2>/dev/null)
+        if [[ ! -z "$N_LIST_PEERS_ERR_MSG" ]] ; then
+            printf "${BAD_C}Error: $N_LIST_PEERS_ERR_MSG ${NORMAL_C}\n"
+        elif [[ N_LIST_PEERS == "" ]] ; then
+            printf "${BAD_C}No peers available. Please try again in a few minutes.${NORMAL_C}\n"
+        else
+            # echo $N_LIST_PEERS | jq --raw-output '(.[] | [.ID, ([.Addrs[]] | select(length > 0) | join(" , "))]) | map( gsub("\t";"\t") ) | join("|")' | column -t -N "ID,Listening Addresses" -c 150 -W2 --separator "|"
+            echo $N_LIST_PEERS | jq --raw-output '(.[] | .ID)'
+        fi
+    elif [[ -v N_SELF_PEER ]] ; then
+        N_SELF_PEER_ERR_MSG=$(echo $N_SELF_PEER | jq '. | select(.error != null) | .error')
+        if [[ -z "$N_SELF_PEER_ERR_MSG" ]] ; then
+            # echo $N_SELF_PEER | jq --raw-output '(. | [.ID, ([.Addrs[]] | select(length > 0) | join(" , "))]) | map( gsub("\t";"\t") ) | join("|")' | column -t -N "ID,Listening Addresses" -c 150 -W2 --separator "|"
+            echo $N_SELF_PEER | jq --raw-output '(. | [.ID, ([.Addrs[]] | select(length > 0) | join(" , "))]) | map( gsub("\t";"\t") ) | join("   ")'
+        else
+            printf "${BAD_C}Error: $N_SELF_PEER_ERR_MSG ${NORMAL_C}\n"
+        fi
     fi
 }
+
+
+chat_start() {
+    if [[ ${#@} -eq 1 ]] ; then
+        websocat -Et "ws://$DMS_HOST:$DMS_PORT/api/v1/peers/chat/start?peerID=$1"
+    else
+        chat_start_usage
+    fi
+}
+
+
+chat_list() {
+    N_CHAT_LIST=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/chat)
+    N_CHAT_LIST_ERR_MSG=$(echo $N_CHAT_LIST | jq '. | select(.error != null) | .error' 2>/dev/null)
+    if [[ -z "$N_CHAT_LIST_ERR_MSG" ]] ; then
+        echo $N_CHAT_LIST | jq --raw-output '["ID", "Time-Opened"],(.[] | [.ID , .TimeOpened]) | @tsv'
+    else
+        printf "${BAD_C}Error: $N_CHAT_LIST_ERR_MSG ${NORMAL_C}\n"
+    fi
+}
+
+chat_clear() {
+    N_CHAT_CLEAR=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/chat/clear)
+    N_CHAT_CLEAR_ERR_MSG=$(echo $N_CHAT_CLEAR | jq '. | select(.error != null) | .error' 2>/dev/null)
+    if [[ -z "$N_CHAT_CLEAR_ERR_MSG" ]] ; then
+        echo $N_CHAT_CLEAR | jq '. | select(.message != null) | .message' 2>/dev/null
+    else
+        printf "${BAD_C}Error: $N_CHAT_CLEAR_ERR_MSG ${NORMAL_C}\n"
+    fi
+}
+
+chat_join() {
+    if [[ ${#@} -eq 1 ]] ; then
+        websocat -Et "ws://$DMS_HOST:$DMS_PORT/api/v1/peers/chat/join?streamID=$1"
+    else
+        chat_join_usage
+    fi
+}
+
+
+chat() {
+    if [[ ${#@} -lt 1 ]] ; then
+        chat_usage
+    fi
+
+    args=($@)
+    subcmd=$1
+
+    chatsubcmds=("start" "list" "join" "clear") # list of sub-sub-commands for chat sub-command
+
+    if [[ " ${chatsubcmds[*]} " =~ " ${subcmd} " ]] ; then
+       chat_$subcmd ${args[@]:1}
+    else
+        printf "${BAD_C}Uknown Argument.${NORMAL_C}\n"
+        chat_usage
+    fi
+}
+
 
 secure_boot_check() {
     #Check for Secure Boot before proceeding with GPU driver installation, alert user with necessary information if yes.
@@ -549,7 +655,7 @@ shell(){
     # echo "to install on ubuntu run the following:"
     # echo "sudo wget -qO /usr/local/bin/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl"
     if [[ "$1" = "--node-id" &&  $# -eq 2 ]]; then
-        websocat ws://127.0.0.1:9999/api/v1/peers/ws?nodeID=$2
+        websocat ws://$DMS_HOST:$DMS_PORT/api/v1/peers/ws?nodeID=$2
     else
         echo "Please enter a --node-id <the-node-id>"
     fi
@@ -558,7 +664,6 @@ shell(){
 log(){
     echo -e "Collecting logs.. \n"
     mkdir -m 777 -p /tmp/nunet-log/dms-log
-    mkdir -m 777 -p /tmp/nunet-log/adapter-log
     nunet_log_dir='/tmp/nunet-log'
     # collect DMS log and save it to files based on boot number
     num_of_boot=$(journalctl -u nunet-dms  --list-boots -r | wc -l)
@@ -568,19 +673,11 @@ log(){
             journalctl -u nunet-dms -b $num > $nunet_log_dir/dms-log/dms_log.$num
         fi
     done
-    #access adapter log
-    cont_id=$(docker ps | grep nunet-adapter | awk '{ print $1 }')
-    if [ -z "$cont_id" ]; then
-        printf "Looks like NuNet Adapter is not running." > $nunet_log_dir/adapter-log/nunet-adapter.log
-    else
-        docker cp $cont_id:/NUNET-ADAPTER/nunet-adapter.log $nunet_log_dir/adapter-log/nunet-adapter.log
-    fi
 
     #archive all the logs and retorn path
     tar -cf $nunet_log_dir/nunet-log.tar --exclude=$nunet_log_dir/nunet-log.tar -P $nunet_log_dir
     if [ $? -eq 0 ]; then
            rm -r $nunet_log_dir/dms-log
-        rm -r $nunet_log_dir/adapter-log
     fi
 
     echo -e "$nunet_log_dir/nunet-log.tar \n"
@@ -596,17 +693,8 @@ check_dms_run() {
     fi
 }
 
-check_adapter_run() {
-    N_CHECK_ADAPTER=$(ss -tnlp 2>/dev/null | grep ":$ADAPTER_PORT")
-    if [[ ! $? -eq 0 ]] ; then
-        printf "${BAD_C}Looks like NuNet Adapter is not running."
-        printf "Please check with ${INFO_C}'docker ps -a | grep adapter'${NORMAL_C}\n"
-        exit
-    fi
-}
 
-
-cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "log")
+cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log")
 
 if [ $# -eq  0 ] ; then
     usage

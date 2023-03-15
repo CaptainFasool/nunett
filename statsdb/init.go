@@ -1,4 +1,4 @@
-package machines
+package statsdb
 
 import (
 	"gitlab.com/nunet/device-management-service/internal/logger"
@@ -7,5 +7,5 @@ import (
 var zlog *logger.Logger
 
 func init() {
-	zlog = logger.New("adapter/machines")
+	zlog = logger.New("statsdb/")
 }

@@ -5,13 +5,14 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/db"
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
-	"gitlab.com/nunet/device-management-service/internal"
+	"gitlab.com/nunet/device-management-service/internal/messaging"
+	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -19,7 +20,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.29
+// @version         0.4.39
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -36,17 +37,18 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
-	go startServer(wg)
-	go internal.SendCommandForExecution()
+	cleanup := tracing.InitTracer()
+	defer cleanup(context.Background())
 
-	// Start listening for new messages coming via adapter
-	go adapter.StartMessageReceiver()
+	go startServer(wg)
+
+	go messaging.DeploymentWorker()
 
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
 
 	//export traces to jaeger
-	tp, _ := adapter.TracerProvider("http://testserver.nunet.io:14268/api/traces")
+	tp, _ := libp2p.TracerProvider("http://testserver.nunet.io:14268/api/traces")
 
 	otel.SetTracerProvider(tp)
 	defer func() {
@@ -67,6 +69,8 @@ func startServer(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	router := routes.SetupRouter()
+	router.Use(otelgin.Middleware(tracing.ServiceName))
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	db.ConnectDatabase()

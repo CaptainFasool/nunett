@@ -1,6 +1,7 @@
 package db
 
 import (
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"gitlab.com/nunet/device-management-service/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -26,4 +27,7 @@ func ConnectDatabase() {
 	database.AutoMigrate(&models.Libp2pInfo{})
 
 	DB = database
+	if err := DB.Use(otelgorm.NewPlugin()); err != nil {
+		panic(err)
+	}
 }

@@ -1,4 +1,4 @@
-- hosts: all
+- hosts: dms_test_hz_machines
   become: true
   name: Deploy DMS to machine
 
@@ -44,7 +44,7 @@
 
     - name: Create wallet address if not exists
       ansible.builtin.shell:
-        cmd: nunet wallet new > "{{ nunet_dms_wallet_address_path }}"
+        cmd: nunet wallet new -c > "{{ nunet_dms_wallet_address_path }}"
       register: nunet_wallet
       when: not nunet_wallet_file.stat.exists
 
@@ -67,7 +67,22 @@
         device_resources: "{{ nunet_available_result.stdout | from_json }}"
 
     - name: Onboard machine
-      ansible.builtin.include_tasks: onboard.yaml
+      block:
+        - name: Onboard machine as a compute provider
+          when: (device_resources.memory / 2 | round) > nunet_dms_mem_threshold
+          ansible.builtin.expect:
+            command: 'nunet onboard -m {{ (device_resources.memory / 2 | round) | int }} -c {{ (device_resources.cpu / 2 | round) | int }} -n {{ nunet_dms_nunet_channel }} -a {{ nunet_wallet.address }} -C'
+            responses:
+              Are you sure you want to join(?i): 'yes'
+            echo: true
+
+        - name: Onboard machine as a service provider
+          when: (device_resources.memory / 2 | round) < nunet_dms_mem_threshold
+          ansible.builtin.expect:
+            command: 'nunet onboard -m {{ (device_resources.memory/2 | round) | int }} -c {{ (device_resources.cpu/2 | round) | int }} -n {{ nunet_dms_nunet_channel }} -a {{ nunet_wallet.address }}'
+            responses:
+              Are you sure you want to join(?i): 'yes'
+            echo: true
 
     - name: Check that machine is onboarded
       ansible.builtin.wait_for:
@@ -77,20 +92,3 @@
       ansible.builtin.systemd:
         name: nunet-dms
         state: started
-
-    - name: Check that nunet adapter container is running
-      community.docker.docker_container_info:
-        name: "{{ 'testing' if nunet_dms_nunet_channel == 'nunet-development' else 'mainnet' }}-nunet-adapter-{{ ansible_nodename }}"
-      register: nunet_adapter_state
-
-    - name: Manual fix for docker container not starting
-      when: not nunet_adapter_state.exists
-      block:
-        - name: Pull container image if adapter not running
-          community.docker.docker_image:
-            name: "registry.gitlab.com/nunet/nunet-adapter:{{ 'test' if nunet_dms_nunet_channel == 'nunet-development' else 'prod' }}"
-            state: present
-            source: pull
-
-        - name: Re-onboard machine
-          ansible.builtin.include_tasks: onboard.yaml

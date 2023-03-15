@@ -1,68 +1,222 @@
 package libp2p
 
 import (
-	"context"
+	"bufio"
+	"fmt"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/host"
-	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/models"
+	"github.com/gorilla/websocket"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/multiformats/go-multiaddr"
+	"gitlab.com/nunet/device-management-service/internal"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
-var Node host.Host
-var DHT *dht.IpfsDHT
-var Ctx context.Context
-
-func CheckOnboarding() {
-	// Checks for saved metadata and create a new host
-	var libp2pInfo models.Libp2pInfo
-	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
-	if result.Error != nil {
-		zlog.Sugar().Fatalf("Error Reading Database for Node Info: %s\n", result.Error.Error())
-	}
-	if libp2pInfo.PrivateKey != nil {
-		// Recreate private key
-		priv, err := crypto.UnmarshalPrivateKey(libp2pInfo.PrivateKey)
-		if err != nil {
-			zlog.Sugar().Fatalf("Error Reading Privatekey: %s\n", err.Error())
-		}
-		RunNode(priv)
-	}
-}
-
-func RunNode(priv crypto.PrivKey) {
-	ctx := context.Background()
-
-	host, dht, err := NewHost(ctx, 9000, priv)
-	if err != nil {
-		zlog.Sugar().Fatalf("Error Creating Host: %s\n", err.Error())
-	}
-	err = Bootstrap(ctx, host, dht)
-	if err != nil {
-		zlog.Sugar().Fatalf("Error During Bootstrap: %s\n", err.Error())
-	}
-	go Discover(ctx, host, dht, "nunet")
-	Node = host
-	DHT = dht
-	Ctx = ctx
-}
+var clients = make(map[internal.WebSocketConnection]string)
 
 // ListPeers  godoc
 // @Summary      Return list of peers currently connected to
 // @Description  Gets a list of peers the libp2p node can see within the network and return a list of peers
-// @Tags         run
+// @Tags         p2p
 // @Produce      json
 // @Success      200  {string}	string
 // @Router       /peers [get]
 func ListPeers(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers"))
 
-	peers, err := getPeers(Ctx, Node, DHT, "nunet")
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+	peers, err := p2p.getPeers(c, "nunet")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "can not fetch peers"})
 		zlog.Sugar().Fatalf("Error Can Not Fetch Peers: %s\n", err.Error())
+		return
 	}
 	c.JSON(200, peers)
 
+}
+
+// SelfPeerInfo  godoc
+// @Summary      Return self peer info
+// @Description  Gets self peer info of libp2p node
+// @Tags         p2p
+// @Produce      json
+// @Success      200  {string}	string
+// @Router       /peers/self [get]
+func SelfPeerInfo(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/self"))
+
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+
+	out := struct {
+		ID    string
+		Addrs []multiaddr.Multiaddr
+	}{
+		p2p.Host.ID().String(),
+		p2p.Host.Addrs(),
+	}
+
+	c.JSON(200, out)
+}
+
+// ListChatHandler  godoc
+// @Summary      List chat requests
+// @Description  Get a list of chat requests from peers
+// @Tags         chat
+// @Produce      json
+// @Success      200
+// @Router       /peers/chat [get]
+func ListChatHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/chat"))
+
+	chatRequests, err := incomingChatRequests()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, chatRequests)
+}
+
+// ClearChatHandler  godoc
+// @Summary      Clear chat requests
+// @Description  Clear chat request streams from peers
+// @Tags         chat
+// @Produce      json
+// @Success      200
+// @Router       /peers/chat/clear [get]
+func ClearChatHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/chat/clear"))
+
+	if err := clearIncomingChatRequests(); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound Chat Requests."})
+}
+
+// StartChatHandler  godoc
+// @Summary      Start chat with a peer
+// @Description  Start chat session with a peer
+// @Tags         chat
+// @Success      200
+// @Router       /peers/chat/start [get]
+func StartChatHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/chat/start"))
+
+	peerID := c.Query("peerID")
+
+	if len(peerID) == 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peerID not provided"})
+		return
+	}
+	if peerID == p2p.Host.ID().String() {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peerID can not be self peerID"})
+		return
+	}
+
+	p, err := peer.Decode(peerID)
+	if err != nil {
+		zlog.Sugar().Errorln("Could not decode string ID to peerID:", err)
+		c.AbortWithStatusJSON(400, gin.H{"error": "Could not decode string ID to peerID"})
+		return
+	}
+
+	stream, err := p2p.Host.NewStream(c, p, protocol.ID(ChatProtocolID))
+	if err != nil {
+		zlog.Sugar().Errorln("Could not create stream with peer - ", err)
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Could not create stream with peer - %v", err)})
+		return
+	}
+
+	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to set websocket upgrade: %+v\n", err)
+		return
+	}
+
+	welcomeMessage := fmt.Sprintf("Enter the message that you wish to send to %s and press return.", peerID)
+
+	err = ws.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
+	if err != nil {
+		zlog.Sugar().Error(err)
+	}
+
+	conn := internal.WebSocketConnection{Conn: ws}
+	clients[conn] = peerID
+
+	r := bufio.NewReader(stream)
+	w := bufio.NewWriter(stream)
+
+	go SockReadStreamWrite(&conn, stream, w)
+	go StreamReadSockWrite(&conn, stream, r)
+}
+
+// JoinChatHandler  godoc
+// @Summary      Join chat with a peer
+// @Description  Join a chat session started by a peer
+// @Tags         chat
+// @Success      200
+// @Router       /peers/chat/join [get]
+func JoinChatHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/chat/join"))
+
+	streamReqID := c.Query("streamID")
+	if streamReqID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "Stream ID not provided"})
+		return
+	}
+
+	streamID, err := strconv.Atoi(streamReqID)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Invalid Stream ID: %v", streamReqID)})
+		return
+	}
+
+	if streamID >= len(inboundChatStreams) {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Unknown Stream ID: %v", streamID)})
+		return
+	}
+
+	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to set websocket upgrade: %+v\n", err)
+		return
+	}
+
+	welcomeMessage := "Enter the message that you wish to send and press return."
+
+	err = ws.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
+	if err != nil {
+		zlog.Sugar().Error(err)
+	}
+
+	conn := internal.WebSocketConnection{Conn: ws}
+	clients[conn] = streamReqID
+
+	stream := inboundChatStreams[int(streamID)]
+	copy(inboundChatStreams[streamID:], inboundChatStreams[streamID+1:])
+	inboundChatStreams[len(inboundChatStreams)-1] = nil
+	inboundChatStreams = inboundChatStreams[:len(inboundChatStreams)-1]
+
+	r := bufio.NewReader(stream)
+	w := bufio.NewWriter(stream)
+
+	go SockReadStreamWrite(&conn, stream, w)
+	go StreamReadSockWrite(&conn, stream, r)
 }

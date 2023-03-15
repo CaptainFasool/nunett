@@ -1,4 +1,4 @@
-package adapter
+package machines
 
 // This file replicates the schema of DHTContents for marshaling and unmarshaling
 // Currently, the entire schema is divided into 3 parts:

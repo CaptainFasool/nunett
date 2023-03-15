@@ -20,7 +20,52 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
-## [0.4.30](#116)
+
+## [0.4.39](#124)
+
+### Added
+- Included pre-commit hook and a dev-setup.sh.
+### Changed
+- Fix for CORS error.
+## [0.4.38](#133)
+
+### Added
+- Use public key from DB instead of attempting to extract from ID
+## [0.4.37](#105)
+
+### Added
+- NuNet Hosted Bootstrap Servers
+## [0.4.36](#135)
+
+### Added
+- Server mode to disable local network scan on datacenters
+## [0.4.35](#132)
+
+### Added
+- Detect GPU while onboarding and update GPU flag on DHT
+
+## [0.4.34](#115)
+
+### Added
+- Instrumentation
+## [0.4.33](#119)
+
+### Removed
+- Removed all NuNet Adapter usage and installation
+## [0.4.32](#129)
+
+### Added
+- Sending DHT updates periodically
+## [0.4.31](#107)
+
+### Added
+- Deployment request with libp2p messaging
+- Simple chat between peers using CLI
+## [0.4.30](#106)
+
+### Added
+- Implemented DHT on libp2p with similar schema to the nunet adapter
+- Helper functions to query the libp2p DHT
 
 ## [0.4.29](nunet/ml-on-gpu/ml-on-gpu-service#14)
 ### Changed

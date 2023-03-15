@@ -5,14 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"gitlab.com/nunet/device-management-service/adapter"
 	"gitlab.com/nunet/device-management-service/internal"
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type wsMessage struct {
@@ -26,6 +30,9 @@ type wsMessage struct {
 // @Success      200  {string}  string
 // @Router       /run/deploy [get]
 func HandleDeploymentRequest(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/run/deploy"))
+
 	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		zlog.Error(fmt.Sprintf("Failed to set websocket upgrade: %+v\n", err))
@@ -39,11 +46,11 @@ func HandleDeploymentRequest(c *gin.Context) {
 
 	conn := internal.WebSocketConnection{Conn: ws}
 
-	go listenForDeploymentRequest(&conn)
-	go listenForDeploymentResponse(&conn)
+	go listenForDeploymentRequest(c, &conn)
+	go listenForDeploymentResponse(c, &conn)
 }
 
-func listenForDeploymentRequest(conn *internal.WebSocketConnection) {
+func listenForDeploymentRequest(ctx context.Context, conn *internal.WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
 			zlog.Error(fmt.Sprintf("%v", r))
@@ -58,20 +65,20 @@ func listenForDeploymentRequest(conn *internal.WebSocketConnection) {
 			return
 		}
 
-		handleWebsocketAction(p)
+		handleWebsocketAction(ctx, p)
 	}
 }
 
-func listenForDeploymentResponse(conn *internal.WebSocketConnection) {
+func listenForDeploymentResponse(ctx context.Context, conn *internal.WebSocketConnection) {
 	for {
 		// 1. check if DepResQueue has anything
 		select {
-		case adapterMsg, ok := <-adapter.DepResQueue:
+		case msg, ok := <-libp2p.DepResQueue:
 			if ok {
 				zlog.Info("Deployment response received. Sending it to connected websocket client")
 				var depRes models.DeploymentResponse
 
-				jsonDataMsg, _ := json.Marshal(adapterMsg.Data.Message)
+				jsonDataMsg, _ := json.Marshal(msg)
 				json.Unmarshal(jsonDataMsg, &depRes)
 				msg, _ := json.Marshal(depRes)
 
@@ -90,7 +97,7 @@ func listenForDeploymentResponse(conn *internal.WebSocketConnection) {
 	}
 }
 
-func handleWebsocketAction(payload []byte) {
+func handleWebsocketAction(ctx context.Context, payload []byte) {
 	// convert json to go values
 	var m wsMessage
 	err := json.Unmarshal(payload, &m)
@@ -100,39 +107,35 @@ func handleWebsocketAction(payload []byte) {
 
 	switch m.Action {
 	case "deployment-request":
-		err := sendDeploymentRequest(m.Message)
+		err := sendDeploymentRequest(ctx, m.Message)
 		if err != nil {
 			zlog.Error(err.Error())
 		}
 	}
 }
 
-func sendDeploymentRequest(requestParams json.RawMessage) error {
+func sendDeploymentRequest(ctx context.Context, requestParams json.RawMessage) error {
 	// parse the body, get service type, and filter devices
 	var depReq models.DeploymentRequest
 	if err := json.Unmarshal([]byte(requestParams), &depReq); err != nil {
 		return errors.New("invalid deployment request body")
 	}
 	// add node_id and public_key in deployment request
-	pKey, err := adapter.GetMasterPKey()
+	pKey, err := libp2p.GetPublicKey()
 	if err != nil {
-		return err
+		return fmt.Errorf("Unable to Obtain Public Key: %v", err)
 	}
-	selfNodeID := adapter.GetPeerID()
+	selfNodeID := libp2p.GetP2P().Host.ID().String()
 
 	depReq.Params.NodeID = selfNodeID
-	depReq.Params.PublicKey = pKey
+	depReq.Params.PublicKey = pKey.Type().String()
 
 	// check if the pricing matched
 	if estimatedNtx := CalculateStaticNtxGpu(depReq); estimatedNtx > float64(depReq.MaxNtx) {
 		return errors.New("nunet estimation price is greater than client price")
 	}
 
-	// filter peers based on passed criteria
-	peers, err := FilterPeers(depReq)
-	if err != nil {
-		return err
-	}
+	peers := FilterPeers(depReq, libp2p.GetP2P().Host)
 
 	//create a new span
 	_, span := otel.Tracer("SendDeploymentRequest").Start(context.Background(), "SendDeploymentRequest")
@@ -148,34 +151,43 @@ func sendDeploymentRequest(requestParams json.RawMessage) error {
 	selectedNode := peers[0]
 	depReq.Timestamp = time.Now()
 
-	out, err := json.Marshal(depReq)
+	// send these for to oracle: service and compute provider user address, price, max tokens amount, type of blockchain (cardano or ethereum)
+
+	depReqStream, err := libp2p.SendDeploymentRequest(ctx, selectedNode, depReq)
 	if err != nil {
-		return errors.New("error converting deployment request body to string")
+		return err
 	}
 
-	response, err := adapter.SendMessage(selectedNode.PeerInfo.NodeID, string(out))
-	if err != nil {
-		return errors.New("cannot send message to the peer")
-	}
-
-	_ = response // do we send any response back?
+	//TODO: Context handling and cancellation on all messaging related code
+	//      most importantly, depreq/depres messaging
+	//XXX: needs a lot of testing.
+	go libp2p.DeploymentResponseListener(depReqStream)
 
 	return nil
 }
 
-// ListPeers  godoc
-// @Summary      Return list of peers currently connected to
-// @Description  Gets a list of peers the adapter can see within the network and return a list of peer info
-// @Tags         run
-// @Produce      json
-// @Success      200  {string}	string
-// @Router       /peers [get]
-func ListPeers(c *gin.Context) {
-	response, err := adapter.FetchMachines()
-	if err != nil {
-		c.JSON(500, gin.H{"error": "can not fetch peers"})
-		panic(err)
-	}
-	c.JSON(200, response)
+type BlockchainStatusBody struct {
+	TransactionType   string `json:"transaction_type"`
+	TransactionStatus string `json:"transaction_status"`
+}
 
+// HandleSendStatus  godoc
+// @Summary      Sends blockchain status of contract creation.
+// @Description  HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.
+// @Success      200  {string}  string
+// @Router       /run/send-status [post]
+func HandleSendStatus(c *gin.Context) {
+	// TODO: This is a stub function. Replace the logic to talk with Oracle.
+	rand.Seed(time.Now().Unix())
+
+	body := BlockchainStatusBody{}
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	status := []string{"success", "error"}
+	randomStatus := status[rand.Intn(len(status))]
+
+	c.JSON(200, gin.H{"message": randomStatus})
 }

@@ -9,8 +9,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/spf13/afero"
 )
@@ -29,6 +34,9 @@ func GetMetadata(c *gin.Context) {
 	// check if the request has any body data
 	// if it has return that body  and skip the below code
 	// just for the test cases
+
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/metadata"))
 
 	// read the info
 	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
@@ -58,6 +66,9 @@ func GetMetadata(c *gin.Context) {
 // @Success      200  {array}  models.Metadata
 // @Router       /onboarding/onboard [post]
 func Onboard(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/onboard"))
+
 	// check if request body is empty
 	if c.Request.ContentLength == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "request body is empty"})
@@ -91,7 +102,7 @@ func Onboard(c *gin.Context) {
 	// read the request body to fill rest of the fields
 
 	// get capacity user want to rent to NuNet
-	var capacityForNunet models.CapacityForNunet
+	capacityForNunet := models.CapacityForNunet{ServerMode: true}
 	c.BindJSON(&capacityForNunet)
 
 	if (capacityForNunet.Memory > int64(totalMem)) &&
@@ -101,15 +112,21 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
-	cardanoPassive := "no"
+	metadata.AllowCardano = false
 	if capacityForNunet.Cardano {
 		if capacityForNunet.Memory < 10000 || capacityForNunet.CPU < 6000 {
 			c.JSON(http.StatusBadRequest,
 				gin.H{"error": "cardano node requires 10000MB of RAM and 6000MHz CPU"})
 			return
 		}
-		cardanoPassive = "yes"
+		metadata.AllowCardano = true
 	}
+	gpu_info, err := Check_gpu()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": "unable to detect GPU"})
+	}
+	metadata.GpuInfo = gpu_info
 
 	if capacityForNunet.Channel != "nunet-staging" &&
 		capacityForNunet.Channel != "nunet-test" &&
@@ -192,10 +209,28 @@ func Onboard(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
-	libp2p.SaveKey(priv, pub)
-	libp2p.RunNode(priv)
+	telemetry.CalcFreeResources()
+	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
 
-	go InstallRunAdapter(c, hostname, &metadata, cardanoPassive)
+	libp2p.RunNode(priv, capacityForNunet.ServerMode)
+
+	if len(metadata.NodeID) == 0 {
+		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
+
+		// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
+		NewDeviceOnboardParams := models.NewDeviceOnboarded{
+			PeerID:        metadata.NodeID,
+			CPU:           float32(metadata.Reserved.CPU),
+			RAM:           float32(metadata.Reserved.Memory),
+			Network:       0.0,
+			DedicatedTime: 0.0,
+			Timestamp:     float32(statsdb.GetTimestamp()),
+		}
+		err = statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+		if err != nil {
+			zlog.Sugar().Infof("NewDeviceOnboarded error: %s", err.Error())
+		}
+	}
 
 	c.JSON(http.StatusCreated, metadata)
 }
@@ -208,6 +243,9 @@ func Onboard(c *gin.Context) {
 // @Success      200  {object}  models.Provisioned
 // @Router       /onboarding/provisioned [get]
 func ProvisionedCapacity(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/provisioned"))
+
 	c.JSON(http.StatusOK, GetTotalProvisioned())
 }
 
@@ -219,6 +257,10 @@ func ProvisionedCapacity(c *gin.Context) {
 // @Success      200  {object}  models.BlockchainAddressPrivKey
 // @Router       /onboarding/address/new [get]
 func CreatePaymentAddress(c *gin.Context) {
+	// send telemetry data
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/address/new"))
+
 	blockChain := c.DefaultQuery("blockchain", "cardano")
 
 	var pair *models.BlockchainAddressPrivKey

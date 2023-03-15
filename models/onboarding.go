@@ -15,6 +15,7 @@ type CapacityForNunet struct {
 	Channel        string `json:"channel,omitempty"`
 	PaymentAddress string `json:"payment_addr,omitempty"`
 	Cardano        bool   `json:"cardano,omitempty"`
+	ServerMode     bool   `json:"server_mode,omitempty,"`
 }
 
 // Provisioned struct holds data about how much total resource
@@ -64,7 +65,9 @@ type MetadataV2 struct {
 		CPU    int64 `json:"cpu,omitempty"`
 		Memory int64 `json:"memory,omitempty"`
 	} `json:"reserved,omitempty"`
-	Network   string `json:"network,omitempty"`
-	PublicKey string `json:"public_key,omitempty"`
-	NodeID    string `json:"node_id,omitempty"`
+	Network      string `json:"network,omitempty"`
+	PublicKey    string `json:"public_key,omitempty"`
+	NodeID       string `json:"node_id,omitempty"`
+	AllowCardano bool   `json:"allow_cardano,omitempty"`
+	GpuInfo      []Gpu  `json:"gpu_info,omitempty"`
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
 )
@@ -39,6 +40,7 @@ func freeUsedResources(contID string) {
 	db.DB.Delete(&service)
 
 	telemetry.CalcFreeResources()
+	libp2p.UpdateDHT()
 }
 
 func mhzPerCore() float64 {
@@ -158,6 +160,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 
 	telemetry.CalcFreeResources()
+	libp2p.UpdateDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
 	resCh <- depRes
