@@ -95,5 +95,9 @@ Deploy:
   script: 
     - ansible --version
     - ansible-playbook deploy/playbook.yaml -i $ANSIBLE_INVENTORY
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+      - main
+      - staging
+      - develop
