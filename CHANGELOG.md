@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.41](#125)
+
+### Added
+- The logic to handel the choice of CPU and GPU
+
 ## [0.4.40](#137)
 
 ### Added
