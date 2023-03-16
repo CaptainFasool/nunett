@@ -5,3 +5,7 @@ maint-scripts/inventory.yaml
 *.log
 *.json
 .env
+
+# Docker files
+Dockerfile
+docker-compose.yml

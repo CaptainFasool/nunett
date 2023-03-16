@@ -70,9 +70,11 @@ func mhzToVCPU(cpuInMhz int) float64 {
 // log update every gistUpdateDuration.
 func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse) {
 	log.Println("Entering RunContainer")
+	machine_type := depReq.Params.MachineType
 	gpuOpts := opts.GpuOpts{}
-	gpuOpts.Set("all")
-
+	if machine_type == "gpu" {
+		gpuOpts.Set("all") // TODO find a way to use GPU and CPU
+	}
 	modelURL := depReq.Params.ModelURL
 	packages := strings.Join(depReq.Params.Packages, " ")
 	containerConfig := &container.Config{
@@ -80,7 +82,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		Cmd:   []string{modelURL, packages},
 		// Tty:          true,
 	}
-
 	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
 	VCPU := mhzToVCPU(depReq.Constraints.CPU)
 	hostConfig := &container.HostConfig{

@@ -53,7 +53,9 @@ Notice we're using `sudo` as the onboarding process writes some configuration fi
 
 ### Onboarding
 
-You don't necessarily need to onboard for development, but that depends which part you're workin on.
+You don't necessarily need to onboard for development, but that depends which part you're working on.
+To onboard during development, /etc/nunet need to be manually created since it's created with the package
+during installation.
 
 Onboarding instructions can be found at [Onboarding Wiki](https://gitlab.com/nunet/device-management-service/-/wikis/Onboarding)
 
