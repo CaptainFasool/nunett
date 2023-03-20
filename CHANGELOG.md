@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.42](#139)
+
+### Changed
+- Replaced GPU detection library 
+  
 ## [0.4.41](#125)
 
 ### Added
