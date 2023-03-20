@@ -7,7 +7,6 @@ import (
 	"errors"
 	"log"
 
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-github/github"
 )
 
@@ -35,13 +34,7 @@ func createGist() (*github.Gist, *github.Response, error) {
 	return createdGist, resp, err
 }
 
-func updateGist(gistID string, containerID string) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	containerLog := GetLogs(containerID)
-	stdcopy.StdCopy(&stdout, &stderr, containerLog)
-
+func updateGist(gistID string, stdout bytes.Buffer, stderr bytes.Buffer) {
 	var errGistFile github.GistFile
 	var outGistFile github.GistFile
 

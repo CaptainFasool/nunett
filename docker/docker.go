@@ -15,6 +15,7 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-github/github"
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
@@ -197,7 +198,8 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 			return
 		case <-statusCh: // not running?
 			// get the last logs & exit...
-			updateGist(*createdGist.ID, resp.ID)
+			stdout, stderr := GetLogs(resp.ID)
+			updateGist(*createdGist.ID, stdout, stderr)
 			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
 				panic("Service Not Found for Deployment")
 			}
@@ -295,15 +297,20 @@ func PullImage(imageName string) {
 // duty to do a stdcopy.StdCopy. Any other method might render unknown
 // unicode character as log output has both stdout and stderr. That starting
 // has info if that line is stderr or stdout.
-func GetLogs(contName string) (logOutput io.ReadCloser) {
+func GetLogs(containerID string) (bytes.Buffer, bytes.Buffer) {
 	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
 
-	out, err := dc.ContainerLogs(ctx, contName, options)
+	out, err := dc.ContainerLogs(ctx, containerID, options)
 	if err != nil {
 		panic(err)
 	}
 
-	return out
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	stdcopy.StdCopy(&stdout, &stderr, out)
+
+	return stdout, stderr
 }
 
 func cpuUsage(cpu float64, maxCPU float64) float64 {
