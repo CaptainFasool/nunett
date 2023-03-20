@@ -259,7 +259,8 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 					}
 				}
 			}
-			updateGist(*createdGist.ID, resp.ID)
+			stdout, stderr := GetLogs(resp.ID)
+			updateGist(*createdGist.ID, stdout, stderr)
 		}
 	}
 
