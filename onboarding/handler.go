@@ -121,10 +121,10 @@ func Onboard(c *gin.Context) {
 		}
 		metadata.AllowCardano = true
 	}
+
 	gpu_info, err := Check_gpu()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": "unable to detect GPU"})
+		zlog.Sugar().Errorf(err.Error())
 	}
 	metadata.GpuInfo = gpu_info
 

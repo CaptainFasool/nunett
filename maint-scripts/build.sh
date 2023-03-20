@@ -57,12 +57,11 @@ do
     chmod -R 755 $archDir
     dpkg-deb --build --root-owner-group $archDir $outputDir
 
-    rm -r $archDir
+    if [[ -v GITLAB_CI ]] ; then
+        rm -r $archDir
+        # The remaining part of this script used to upload artifact from build.sh to GitLab Package Registry.
 
-    # The remaining part of this script used to upload artifact from build.sh to GitLab Package Registry.
-
-    curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file ${projectRoot}/dist/nunet-dms_${version}_${arch}.deb ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file ${projectRoot}/dist/nunet-dms_${version}_${arch}.deb ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb
+        
+    fi 
 done
-
-
-
