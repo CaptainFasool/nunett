@@ -176,7 +176,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	for {
 		select {
 		case err := <-errCh:
-			// add also exit status to Gist
+			// add exit status to Gist
 			exitStatus := bytes.NewBuffer([]byte(""))
 			exitErr := bytes.NewBuffer([]byte(err.Error()))
 			updateGist(*createdGist.ID, *exitStatus, *exitErr)
