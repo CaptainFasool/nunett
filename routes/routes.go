@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
-	"gitlab.com/nunet/device-management-service/integration/tokenomics"
+	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/libp2p/machines"
 	"gitlab.com/nunet/device-management-service/onboarding"
@@ -35,8 +35,9 @@ func SetupRouter() *gin.Engine {
 
 	run := v1.Group("/run")
 	{
-		run.GET("/deploy", machines.HandleDeploymentRequest)
-		run.POST("/claim", tokenomics.HandleClaimCardanoTokens)
+		run.POST("/request-service", machines.HandleRequestService)
+		run.GET("/deploy", machines.HandleDeploymentRequest) // websocket
+		run.POST("/request-reward", tokenomics.HandleRequestReward)
 		run.POST("/send-status", machines.HandleSendStatus)
 	}
 

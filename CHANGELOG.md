@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.43](#123)
+
+### Changed
+- DMS integration with Oracle to get blockchain data
+  
 ## [0.4.42](#139)
 
 ### Changed
