@@ -5,18 +5,19 @@ import (
 )
 
 type DeploymentRequest struct {
-	AddressUser string    `json:"address_user"`
-	MaxNtx      int       `json:"max_ntx"`
-	Blockchain  string    `json:"blockchain"`
-	ServiceType string    `json:"service_type"`
-	Timestamp   time.Time `json:"timestamp"`
-	Params      struct {
+	AddressUser             string    `json:"address_user"` // service provider wallet address
+	ComputerProviderP2PAddr string    `json:"compute_provider_addr"`
+	MaxNtx                  int       `json:"max_ntx"`
+	Blockchain              string    `json:"blockchain"`
+	ServiceType             string    `json:"service_type"`
+	Timestamp               time.Time `json:"timestamp"`
+	Params                  struct {
 		ImageID     string   `json:"image_id"`
 		ModelURL    string   `json:"model_url"`
 		Packages    []string `json:"packages"`
 		NodeID      string   `json:"node_id"`
-		MachineType string   `json:"machine_type"`
 		PublicKey   string   `json:"public_key"`
+		MachineType string   `json:"machine_type"`
 	} `json:"params"`
 	Constraints struct {
 		Complexity string `json:"complexity"`

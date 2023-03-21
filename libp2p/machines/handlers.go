@@ -1,7 +1,6 @@
 package machines
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,10 +10,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -24,9 +24,82 @@ type wsMessage struct {
 	Message json.RawMessage `json:"message"`
 }
 
+type BlockchainTxStatus struct {
+	TransactionType   string `json:"transaction_type"`
+	TransactionStatus string `json:"transaction_status"`
+}
+
+// HandleRequestService  godoc
+// @Summary      Informs parameters related to blockchain to request to run a service on NuNet
+// @Description  HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
+// @Success      200  {string}  string
+// @Router       /run/request-service [post]
+func HandleRequestService(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/run/request-service"))
+
+	// receive deployment request
+	var depReq models.DeploymentRequest
+	if err := c.BindJSON(&depReq); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	// add node_id and public_key in deployment request
+	pKey, err := libp2p.GetPublicKey()
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("unable to obtain public key: %v", err))
+		return
+	}
+	selfNodeID := libp2p.GetP2P().Host.ID().String()
+
+	depReq.Params.NodeID = selfNodeID
+	depReq.Params.PublicKey = pKey.Type().String()
+
+	// check if the pricing matched
+	estimatedNtx := CalculateStaticNtxGpu(depReq)
+	zlog.Sugar().Info("estimated ntx price %v", estimatedNtx)
+	if estimatedNtx > float64(depReq.MaxNtx) {
+		c.AbortWithError(http.StatusBadRequest, errors.New("nunet estimation price is greater than client price"))
+		return
+	}
+
+	filteredPeers := FilterPeers(depReq, libp2p.GetP2P().Host)
+	computeProvider := filteredPeers[0]
+	depReq.ComputerProviderP2PAddr = computeProvider.PeerID
+
+	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
+	zlog.Sugar().Info("sending fund contract request to oracle")
+	fcr, err := oracle.FundContractRequest()
+	if err != nil {
+		zlog.Sugar().Info("sending fund contract request to oracle failed")
+		c.AbortWithError(http.StatusBadRequest, errors.New("cannot connect to oracle"))
+		return
+	}
+
+	result := db.DB.Create(&depReq)
+	if result.Error != nil {
+		panic(result.Error)
+	}
+
+	// oracle outputs: compute provider user address, estimated price, signature, oracle message
+	fundingRespToWebapp := struct {
+		ComputeProviderAddr string  `json:"compute_provider_addr"`
+		EstimatedPrice      float64 `json:"estimated_price"`
+		Signature           string  `json:"signature"`
+		OracleMessage       string  `json:"oracle_message"`
+	}{
+		ComputeProviderAddr: computeProvider.TokenomicsAddress,
+		EstimatedPrice:      estimatedNtx,
+		Signature:           fcr.Signature,
+		OracleMessage:       fcr.OracleMessage,
+	}
+	c.JSON(200, fundingRespToWebapp)
+}
+
 // HandleDeploymentRequest  godoc
-// @Summary      Search devices on DHT with appropriate machines and sends a deployment request.
-// @Description  HandleDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine
+// @Summary      Websocket endpoint responsible for sending deployment request and receiving deployment response.
+// @Description  Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.
 // @Success      200  {string}  string
 // @Router       /run/deploy [get]
 func HandleDeploymentRequest(c *gin.Context) {
@@ -39,18 +112,18 @@ func HandleDeploymentRequest(c *gin.Context) {
 		return
 	}
 
-	err = ws.WriteMessage(websocket.TextMessage, []byte("{\"action\": \"connected\", \"message\": \"You are connected to DMS for docker (GPU/CPU) deployment.\""))
+	err = ws.WriteMessage(websocket.TextMessage, []byte("{\"action\": \"connected\", \"message\": \"You are connected to DMS for docker (GPU/CPU) deployment.\"}"))
 	if err != nil {
 		zlog.Error(err.Error())
 	}
 
 	conn := internal.WebSocketConnection{Conn: ws}
 
-	go listenForDeploymentRequest(c, &conn)
+	go listenForDeploymentStatus(c, &conn)
 	go listenForDeploymentResponse(c, &conn)
 }
 
-func listenForDeploymentRequest(ctx context.Context, conn *internal.WebSocketConnection) {
+func listenForDeploymentStatus(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
 			zlog.Error(fmt.Sprintf("%v", r))
@@ -69,7 +142,7 @@ func listenForDeploymentRequest(ctx context.Context, conn *internal.WebSocketCon
 	}
 }
 
-func listenForDeploymentResponse(ctx context.Context, conn *internal.WebSocketConnection) {
+func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	for {
 		// 1. check if DepResQueue has anything
 		select {
@@ -97,7 +170,7 @@ func listenForDeploymentResponse(ctx context.Context, conn *internal.WebSocketCo
 	}
 }
 
-func handleWebsocketAction(ctx context.Context, payload []byte) {
+func handleWebsocketAction(ctx *gin.Context, payload []byte) {
 	// convert json to go values
 	var m wsMessage
 	err := json.Unmarshal(payload, &m)
@@ -106,40 +179,43 @@ func handleWebsocketAction(ctx context.Context, payload []byte) {
 	}
 
 	switch m.Action {
-	case "deployment-request":
-		err := sendDeploymentRequest(ctx, m.Message)
+	case "send-status":
+		var txStatus BlockchainTxStatus
+		err := json.Unmarshal(m.Message, &txStatus)
+		if err != nil || txStatus.TransactionStatus != "success" {
+			// Send event to Signoz
+			span := trace.SpanFromContext(ctx.Request.Context())
+			span.SetAttributes(attribute.String("URL", "/run/deploy"))
+			span.SetAttributes(attribute.String("TransactionStatus", "error"))
+			return
+		}
+
+		err = sendDeploymentRequest(ctx)
 		if err != nil {
 			zlog.Error(err.Error())
 		}
 	}
 }
 
-func sendDeploymentRequest(ctx context.Context, requestParams json.RawMessage) error {
-	// parse the body, get service type, and filter devices
-	var depReq models.DeploymentRequest
-	if err := json.Unmarshal([]byte(requestParams), &depReq); err != nil {
-		return errors.New("invalid deployment request body")
-	}
-	// add node_id and public_key in deployment request
-	pKey, err := libp2p.GetPublicKey()
-	if err != nil {
-		return fmt.Errorf("Unable to Obtain Public Key: %v", err)
-	}
-	selfNodeID := libp2p.GetP2P().Host.ID().String()
-
-	depReq.Params.NodeID = selfNodeID
-	depReq.Params.PublicKey = pKey.Type().String()
-
-	// check if the pricing matched
-	if estimatedNtx := CalculateStaticNtxGpu(depReq); estimatedNtx > float64(depReq.MaxNtx) {
-		return errors.New("nunet estimation price is greater than client price")
-	}
-
-	peers := FilterPeers(depReq, libp2p.GetP2P().Host)
-
-	//create a new span
-	_, span := otel.Tracer("SendDeploymentRequest").Start(context.Background(), "SendDeploymentRequest")
+func sendDeploymentRequest(ctx *gin.Context) error {
+	span := trace.SpanFromContext(ctx.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/run/deploy"))
+	span.SetAttributes(attribute.String("TransactionStatus", "success"))
 	defer span.End()
+
+	// load depReq from the database
+	var depReq models.DeploymentRequest
+	result := db.DB.Find(&depReq)
+	if result.Error != nil {
+		zlog.Sugar().Errorf("%v", result.Error)
+	}
+
+	// delete temporary record
+	// XXX: This delete entire table. Needs to be modified to take multiple deployment requests from same service provider
+	result = db.DB.Delete(&depReq)
+	if result.Error != nil {
+		zlog.Sugar().Errorf("%v", result.Error)
+	}
 
 	//extract a span context parameters , so that a child span constructed on the reciever side
 	depReq.TraceInfo.SpanID = span.SpanContext().TraceID().String()
@@ -147,13 +223,9 @@ func sendDeploymentRequest(ctx context.Context, requestParams json.RawMessage) e
 	depReq.TraceInfo.TraceFlags = span.SpanContext().TraceFlags().String()
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
-	// pick a peer from the list and send a message to the nodeID of the peer.
-	selectedNode := peers[0]
 	depReq.Timestamp = time.Now()
 
-	// send these for to oracle: service and compute provider user address, price, max tokens amount, type of blockchain (cardano or ethereum)
-
-	depReqStream, err := libp2p.SendDeploymentRequest(ctx, selectedNode, depReq)
+	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {
 		return err
 	}
@@ -166,11 +238,6 @@ func sendDeploymentRequest(ctx context.Context, requestParams json.RawMessage) e
 	return nil
 }
 
-type BlockchainStatusBody struct {
-	TransactionType   string `json:"transaction_type"`
-	TransactionStatus string `json:"transaction_status"`
-}
-
 // HandleSendStatus  godoc
 // @Summary      Sends blockchain status of contract creation.
 // @Description  HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.
@@ -180,7 +247,7 @@ func HandleSendStatus(c *gin.Context) {
 	// TODO: This is a stub function. Replace the logic to talk with Oracle.
 	rand.Seed(time.Now().Unix())
 
-	body := BlockchainStatusBody{}
+	body := BlockchainTxStatus{}
 	if err := c.BindJSON(&body); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return

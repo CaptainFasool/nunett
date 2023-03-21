@@ -96,7 +96,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 
 	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
 		panic("Record not found!")
-
 	}
 
 	// Check if we have enough free resources before running Container

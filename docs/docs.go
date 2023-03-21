@@ -226,17 +226,31 @@ const docTemplate = `{
                 }
             }
         },
-        "/run/claim": {
+        "/run/deploy": {
             "get": {
-                "description": "HandleClaimCardanoTokens takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.",
+                "description": "Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.",
+                "summary": "Websocket endpoint responsible for sending deployment request and receiving deployment response.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/run/request-reward": {
+            "post": {
+                "description": "HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.",
                 "summary": "Get NTX tokens for work done.",
                 "responses": {}
             }
         },
-        "/run/deploy": {
-            "get": {
-                "description": "HandleDeploymentRequest searches the DHT for non-busy, available devices with appropriate metadata. Then sends a deployment request to the first machine",
-                "summary": "Search devices on DHT with appropriate machines and sends a deployment request.",
+        "/run/request-service": {
+            "post": {
+                "description": "HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.",
+                "summary": "Informs parameters related to blockchain to request to run a service on NuNet",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -403,7 +417,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.42",
+	Version:          "0.4.43",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
