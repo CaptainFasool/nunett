@@ -3,6 +3,7 @@ package docker
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"io"
 	"log"
 	"math"
@@ -175,6 +176,11 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	for {
 		select {
 		case err := <-errCh:
+			// add also exit status to Gist
+			exitStatus := bytes.NewBuffer([]byte(""))
+			exitErr := bytes.NewBuffer([]byte(err.Error()))
+			updateGist(*createdGist.ID, *exitStatus, *exitErr)
+
 			// handle error & exit
 			if err != nil {
 				panic(err)
@@ -196,10 +202,17 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 			}
 			freeUsedResources(resp.ID)
 			return
-		case <-statusCh: // not running?
+		case status := <-statusCh: // not running?
 			// get the last logs & exit...
 			stdout, stderr := GetLogs(resp.ID)
 			updateGist(*createdGist.ID, stdout, stderr)
+			// add also exit status to Gist
+			b := make([]byte, 8)
+			binary.LittleEndian.PutUint64(b, uint64(status.StatusCode))
+			exitStatus := bytes.NewBuffer(b)
+			exitErr := bytes.NewBuffer([]byte(""))
+			updateGist(*createdGist.ID, *exitStatus, *exitErr)
+
 			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
 				panic("Service Not Found for Deployment")
 			}
