@@ -9,7 +9,7 @@ Note: This README is intended for developers. For end users, please check our [W
 
 For a quick install, you can use the following script:
 ```
-curl -L https://inst.dms.nunet.io | sh
+sh <(curl -sL https://inst.dms.nunet.io)
 ```
 
 ## Getting Started with Development
