@@ -41,6 +41,8 @@ func DeploymentWorker() {
 				handleCardanoDeployment(depReq, sender)
 			} else if depReq.ServiceType == "ml-training-gpu" {
 				handleGpuDeployment(depReq, sender)
+			} else if depReq.ServiceType == "ml-training-cpu" {
+				handleGpuDeployment(depReq, sender)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
 				sendDeploymentResponse(false, "Unknown service type.", true)
