@@ -30,11 +30,22 @@ while true; do
 		yes ) break ;;
 		no  ) 
 			printf "\e[1m\e[32mCreating New Wallet...  \e[0m\n" && sleep 1
-			nWalletAddress=$(nunet wallet new)
+            while true; do
+	            read -p "Would you like to create an Ethereum or Cardano Address? ('e| ethureum' or 'c | cardano') " nWalTypResp
+        	    case $nWalTypResp in
+		            e | eth | ethereum ) nWalletAddress=$(nunet wallet new --ethereum); break ;;
+            		c | car | cardano  ) nWalletAddress=$(nunet wallet new --cardano); break ;;
+                    * ) printf "Choices are: \033[33m'e|eth|ethereum'\033[0m or \033[33m'c|car|cardano'\033[0m please\n"
+                esac
+            done
 			nAddress=$(echo $nWalletAddress | jq -r .address)
 			echo "Your new wallet information used for NuNet: "
 			printf "Address: \033[33m$(echo $nWalletAddress | jq -r .address)\033[0m\n"
-			printf "PrivateKey: \033[33m$(echo $nWalletAddress | jq -r .private_key)\033[0m\n"
+            if [[ $nWalTypResp == e* ]] ; then
+                printf "PrivateKey: \033[33m$(echo $nWalletAddress | jq -r .private_key)\033[0m\n"
+            elif [[ $nWalTypResp == c* ]] ; then
+                printf "Mnemonic: \033[33m$(echo $nWalletAddress | jq -r .mnemonic)\033[0m\n"
+            fi
 			break;;
 		*   ) echo "Only 'yes' or 'no' please";;
 	esac
@@ -42,7 +53,7 @@ done
         
 sleep 2
 
-if [ ! $nAddress ]; then
+if [ -v $nAddress ]; then
 	read -p "Input your 0x Address: " nAddress
 fi
 

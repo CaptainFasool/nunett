@@ -273,7 +273,7 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 		libp2pOpts = append(libp2pOpts, libp2p.NATPortMap())
 	}
 
-	host, err := libp2p.NewWithoutDefaults(libp2pOpts...)
+	host, err := libp2p.New(libp2pOpts...)
 
 	if err != nil {
 		zlog.Sugar().Errorf("Couldn't Create Host: %v", err)

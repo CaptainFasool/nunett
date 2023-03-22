@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.45](#144)
+
+### Changed
+- Quick install script to query for blockchain when creating wallet
+- Fix instruction on readme to avoid running in a subshell
+- Use NuNet bootstrap servers and default libp2p host options 
 ## [0.4.44](!94)
 
 ### Changed
