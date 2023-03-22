@@ -39,3 +39,7 @@ type DeploymentResponse struct {
 	Success bool   `json:"success"`
 	Content string `json:"content"`
 }
+
+type DeploymentRequestFlat struct {
+	DeploymentRequest string `json:"deployment_request"`
+}

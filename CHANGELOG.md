@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.44](!94)
+
+### Changed
+- Fix for the problem with non-flat model db migration
 ## [0.4.43](#123)
 
 ### Changed
