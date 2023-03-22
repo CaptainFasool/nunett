@@ -40,10 +40,22 @@ func HandleRequestService(c *gin.Context) {
 
 	// receive deployment request
 	var depReq models.DeploymentRequest
+	var depReqFlat models.DeploymentRequestFlat
 	if err := c.BindJSON(&depReq); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
+
+	// Marshal struct to JSON
+	depReqBytes, err := json.Marshal(depReq)
+	if err != nil {
+		fmt.Println("Error marshaling struct to JSON:", err)
+		return
+	}
+
+	// Convert JSON bytes to string
+	depReqStr := string(depReqBytes)
+	depReqFlat.DeploymentRequest = depReqStr
 
 	// add node_id and public_key in deployment request
 	pKey, err := libp2p.GetPublicKey()
@@ -77,7 +89,7 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
-	result := db.DB.Create(&depReq)
+	result := db.DB.Create(&depReqFlat)
 	if result.Error != nil {
 		panic(result.Error)
 	}
@@ -204,17 +216,23 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	defer span.End()
 
 	// load depReq from the database
+	var depReqFlat models.DeploymentRequestFlat
 	var depReq models.DeploymentRequest
-	result := db.DB.Find(&depReq)
+	result := db.DB.Find(&depReqFlat)
 	if result.Error != nil {
 		zlog.Sugar().Errorf("%v", result.Error)
 	}
 
 	// delete temporary record
 	// XXX: This delete entire table. Needs to be modified to take multiple deployment requests from same service provider
-	result = db.DB.Delete(&depReq)
+	result = db.DB.Delete(&depReqFlat)
 	if result.Error != nil {
 		zlog.Sugar().Errorf("%v", result.Error)
+	}
+
+	err := json.Unmarshal([]byte(depReqFlat.DeploymentRequest), &depReq)
+	if err != nil {
+		zlog.Sugar().Errorf("%v", err)
 	}
 
 	//extract a span context parameters , so that a child span constructed on the reciever side
