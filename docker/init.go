@@ -8,12 +8,16 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
+
+	"gitlab.com/nunet/device-management-service/internal/logger"
 )
 
 var (
 	gh  *github.Client
 	ctx context.Context
 	dc  *client.Client
+
+	zlog *logger.Logger
 )
 
 func init() {
@@ -30,4 +34,5 @@ func init() {
 	gh = github.NewClient(tc)
 	dc, _ = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 
+	zlog = logger.New("docker")
 }
