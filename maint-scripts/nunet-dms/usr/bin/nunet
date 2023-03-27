@@ -449,7 +449,7 @@ peer() {
             printf "${BAD_C}No peers available. Please try again in a few minutes.${NORMAL_C}\n"
         else
             # echo $N_LIST_PEERS | jq --raw-output '(.[] | [.ID, ([.Addrs[]] | select(length > 0) | join(" , "))]) | map( gsub("\t";"\t") ) | join("|")' | column -t -N "ID,Listening Addresses" -c 150 -W2 --separator "|"
-            echo $N_LIST_PEERS | jq --raw-output '(.[] | .ID)'
+            echo $N_LIST_PEERS | jq -r '.[] | select(.Addrs | length > 0) | [.ID, .Addrs[]]  | map( gsub("\t";"\t") ) | join("   ")'  | column -t
         fi
     elif [[ -v N_SELF_PEER ]] ; then
         N_SELF_PEER_ERR_MSG=$(echo $N_SELF_PEER | jq '. | select(.error != null) | .error')
