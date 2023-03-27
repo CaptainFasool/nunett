@@ -39,10 +39,8 @@ func DeploymentWorker() {
 			sender := depReq.AddressUser
 			if depReq.ServiceType == "cardano_node" {
 				handleCardanoDeployment(depReq, sender)
-			} else if depReq.ServiceType == "ml-training-gpu" {
-				handleGpuDeployment(depReq, sender)
-			} else if depReq.ServiceType == "ml-training-cpu" {
-				handleGpuDeployment(depReq, sender)
+			} else if depReq.ServiceType == "ml-training-cpu" || depReq.ServiceType == "ml-training-gpu" {
+				handleDockerDeployment(depReq, sender)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
 				sendDeploymentResponse(false, "Unknown service type.", true)
@@ -96,7 +94,7 @@ func handleCardanoDeployment(depReq models.DeploymentRequest, sender string) {
 	sendDeploymentResponse(true, "Cardano Node Deployment Successful.", false)
 }
 
-func handleGpuDeployment(depReq models.DeploymentRequest, sender string) {
+func handleDockerDeployment(depReq models.DeploymentRequest, sender string) {
 	depResp := models.DeploymentResponse{}
 
 	callID := float32(1234) //statsdb.GetCallID() //XXX: Using dummy value until StatsDB works - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
