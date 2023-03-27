@@ -21,6 +21,9 @@ const (
 
 	// Stream Protocol for Chat
 	ChatProtocolID = "/nunet/dms/chat/0.0.1"
+
+	// Stream Protocol for File Transfer
+	FileTransferProtocolID = "/nunet/dms/file/0.0.1"
 )
 
 const (
