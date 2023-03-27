@@ -224,8 +224,8 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	}
 
 	// delete temporary record
-	// XXX: This delete entire table. Needs to be modified to take multiple deployment requests from same service provider
-	result = db.DB.Delete(&depReqFlat)
+	// XXX: Needs to be modified to take multiple deployment requests from same service provider
+	result = db.DB.Delete(&depReqFlat, 1)
 	if result.Error != nil {
 		zlog.Sugar().Errorf("%v", result.Error)
 	}
