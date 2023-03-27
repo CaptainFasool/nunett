@@ -78,7 +78,7 @@ func HandleRequestService(c *gin.Context) {
 
 	filteredPeers := FilterPeers(depReq, libp2p.GetP2P().Host)
 	computeProvider := filteredPeers[0]
-	depReq.ComputerProviderP2PAddr = computeProvider.PeerID
+	depReq.Params.NodeID = computeProvider.PeerID
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Sugar().Info("sending fund contract request to oracle")
