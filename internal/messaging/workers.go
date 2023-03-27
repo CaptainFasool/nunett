@@ -17,11 +17,7 @@ import (
 )
 
 func sendDeploymentResponse(success bool, message string, close bool) {
-	jsonDepResp, _ := json.Marshal(models.DeploymentResponse{
-		Success: success,
-		Content: message,
-	})
-	err := libp2p.DeploymentResponse(string(jsonDepResp), close)
+	err := libp2p.DeploymentResponse(string(message), close)
 	if err != nil {
 		zlog.Sugar().Errorln("Error Sending Deployment Response - ", err.Error())
 	}
@@ -128,10 +124,7 @@ func handleGpuDeployment(depReq models.DeploymentRequest) {
 	}
 
 	depResp = docker.HandleDeployment(depReq, depResp)
-	var m map[string]interface{}
-	b, _ := json.Marshal(&depResp)
-	_ = json.Unmarshal(b, &m)
+	depRespBytes, _ := json.Marshal(&depResp)
 
-	jsonGenericMsg, _ := json.Marshal(m)
-	sendDeploymentResponse(depResp.Success, string(jsonGenericMsg), false)
+	sendDeploymentResponse(depResp.Success, string(depRespBytes), false)
 }
