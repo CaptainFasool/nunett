@@ -26,16 +26,27 @@
           - bc
         state: present
 
+    - name: Copy deb package to machine
+      ansible.builtin.copy:
+        src: "../../dist/nunet-dms_{{ dms_version }}_{{ ansible_architecture }}.deb"
+        dest: /tmp/nunet-dms.deb
+        mode: "0755"
+
+    - name: Install package
+      ansible.builtin.apt:
+        deb: /tmp/nunet-dms.deb
+      when: ansible_os_family == "Debian"
+
     # - name: Delete package if already exists
     #   ansible.builtin.apt:
     #     name:
     #       - nunet-dms
     #     state: absent
 
-    - name: Install package
-      ansible.builtin.apt:
-        deb: "{{ nunet_dms_download_url }}"
-      when: ansible_os_family == "Debian"
+    # - name: Install package
+    #   ansible.builtin.apt:
+    #     deb: "{{ nunet_dms_download_url }}"
+    #   when: ansible_os_family == "Debian"
 
     - name: Check if wallet address exists
       ansible.builtin.stat:

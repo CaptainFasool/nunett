@@ -21,6 +21,12 @@ Build:
       - main
       - staging
       - develop
+  artifacts:
+    untracked: false
+    when: on_success
+    expire_in: "30 days"
+    paths:
+      - dist/
 
 Deploy DMS:
   stage: deploy
@@ -94,10 +100,7 @@ Deploy:
   image: python:3
   script: 
     - ansible --version
-    - ansible-playbook deploy/playbook.yaml -i $ANSIBLE_INVENTORY
-  only:
-    refs:
-      - $CI_DEFAULT_BRANCH
-      - main
-      - staging
-      - develop
+    - DMS_VERSION=$(cat main.go | grep @version | awk {'print $3'})
+    - ansible-playbook -i $ANSIBLE_INVENTORY -e dms_version=$DMS_VERSION maint-scripts/deploy/playbook.yaml 
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "staging"
