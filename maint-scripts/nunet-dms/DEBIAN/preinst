@@ -24,9 +24,3 @@ if [ -f "/usr/bin/nunet-dms" ];then
     rm -f /usr/bin/nunet-dms
     echo "Removed old nunet-dms from /usr/bin ..."
 fi
-
-if [ -d "/etc/nunet" ];then
-    rm -rf /etc/nunet
-    echo "Removed old nunet-dms config from /etc/ ..."
-fi
-
