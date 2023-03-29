@@ -134,9 +134,9 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 		return nil, fmt.Errorf("Error: Couldn't Create Deployment Request. A request already in progress.")
 	}
 
-	peerID, err := peer.Decode(depReq.ComputerProviderP2PAddr)
+	peerID, err := peer.Decode(depReq.Params.NodeID)
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Decode Input PeerID '%s', : %v", depReq.ComputerProviderP2PAddr, err)
+		return nil, fmt.Errorf("Error: Couldn't Decode Input PeerID '%s', : %v", depReq.Params.NodeID, err)
 	}
 
 	outboundDepReqStream, err := GetP2P().Host.NewStream(ctx, peerID, protocol.ID(DepReqProtocolID))
