@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.48](#143)
+
+### Changed
+- Fix for problem with CPU-only job deployment
 ## [0.4.47](#142)
 
 ### Changed
