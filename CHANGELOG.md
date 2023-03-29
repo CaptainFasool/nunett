@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.46](!96)
+
+### Changed
+- Correct the wrong formatting of deployment response.
+- Minor refactoring
 ## [0.4.45](#144)
 
 ### Changed

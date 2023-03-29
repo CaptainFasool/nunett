@@ -78,7 +78,7 @@ func HandleRequestService(c *gin.Context) {
 
 	filteredPeers := FilterPeers(depReq, libp2p.GetP2P().Host)
 	computeProvider := filteredPeers[0]
-	depReq.ComputerProviderP2PAddr = computeProvider.PeerID
+	depReq.Params.NodeID = computeProvider.PeerID
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Sugar().Info("sending fund contract request to oracle")
@@ -224,8 +224,8 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	}
 
 	// delete temporary record
-	// XXX: This delete entire table. Needs to be modified to take multiple deployment requests from same service provider
-	result = db.DB.Delete(&depReqFlat)
+	// XXX: Needs to be modified to take multiple deployment requests from same service provider
+	result = db.DB.Delete(&depReqFlat, 1)
 	if result.Error != nil {
 		zlog.Sugar().Errorf("%v", result.Error)
 	}
