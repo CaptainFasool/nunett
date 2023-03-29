@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
+	"gitlab.com/nunet/device-management-service/models"
 )
 
 type ClaimCardanoTokenBody struct {
@@ -26,13 +28,13 @@ func HandleRequestReward(c *gin.Context) {
 		return
 	}
 
-	// TODO: Fetch this data and pass to the function below
-	// JobStatus:            "finished without errors",
-	// JobDuration:          5,
-	// EstimatedJobDuration: 10,
-	// LogPath:              "https://gist.github.com/santosh/42e86f264c89be54e3351e2373c92edf",
+	// At some point, management dashboard should send container ID to identify
+	// against which container we are requesting reward
+	var service models.Services
+	db.DB.First(&service, "id = ?", 1) // Currently we are assuming only 1 row in services table
 
-	resp, err := oracle.WithdrawTokenRequest()
+	// Send the service data to oracle for examination
+	resp, err := oracle.WithdrawTokenRequest(service)
 
 	if err != nil {
 		c.JSON(500, gin.H{"message": "some error has occured"})

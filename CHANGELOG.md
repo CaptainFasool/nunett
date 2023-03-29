@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.47](#142)
+
+### Changed
+- Save LogURL and other service related data on service run
+- Fetch LogURL and other service related data on request reward
 ## [0.4.46](!96)
 
 ### Changed

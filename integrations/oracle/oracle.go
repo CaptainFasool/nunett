@@ -4,6 +4,7 @@ import (
 	context "context"
 	"time"
 
+	"gitlab.com/nunet/device-management-service/models"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -13,7 +14,7 @@ const (
 )
 
 // WithdrawTokenRequest acts as a middleman between withdraw endpoint handler and Oracle to withdraw token
-func WithdrawTokenRequest() (WithdrawResponse, error) {
+func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 	conn, err := grpc.Dial(oracleAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return WithdrawResponse{}, err
@@ -27,10 +28,10 @@ func WithdrawTokenRequest() (WithdrawResponse, error) {
 	oracleClient := NewOracleClient(conn)
 
 	withdrawReq := WithdrawRequest{
-		JobStatus:            "finished without errors",
-		JobDuration:          5,
-		EstimatedJobDuration: 10,
-		LogPath:              "https://gist.github.com/santosh/42e86f264c89be54e3351e2373c92edf",
+		JobStatus:            service.JobStatus,
+		JobDuration:          service.JobDuration,
+		EstimatedJobDuration: service.EstimatedJobDuration,
+		LogPath:              service.LogURL,
 	}
 
 	zlog.Sugar().Info("sending withdraw request to oracle")
