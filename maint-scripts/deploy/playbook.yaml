@@ -28,7 +28,7 @@
 
     - name: Copy deb package to machine
       ansible.builtin.copy:
-        src: "../../dist/nunet-dms_{{ dms_version }}_{{ ansible_architecture }}.deb"
+        src: "../../dist/nunet-dms_{{ dms_version }}_{{ (ansible_architecture == 'x86_64') | ternary('amd64', ansible_architecture) }}.deb"
         dest: /tmp/nunet-dms.deb
         mode: "0755"
 
