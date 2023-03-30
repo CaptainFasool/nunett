@@ -77,6 +77,10 @@ func HandleRequestService(c *gin.Context) {
 	}
 
 	filteredPeers := FilterPeers(depReq, libp2p.GetP2P().Host)
+	if len(filteredPeers) < 1 {
+		c.AbortWithError(http.StatusBadRequest, errors.New("no peers found with matched specs"))
+		return
+	}
 	computeProvider := filteredPeers[0]
 	depReq.Params.NodeID = computeProvider.PeerID
 

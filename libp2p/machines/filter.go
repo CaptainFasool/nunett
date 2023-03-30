@@ -18,7 +18,10 @@ func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerD
 
 	peers = libp2p.PeersWithMatchingSpec(peers, depReq)
 	if depReq.ServiceType == "ml-training-gpu" {
-		peers = libp2p.PeersWithGPU(peers)
+		if depReq.Params.MachineType == "gpu" {
+			peers = libp2p.PeersWithGPU(peers)
+			return peers
+		}
 	}
 
 	if depReq.ServiceType == "cardano_node" {
