@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.49](!102)
+
+### Changed
+- filter machines for cpu only ml jobs
+- fence index error
 ## [0.4.48](#143)
 
 ### Changed
