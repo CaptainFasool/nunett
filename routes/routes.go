@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -44,6 +45,14 @@ func SetupRouter() *gin.Engine {
 	tele := v1.Group("/telemetry")
 	{
 		tele.GET("/free", telemetry.GetFreeResource)
+	}
+
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		dht := v1.Group("/dht")
+		{
+			dht.GET("", libp2p.DumpDHT)
+			dht.GET("/peers", libp2p.ListDHTPeers)
+		}
 	}
 
 	p2p := v1.Group("/peers")
