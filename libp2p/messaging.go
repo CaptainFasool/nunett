@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/gorilla/websocket"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/models"
@@ -82,6 +83,10 @@ func DeploymentResponseListener(stream network.Stream) {
 	for {
 		resp, err := readData(r)
 
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+			fmt.Println("DEBUG: Received Deployment Response: ", resp)
+		}
+
 		if err != nil {
 			panic(err)
 		} else if resp == "" {
@@ -150,6 +155,10 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 	}
 
 	w := bufio.NewWriter(outboundDepReqStream)
+
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		fmt.Println("DEBUG: Deployment Request: ", msg)
+	}
 
 	_, err = w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {

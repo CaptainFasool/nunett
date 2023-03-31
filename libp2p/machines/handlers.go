@@ -46,17 +46,6 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
-	// Marshal struct to JSON
-	depReqBytes, err := json.Marshal(depReq)
-	if err != nil {
-		fmt.Println("Error marshaling struct to JSON:", err)
-		return
-	}
-
-	// Convert JSON bytes to string
-	depReqStr := string(depReqBytes)
-	depReqFlat.DeploymentRequest = depReqStr
-
 	// add node_id and public_key in deployment request
 	pKey, err := libp2p.GetPublicKey()
 	if err != nil {
@@ -92,6 +81,17 @@ func HandleRequestService(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, errors.New("cannot connect to oracle"))
 		return
 	}
+
+	// Marshal struct to JSON
+	depReqBytes, err := json.Marshal(depReq)
+	if err != nil {
+		fmt.Println("Error marshaling struct to JSON:", err)
+		return
+	}
+
+	// Convert JSON bytes to string
+	depReqStr := string(depReqBytes)
+	depReqFlat.DeploymentRequest = depReqStr
 
 	result := db.DB.Create(&depReqFlat)
 	if result.Error != nil {

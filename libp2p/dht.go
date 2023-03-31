@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -77,6 +79,11 @@ func DhtUpdateHandler(s network.Stream) {
 	if err != nil {
 		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
 	}
+
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		fmt.Println("DHT Update Fron: ", peerID, " --- Info: ", peerInfo)
+	}
+
 	p2p.Host.Peerstore().Put(peerID, "peer_info", peerInfo)
 }
 

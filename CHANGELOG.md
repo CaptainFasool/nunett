@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.50](!104)
+
+### Changed
+- add dht/peers route and debug print on deployment request
+- bug fixes and debug prints with debug env var
 ## [0.4.49](!102)
 
 ### Changed

@@ -3,6 +3,7 @@ package libp2p
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -42,10 +43,14 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 				if node.Network().Connectedness(p.ID) != network.Connected {
 					_, err = node.Network().DialPeer(ctx, p.ID)
 					if err != nil {
-						// fmt.Println("++++========= connectedness with ", p.ID.String(), " failed - ", err.Error())
+						if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+							fmt.Println("Couldn't Establish Connection With: ", p.ID.String(), " - Error: ", err.Error())
+						}
 						continue
 					}
-					fmt.Println("++++========= connectedness with ", p.ID.String())
+					if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+						fmt.Println("Connected with ", p.ID.String())
+					}
 
 				}
 			}
