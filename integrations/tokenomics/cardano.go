@@ -33,11 +33,16 @@ func HandleRequestReward(c *gin.Context) {
 	var service models.Services
 	db.DB.First(&service, "id = ?", 1) // Currently we are assuming only 1 row in services table
 
+	if service.JobStatus == "running" {
+		c.JSON(102, gin.H{"message": "the job is still running"})
+	}
+
 	// Send the service data to oracle for examination
 	resp, err := oracle.WithdrawTokenRequest(service)
 
 	if err != nil {
-		c.JSON(500, gin.H{"message": "some error has occured"})
+		c.JSON(500, gin.H{"message": "connetction to oracle failed"})
+		return
 	}
 
 	c.JSON(200, resp)

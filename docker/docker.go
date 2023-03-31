@@ -69,7 +69,7 @@ func mhzToVCPU(cpuInMhz int) float64 {
 // specifying image name and cmd. It starts a container and posts
 // log update every gistUpdateDuration.
 func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse, servicePK uint) {
-	log.Println("Entering RunContainer")
+	zlog.Info("Entering RunContainer")
 	machine_type := depReq.Params.MachineType
 	gpuOpts := opts.GpuOpts{}
 	if machine_type == "gpu" {
@@ -168,6 +168,8 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	maxUsedRAM, maxUsedCPU := 0.0, 0.0
+
+outerLoop:
 	for {
 		select {
 		case err := <-errCh:
@@ -192,12 +194,25 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 			}
 			freeUsedResources(resp.ID)
 			return
-		case <-statusCh: // not running?
+		case containerStatus := <-statusCh: // not running?
 			// get the last logs & exit...
 			updateGist(*createdGist.ID, resp.ID)
 			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
 				panic("Service Not Found for Deployment")
 			}
+
+			// add exitStatus to db
+			var services models.Services
+			if containerStatus.StatusCode == 0 {
+				services.JobStatus = "finished without errors"
+			} else if containerStatus.StatusCode > 0 {
+				services.JobStatus = "finished with errors"
+			}
+			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
+			if r.Error != nil {
+				panic(r.Error)
+			}
+
 			if depRes.Success {
 				// ServiceCallParams := models.ServiceCall{   //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 				// 	CallID:              requestTracker.CallID,
@@ -228,10 +243,10 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 				panic(res.Error)
 			}
 			freeUsedResources(resp.ID)
-			return
+			break outerLoop
 		case <-tick.C:
 			// get the latest logs ...
-			log.Println("updating gist")
+			zlog.Info("updating gist")
 
 			contID := requestTracker.RequestID[:12]
 			stats, err := dockerstats.Current()

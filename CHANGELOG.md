@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.51](!106)
+
+### Changed
+- Set JobStatus to be finished with errors if container exited with non-zero exit status.
+- Set JobStatus to be finished without errors if container exited with zero exit status.
+- Return 102 status code when container is still running. DMS won't contact Oracle in such case.
 ## [0.4.50](!104)
 
 ### Changed
