@@ -157,7 +157,7 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 	w := bufio.NewWriter(outboundDepReqStream)
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		fmt.Println("DEBUG: Deployment Request: ", msg)
+		fmt.Println("DEBUG: Deployment Request: ", fmt.Sprintf("%s\n", msg))
 	}
 
 	_, err = w.WriteString(fmt.Sprintf("%s\n", msg))

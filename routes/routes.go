@@ -51,7 +51,6 @@ func SetupRouter() *gin.Engine {
 		dht := v1.Group("/dht")
 		{
 			dht.GET("", libp2p.DumpDHT)
-			dht.GET("/peers", libp2p.ListDHTPeers)
 		}
 	}
 
@@ -59,6 +58,7 @@ func SetupRouter() *gin.Engine {
 	{
 		// peer.GET("", machines.ListPeers)
 		p2p.GET("", libp2p.ListPeers)
+		p2p.GET("/dht", libp2p.ListDHTPeers)
 		p2p.GET("/self", libp2p.SelfPeerInfo)
 		p2p.GET("/chat", libp2p.ListChatHandler)
 		p2p.GET("/chat/start", libp2p.StartChatHandler)
@@ -74,7 +74,7 @@ func SetupRouter() *gin.Engine {
 func getCustomCorsConfig() cors.Config {
 	config := DefaultConfig()
 	// FIXME: This is a security concern.
-	config.AllowOrigins = []string{"http://localhost:9998"}
+	config.AllowOrigins = []string{"http://localhost:9991", "http://localhost:9992"}
 	return config
 }
 

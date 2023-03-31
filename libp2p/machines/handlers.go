@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -71,6 +72,10 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 	computeProvider := filteredPeers[0]
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+		fmt.Println("compute provider", computeProvider)
+	}
+
 	depReq.Params.NodeID = computeProvider.PeerID
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
@@ -246,6 +251,9 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
 	depReq.Timestamp = time.Now()
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+		fmt.Println("Deployment request sent to compute provider: ", depReq)
+	}
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {
