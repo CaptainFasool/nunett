@@ -124,6 +124,21 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			}
 		}
 	}()
+
+	// Clean up the DHT every 5 minutes
+	ticker2 := time.NewTicker(5 * time.Minute)
+	quit2 := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker2.C:
+				CleanupOldPeers()
+			case <-quit2:
+				ticker2.Stop()
+				return
+			}
+		}
+	}()
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {

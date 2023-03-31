@@ -65,6 +65,7 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 
 func DhtUpdateHandler(s network.Stream) {
 	peerInfo := models.PeerData{}
+	peerInfo.Timestamp = time.Now().Unix()
 	var peerID peer.ID
 	data, err := io.ReadAll(s)
 	if err != nil {
@@ -106,13 +107,31 @@ func SendDHTUpdate(peerInfo models.PeerData, s network.Stream) {
 	}
 }
 
+// Cleans up old peers from DHT
+func CleanupOldPeers() {
+	for _, peer := range p2p.Host.Peerstore().Peers() {
+		peerData, err := p2p.Host.Peerstore().Get(peer, "peer_info")
+		if err != nil {
+			continue
+		}
+		if peer == p2p.Host.ID() {
+			continue
+		}
+		if Data, ok := peerData.(models.PeerData); ok {
+			if time.Now().Unix()-Data.Timestamp > 180 {
+				p2p.Host.Peerstore().RemovePeer(peer)
+			}
+		}
+	}
+}
+
 func UpdateDHT() {
 	// Get existing entry from Peerstore
 	var PeerInfo models.PeerData
 	PeerInfo.PeerID = p2p.Host.ID().String()
 	peerData, err := p2p.Host.Peerstore().Get(p2p.Host.ID(), "peer_info")
 	if err != nil {
-		zlog.Sugar().Infof("UpdateAvailableResources error: %s", err.Error())
+		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
 	}
 	if Data, ok := peerData.(models.PeerData); ok {
 		PeerInfo = models.PeerData(Data)

@@ -36,6 +36,7 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 			if err != nil {
 				zlog.Sugar().Fatalf("Error Discovering Peers: %s\n", err.Error())
 			}
+			peers = filterAddrs(peers)
 			for _, p := range peers {
 				if p.ID == node.ID() {
 					continue
@@ -43,12 +44,12 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 				if node.Network().Connectedness(p.ID) != network.Connected {
 					_, err = node.Network().DialPeer(ctx, p.ID)
 					if err != nil {
-						if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+						if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 							fmt.Println("Couldn't Establish Connection With: ", p.ID.String(), " - Error: ", err.Error())
 						}
 						continue
 					}
-					if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 						fmt.Println("Connected with ", p.ID.String())
 					}
 
@@ -66,5 +67,17 @@ func (p2p DMSp2p) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrI
 	if err != nil {
 		zlog.Sugar().Errorf("Error Finding Peers: %s\n", err.Error())
 	}
+	peers = filterAddrs(peers)
+
 	return peers, nil
+}
+
+func filterAddrs(peers []peer.AddrInfo) []peer.AddrInfo {
+	var filtered []peer.AddrInfo
+	for _, p := range peers {
+		if len(p.Addrs) > 0 {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
 }

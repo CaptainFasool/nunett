@@ -140,7 +140,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 
 	// Update db - find the service based on primary key and update container id
 	var service models.Services
-	res = db.DB.Model(&service).Updates(models.Services{ContainerID: resp.ID})
+	res = db.DB.Model(&service).Where("id = ?", servicePK).Updates(models.Services{ContainerID: resp.ID})
 	if res.Error != nil {
 		panic(res.Error)
 	}

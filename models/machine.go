@@ -102,6 +102,7 @@ type PeerData struct {
 	TokenomicsBlockchain string        `json:"tokenomics_blockchain"`
 	AvailableResources   FreeResources `json:"available_resources"`
 	Services             []Services    `json:"services"`
+	Timestamp            int64         `json:"timestamp,omitempty"`
 }
 
 type Machines map[string]PeerData
