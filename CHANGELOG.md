@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.52](#150)
+
+### Changed
+- Added List DHT peers endpoint
+- Remove old peers from DHT
 ## [0.4.51](!106)
 
 ### Changed
