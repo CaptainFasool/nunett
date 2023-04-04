@@ -97,6 +97,9 @@ func DeploymentResponseListener(stream network.Stream) {
 			if err != nil {
 				panic(err)
 			} else {
+				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+					fmt.Println("DEBUG: Deployment Response Message Model: ", fmt.Sprintf("%v\n", depRespMessage))
+				}
 				DepResQueue <- depRespMessage
 			}
 		}
