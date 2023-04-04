@@ -428,7 +428,7 @@ peer() {
             case $avarg in
                 "list")
                     N_LIST_PEERS=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers)
-                    N_LIST_PEERS_DHT=$(curl 0s $DMS_HOST:$DMS_PORT/api/v1/peers/dht)
+                    N_LIST_PEERS_DHT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/dht)
                     ;;
                 "self")
                     N_SELF_PEER=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/self)

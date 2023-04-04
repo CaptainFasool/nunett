@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.54](#153)
+
+### Changed
+- Set peerInfo struct to empty instead of removing peer from peerstore
 ## [0.4.53](#154)
 
 ### Changed
