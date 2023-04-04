@@ -2,7 +2,6 @@ package libp2p
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -45,12 +44,12 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 					_, err = node.Network().DialPeer(ctx, p.ID)
 					if err != nil {
 						if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-							fmt.Println("Couldn't Establish Connection With: ", p.ID.String(), " - Error: ", err.Error())
+							zlog.Sugar().Infof("Couldn't Establish Connection With: ", p.ID.String(), " - Error: ", err.Error())
 						}
 						continue
 					}
 					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-						fmt.Println("Connected with ", p.ID.String())
+						zlog.Sugar().Infof("Connected with ", p.ID.String())
 					}
 
 				}

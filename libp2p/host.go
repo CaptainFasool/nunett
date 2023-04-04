@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -112,6 +114,14 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	// Broadcast DHT updates every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
+	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
+		interval, err := strconv.Atoi(val)
+		if err != nil {
+			zlog.Sugar().DPanicf("invalid value for $NUNET_DHT_UPDATE_INTERVAL - %v", val)
+		}
+		ticker = time.NewTicker(time.Duration(interval) * time.Second)
+		zlog.Sugar().Infof("setting DHT update interval to %v seconds", interval)
+	}
 	quit := make(chan struct{})
 	go func() {
 		for {

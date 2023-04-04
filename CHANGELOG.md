@@ -21,6 +21,10 @@ Types of changes
 
 -->
 
+## [0.4.56](!112)
+
+### Changed
+- Debug mode DHT update interval env var and logging fix
 ## [0.4.55](!111)
 
 ### Changed
