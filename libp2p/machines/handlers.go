@@ -183,6 +183,9 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 				}
 
 				msg, _ = json.Marshal(wsResponse)
+				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+					fmt.Println("DEBUG: Deployment response to websock: ", string(msg))
+				}
 				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
 				zlog.Info("Channel closed!")
@@ -227,14 +230,14 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	// load depReq from the database
 	var depReqFlat models.DeploymentRequestFlat
 	var depReq models.DeploymentRequest
-	result := db.DB.Find(&depReqFlat)
+	result := db.DB.First(&depReqFlat) // SELECTs the first record; first record which is not marked as delete
 	if result.Error != nil {
 		zlog.Sugar().Errorf("%v", result.Error)
 	}
 
 	// delete temporary record
 	// XXX: Needs to be modified to take multiple deployment requests from same service provider
-	result = db.DB.Delete(&depReqFlat, 1)
+	result = db.DB.Where("deleted_at IS NULL").Delete(&models.DeploymentRequestFlat{}) // deletes all the record in table; deletes == mark as delete
 	if result.Error != nil {
 		zlog.Sugar().Errorf("%v", result.Error)
 	}

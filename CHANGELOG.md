@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.53](#154)
+
+### Changed
+- Mark all records as deleted when forwarding deployment request to compute provider.
+- Read first non-deleted record when reading temporary record.
 ## [0.4.52](#150)
 
 ### Changed

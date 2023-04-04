@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type DeploymentRequest struct {
@@ -40,5 +42,6 @@ type DeploymentResponse struct {
 }
 
 type DeploymentRequestFlat struct {
+	gorm.Model
 	DeploymentRequest string `json:"deployment_request"`
 }
