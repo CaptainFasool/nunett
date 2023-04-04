@@ -3,6 +3,7 @@ package libp2p
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -81,7 +82,18 @@ func DeploymentResponseListener(stream network.Stream) {
 
 	r := bufio.NewReader(stream)
 	for {
-		resp, err := readData(r)
+		base64EncodedResp, err := readData(r)
+		if err != nil {
+			zlog.Sugar().Info("Connection Error: %v\n", err)
+			return
+		}
+
+		// Decode the string
+		resp, err := base64.StdEncoding.DecodeString(base64EncodedResp)
+		if err != nil {
+			zlog.Sugar().Info("Error decoding incoming libp2p message from base64 to string: %v\n", err)
+			return
+		}
 
 		if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
 			fmt.Println("DEBUG: Received Deployment Response: ", resp)
@@ -89,7 +101,7 @@ func DeploymentResponseListener(stream network.Stream) {
 
 		if err != nil {
 			panic(err)
-		} else if resp == "" {
+		} else if resp == nil {
 			// do nothing
 		} else {
 			depRespMessage := models.DeploymentResponse{}

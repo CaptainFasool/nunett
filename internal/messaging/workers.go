@@ -134,9 +134,6 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 	}
 
 	depResp = docker.HandleDeployment(depReq)
-	var m map[string]interface{}
-	b, _ := json.Marshal(&depResp)
-	_ = json.Unmarshal(b, &m)
 
 	sendDeploymentResponse(depResp.Success, depResp.Content, false)
 }

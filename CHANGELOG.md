@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+## [0.4.55](!111)
+
+### Changed
+- Decode base64 message coming from libp2p stream
 ## [0.4.54](#153)
 
 ### Changed
