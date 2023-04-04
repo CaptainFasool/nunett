@@ -7,6 +7,7 @@
       - name: docker
 
     nunet_dms_wallet_address_path: /etc/nunet/wallet.addr
+    nunet_dms_metadata_path: /etc/nunet/metadataV2.json
     nunet_dms_mem_threshold: 10000
 
   pre_tasks:
@@ -53,6 +54,11 @@
         path: "{{ nunet_dms_wallet_address_path }}"
       register: nunet_wallet_file
 
+    - name: Check if machine is onboarded
+      ansible.builtin.stat:
+        path: "{{ nunet_dms_metadata_path }}"
+      register: nunet_metadata_file
+
     - name: Create wallet address if not exists
       ansible.builtin.shell:
         cmd: nunet wallet new -c > "{{ nunet_dms_wallet_address_path }}"
@@ -78,6 +84,7 @@
         device_resources: "{{ nunet_available_result.stdout | from_json }}"
 
     - name: Onboard machine
+      when: not nunet_metadata_file.stat.exists
       block:
         - name: Onboard machine as a compute provider
           when: (device_resources.memory / 2 | round) > nunet_dms_mem_threshold
