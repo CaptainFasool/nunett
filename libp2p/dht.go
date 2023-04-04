@@ -84,7 +84,6 @@ func DhtUpdateHandler(s network.Stream) {
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
 		fmt.Println("DHT Update Fron: ", peerID, " --- Info: ", peerInfo)
 	}
-
 	p2p.Host.Peerstore().Put(peerID, "peer_info", peerInfo)
 }
 
@@ -119,7 +118,7 @@ func CleanupOldPeers() {
 		}
 		if Data, ok := peerData.(models.PeerData); ok {
 			if time.Now().Unix()-Data.Timestamp > 180 {
-				p2p.Host.Peerstore().RemovePeer(peer)
+				p2p.Host.Peerstore().Put(peer, "peer_info", nil)
 			}
 		}
 	}

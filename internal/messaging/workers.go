@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
@@ -24,6 +25,9 @@ func sendDeploymentResponse(success bool, content string, close bool) {
 
 	depRespBytes, _ := json.Marshal(&depResp)
 
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		fmt.Println("DEBUG: Deployment Response From Worker: ", fmt.Sprintf("%v\n", string(depRespBytes)))
+	}
 	err := libp2p.DeploymentResponse(string(depRespBytes), close)
 	if err != nil {
 		zlog.Sugar().Errorln("Error Sending Deployment Response - ", err.Error())
