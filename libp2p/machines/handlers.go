@@ -73,7 +73,7 @@ func HandleRequestService(c *gin.Context) {
 	}
 	computeProvider := filteredPeers[0]
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-		fmt.Println("compute provider", computeProvider)
+		zlog.Sugar().Infof("compute provider", computeProvider)
 	}
 
 	depReq.Params.NodeID = computeProvider.PeerID
@@ -184,7 +184,7 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 
 				msg, _ = json.Marshal(wsResponse)
 				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-					fmt.Println("DEBUG: Deployment response to websock: ", string(msg))
+					zlog.Sugar().Infof("DEBUG: Deployment response to websock: ", string(msg))
 				}
 				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
@@ -255,7 +255,7 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 
 	depReq.Timestamp = time.Now()
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-		fmt.Println("Deployment request sent to compute provider: ", depReq)
+		zlog.Sugar().Infof("Deployment request sent to compute provider: ", depReq)
 	}
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)

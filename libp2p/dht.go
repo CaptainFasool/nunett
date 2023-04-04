@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"time"
@@ -82,7 +81,7 @@ func DhtUpdateHandler(s network.Stream) {
 	}
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		fmt.Println("DHT Update Fron: ", peerID, " --- Info: ", peerInfo)
+		zlog.Sugar().Infof("DHT Update Fron: ", peerID, " --- Info: ", peerInfo)
 	}
 	p2p.Host.Peerstore().Put(peerID, "peer_info", peerInfo)
 }

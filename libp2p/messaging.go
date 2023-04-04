@@ -96,7 +96,7 @@ func DeploymentResponseListener(stream network.Stream) {
 		}
 
 		if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-			fmt.Println("DEBUG: Received Deployment Response: ", resp)
+			zlog.Sugar().Infof("DEBUG: Received Deployment Response: ", resp)
 		}
 
 		if err != nil {
@@ -110,7 +110,7 @@ func DeploymentResponseListener(stream network.Stream) {
 				panic(err)
 			} else {
 				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-					fmt.Println("DEBUG: Deployment Response Message Model: ", fmt.Sprintf("%v\n", depRespMessage))
+					zlog.Sugar().Infof("DEBUG: Deployment Response Message Model: ", fmt.Sprintf("%v\n", depRespMessage))
 				}
 				DepResQueue <- depRespMessage
 			}
@@ -172,7 +172,7 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 	w := bufio.NewWriter(outboundDepReqStream)
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		fmt.Println("DEBUG: Deployment Request: ", fmt.Sprintf("%s\n", msg))
+		zlog.Sugar().Infof("DEBUG: Deployment Request: ", fmt.Sprintf("%s\n", msg))
 	}
 
 	_, err = w.WriteString(fmt.Sprintf("%s\n", msg))
