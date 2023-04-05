@@ -3,6 +3,7 @@ package libp2p
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -166,14 +167,14 @@ func StartChatHandler(c *gin.Context) {
 
 	p, err := peer.Decode(peerID)
 	if err != nil {
-		zlog.Sugar().Errorln("Could not decode string ID to peerID:", err)
+		zlog.Sugar().Errorf("could not decode string ID to peerID: %v", err)
 		c.AbortWithStatusJSON(400, gin.H{"error": "Could not decode string ID to peerID"})
 		return
 	}
 
 	stream, err := p2p.Host.NewStream(c, p, protocol.ID(ChatProtocolID))
 	if err != nil {
-		zlog.Sugar().Errorln("Could not create stream with peer - ", err)
+		zlog.Sugar().Errorf("could not create stream with peer: %v", err)
 		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Could not create stream with peer - %v", err)})
 		return
 	}
@@ -291,4 +292,138 @@ func DumpDHT(c *gin.Context) {
 		return
 	}
 	c.JSON(200, dhtContent)
+}
+
+// ListFileRequestsHandler  godoc
+// @Summary      List file transfer requests
+// @Description  Get a list of file transfer requests from peers
+// @Tags         file
+// @Produce      json
+// @Success      200
+// @Router       /peers/file [get]
+func ListFileRequestsHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/file"))
+
+	fileRequests, err := incomingFileTransferRequests()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, fileRequests)
+}
+
+// ClearFileTransferRequestseHandler  godoc
+// @Summary      Clear file transfer requests
+// @Description  Clear file transfer request streams from peers
+// @Tags         file
+// @Produce      json
+// @Success      200
+// @Router       /peers/file/clear [get]
+func ClearFileTransferRequestseHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/file/clear"))
+
+	if err := clearIncomingFileRequests(); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound File Transfer Requests."})
+}
+
+// InitiateFileTransferHandler  godoc
+// @Summary      Send a file to a peer
+// @Description  Initiate file transfer to a peer. filePath and peerID are required arguments.
+// @Tags         file
+// @Success      200
+// @Router       /peers/file/send [get]
+func InitiateFileTransferHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/file/send"))
+
+	peerID := c.Query("peerID")
+
+	if len(peerID) == 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peerID not provided"})
+		return
+	}
+	if peerID == p2p.Host.ID().String() {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peerID can not be self peerID"})
+		return
+	}
+
+	p, err := peer.Decode(peerID)
+	if err != nil {
+		zlog.Sugar().Errorf("could not decode string ID to peerID: %v", err)
+		c.AbortWithStatusJSON(400, gin.H{"error": "Could not decode string ID to peerID"})
+		return
+	}
+
+	filePath := c.Query("filePath")
+	if len(filePath) == 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": "filePath not provided"})
+		return
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": "couldn't open file"})
+		zlog.Sugar().Errorf("couldn't open file: %v", err)
+		return
+	}
+
+	stream, err := p2p.Host.NewStream(c, p, protocol.ID(FileTransferProtocolID))
+	if err != nil {
+		zlog.Sugar().Errorf("could not create stream with peer for file transfer: %v", err)
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Could not create stream with peer - %v", err)})
+		return
+	}
+
+	r := bufio.NewReader(stream)
+	w := bufio.NewWriter(stream)
+
+	go FileReadStreamWrite(file, stream, w)
+	go StreamReadFileWrite(file, stream, r)
+}
+
+// AcceptFileTransferHandler  godoc
+// @Summary      Accept incoming file transfer
+// @Description  Accept an incoming file transfer. Incoming file transfre stream id is a required parameter.
+// @Tags         file
+// @Success      200
+// @Router       /peers/file/accept [get]
+func AcceptFileTransferHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/file/accept"))
+
+	streamReqID := c.Query("streamID")
+	if streamReqID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "Stream ID not provided"})
+		return
+	}
+
+	streamID, err := strconv.Atoi(streamReqID)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Invalid Stream ID: %v", streamReqID)})
+		return
+	}
+
+	if streamID != 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Unknown Stream ID: %v", streamID)})
+		return
+	}
+
+	file, err := os.Create("/tmp/libp2pfile")
+	if err != nil {
+		zlog.Sugar().Errorf("failed to create file: %v", err)
+		return
+	}
+
+	r := bufio.NewReader(inboundFileStream)
+	w := bufio.NewWriter(inboundFileStream)
+
+	go FileReadStreamWrite(file, inboundFileStream, w)
+	go StreamReadFileWrite(file, inboundFileStream, r)
 }

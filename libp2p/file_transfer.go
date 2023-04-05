@@ -47,7 +47,7 @@ func fileStreamHandler(stream network.Stream) {
 
 func incomingFileTransferRequests() (string, error) {
 	if inboundFileStream == nil {
-		return "", fmt.Errorf("No Incoming File Transfer Stream.")
+		return "", fmt.Errorf("no incoming file transfer stream")
 	}
 
 	return inboundFileStream.Stat().Opened.GoString(), nil
@@ -55,7 +55,7 @@ func incomingFileTransferRequests() (string, error) {
 
 func clearIncomingFileRequests() error {
 	if inboundFileStream == nil {
-		return fmt.Errorf("No Inbound File Transfer Stream.")
+		return fmt.Errorf("no inbound file transfer stream")
 	}
 	inboundFileStream = nil
 	return nil
@@ -77,12 +77,12 @@ func readFileStream(r *bufio.Reader) ([]byte, error) {
 func writeFileStream(w *bufio.Writer, data []byte) {
 	_, err := w.Write(data)
 	if err != nil {
-		fmt.Println("Error writing file data to buffer:", err)
+		zlog.Sugar().Errorf("failed to write file data to buffer: %v", err)
 		panic(err)
 	}
 	err = w.Flush()
 	if err != nil {
-		fmt.Println("Error flushing buffer:", err)
+		zlog.Sugar().Errorf("failed to flush buffer: %v", err)
 		panic(err)
 	}
 }
