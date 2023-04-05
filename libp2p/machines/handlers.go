@@ -73,7 +73,7 @@ func HandleRequestService(c *gin.Context) {
 	}
 	computeProvider := filteredPeers[0]
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-		zlog.Sugar().Infof("compute provider", computeProvider)
+		zlog.Sugar().Debugf("compute provider: %v", computeProvider)
 	}
 
 	depReq.Params.NodeID = computeProvider.PeerID
@@ -90,7 +90,7 @@ func HandleRequestService(c *gin.Context) {
 	// Marshal struct to JSON
 	depReqBytes, err := json.Marshal(depReq)
 	if err != nil {
-		fmt.Println("Error marshaling struct to JSON:", err)
+		zlog.Sugar().Errorln("marshaling struct to json: %v", err)
 		return
 	}
 
@@ -184,7 +184,7 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 
 				msg, _ = json.Marshal(wsResponse)
 				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-					zlog.Sugar().Infof("DEBUG: Deployment response to websock: ", string(msg))
+					zlog.Sugar().Debugf("deployment response to websock: %s", string(msg))
 				}
 				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
@@ -255,7 +255,7 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 
 	depReq.Timestamp = time.Now()
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-		zlog.Sugar().Infof("Deployment request sent to compute provider: ", depReq)
+		zlog.Sugar().Debugf("deployment request: %v", depReq)
 	}
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)

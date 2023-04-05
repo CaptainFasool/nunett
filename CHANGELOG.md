@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.57](!113)
+
+### Changed
+- Fix for base64 issue (cause for gist not being received by webapp)
+- Improve log formatting
 ## [0.4.56](!112)
 
 ### Changed

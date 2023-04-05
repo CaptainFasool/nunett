@@ -18,17 +18,19 @@ import (
 )
 
 func sendDeploymentResponse(success bool, content string, close bool) {
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		zlog.Sugar().Debugf("send deployment response content: %s", content)
+		zlog.Sugar().Debugf("send deployment response close stream: %v", close)
+	}
 	depResp, _ := json.Marshal(&models.DeploymentResponse{
 		Success: success,
 		Content: content,
 	})
 
-	depRespBytes, _ := json.Marshal(&depResp)
-
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		fmt.Println("DEBUG: Deployment Response From Worker: ", fmt.Sprintf("%v\n", string(depRespBytes)))
+		zlog.Sugar().Debugf("marshalled deployment response from worker: %s", string(depResp))
 	}
-	err := libp2p.DeploymentResponse(string(depRespBytes), close)
+	err := libp2p.DeploymentResponse(string(depResp), close)
 	if err != nil {
 		zlog.Sugar().Errorln("Error Sending Deployment Response - ", err.Error())
 	}
