@@ -44,12 +44,12 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 					_, err = node.Network().DialPeer(ctx, p.ID)
 					if err != nil {
 						if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-							zlog.Sugar().Infof("Couldn't Establish Connection With: ", p.ID.String(), " - Error: ", err.Error())
+							zlog.Sugar().Debugf("couldn't establish connection with: %s - error: %v", p.ID.String(), err)
 						}
 						continue
 					}
 					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-						zlog.Sugar().Infof("Connected with ", p.ID.String())
+						zlog.Sugar().Debugf("connected with: %s", p.ID.String())
 					}
 
 				}

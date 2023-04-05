@@ -68,20 +68,24 @@ func DhtUpdateHandler(s network.Stream) {
 	var peerID peer.ID
 	data, err := io.ReadAll(s)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
 	err = json.Unmarshal(data, &peerInfo)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
 	// Update Peerstore
 	peerID, err = peer.Decode(peerInfo.PeerID)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		zlog.Sugar().Infof("DHT Update Fron: ", peerID, " --- Info: ", peerInfo)
+		stringPeerInfo, err := json.Marshal(peerInfo)
+		if err != nil {
+			zlog.Sugar().Errorf("failed to json marshal peerInfo: %v", err)
+		}
+		zlog.Sugar().Debugf("dht update from: %s -> %v", peerID.String(), string(stringPeerInfo))
 	}
 	p2p.Host.Peerstore().Put(peerID, "peer_info", peerInfo)
 }

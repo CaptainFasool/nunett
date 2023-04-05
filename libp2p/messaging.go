@@ -3,7 +3,6 @@ package libp2p
 import (
 	"bufio"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -82,26 +81,15 @@ func DeploymentResponseListener(stream network.Stream) {
 
 	r := bufio.NewReader(stream)
 	for {
-		base64EncodedResp, err := readData(r)
-		if err != nil {
-			zlog.Sugar().Info("Connection Error: %v\n", err)
-			return
-		}
-
-		// Decode the string
-		resp, err := base64.StdEncoding.DecodeString(base64EncodedResp)
-		if err != nil {
-			zlog.Sugar().Info("Error decoding incoming libp2p message from base64 to string: %v\n", err)
-			return
-		}
+		resp, err := readData(r)
 
 		if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-			zlog.Sugar().Infof("DEBUG: Received Deployment Response: ", resp)
+			zlog.Sugar().Debugf("received deployment response: %s", resp)
 		}
 
 		if err != nil {
 			panic(err)
-		} else if resp == nil {
+		} else if resp == "" {
 			// do nothing
 		} else {
 			depRespMessage := models.DeploymentResponse{}
@@ -110,7 +98,7 @@ func DeploymentResponseListener(stream network.Stream) {
 				panic(err)
 			} else {
 				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-					zlog.Sugar().Infof("DEBUG: Deployment Response Message Model: ", fmt.Sprintf("%v\n", depRespMessage))
+					zlog.Sugar().Debugf("deployment response message model: %v", depRespMessage)
 				}
 				DepResQueue <- depRespMessage
 			}
@@ -119,26 +107,30 @@ func DeploymentResponseListener(stream network.Stream) {
 }
 
 func DeploymentResponse(msg string, close bool) error {
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		zlog.Sugar().Debugf("deployment response message: %s", msg)
+		zlog.Sugar().Debugf("deployment response close stream: %v", close)
+	}
 	if inboundDepReqStream == nil {
-		return fmt.Errorf("No Inbound Deployment Request to Respond to.")
+		return fmt.Errorf("no inbound deployment request to respond to")
 	}
 	w := bufio.NewWriter(inboundDepReqStream)
 	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
-		zlog.Sugar().Errorln("Error Writing Deployment Response to Buffer")
+		zlog.Sugar().Errorln("writing deployment response to buffer")
 		return err
 	}
 
 	err = w.Flush()
 	if err != nil {
-		zlog.Sugar().Errorln("Error flushing buffer")
+		zlog.Sugar().Errorln("flushing buffer")
 		return err
 	}
 
 	if close {
 		err = inboundDepReqStream.Close()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Closing InboundDepReqStream - ", err.Error())
+			zlog.Sugar().Errorln("closing inbound deployment request stream - ", err.Error())
 		}
 		inboundDepReqStream = nil
 	}
@@ -151,37 +143,37 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 
 	// limit to 1 request
 	if outboundDepReqStream != nil {
-		return nil, fmt.Errorf("Error: Couldn't Create Deployment Request. A request already in progress.")
+		return nil, fmt.Errorf("couldn't create deployment request. a request already in progress")
 	}
 
 	peerID, err := peer.Decode(depReq.Params.NodeID)
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Decode Input PeerID '%s', : %v", depReq.Params.NodeID, err)
+		return nil, fmt.Errorf("couldn't decode input peer-id '%s', : %v", depReq.Params.NodeID, err)
 	}
 
 	outboundDepReqStream, err := GetP2P().Host.NewStream(ctx, peerID, protocol.ID(DepReqProtocolID))
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Create Deployment Request Stream: %v", err)
+		return nil, fmt.Errorf("couldn't create deployment request stream: %v", err)
 	}
 
 	msg, err := json.Marshal(depReq)
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Convert Deployment Request to JSON: %v", err)
+		return nil, fmt.Errorf("couldn't convert deployment request to json: %v", err)
 	}
 
 	w := bufio.NewWriter(outboundDepReqStream)
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		zlog.Sugar().Infof("DEBUG: Deployment Request: ", fmt.Sprintf("%s\n", msg))
+		zlog.Sugar().Debugf("deployment request: %s", string(msg))
 	}
 
 	_, err = w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Write Deployment Request to Stream: %v", err)
+		return nil, fmt.Errorf("couldn't write deployment request to stream: %v", err)
 	}
 	err = w.Flush()
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Flush Deployment Request to Stream: %v", err)
+		return nil, fmt.Errorf("couldn't flush deployment request to stream: %v", err)
 	}
 
 	return outboundDepReqStream, nil
@@ -195,17 +187,17 @@ func chatStreamHandler(stream network.Stream) {
 		w := bufio.NewWriter(stream)
 		_, err := w.WriteString("Unable to Accept Chat Request. Closing.\n")
 		if err != nil {
-			zlog.Sugar().Errorln("Error Writing to Stream After Open Chat Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorln("writing to stream after open chat stream length exceeded - ", err.Error())
 		}
 
 		err = w.Flush()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Flushing Buffer After Open Chat Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorln("flushing buffer after open chat stream length exceeded - ", err.Error())
 		}
 
 		err = stream.Close()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Closing Stream After Open Chat Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorln("closing stream after open chat stream length exceeded - ", err.Error())
 		}
 		return
 	}
@@ -218,7 +210,7 @@ func chatStreamHandler(stream network.Stream) {
 
 func incomingChatRequests() ([]openStream, error) {
 	if len(inboundChatStreams) == 0 {
-		return nil, fmt.Errorf("No Incoming Message Stream.")
+		return nil, fmt.Errorf("no incoming message stream")
 	}
 
 	var out []openStream
@@ -230,7 +222,7 @@ func incomingChatRequests() ([]openStream, error) {
 
 func clearIncomingChatRequests() error {
 	if len(inboundChatStreams) == 0 {
-		return fmt.Errorf("No Inbound Message Streams.")
+		return fmt.Errorf("no inbound message streams")
 	}
 	inboundChatStreams = nil
 	return nil
@@ -241,7 +233,9 @@ func readData(r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		zlog.Sugar().Debugf("received raw data from stream: %s", str)
+	}
 	if str == "\n" {
 		return "", nil
 	}
@@ -249,14 +243,17 @@ func readData(r *bufio.Reader) (string, error) {
 }
 
 func writeData(w *bufio.Writer, msg string) {
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		zlog.Sugar().Debugf("writing raw data to stream: %s", msg)
+	}
 	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
-		fmt.Println("Error writing to buffer:", err)
+		zlog.Sugar().Errorf("failed to write to buffer: %v", err)
 		panic(err)
 	}
 	err = w.Flush()
 	if err != nil {
-		fmt.Println("Error flushing buffer:", err)
+		zlog.Sugar().Errorln("failed to flush buffer: %v", err)
 		panic(err)
 	}
 }

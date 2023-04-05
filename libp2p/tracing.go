@@ -2,7 +2,6 @@ package libp2p
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -28,7 +27,7 @@ func GetMetadata() models.Metadata {
 	if err != nil && resp.StatusCode == 200 {
 		panic(err)
 	}
-	fmt.Println(metadata.Reserved)
+	zlog.Sugar().Infof("metadata.Reserved: %v", metadata.Reserved)
 	return metadata
 }
 

@@ -13,7 +13,7 @@ type Logger struct {
 }
 
 func (l *Logger) init() error {
-	if os.Getenv("MODE") == "development" {
+	if _, debug := os.LookupEnv("NUNET_DEBUG"); debug {
 		l.Logger, err = zap.NewDevelopment()
 	} else {
 		l.Logger, err = zap.NewProduction()
