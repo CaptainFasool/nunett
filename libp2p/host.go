@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -98,6 +100,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		peerInfo := models.PeerData{}
 		peerInfo.PeerID = host.ID().String()
 		peerInfo.AllowCardano = metadata2.AllowCardano
+		peerInfo.TokenomicsAddress = metadata2.PublicKey
 		if len(metadata2.GpuInfo) == 0 {
 			peerInfo.HasGpu = false
 			peerInfo.GpuInfo = metadata2.GpuInfo
@@ -111,6 +114,14 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	// Broadcast DHT updates every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
+	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
+		interval, err := strconv.Atoi(val)
+		if err != nil {
+			zlog.Sugar().DPanicf("invalid value for $NUNET_DHT_UPDATE_INTERVAL - %v", val)
+		}
+		ticker = time.NewTicker(time.Duration(interval) * time.Second)
+		zlog.Sugar().Infof("setting DHT update interval to %v seconds", interval)
+	}
 	quit := make(chan struct{})
 	go func() {
 		for {
@@ -119,6 +130,21 @@ func RunNode(priv crypto.PrivKey, server bool) {
 				UpdateDHT()
 			case <-quit:
 				ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	// Clean up the DHT every 5 minutes
+	ticker2 := time.NewTicker(5 * time.Minute)
+	quit2 := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker2.C:
+				CleanupOldPeers()
+			case <-quit2:
+				ticker2.Stop()
 				return
 			}
 		}

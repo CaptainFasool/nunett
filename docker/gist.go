@@ -5,7 +5,7 @@ package docker
 import (
 	"bytes"
 	"errors"
-	"log"
+	"fmt"
 
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-github/github"
@@ -26,8 +26,8 @@ func createGist() (*github.Gist, *github.Response, error) {
 		return createdGist, resp, err
 	}
 
-	log.Println(*createdGist.HTMLURL)
-	log.Println("[gist]: Remaining request quota:", resp.Remaining) // if this is equal to 0, we have exhausted limit for 24 hours.
+	zlog.Info(fmt.Sprintf("[gist]: %s", *createdGist.HTMLURL))
+	zlog.Info(fmt.Sprintf("[gist]: Remaining request quota: %d", resp.Remaining)) // if this is equal to 0, we have exhausted limit for 24 hours.exhausted limit for 24 hours.
 	if resp.Remaining == 0 {
 		return createdGist, resp, errors.New("gist quota exhausted")
 	}
@@ -67,7 +67,7 @@ func updateGist(gistID string, containerID string) {
 		panic(err)
 	}
 
-	log.Println("UpdatedAt:", editedGist.GetUpdatedAt())
-	log.Println("Resp Code:", resp.StatusCode) // if this is equal to 0, we have exhausted limit for 24 hours.
+	zlog.Info(fmt.Sprintf("[gist]: UpdatedAt: %s", editedGist.GetUpdatedAt()))
+	zlog.Info(fmt.Sprintf("[gist]: Resp Code %d:", resp.StatusCode)) // if this is equal to 0, we have exhausted limit for 24 hours.
 	// log.Printf("%v\n", resp.Header)
 }

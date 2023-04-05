@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -46,10 +47,18 @@ func SetupRouter() *gin.Engine {
 		tele.GET("/free", telemetry.GetFreeResource)
 	}
 
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		dht := v1.Group("/dht")
+		{
+			dht.GET("", libp2p.DumpDHT)
+		}
+	}
+
 	p2p := v1.Group("/peers")
 	{
 		// peer.GET("", machines.ListPeers)
 		p2p.GET("", libp2p.ListPeers)
+		p2p.GET("/dht", libp2p.ListDHTPeers)
 		p2p.GET("/self", libp2p.SelfPeerInfo)
 		p2p.GET("/chat", libp2p.ListChatHandler)
 		p2p.GET("/chat/start", libp2p.StartChatHandler)
@@ -65,7 +74,7 @@ func SetupRouter() *gin.Engine {
 func getCustomCorsConfig() cors.Config {
 	config := DefaultConfig()
 	// FIXME: This is a security concern.
-	config.AllowOrigins = []string{"http://localhost:9998"}
+	config.AllowOrigins = []string{"http://localhost:9991", "http://localhost:9992"}
 	return config
 }
 

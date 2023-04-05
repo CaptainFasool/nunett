@@ -20,6 +20,64 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+## [0.4.57](!113)
+
+### Changed
+- Fix for base64 issue (cause for gist not being received by webapp)
+- Improve log formatting
+## [0.4.56](!112)
+
+### Changed
+- Debug mode DHT update interval env var and logging fix
+## [0.4.55](!111)
+
+### Changed
+- Decode base64 message coming from libp2p stream
+## [0.4.54](#153)
+
+### Changed
+- Set peerInfo struct to empty instead of removing peer from peerstore
+## [0.4.53](#154)
+
+### Changed
+- Mark all records as deleted when forwarding deployment request to compute provider.
+- Read first non-deleted record when reading temporary record.
+## [0.4.52](#150)
+
+### Changed
+- Added List DHT peers endpoint
+- Remove old peers from DHT
+## [0.4.51](!106)
+
+### Changed
+- Set JobStatus to be finished with errors if container exited with non-zero exit status.
+- Set JobStatus to be finished without errors if container exited with zero exit status.
+- Return 102 status code when container is still running. DMS won't contact Oracle in such case.
+## [0.4.50](!104)
+
+### Changed
+- add dht/peers route and debug print on deployment request
+- bug fixes and debug prints with debug env var
+## [0.4.49](!102)
+
+### Changed
+- filter machines for cpu only ml jobs
+- fence index error
+## [0.4.48](#143)
+
+### Changed
+- Fix for problem with CPU-only job deployment
+## [0.4.47](#142)
+
+### Changed
+- Save LogURL and other service related data on service run
+- Fetch LogURL and other service related data on request reward
+## [0.4.46](!96)
+
+### Changed
+- Correct the wrong formatting of deployment response.
+- Minor refactoring
 ## [0.4.45](#144)
 
 ### Changed

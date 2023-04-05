@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"os"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -63,19 +64,28 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 
 func DhtUpdateHandler(s network.Stream) {
 	peerInfo := models.PeerData{}
+	peerInfo.Timestamp = time.Now().Unix()
 	var peerID peer.ID
 	data, err := io.ReadAll(s)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
 	err = json.Unmarshal(data, &peerInfo)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
 	// Update Peerstore
 	peerID, err = peer.Decode(peerInfo.PeerID)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
+	}
+
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		stringPeerInfo, err := json.Marshal(peerInfo)
+		if err != nil {
+			zlog.Sugar().Errorf("failed to json marshal peerInfo: %v", err)
+		}
+		zlog.Sugar().Debugf("dht update from: %s -> %v", peerID.String(), string(stringPeerInfo))
 	}
 	p2p.Host.Peerstore().Put(peerID, "peer_info", peerInfo)
 }
@@ -99,13 +109,31 @@ func SendDHTUpdate(peerInfo models.PeerData, s network.Stream) {
 	}
 }
 
+// Cleans up old peers from DHT
+func CleanupOldPeers() {
+	for _, peer := range p2p.Host.Peerstore().Peers() {
+		peerData, err := p2p.Host.Peerstore().Get(peer, "peer_info")
+		if err != nil {
+			continue
+		}
+		if peer == p2p.Host.ID() {
+			continue
+		}
+		if Data, ok := peerData.(models.PeerData); ok {
+			if time.Now().Unix()-Data.Timestamp > 180 {
+				p2p.Host.Peerstore().Put(peer, "peer_info", nil)
+			}
+		}
+	}
+}
+
 func UpdateDHT() {
 	// Get existing entry from Peerstore
 	var PeerInfo models.PeerData
 	PeerInfo.PeerID = p2p.Host.ID().String()
 	peerData, err := p2p.Host.Peerstore().Get(p2p.Host.ID(), "peer_info")
 	if err != nil {
-		zlog.Sugar().Infof("UpdateAvailableResources error: %s", err.Error())
+		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
 	}
 	if Data, ok := peerData.(models.PeerData); ok {
 		PeerInfo = models.PeerData(Data)

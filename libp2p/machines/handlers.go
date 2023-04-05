@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -46,17 +47,6 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
-	// Marshal struct to JSON
-	depReqBytes, err := json.Marshal(depReq)
-	if err != nil {
-		fmt.Println("Error marshaling struct to JSON:", err)
-		return
-	}
-
-	// Convert JSON bytes to string
-	depReqStr := string(depReqBytes)
-	depReqFlat.DeploymentRequest = depReqStr
-
 	// add node_id and public_key in deployment request
 	pKey, err := libp2p.GetPublicKey()
 	if err != nil {
@@ -77,8 +67,16 @@ func HandleRequestService(c *gin.Context) {
 	}
 
 	filteredPeers := FilterPeers(depReq, libp2p.GetP2P().Host)
+	if len(filteredPeers) < 1 {
+		c.AbortWithError(http.StatusBadRequest, errors.New("no peers found with matched specs"))
+		return
+	}
 	computeProvider := filteredPeers[0]
-	depReq.ComputerProviderP2PAddr = computeProvider.PeerID
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+		zlog.Sugar().Debugf("compute provider: %v", computeProvider)
+	}
+
+	depReq.Params.NodeID = computeProvider.PeerID
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Sugar().Info("sending fund contract request to oracle")
@@ -88,6 +86,17 @@ func HandleRequestService(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, errors.New("cannot connect to oracle"))
 		return
 	}
+
+	// Marshal struct to JSON
+	depReqBytes, err := json.Marshal(depReq)
+	if err != nil {
+		zlog.Sugar().Errorln("marshaling struct to json: %v", err)
+		return
+	}
+
+	// Convert JSON bytes to string
+	depReqStr := string(depReqBytes)
+	depReqFlat.DeploymentRequest = depReqStr
 
 	result := db.DB.Create(&depReqFlat)
 	if result.Error != nil {
@@ -174,6 +183,9 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 				}
 
 				msg, _ = json.Marshal(wsResponse)
+				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+					zlog.Sugar().Debugf("deployment response to websock: %s", string(msg))
+				}
 				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
 				zlog.Info("Channel closed!")
@@ -218,14 +230,14 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	// load depReq from the database
 	var depReqFlat models.DeploymentRequestFlat
 	var depReq models.DeploymentRequest
-	result := db.DB.Find(&depReqFlat)
+	result := db.DB.First(&depReqFlat) // SELECTs the first record; first record which is not marked as delete
 	if result.Error != nil {
 		zlog.Sugar().Errorf("%v", result.Error)
 	}
 
 	// delete temporary record
-	// XXX: This delete entire table. Needs to be modified to take multiple deployment requests from same service provider
-	result = db.DB.Delete(&depReqFlat)
+	// XXX: Needs to be modified to take multiple deployment requests from same service provider
+	result = db.DB.Where("deleted_at IS NULL").Delete(&models.DeploymentRequestFlat{}) // deletes all the record in table; deletes == mark as delete
 	if result.Error != nil {
 		zlog.Sugar().Errorf("%v", result.Error)
 	}
@@ -242,6 +254,9 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
 	depReq.Timestamp = time.Now()
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+		zlog.Sugar().Debugf("deployment request: %v", depReq)
+	}
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {

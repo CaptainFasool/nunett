@@ -2,16 +2,17 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type DeploymentRequest struct {
-	AddressUser             string    `json:"address_user"` // service provider wallet address
-	ComputerProviderP2PAddr string    `json:"compute_provider_addr"`
-	MaxNtx                  int       `json:"max_ntx"`
-	Blockchain              string    `json:"blockchain"`
-	ServiceType             string    `json:"service_type"`
-	Timestamp               time.Time `json:"timestamp"`
-	Params                  struct {
+	RequesterWalletAddress string    `json:"address_user"` // service provider wallet address
+	MaxNtx                 int       `json:"max_ntx"`
+	Blockchain             string    `json:"blockchain"`
+	ServiceType            string    `json:"service_type"`
+	Timestamp              time.Time `json:"timestamp"`
+	Params                 struct {
 		ImageID     string   `json:"image_id"`
 		ModelURL    string   `json:"model_url"`
 		Packages    []string `json:"packages"`
@@ -41,5 +42,6 @@ type DeploymentResponse struct {
 }
 
 type DeploymentRequestFlat struct {
+	gorm.Model
 	DeploymentRequest string `json:"deployment_request"`
 }

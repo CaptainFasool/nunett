@@ -1,5 +1,7 @@
 package models
 
+import "gorm.io/gorm"
+
 type IP []any
 
 type PeerInfo struct {
@@ -47,11 +49,15 @@ type AvailableResources struct {
 }
 
 type Services struct {
-	ID                   uint
+	gorm.Model
+	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
+	JobDuration          int64  // job duration in minutes
+	EstimatedJobDuration int64  // job duration in minutes
 	ServiceName          string
 	ContainerID          string
 	ResourceRequirements int
 	ImageID              string
+	LogURL               string
 	// TODO: Add ContainerType field
 
 }
@@ -96,6 +102,7 @@ type PeerData struct {
 	TokenomicsBlockchain string        `json:"tokenomics_blockchain"`
 	AvailableResources   FreeResources `json:"available_resources"`
 	Services             []Services    `json:"services"`
+	Timestamp            int64         `json:"timestamp,omitempty"`
 }
 
 type Machines map[string]PeerData

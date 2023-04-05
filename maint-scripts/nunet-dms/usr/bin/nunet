@@ -428,6 +428,7 @@ peer() {
             case $avarg in
                 "list")
                     N_LIST_PEERS=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers)
+                    N_LIST_PEERS_DHT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/dht)
                     ;;
                 "self")
                     N_SELF_PEER=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/self)
@@ -449,6 +450,7 @@ peer() {
             printf "${BAD_C}No peers available. Please try again in a few minutes.${NORMAL_C}\n"
         else
             # echo $N_LIST_PEERS | jq --raw-output '(.[] | [.ID, ([.Addrs[]] | select(length > 0) | join(" , "))]) | map( gsub("\t";"\t") ) | join("|")' | column -t -N "ID,Listening Addresses" -c 150 -W2 --separator "|"
+            printf "${UNDERLINE}Bootstrap peers${NORMAL}\n"
             echo $N_LIST_PEERS | jq --raw-output '(.[] | .ID)'
         fi
     elif [[ -v N_SELF_PEER ]] ; then
@@ -458,6 +460,17 @@ peer() {
             echo $N_SELF_PEER | jq --raw-output '(. | [.ID, ([.Addrs[]] | select(length > 0) | join(" , "))]) | map( gsub("\t";"\t") ) | join("   ")'
         else
             printf "${BAD_C}Error: $N_SELF_PEER_ERR_MSG ${NORMAL_C}\n"
+        fi
+    fi
+    if [[ -v N_LIST_PEERS_DHT ]] ; then
+        N_LIST_PEERS_DHT_ERR_MSG=$(echo $N_LIST_PEERS_DHT | jq '. | select(.error != null) | .error' 2>/dev/null)
+        if [[ ! -z "$N_LIST_PEERS_DHT_ERR_MSG" ]] ; then
+            printf "${BAD_C}Error: $N_LIST_PEERS_DHT_ERR_MSG ${NORMAL_C}\n"
+        elif [[ N_LIST_PEERS_DHT == "" ]] ; then
+            printf "${BAD_C}No peers available in DHT. Please try again in a few minutes.${NORMAL_C}\n"
+        else
+            printf "\n${UNDERLINE}DHT peers${NORMAL}\n"
+            echo $N_LIST_PEERS_DHT | jq --raw-output '(.[])'
         fi
     fi
 }

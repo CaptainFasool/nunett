@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/internal"
+	"gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -40,6 +41,40 @@ func ListPeers(c *gin.Context) {
 	}
 	c.JSON(200, peers)
 
+}
+
+// ListPeers  godoc
+// @Summary      Return list of peers which have sent a dht update
+// @Description  Gets a list of peers the libp2p node has received a dht update from
+// @Tags         p2p
+// @Produce      json
+// @Success      200  {string}	string
+// @Router       /peers/dht [get]
+func ListDHTPeers(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/dht"))
+
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+	var dhtPeers []peer.ID
+	for _, peer := range p2p.Host.Peerstore().Peers() {
+		_, err := p2p.Host.Peerstore().Get(peer, "peer_info")
+		if err != nil {
+			continue
+		}
+		if peer == p2p.Host.ID() {
+			continue
+		}
+		dhtPeers = append(dhtPeers, peer)
+	}
+
+	if len(dhtPeers) == 0 {
+		c.JSON(200, gin.H{"message": "No peers found"})
+		return
+	}
+	c.JSON(200, dhtPeers)
 }
 
 // SelfPeerInfo  godoc
@@ -219,4 +254,41 @@ func JoinChatHandler(c *gin.Context) {
 
 	go SockReadStreamWrite(&conn, stream, w)
 	go StreamReadSockWrite(&conn, stream, r)
+}
+
+// DumpDHT  godoc
+// @Summary      Return a dump of the dht
+// @Description  Returns entire DHT content
+// @Tags         p2p
+// @Produce      json
+// @Success      200  {string}	string
+// @Router       /dht [get]
+func DumpDHT(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/dht"))
+
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+
+	dhtContent := []models.PeerData{}
+	for _, peer := range p2p.Host.Peerstore().Peers() {
+		peerData, err := p2p.Host.Peerstore().Get(peer, "peer_info")
+		if err != nil {
+			zlog.Sugar().Infof("UpdateAvailableResources error: %s", err.Error())
+		}
+		if peer == p2p.Host.ID() {
+			continue
+		}
+		if Data, ok := peerData.(models.PeerData); ok {
+			dhtContent = append(dhtContent, models.PeerData(Data))
+		}
+	}
+
+	if len(dhtContent) == 0 {
+		c.JSON(200, gin.H{"message": "No Content in DHT"})
+		return
+	}
+	c.JSON(200, dhtContent)
 }

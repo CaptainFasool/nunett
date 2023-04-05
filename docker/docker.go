@@ -68,8 +68,8 @@ func mhzToVCPU(cpuInMhz int) float64 {
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
 // log update every gistUpdateDuration.
-func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse) {
-	log.Println("Entering RunContainer")
+func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse, servicePK uint) {
+	zlog.Info("Entering RunContainer")
 	machine_type := depReq.Params.MachineType
 	gpuOpts := opts.GpuOpts{}
 	if machine_type == "gpu" {
@@ -138,11 +138,12 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		panic(res.Error)
 	}
 
-	// Update db
+	// Update db - find the service based on primary key and update container id
 	var service models.Services
-	service.ContainerID = resp.ID
-	service.ImageID = depReq.Params.ImageID
-	service.ServiceName = depReq.Params.ImageID
+	res = db.DB.Model(&service).Where("id = ?", servicePK).Updates(models.Services{ContainerID: resp.ID})
+	if res.Error != nil {
+		panic(res.Error)
+	}
 
 	var resourceRequirements models.ServiceResourceRequirements
 	resourceRequirements.CPU = depReq.Constraints.CPU
@@ -154,10 +155,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 
 	service.ResourceRequirements = int(resourceRequirements.ID)
-	result = db.DB.Create(&service)
-	if result.Error != nil {
-		panic(result.Error)
-	}
+	// TODO: Update service based on passed pk
 
 	telemetry.CalcFreeResources()
 	libp2p.UpdateDHT()
@@ -170,6 +168,8 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	maxUsedRAM, maxUsedCPU := 0.0, 0.0
+
+outerLoop:
 	for {
 		select {
 		case err := <-errCh:
@@ -194,12 +194,25 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 			}
 			freeUsedResources(resp.ID)
 			return
-		case <-statusCh: // not running?
+		case containerStatus := <-statusCh: // not running?
 			// get the last logs & exit...
 			updateGist(*createdGist.ID, resp.ID)
 			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
 				panic("Service Not Found for Deployment")
 			}
+
+			// add exitStatus to db
+			var services models.Services
+			if containerStatus.StatusCode == 0 {
+				services.JobStatus = "finished without errors"
+			} else if containerStatus.StatusCode > 0 {
+				services.JobStatus = "finished with errors"
+			}
+			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
+			if r.Error != nil {
+				panic(r.Error)
+			}
+
 			if depRes.Success {
 				// ServiceCallParams := models.ServiceCall{   //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
 				// 	CallID:              requestTracker.CallID,
@@ -230,10 +243,10 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 				panic(res.Error)
 			}
 			freeUsedResources(resp.ID)
-			return
+			break outerLoop
 		case <-tick.C:
 			// get the latest logs ...
-			log.Println("updating gist")
+			zlog.Info("updating gist")
 
 			contID := requestTracker.RequestID[:12]
 			stats, err := dockerstats.Current()
@@ -311,25 +324,39 @@ func cpuUsage(cpu float64, maxCPU float64) float64 {
 
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, delete container, send log to the requester
-func HandleDeployment(depReq models.DeploymentRequest, depRes models.DeploymentResponse) models.DeploymentResponse {
+func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse {
 	// Pull the image
 	imageName := depReq.Params.ImageID
 	PullImage(imageName)
 
+	// create a service and pass the primary key to the RunContainer to update ContainerID
+	var service models.Services
+	service.ImageID = depReq.Params.ImageID
+	service.ServiceName = depReq.Params.ImageID
+	service.JobStatus = "running"
+	service.JobDuration = 5           // these are dummy data, implementation pending
+	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
+
+	// create gist here and pass it to RunContainer to update logs
 	createdGist, _, err := createGist()
 	if err != nil {
 		log.Panicln(err)
 	}
 
+	service.LogURL = *createdGist.HTMLURL
+	// Save the service with logs
+	result := db.DB.Create(&service)
+	if result.Error != nil {
+		panic(result.Error)
+	}
 	resCh := make(chan models.DeploymentResponse)
 
 	// Run the container.
-	go RunContainer(depReq, createdGist, resCh)
+	go RunContainer(depReq, createdGist, resCh, service.ID)
 
 	res := <-resCh
 
 	// Send back *createdGist.HTMLURL
-	depRes.Content = *createdGist.HTMLURL
-	depRes.Success = res.Success
-	return depRes
+	res.Content = *createdGist.HTMLURL
+	return res
 }
