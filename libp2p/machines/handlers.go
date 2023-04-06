@@ -183,9 +183,9 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 				}
 
 				msg, _ = json.Marshal(wsResponse)
-				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-					zlog.Sugar().Debugf("deployment response to websock: %s", string(msg))
-				}
+
+				zlog.Sugar().Debugf("deployment response to websock: %s", string(msg))
+
 				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
 				zlog.Info("Channel closed!")

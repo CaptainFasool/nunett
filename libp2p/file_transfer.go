@@ -88,9 +88,9 @@ func writeFileStream(w *bufio.Writer, data []byte) {
 }
 
 func FileReadStreamWrite(file *os.File, stream network.Stream, w *bufio.Writer) {
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		zlog.Sugar().Debugf("in FileReadStreamWrite")
-	}
+
+	zlog.Sugar().Debugf("in FileReadStreamWrite")
+
 	defer func() {
 		if r := recover(); r != nil {
 			zlog.Sugar().Errorf("Error: %v\n", r)
@@ -112,9 +112,9 @@ func FileReadStreamWrite(file *os.File, stream network.Stream, w *bufio.Writer) 
 }
 
 func StreamReadFileWrite(file *os.File, stream network.Stream, r *bufio.Reader) {
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		zlog.Sugar().Debugf("in StreamReadFileWrite")
-	}
+
+	zlog.Sugar().Debugf("in StreamReadFileWrite")
+
 	defer func() {
 		if r := recover(); r != nil {
 			zlog.Sugar().Info("Connection Error: %v\n", r)

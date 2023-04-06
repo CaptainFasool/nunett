@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -83,9 +82,7 @@ func DeploymentResponseListener(stream network.Stream) {
 	for {
 		resp, err := readData(r)
 
-		if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-			zlog.Sugar().Debugf("received deployment response: %s", resp)
-		}
+		zlog.Sugar().Debugf("received deployment response: %s", resp)
 
 		if err != nil {
 			panic(err)
@@ -97,9 +94,9 @@ func DeploymentResponseListener(stream network.Stream) {
 			if err != nil {
 				panic(err)
 			} else {
-				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-					zlog.Sugar().Debugf("deployment response message model: %v", depRespMessage)
-				}
+
+				zlog.Sugar().Debugf("deployment response message model: %v", depRespMessage)
+
 				DepResQueue <- depRespMessage
 			}
 		}
@@ -107,10 +104,10 @@ func DeploymentResponseListener(stream network.Stream) {
 }
 
 func DeploymentResponse(msg string, close bool) error {
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		zlog.Sugar().Debugf("deployment response message: %s", msg)
-		zlog.Sugar().Debugf("deployment response close stream: %v", close)
-	}
+
+	zlog.Sugar().Debugf("deployment response message: %s", msg)
+	zlog.Sugar().Debugf("deployment response close stream: %v", close)
+
 	if inboundDepReqStream == nil {
 		return fmt.Errorf("no inbound deployment request to respond to")
 	}
@@ -163,9 +160,7 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 
 	w := bufio.NewWriter(outboundDepReqStream)
 
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		zlog.Sugar().Debugf("deployment request: %s", string(msg))
-	}
+	zlog.Sugar().Debugf("deployment request: %s", string(msg))
 
 	_, err = w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
@@ -233,9 +228,9 @@ func readData(r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		zlog.Sugar().Debugf("received raw data from stream: %s", str)
-	}
+
+	zlog.Sugar().Debugf("received raw data from stream: %s", str)
+
 	if str == "\n" {
 		return "", nil
 	}
@@ -243,9 +238,9 @@ func readData(r *bufio.Reader) (string, error) {
 }
 
 func writeData(w *bufio.Writer, msg string) {
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		zlog.Sugar().Debugf("writing raw data to stream: %s", msg)
-	}
+
+	zlog.Sugar().Debugf("writing raw data to stream: %s", msg)
+
 	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
 		zlog.Sugar().Errorf("failed to write to buffer: %v", err)
