@@ -375,17 +375,16 @@ func InitiateFileTransferHandler(c *gin.Context) {
 	}
 
 	stream, err := p2p.Host.NewStream(c, p, protocol.ID(FileTransferProtocolID))
+
 	if err != nil {
 		zlog.Sugar().Errorf("could not create stream with peer for file transfer: %v", err)
 		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Could not create stream with peer - %v", err)})
 		return
 	}
 
-	r := bufio.NewReader(stream)
 	w := bufio.NewWriter(stream)
 
 	go FileReadStreamWrite(file, stream, w)
-	go StreamReadFileWrite(file, stream, r)
 }
 
 // AcceptFileTransferHandler  godoc
@@ -422,8 +421,6 @@ func AcceptFileTransferHandler(c *gin.Context) {
 	}
 
 	r := bufio.NewReader(inboundFileStream)
-	w := bufio.NewWriter(inboundFileStream)
 
-	go FileReadStreamWrite(file, inboundFileStream, w)
 	go StreamReadFileWrite(file, inboundFileStream, r)
 }
