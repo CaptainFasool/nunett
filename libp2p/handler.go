@@ -374,8 +374,14 @@ func InitiateFileTransferHandler(c *gin.Context) {
 		return
 	}
 
-	stream, err := p2p.Host.NewStream(c, p, protocol.ID(FileTransferProtocolID))
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		zlog.Sugar().Debugf("sending '%s' to %s", filePath, peerID)
+	}
 
+	stream, err := p2p.Host.NewStream(c, p, protocol.ID(FileTransferProtocolID))
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		zlog.Sugar().Debugf("stream : to %v", stream)
+	}
 	if err != nil {
 		zlog.Sugar().Errorf("could not create stream with peer for file transfer: %v", err)
 		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Could not create stream with peer - %v", err)})

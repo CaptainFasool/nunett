@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var err error
@@ -14,7 +15,9 @@ type Logger struct {
 
 func (l *Logger) init() error {
 	if _, debug := os.LookupEnv("NUNET_DEBUG"); debug {
-		l.Logger, err = zap.NewDevelopment()
+		zapConfig := zap.NewDevelopmentConfig()
+		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		l.Logger, _ = zapConfig.Build()
 	} else {
 		l.Logger, err = zap.NewProduction()
 	}
