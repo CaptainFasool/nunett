@@ -26,6 +26,7 @@ func ConnectDatabase() {
 	database.AutoMigrate(&models.RequestTracker{})
 	database.AutoMigrate(&models.Libp2pInfo{})
 	database.AutoMigrate(&models.DeploymentRequestFlat{})
+	database.AutoMigrate(&models.MachineUUID{})
 
 	DB = database
 	if err := DB.Use(otelgorm.NewPlugin()); err != nil {

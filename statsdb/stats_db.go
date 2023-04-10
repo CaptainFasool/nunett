@@ -2,32 +2,22 @@ package statsdb
 
 import (
 	"context"
-	"encoding/json"
 	"math/rand"
-	"os"
 	"time"
 
 	"gitlab.com/nunet/device-management-service/models"
 	pb "gitlab.com/nunet/device-management-service/statsdb/event_listener_spec"
+	"gitlab.com/nunet/device-management-service/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func getAddress() string {
-
-	content, err := os.ReadFile("/etc/nunet/metadataV2.json")
-	if err != nil {
-		panic(err)
-	}
-
-	var metadata models.MetadataV2
-	err = json.Unmarshal(content, &metadata)
-	if err != nil {
-		panic(err)
-	}
-
+	channelName := utils.GetChannelName()
 	var (
-		addr             string
+		addr string
+
+		// statsdb Address
 		nunetStagingAddr string = "stats-event-listener.staging.nunet.io:80"
 		nunetTestAddr    string = "stats-event-listener.test.nunet.io:80"
 		nunetEdgeAddr    string = "stats-event-listener.edge.nunet.io:80"
@@ -35,14 +25,16 @@ func getAddress() string {
 		localAddr        string = "127.0.0.1:50051"
 	)
 
-	if metadata.Network == "nunet-staging" {
+	if channelName == "nunet-staging" {
 		addr = nunetStagingAddr
-	} else if metadata.Network == "nunet-test" {
+	} else if channelName == "nunet-test" {
 		addr = nunetTestAddr
-	} else if metadata.Network == "nunet-edge" {
+	} else if channelName == "nunet-edge" {
 		addr = nunetEdgeAddr
-	} else if metadata.Network == "nunet-team" {
+	} else if channelName == "nunet-team" {
 		addr = nunetTeamAddr
+	} else if channelName == "" { // XXX -- setting empty(not yet onboarded) to test endpoint - not a good idea
+		addr = nunetTestAddr
 	} else {
 		addr = localAddr
 	}
@@ -65,10 +57,10 @@ func GetTimestamp() int64 {
 }
 
 // NewDeviceOnboarded sends the newly onboarded telemetry info to the stats db via grpc call.
-func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) error {
+func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Errorf("did not connect: %v", err)
+		zlog.Sugar().Fatalf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -85,19 +77,16 @@ func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) error {
 	})
 
 	if err != nil {
-		zlog.Sugar().Infof("connection failed: %v", err)
-		return err
-
+		zlog.Sugar().Fatalf("connection failed: %v", err)
 	}
 	zlog.Sugar().Infof("Responding: %s", res.PeerId)
-	return nil
 }
 
 // ServiceCall sends the info of the service call made to dms to stats via grpc call.
 func ServiceCall(inputData models.ServiceCall) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Errorf("did not connect: %v", err)
+		zlog.Sugar().Fatalf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -117,7 +106,7 @@ func ServiceCall(inputData models.ServiceCall) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Errorf("connection failed: %v", err)
+		zlog.Sugar().Fatalf("connection failed: %v", err)
 	}
 	zlog.Sugar().Infof("Responding: %s", res.Response)
 
@@ -127,7 +116,7 @@ func ServiceCall(inputData models.ServiceCall) {
 func ServiceRun(inputData models.ServiceRun) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Errorf("did not connect: %v", err)
+		zlog.Sugar().Fatalf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -142,17 +131,17 @@ func ServiceRun(inputData models.ServiceRun) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Errorf("connection failed: %v", err)
+		zlog.Sugar().Fatalf("connection failed: %v", err)
 	}
 	zlog.Sugar().Infof("Responding: %s", res.Response)
 }
 
 // HeartBeat pings the statsdb in every 10s for detacting live status of device via grpc call.
-func HeartBeat(peerID string, addr string) {
+func HeartBeat(peerID string) {
 	for {
-		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			zlog.Sugar().Errorf("did not connect: %v", err)
+			zlog.Sugar().Fatalf("did not connect: %v", err)
 		}
 
 		client := pb.NewEventListenerClient(conn)
@@ -162,7 +151,7 @@ func HeartBeat(peerID string, addr string) {
 		})
 
 		if err != nil {
-			zlog.Sugar().Errorf("connection failed: %v", err)
+			zlog.Sugar().Fatalf("connection failed: %v", err)
 		}
 		zlog.Sugar().Infof("Responding: %s", res.PeerId)
 
@@ -183,7 +172,7 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Errorf("did not connect: %v", err)
+		zlog.Sugar().Fatalf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
@@ -197,7 +186,7 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Errorf("connection failed: %v", err)
+		zlog.Sugar().Fatalf("connection failed: %v", err)
 	}
 
 	zlog.Sugar().Infof("Responding: %s", res.PeerId)

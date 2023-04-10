@@ -2,14 +2,15 @@ package libp2p
 
 import (
 	"github.com/multiformats/go-multiaddr"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"gitlab.com/nunet/device-management-service/internal/logger"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-var zlog *logger.Logger
+var zlog otelzap.Logger
 
 func init() {
-	zlog = logger.New("libp2p")
+	zlog = logger.OtelZapLogger("libp2p")
 }
 
 const (

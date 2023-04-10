@@ -126,7 +126,7 @@ func GetFreeResource(c *gin.Context) {
 	}
 
 	var freeResource models.FreeResources
-	if res := db.DB.Find(&freeResource); res.RowsAffected == 0 {
+	if res := db.DB.WithContext(c.Request.Context()).Find(&freeResource); res.RowsAffected == 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": res.Error})
 		return
 	}

@@ -77,6 +77,10 @@ type Libp2pInfo struct {
 	ServerMode bool   `json:"server_mode"`
 }
 
+type MachineUUID struct {
+	UUID string `json:"uuid"`
+}
+
 type Gpu struct {
 	Name     string `json:"name"`
 	TotVram  int    `json:"tot_vram"`

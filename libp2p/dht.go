@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"os"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -80,13 +79,12 @@ func DhtUpdateHandler(s network.Stream) {
 		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
 
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		stringPeerInfo, err := json.Marshal(peerInfo)
-		if err != nil {
-			zlog.Sugar().Errorf("failed to json marshal peerInfo: %v", err)
-		}
-		zlog.Sugar().Debugf("dht update from: %s -> %v", peerID.String(), string(stringPeerInfo))
+	stringPeerInfo, err := json.Marshal(peerInfo)
+	if err != nil {
+		zlog.Sugar().Errorf("failed to json marshal peerInfo: %v", err)
 	}
+	zlog.Sugar().Debugf("dht update from: %s -> %v", peerID.String(), string(stringPeerInfo))
+
 	p2p.Host.Peerstore().Put(peerID, "peer_info", peerInfo)
 }
 

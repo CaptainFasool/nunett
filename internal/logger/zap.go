@@ -2,11 +2,18 @@ package logger
 
 import (
 	"os"
+	"sync"
 
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-var err error
+var (
+	err    error
+	once   sync.Once
+	logger *otelzap.Logger
+)
 
 type Logger struct {
 	*zap.Logger
@@ -14,7 +21,10 @@ type Logger struct {
 
 func (l *Logger) init() error {
 	if _, debug := os.LookupEnv("NUNET_DEBUG"); debug {
-		l.Logger, err = zap.NewDevelopment()
+		zapConfig := zap.NewDevelopmentConfig()
+		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		l.Logger, _ = zapConfig.Build()
+
 	} else {
 		l.Logger, err = zap.NewProduction()
 	}
@@ -35,4 +45,12 @@ func New(pkg string) *Logger {
 	)
 
 	return Log
+}
+
+func OtelZapLogger(pkg string) otelzap.Logger {
+	once.Do(func() {
+		l := New(pkg)
+		logger = otelzap.New(l.Logger)
+	})
+	return *logger
 }
