@@ -186,16 +186,16 @@ func GetPublicKey() (crypto.PubKey, error) {
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
 	if result.Error != nil {
-		zlog.Sugar().Errorln("Error: Unable to Read from database: %v", result.Error)
+		zlog.Sugar().Errorf("Error: Unable to Read from database: %v", result.Error)
 		return nil, result.Error
 	}
 	if libp2pInfo.PublicKey == nil {
-		zlog.Sugar().Errorln("Error: No Public Key Found")
+		zlog.Sugar().Errorf("Error: No Public Key Found")
 		return nil, fmt.Errorf("No Public Key Found")
 	}
 	pubKey, err := crypto.UnmarshalPublicKey(libp2pInfo.PublicKey)
 	if err != nil {
-		zlog.Sugar().Errorln("Error: Unable to unmarshal Public Key: %v", err)
+		zlog.Sugar().Errorf("Error: Unable to unmarshal Public Key: %v", err)
 		return nil, err
 	}
 	return pubKey, nil
@@ -205,16 +205,16 @@ func GetPrivateKey() (crypto.PrivKey, error) {
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
 	if result.Error != nil {
-		zlog.Sugar().Errorln("Error: Unable to Read from database: %v", result.Error)
+		zlog.Sugar().Errorf("Error: Unable to Read from database: %v", result.Error)
 		return nil, result.Error
 	}
 	if libp2pInfo.PrivateKey == nil {
-		zlog.Sugar().Errorln("Error: No Private Key Found")
+		zlog.Sugar().Errorf("Error: No Private Key Found")
 		return nil, fmt.Errorf("No Private Key Found")
 	}
 	privKey, err := crypto.UnmarshalPrivateKey(libp2pInfo.PrivateKey)
 	if err != nil {
-		zlog.Sugar().Errorln("Error: Unable to unmarshal Private Key: %v", err)
+		zlog.Sugar().Errorf("Error: Unable to unmarshal Private Key: %v", err)
 		return nil, err
 	}
 	return privKey, nil

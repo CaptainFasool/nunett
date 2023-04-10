@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -60,7 +59,7 @@ func HandleRequestService(c *gin.Context) {
 
 	// check if the pricing matched
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
-	zlog.Sugar().Info("estimated ntx price %v", estimatedNtx)
+	zlog.Sugar().Infof("estimated ntx price %v", estimatedNtx)
 	if estimatedNtx > float64(depReq.MaxNtx) {
 		c.AbortWithError(http.StatusBadRequest, errors.New("nunet estimation price is greater than client price"))
 		return
@@ -72,17 +71,16 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 	computeProvider := filteredPeers[0]
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-		zlog.Sugar().Debugf("compute provider: %v", computeProvider)
-	}
+
+	zlog.Sugar().Debugf("compute provider: %v", computeProvider)
 
 	depReq.Params.NodeID = computeProvider.PeerID
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
-	zlog.Sugar().Info("sending fund contract request to oracle")
+	zlog.Sugar().Infof("sending fund contract request to oracle")
 	fcr, err := oracle.FundContractRequest()
 	if err != nil {
-		zlog.Sugar().Info("sending fund contract request to oracle failed")
+		zlog.Sugar().Infof("sending fund contract request to oracle failed")
 		c.AbortWithError(http.StatusBadRequest, errors.New("cannot connect to oracle"))
 		return
 	}
@@ -90,7 +88,7 @@ func HandleRequestService(c *gin.Context) {
 	// Marshal struct to JSON
 	depReqBytes, err := json.Marshal(depReq)
 	if err != nil {
-		zlog.Sugar().Errorln("marshaling struct to json: %v", err)
+		zlog.Sugar().Errorf("failed to marshal struct to json: %v", err)
 		return
 	}
 
@@ -183,9 +181,9 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 				}
 
 				msg, _ = json.Marshal(wsResponse)
-				if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-					zlog.Sugar().Debugf("deployment response to websock: %s", string(msg))
-				}
+
+				zlog.Sugar().Debugf("deployment response to websock: %s", string(msg))
+
 				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
 				zlog.Info("Channel closed!")
@@ -254,9 +252,8 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
 	depReq.Timestamp = time.Now()
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-		zlog.Sugar().Debugf("deployment request: %v", depReq)
-	}
+
+	zlog.Sugar().Debugf("deployment request: %v", depReq)
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {

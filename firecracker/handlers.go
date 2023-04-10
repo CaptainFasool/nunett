@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -71,7 +70,7 @@ func StartCustom(c *gin.Context) {
 		State:      "awaiting",
 	}
 
-	result := db.DB.Create(&vm)
+	result := db.DB.WithContext(c.Request.Context()).Create(&vm)
 	if result.Error != nil {
 		panic(result.Error)
 	}
@@ -162,9 +161,9 @@ func StartDefault(c *gin.Context) {
 		State:      "awaiting",
 	}
 
-	result := db.DB.Create(&vm)
+	result := db.DB.WithContext(c.Request.Context()).Create(&vm)
 	if result.Error != nil {
-		panic(result.Error)
+		zlog.Panic(result.Error.Error())
 	}
 
 	initVM(c, vm)
@@ -193,10 +192,10 @@ func StartDefault(c *gin.Context) {
 	machineConfigBody.VCPUCount = 2
 	vm.MemSizeMib = 1024
 	vm.VCPUCount = 2
-	result = db.DB.Save(&vm)
+	result = db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	if result.Error != nil {
-		panic(result.Error)
+		zlog.Panic(result.Error.Error())
 	}
 
 	machineConfig(c, vm, machineConfigBody)
@@ -228,9 +227,9 @@ func StartDefault(c *gin.Context) {
 func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	// Check if socket file already exists
 	if _, err := os.Stat(vm.SocketFile); err == nil {
-		log.Println("socket file exists, removing...")
+		zlog.Info("socket file exists, removing...")
 		os.Remove(vm.SocketFile)
-		log.Println(vm.SocketFile, "removed")
+		zlog.Sugar().Infof(vm.SocketFile, "removed")
 	}
 
 	cmd := exec.Command("firecracker", "--api-sock", vm.SocketFile)

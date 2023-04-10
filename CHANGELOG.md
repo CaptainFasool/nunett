@@ -21,6 +21,13 @@ Types of changes
 
 -->
 
+## [0.4.58](#128)
+
+### Changed
+- Machine uuid for identification before onboarding and peerID attribute for opentelemetry
+- Fix logger configuration for opentelemetry
+- Remove unncessary env check for debug print and minor log format fix
+
 ## [0.4.57](!113)
 
 ### Changed

@@ -1,4 +1,4 @@
-package onboarding
+package internal
 
 import (
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
@@ -8,5 +8,6 @@ import (
 var zlog otelzap.Logger
 
 func init() {
-	logger.OtelZapLogger("onboarding")
+
+	zlog = logger.OtelZapLogger("internal")
 }

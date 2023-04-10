@@ -4,7 +4,6 @@ package internal
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -53,7 +52,7 @@ func HandleWebSocket(c *gin.Context) {
 
 	ws, err := UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("Failed to set websocket upgrade: %+v\n", err)
+		zlog.Sugar().Errorf("Failed to set websocket upgrade: %+v\n", err)
 		return
 	}
 
@@ -61,7 +60,7 @@ func HandleWebSocket(c *gin.Context) {
 
 	err = ws.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
 	if err != nil {
-		log.Println(err)
+		zlog.Error(err.Error())
 	}
 
 	conn := WebSocketConnection{Conn: ws}
@@ -75,7 +74,7 @@ func HandleWebSocket(c *gin.Context) {
 func ListenForWs(conn *WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("Error:", fmt.Sprintf("%v", r))
+			zlog.Sugar().Errorf("Error:", fmt.Sprintf("%v", r))
 		}
 	}()
 
@@ -98,7 +97,7 @@ func ListenForWs(conn *WebSocketConnection) {
 func SendCommandForExecution() {
 	for {
 		command := <-commandChan
-		log.Printf("%v", command)
+		zlog.Sugar().Infof("%v", command)
 		// TO BE IMPLEMENTED
 		// send command
 

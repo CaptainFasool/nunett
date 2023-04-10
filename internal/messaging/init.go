@@ -1,11 +1,14 @@
 package messaging
 
-import "gitlab.com/nunet/device-management-service/internal/logger"
+import (
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
+	"gitlab.com/nunet/device-management-service/internal/logger"
+)
 
 var (
-	zlog *logger.Logger
+	zlog otelzap.Logger
 )
 
 func init() {
-	zlog = logger.New("internal/messaging")
+	zlog = logger.OtelZapLogger("internal/messaging")
 }

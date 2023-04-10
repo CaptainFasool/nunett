@@ -12,7 +12,7 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
+	"gitlab.com/nunet/device-management-service/utils"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -37,6 +37,7 @@ func GetMetadata(c *gin.Context) {
 
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/onboarding/metadata"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	// read the info
 	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
@@ -68,6 +69,7 @@ func GetMetadata(c *gin.Context) {
 func Onboard(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/onboarding/onboard"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	// check if request body is empty
 	if c.Request.ContentLength == 0 {
@@ -193,44 +195,45 @@ func Onboard(c *gin.Context) {
 	}
 
 	var availableRes models.AvailableResources
-	if res := db.DB.Find(&availableRes); res.RowsAffected == 0 {
-		result := db.DB.Create(&available_resources)
+	if res := db.DB.WithContext(c.Request.Context()).Find(&availableRes); res.RowsAffected == 0 {
+		result := db.DB.WithContext(c.Request.Context()).Create(&available_resources)
 		if result.Error != nil {
-			panic(result.Error)
+			zlog.Panic(result.Error.Error())
 		}
 	} else {
-		result := db.DB.Model(&models.AvailableResources{}).Where("id = ?", 1).Updates(available_resources)
+		result := db.DB.WithContext(c.Request.Context()).Model(&models.AvailableResources{}).Where("id = ?", 1).Updates(available_resources)
 		if result.Error != nil {
-			panic(result.Error)
+			zlog.Panic(result.Error.Error())
 		}
 	}
 
 	priv, pub, err := libp2p.GenerateKey(0)
 	if err != nil {
-		panic(err)
+		zlog.Panic(err.Error())
 	}
 	telemetry.CalcFreeResources()
 	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
 
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
+	span.SetAttributes(attribute.String("PeerID", libp2p.GetP2P().Host.ID().String()))
 
-	if len(metadata.NodeID) == 0 {
-		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
+	// if len(metadata.NodeID) == 0 {
+	// 	metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
 
-		// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
-		NewDeviceOnboardParams := models.NewDeviceOnboarded{
-			PeerID:        metadata.NodeID,
-			CPU:           float32(metadata.Reserved.CPU),
-			RAM:           float32(metadata.Reserved.Memory),
-			Network:       0.0,
-			DedicatedTime: 0.0,
-			Timestamp:     float32(statsdb.GetTimestamp()),
-		}
-		err = statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
-		if err != nil {
-			zlog.Sugar().Infof("NewDeviceOnboarded error: %s", err.Error())
-		}
-	}
+	// 	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
+	// 	NewDeviceOnboardParams := models.NewDeviceOnboarded{
+	// 		PeerID:        metadata.NodeID,
+	// 		CPU:           float32(metadata.Reserved.CPU),
+	// 		RAM:           float32(metadata.Reserved.Memory),
+	// 		Network:       0.0,
+	// 		DedicatedTime: 0.0,
+	// 		Timestamp:     float32(statsdb.GetTimestamp()),
+	// 	}
+	// 	err = statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+	// 	if err != nil {
+	// 		zlog.Sugar().Infof("NewDeviceOnboarded error: %s", err.Error())
+	// 	}
+	// }
 
 	c.JSON(http.StatusCreated, metadata)
 }
@@ -245,7 +248,13 @@ func Onboard(c *gin.Context) {
 func ProvisionedCapacity(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/onboarding/provisioned"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
+	totalProvisioned := GetTotalProvisioned()
+	totalPJ, err := json.Marshal(totalProvisioned)
+	if err != nil {
+		zlog.Sugar().ErrorfContext(c.Request.Context(), "couldn't marshal totalProvisioned to json: %v", string(totalPJ))
+	}
 	c.JSON(http.StatusOK, GetTotalProvisioned())
 }
 
@@ -260,6 +269,7 @@ func CreatePaymentAddress(c *gin.Context) {
 	// send telemetry data
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/onboarding/address/new"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	blockChain := c.DefaultQuery("blockchain", "cardano")
 

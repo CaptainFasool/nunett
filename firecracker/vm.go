@@ -27,7 +27,7 @@ func RunPreviouslyRunningVMs() error {
 	var vms []models.VirtualMachine
 
 	if result := db.DB.Where("state = ?", "running").Find(&vms); result.Error != nil {
-		panic(result.Error)
+		zlog.Panic(result.Error.Error())
 	}
 
 	c := gin.Context{}
@@ -131,7 +131,7 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 
 	var freeRes models.FreeResources
 
-	if err := db.DB.Where("id = ?", 1).First(&freeRes).Error; err != nil {
+	if err := db.DB.WithContext(c.Request.Context()).Where("id = ?", 1).First(&freeRes).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
 		return
 	}
@@ -151,7 +151,7 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 
 	vm.State = "running"
 
-	db.DB.Save(&vm)
+	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	telemetry.CalcFreeResources()
 	libp2p.UpdateDHT()
@@ -172,7 +172,7 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 
 	vm.State = "stopped"
 
-	db.DB.Save(&vm)
+	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	telemetry.CalcFreeResources()
 	libp2p.UpdateDHT()
