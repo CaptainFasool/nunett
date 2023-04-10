@@ -70,6 +70,7 @@ func ListDHTPeers(c *gin.Context) {
 		_, err := p2p.Host.Peerstore().Get(peer, "peer_info")
 		if err != nil {
 			zlog.ErrorContext(c.Request.Context(), fmt.Sprintf("coultn't retrieve dht content for peer: %s", peer.String()), zap.Error(err))
+			continue
 		}
 		if peer == p2p.Host.ID() {
 			continue
