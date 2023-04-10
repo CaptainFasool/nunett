@@ -148,7 +148,7 @@ func UpdateDHT() {
 
 	// Update Services
 	var services []models.Services
-	result := db.DB.Find(&services)
+	result := db.DB.Where("job_status = ?", "running").Find(&services)
 	if result.Error != nil {
 		panic(result.Error)
 	}

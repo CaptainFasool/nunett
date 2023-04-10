@@ -24,7 +24,7 @@ func QueryRunningVMs(DB *gorm.DB) []models.VirtualMachine {
 
 func QueryRunningConts(DB *gorm.DB) []models.Services {
 	var services []models.Services
-	result := DB.Find(&services)
+	result := DB.Where("job_status = ?", "running").Find(&services)
 	if result.Error != nil {
 		panic(result.Error)
 	}

@@ -21,6 +21,10 @@ Types of changes
 
 -->
 
+## [0.4.59](!114)
+
+### Changed
+- Delete entries in services table after response with oracle
 ## [0.4.58](#128)
 
 ### Changed
