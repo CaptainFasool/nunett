@@ -31,15 +31,20 @@ func HandleRequestReward(c *gin.Context) {
 	// At some point, management dashboard should send container ID to identify
 	// against which container we are requesting reward
 	var service models.Services
-	db.DB.First(&service, "id = ?", 1) // Currently we are assuming only 1 row in services table
+	// SELECTs the first record; first record which is not marked as delete
+	if err := db.DB.First(&service).Error; err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(500, gin.H{"message": "no services running"})
+		return
+	}
 
 	if service.JobStatus == "running" {
 		c.JSON(102, gin.H{"message": "the job is still running"})
+		return
 	}
 
 	// Send the service data to oracle for examination
 	resp, err := oracle.WithdrawTokenRequest(service)
-
 	if err != nil {
 		c.JSON(500, gin.H{"message": "connetction to oracle failed"})
 		return

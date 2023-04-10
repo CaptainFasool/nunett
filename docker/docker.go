@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"log"
 	"math"
 	"os"
 	"strconv"
@@ -30,15 +29,7 @@ const (
 )
 
 func freeUsedResources(contID string) {
-	// Remove Service from Services table
-	// and update the available resources table
-	var service []models.Services
-	result := db.DB.Where("container_id = ?", contID).Find(&service)
-	if result.Error != nil {
-		panic(result.Error)
-	}
-	db.DB.Delete(&service)
-
+	// update the available resources table
 	telemetry.CalcFreeResources()
 	libp2p.UpdateDHT()
 }
@@ -340,14 +331,13 @@ func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse
 	// create gist here and pass it to RunContainer to update logs
 	createdGist, _, err := createGist()
 	if err != nil {
-		log.Panicln(err)
+		zlog.Sugar().Errorln(err)
 	}
 
 	service.LogURL = *createdGist.HTMLURL
 	// Save the service with logs
-	result := db.DB.Create(&service)
-	if result.Error != nil {
-		panic(result.Error)
+	if err := db.DB.Create(&service).Error; err != nil {
+		panic(err)
 	}
 	resCh := make(chan models.DeploymentResponse)
 

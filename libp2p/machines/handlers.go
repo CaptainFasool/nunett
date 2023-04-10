@@ -96,9 +96,8 @@ func HandleRequestService(c *gin.Context) {
 	depReqStr := string(depReqBytes)
 	depReqFlat.DeploymentRequest = depReqStr
 
-	result := db.DB.Create(&depReqFlat)
-	if result.Error != nil {
-		panic(result.Error)
+	if err := db.DB.Create(&depReqFlat).Error; err != nil {
+		panic(err)
 	}
 
 	// oracle outputs: compute provider user address, estimated price, signature, oracle message
@@ -228,16 +227,17 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	// load depReq from the database
 	var depReqFlat models.DeploymentRequestFlat
 	var depReq models.DeploymentRequest
-	result := db.DB.First(&depReqFlat) // SELECTs the first record; first record which is not marked as delete
-	if result.Error != nil {
-		zlog.Sugar().Errorf("%v", result.Error)
+
+	// SELECTs the first record; first record which is not marked as delete
+	if err := db.DB.First(&depReqFlat).Error; err != nil {
+		zlog.Sugar().Errorf("%v", err)
 	}
 
 	// delete temporary record
 	// XXX: Needs to be modified to take multiple deployment requests from same service provider
-	result = db.DB.Where("deleted_at IS NULL").Delete(&models.DeploymentRequestFlat{}) // deletes all the record in table; deletes == mark as delete
-	if result.Error != nil {
-		zlog.Sugar().Errorf("%v", result.Error)
+	// deletes all the record in table; deletes == mark as delete
+	if err := db.DB.Where("deleted_at IS NULL").Delete(&models.DeploymentRequestFlat{}).Error; err != nil {
+		zlog.Sugar().Errorf("%v", err)
 	}
 
 	err := json.Unmarshal([]byte(depReqFlat.DeploymentRequest), &depReq)
@@ -283,8 +283,12 @@ func HandleSendStatus(c *gin.Context) {
 		return
 	}
 
-	status := []string{"success", "error"}
-	randomStatus := status[rand.Intn(len(status))]
+	if body.TransactionType == "withdraw" && body.TransactionStatus == "success" {
+		// Delete the entry
+		if err := db.DB.Where("deleted_at IS NULL").Delete(&models.Services{}).Error; err != nil {
+			zlog.Sugar().Errorln(err)
+		}
+	}
 
-	c.JSON(200, gin.H{"message": randomStatus})
+	c.JSON(200, gin.H{"message": fmt.Sprintf("transaction status %s acknowledged", body.TransactionStatus)})
 }
