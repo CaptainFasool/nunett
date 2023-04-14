@@ -2,9 +2,12 @@ package statsdb
 
 import (
 	"context"
+	"encoding/json"
 	"math/rand"
+	"os"
 	"time"
 
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	pb "gitlab.com/nunet/device-management-service/statsdb/event_listener_spec"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -54,6 +57,22 @@ func GetCallID() float32 {
 // GetTimestamp returns current unix timestamp
 func GetTimestamp() int64 {
 	return time.Now().Unix()
+}
+
+//GetPeerID read PeerID from metadataV2.json maybe it's not equivalent to libp2p.GetP2P().Host.ID().Pretty()
+func GetPeerID() string {
+	metadata := utils.ReadMetadataFile()
+
+	if len(metadata.NodeID) == 0 {
+		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
+		file, _ := json.MarshalIndent(metadata, "", " ")
+		err := os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+		if err != nil {
+			zlog.Sugar().Errorf("couldn't write metadata file: %v", err)
+		}
+	}
+
+	return metadata.NodeID
 }
 
 // NewDeviceOnboarded sends the newly onboarded telemetry info to the stats db via grpc call.
@@ -137,9 +156,11 @@ func ServiceRun(inputData models.ServiceRun) {
 }
 
 // HeartBeat pings the statsdb in every 10s for detacting live status of device via grpc call.
-func HeartBeat(peerID string) {
+func HeartBeat() {
+	peerID := GetPeerID()
+	addr := getAddress()
 	for {
-		conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			zlog.Sugar().Fatalf("did not connect: %v", err)
 		}
@@ -157,15 +178,14 @@ func HeartBeat(peerID string) {
 
 		time.Sleep(10 * time.Second)
 	}
-
 }
 
 // DeviceResourceChange sends the reonboarding info with new data to statsdb via grpc call.
-func DeviceResourceChange(inputData *models.MetadataV2) {
-
+func DeviceResourceChange(inputData models.FreeResources) {
+	peerID := GetPeerID()
 	DeviceResourceParams := pb.DeviceResource{
-		Cpu:           float32(inputData.Reserved.CPU),
-		Ram:           float32(inputData.Reserved.Memory),
+		Cpu:           float32(inputData.TotCpuHz),
+		Ram:           float32(inputData.Ram),
 		Network:       0.0,
 		DedicatedTime: 0.0,
 	}
@@ -180,7 +200,7 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 	defer cancel()
 
 	res, err := client.DeviceResourceChange(ctx, &pb.DeviceResourceChangeInput{
-		PeerId:                   inputData.NodeID,
+		PeerId:                   peerID,
 		ChangedAttributeAndValue: &DeviceResourceParams,
 		Timestamp:                float32(GetTimestamp()),
 	})

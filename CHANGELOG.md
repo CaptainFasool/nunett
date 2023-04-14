@@ -20,7 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.60](#156)
 
+### Added
+- added device_resource_change grpc call for stats_db
 ## [0.4.59](!114)
 
 ### Changed

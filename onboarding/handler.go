@@ -147,16 +147,9 @@ func Onboard(c *gin.Context) {
 
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
+	metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
 
-	if !fileExists("/etc/nunet/metadataV2.json") {
-		file, _ := json.MarshalIndent(metadata, "", " ")
-		err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
-		if err != nil {
-			c.JSON(http.StatusBadRequest,
-				gin.H{"error": "could not write metadata.json"})
-			return
-		}
-	} else {
+	if fileExists("/etc/nunet/metadataV2.json") {
 		content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError,
@@ -171,13 +164,14 @@ func Onboard(c *gin.Context) {
 			return
 		}
 		metadata.NodeID = metadata2.NodeID
-		file, _ := json.MarshalIndent(metadata, "", " ")
-		err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
-		if err != nil {
-			c.JSON(http.StatusBadRequest,
-				gin.H{"error": "could not write metadata.json"})
-			return
-		}
+	}
+
+	file, _ := json.MarshalIndent(metadata, "", " ")
+	err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	if err != nil {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "could not write metadata.json"})
+		return
 	}
 
 	// Add available resources to database.
@@ -207,6 +201,16 @@ func Onboard(c *gin.Context) {
 		}
 	}
 
+	// NewDeviceOnboardParams := models.NewDeviceOnboarded{    //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+	// 	PeerID:        metadata.NodeID,
+	// 	CPU:           float32(metadata.Reserved.CPU),
+	// 	RAM:           float32(metadata.Reserved.Memory),
+	// 	Network:       0.0, // TODO: Network
+	// 	DedicatedTime: 0.0, // TODO: DedicatedTime
+	// 	Timestamp:     float32(statsdb.GetTimestamp()),
+	// }
+	// statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+
 	priv, pub, err := libp2p.GenerateKey(0)
 	if err != nil {
 		zlog.Panic(err.Error())
@@ -216,24 +220,6 @@ func Onboard(c *gin.Context) {
 
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 	span.SetAttributes(attribute.String("PeerID", libp2p.GetP2P().Host.ID().String()))
-
-	// if len(metadata.NodeID) == 0 {
-	// 	metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
-
-	// 	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
-	// 	NewDeviceOnboardParams := models.NewDeviceOnboarded{
-	// 		PeerID:        metadata.NodeID,
-	// 		CPU:           float32(metadata.Reserved.CPU),
-	// 		RAM:           float32(metadata.Reserved.Memory),
-	// 		Network:       0.0,
-	// 		DedicatedTime: 0.0,
-	// 		Timestamp:     float32(statsdb.GetTimestamp()),
-	// 	}
-	// 	err = statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
-	// 	if err != nil {
-	// 		zlog.Sugar().Infof("NewDeviceOnboarded error: %s", err.Error())
-	// 	}
-	// }
 
 	c.JSON(http.StatusCreated, metadata)
 }

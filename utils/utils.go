@@ -52,15 +52,7 @@ func RandomString(n int) string {
 }
 
 func GetChannelName() string {
-	metadataF, err := os.ReadFile("/etc/nunet/metadataV2.json")
-	if err != nil {
-		return ""
-	}
-	var metadata models.MetadataV2
-	err = json.Unmarshal(metadataF, &metadata)
-	if err != nil {
-		zlog.Sugar().Errorf("couldn't unmarshal metadata file: %v", err)
-	}
+	metadata := ReadMetadataFile()
 	return metadata.Network
 }
 
@@ -93,4 +85,18 @@ func GetMachineUUID() string {
 
 	return machine.UUID
 
+}
+
+// ReadMetadata returns metadata from metadataV2.json file
+func ReadMetadataFile() models.MetadataV2 {
+	metadataF, err := os.ReadFile("/etc/nunet/metadataV2.json")
+	if err != nil {
+		zlog.Sugar().Errorf("couldn't read metadata file: %v", err)
+	}
+	var metadata models.MetadataV2
+	err = json.Unmarshal(metadataF, &metadata)
+	if err != nil {
+		zlog.Sugar().Errorf("couldn't unmarshal metadata file: %v", err)
+	}
+	return metadata
 }
