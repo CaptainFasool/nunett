@@ -15,6 +15,8 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
+var nextPeer = make(chan peer.AddrInfo)
+
 func (p2p DMSp2p) autoRelay(ctx context.Context) {
 	for {
 		peers, err := p2p.DHT.GetClosestPeers(ctx, p2p.Host.ID().String())
@@ -28,7 +30,7 @@ func (p2p DMSp2p) autoRelay(ctx context.Context) {
 			if len(addrs) == 0 {
 				continue
 			}
-			make(chan peer.AddrInfo) <- peer.AddrInfo{
+			nextPeer <- peer.AddrInfo{
 				ID:    p,
 				Addrs: addrs,
 			}

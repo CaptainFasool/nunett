@@ -40,6 +40,8 @@ func main() {
 
 	utils.GenerateMachineUUID()
 
+
+
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
 

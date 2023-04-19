@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
@@ -266,15 +267,16 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 
 		libp2p.EnableRelayService(),
 		libp2p.EnableAutoRelay(
-			autorelay.WithBootDelay(0),
 			autorelay.WithPeerSource(
 				func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
 					r := make(chan peer.AddrInfo)
+                    zlog.Sugar().Debugf("num peers------> %v", numPeers)
 					go func() {
 						defer close(r)
 						for i := 0; i < numPeers; i++ {
 							select {
-							case p := <-make(chan peer.AddrInfo):
+							case p := <- nextPeer:
+                                zlog.Sugar().Debugf("peer------> i: %v ---- p: %v", i, p)
 								select {
 								case r <- p:
 								case <-ctx.Done():
@@ -287,7 +289,6 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 					}()
 					return r
 				},
-				0,
 			),
 			autorelay.WithMaxCandidates(3),
 			autorelay.WithNumRelays(1),
@@ -307,6 +308,20 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 	}
 
 	zlog.Sugar().Infof("Self Peer Info %s -> %s\n", host.ID(), host.Addrs())
+
+    sub, err = host.EventBus().Subscribe(new(event.EvtLocalAddressesUpdated))
+    if err != nil {
+        zlog.Sugar().Errorf("failed to subscribe to EvtLocalAddressUpdated: %v", err)
+    }
+    go func() {
+        for e := range sub.Out() {
+            e := e.(event.EvtLocalAddressesUpdated)
+            zlog.Debug("new addresses: ")
+            for _, a := range e.Current {
+                zlog.Sugar().Debugf("\t%v/p2p/%v\n", a.Address, host.ID())
+            }
+        }
+    }()
 
 	return host, idht, nil
 }
