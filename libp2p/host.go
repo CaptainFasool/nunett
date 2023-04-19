@@ -272,14 +272,18 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 					r := make(chan peer.AddrInfo)
 					go func() {
 						defer close(r)
-						for i := 0; i < numPeers; i++ {
+
+						// Call GetPeers with the desired rendezvous string.
+						peers, err := p2p.GetPeers(ctx, "nunet")
+						if err != nil {
+							return
+						}
+						zlog.Sugar().Infof("Found %d peers", len(peers))
+
+						// Iterate over the peers and send them to the channel.
+						for _, p := range peers {
 							select {
-							case p := <-make(chan peer.AddrInfo):
-								select {
-								case r <- p:
-								case <-ctx.Done():
-									return
-								}
+							case r <- p:
 							case <-ctx.Done():
 								return
 							}

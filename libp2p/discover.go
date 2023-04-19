@@ -58,7 +58,7 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 	}
 }
 
-func (p2p DMSp2p) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrInfo, error) {
+func (p2p DMSp2p) GetPeers(ctx context.Context, rendezvous string) ([]peer.AddrInfo, error) {
 
 	routingDiscovery := drouting.NewRoutingDiscovery(p2p.DHT)
 	dutil.Advertise(ctx, routingDiscovery, rendezvous)

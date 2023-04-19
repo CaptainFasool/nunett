@@ -413,7 +413,7 @@ func TestGetPeers(t *testing.T) {
 
 	defer host.Close()
 	// Get the peers for the rendezvous string "nunet"
-	_, err := p2p.getPeers(ctx, "nunet")
+	_, err := p2p.GetPeers(ctx, "nunet")
 
 	// Check if there is no error
 	if err != nil {

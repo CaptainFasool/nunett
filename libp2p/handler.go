@@ -38,7 +38,7 @@ func ListPeers(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
-	peers, err := p2p.getPeers(c, "nunet")
+	peers, err := p2p.GetPeers(c, "nunet")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "can not fetch peers"})
 		zlog.Sugar().Fatalf("Error Can Not Fetch Peers: %s\n", err.Error())
