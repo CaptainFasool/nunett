@@ -126,7 +126,7 @@ func Onboard(c *gin.Context) {
 
 	gpu_info, err := Check_gpu()
 	if err != nil {
-		zlog.Sugar().Errorf(err.Error())
+		zlog.Sugar().Errorf("Unable to detect GPU: %v ", err.Error())
 	}
 	metadata.GpuInfo = gpu_info
 

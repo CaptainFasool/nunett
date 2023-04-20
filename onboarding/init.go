@@ -8,5 +8,5 @@ import (
 var zlog otelzap.Logger
 
 func init() {
-	logger.OtelZapLogger("onboarding")
+	zlog = logger.OtelZapLogger("onboarding")
 }
