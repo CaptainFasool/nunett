@@ -12,6 +12,7 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -217,23 +218,20 @@ func Onboard(c *gin.Context) {
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 	span.SetAttributes(attribute.String("PeerID", libp2p.GetP2P().Host.ID().String()))
 
-	// if len(metadata.NodeID) == 0 {
-	// 	metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
+	if len(metadata.NodeID) == 0 {
+		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
 
-	// 	// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
-	// 	NewDeviceOnboardParams := models.NewDeviceOnboarded{
-	// 		PeerID:        metadata.NodeID,
-	// 		CPU:           float32(metadata.Reserved.CPU),
-	// 		RAM:           float32(metadata.Reserved.Memory),
-	// 		Network:       0.0,
-	// 		DedicatedTime: 0.0,
-	// 		Timestamp:     float32(statsdb.GetTimestamp()),
-	// 	}
-	// 	err = statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
-	// 	if err != nil {
-	// 		zlog.Sugar().Infof("NewDeviceOnboarded error: %s", err.Error())
-	// 	}
-	// }
+		// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
+		NewDeviceOnboardParams := models.NewDeviceOnboarded{
+			PeerID:        metadata.NodeID,
+			CPU:           float32(metadata.Reserved.CPU),
+			RAM:           float32(metadata.Reserved.Memory),
+			Network:       0.0,
+			DedicatedTime: 0.0,
+			Timestamp:     float32(statsdb.GetTimestamp()),
+		}
+		statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+	}
 
 	c.JSON(http.StatusCreated, metadata)
 }

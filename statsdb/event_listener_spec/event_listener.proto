@@ -1,6 +1,5 @@
 syntax = "proto3";
 option go_package = "gitlab.com/nunet/device-management-service/stats_db/event_listener_spec";
-// package event_listener_spec;
 
 message NewDeviceOnboardedInput {
     string peer_id = 1; 
@@ -63,17 +62,6 @@ message NewServiceOutput{
     string response = 1;
 }
 
-message ServiceStatusInput{
-    string service_id = 1;
-    string peer_id = 2;
-    string online_offline_status = 3; 
-    float timestamp = 4; 
-}
-
-message ServiceStatusOutput{
-    string response = 1;
-}
-
 message ServiceCallInput{
     float call_id = 1;
     string peer_id_of_service_host = 2; 
@@ -83,22 +71,24 @@ message ServiceCallInput{
     float memory_used = 6;
     float network_bw_used = 7; 
     float time_taken = 8;
-    string  status = 9; 
-    float timestamp = 10;
+    string status = 9; 
+    int32 amount_of_ntx = 10;
+    float timestamp = 11;
 }
 
 message ServiceCallOutput{
     string response = 1;
 }
 
-message ServiceRunInput{
+message ServiceStatusInput{
     float call_id = 1;
     string peer_id_of_service_host = 2; 
-    string  status = 3; 
-    float timestamp = 4;
+    string service_id = 3;
+    string status = 4; 
+    float timestamp = 5;
 }
 
-message ServiceRunOutput{
+message ServiceStatusOutput{
     string response = 1;
 }
 
@@ -112,10 +102,12 @@ message ServiceRemoveOutput{
 }
 
 message NtxPaymentInput{
-    float amount_of_ntx = 1;
-    string service_id = 2; 
-    string peer_id = 3;
-    float timestamp = 4;
+    float call_id = 1;
+    string peer_id = 2;
+    string service_id = 3; 
+    int32 amount_of_ntx = 4;
+    string success_fail_status = 5;
+    float timestamp = 6;
 }
 
 message NtxPaymentOutput{
@@ -143,12 +135,10 @@ service EventListener {
 
     rpc new_service(NewServiceInput) returns (NewServiceOutput) {}
 
-    rpc service_status(ServiceStatusInput) returns (ServiceStatusOutput) {}
-
     rpc service_call(ServiceCallInput) returns (ServiceCallOutput) {}
     
-    rpc service_run(ServiceRunInput) returns (ServiceRunOutput) {}
-
+    rpc service_status(ServiceStatusInput) returns (ServiceStatusOutput) {}
+    
     rpc service_remove(ServiceRemoveInput) returns (ServiceRemoveOutput) {}
     
     rpc ntx_payment(NtxPaymentInput) returns (NtxPaymentOutput) {}

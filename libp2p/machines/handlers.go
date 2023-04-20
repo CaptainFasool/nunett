@@ -15,6 +15,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -99,6 +100,22 @@ func HandleRequestService(c *gin.Context) {
 	if err := db.DB.Create(&depReqFlat).Error; err != nil {
 		panic(err)
 	}
+
+	var requestTracker models.RequestTracker
+	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
+	if res.Error != nil {
+		zlog.Error(res.Error.Error())
+	}
+
+	// sending ntx_payment info to stats database via grpc Call
+	NtxPaymentParams := models.NtxPayment{
+		CallID:      requestTracker.CallID,
+		ServiceID:   requestTracker.ServiceType,
+		AmountOfNtx: int32(estimatedNtx),
+		PeerID:      requestTracker.NodeID,
+		Timestamp:   float32(statsdb.GetTimestamp()),
+	}
+	statsdb.NtxPayment(NtxPaymentParams)
 
 	// oracle outputs: compute provider user address, estimated price, signature, oracle message
 	fundingRespToWebapp := struct {
@@ -289,6 +306,25 @@ func HandleSendStatus(c *gin.Context) {
 			zlog.Sugar().Errorln(err)
 		}
 	}
+
+	serviceStatus := body.TransactionType + " with " + body.TransactionStatus
+
+	var requestTracker models.RequestTracker
+	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
+	if res.Error != nil {
+		zlog.Error(res.Error.Error())
+	}
+
+	ServiceStatusParams := models.ServiceStatus{
+		CallID:              requestTracker.CallID,
+		PeerIDOfServiceHost: requestTracker.NodeID,
+		Status:              serviceStatus,
+		Timestamp:           float32(statsdb.GetTimestamp()),
+	}
+	statsdb.ServiceStatus(ServiceStatusParams)
+
+	requestTracker.Status = serviceStatus
+	db.DB.Save(&requestTracker)
 
 	c.JSON(200, gin.H{"message": fmt.Sprintf("transaction status %s acknowledged", body.TransactionStatus)})
 }

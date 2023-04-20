@@ -28,9 +28,8 @@ type EventListenerClient interface {
 	DeviceResourceChange(ctx context.Context, in *DeviceResourceChangeInput, opts ...grpc.CallOption) (*DeviceResourceChangeOutput, error)
 	DeviceResourceConfig(ctx context.Context, in *DeviceResourceConfigInput, opts ...grpc.CallOption) (*DeviceResourceConfigOutput, error)
 	NewService(ctx context.Context, in *NewServiceInput, opts ...grpc.CallOption) (*NewServiceOutput, error)
-	ServiceStatus(ctx context.Context, in *ServiceStatusInput, opts ...grpc.CallOption) (*ServiceStatusOutput, error)
 	ServiceCall(ctx context.Context, in *ServiceCallInput, opts ...grpc.CallOption) (*ServiceCallOutput, error)
-	ServiceRun(ctx context.Context, in *ServiceRunInput, opts ...grpc.CallOption) (*ServiceRunOutput, error)
+	ServiceStatus(ctx context.Context, in *ServiceStatusInput, opts ...grpc.CallOption) (*ServiceStatusOutput, error)
 	ServiceRemove(ctx context.Context, in *ServiceRemoveInput, opts ...grpc.CallOption) (*ServiceRemoveOutput, error)
 	NtxPayment(ctx context.Context, in *NtxPaymentInput, opts ...grpc.CallOption) (*NtxPaymentOutput, error)
 	HeartBeat(ctx context.Context, in *HeartBeatInput, opts ...grpc.CallOption) (*HeartBeatOutput, error)
@@ -89,15 +88,6 @@ func (c *eventListenerClient) NewService(ctx context.Context, in *NewServiceInpu
 	return out, nil
 }
 
-func (c *eventListenerClient) ServiceStatus(ctx context.Context, in *ServiceStatusInput, opts ...grpc.CallOption) (*ServiceStatusOutput, error) {
-	out := new(ServiceStatusOutput)
-	err := c.cc.Invoke(ctx, "/EventListener/service_status", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *eventListenerClient) ServiceCall(ctx context.Context, in *ServiceCallInput, opts ...grpc.CallOption) (*ServiceCallOutput, error) {
 	out := new(ServiceCallOutput)
 	err := c.cc.Invoke(ctx, "/EventListener/service_call", in, out, opts...)
@@ -107,9 +97,9 @@ func (c *eventListenerClient) ServiceCall(ctx context.Context, in *ServiceCallIn
 	return out, nil
 }
 
-func (c *eventListenerClient) ServiceRun(ctx context.Context, in *ServiceRunInput, opts ...grpc.CallOption) (*ServiceRunOutput, error) {
-	out := new(ServiceRunOutput)
-	err := c.cc.Invoke(ctx, "/EventListener/service_run", in, out, opts...)
+func (c *eventListenerClient) ServiceStatus(ctx context.Context, in *ServiceStatusInput, opts ...grpc.CallOption) (*ServiceStatusOutput, error) {
+	out := new(ServiceStatusOutput)
+	err := c.cc.Invoke(ctx, "/EventListener/service_status", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -153,9 +143,8 @@ type EventListenerServer interface {
 	DeviceResourceChange(context.Context, *DeviceResourceChangeInput) (*DeviceResourceChangeOutput, error)
 	DeviceResourceConfig(context.Context, *DeviceResourceConfigInput) (*DeviceResourceConfigOutput, error)
 	NewService(context.Context, *NewServiceInput) (*NewServiceOutput, error)
-	ServiceStatus(context.Context, *ServiceStatusInput) (*ServiceStatusOutput, error)
 	ServiceCall(context.Context, *ServiceCallInput) (*ServiceCallOutput, error)
-	ServiceRun(context.Context, *ServiceRunInput) (*ServiceRunOutput, error)
+	ServiceStatus(context.Context, *ServiceStatusInput) (*ServiceStatusOutput, error)
 	ServiceRemove(context.Context, *ServiceRemoveInput) (*ServiceRemoveOutput, error)
 	NtxPayment(context.Context, *NtxPaymentInput) (*NtxPaymentOutput, error)
 	HeartBeat(context.Context, *HeartBeatInput) (*HeartBeatOutput, error)
@@ -181,14 +170,11 @@ func (UnimplementedEventListenerServer) DeviceResourceConfig(context.Context, *D
 func (UnimplementedEventListenerServer) NewService(context.Context, *NewServiceInput) (*NewServiceOutput, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewService not implemented")
 }
-func (UnimplementedEventListenerServer) ServiceStatus(context.Context, *ServiceStatusInput) (*ServiceStatusOutput, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ServiceStatus not implemented")
-}
 func (UnimplementedEventListenerServer) ServiceCall(context.Context, *ServiceCallInput) (*ServiceCallOutput, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ServiceCall not implemented")
 }
-func (UnimplementedEventListenerServer) ServiceRun(context.Context, *ServiceRunInput) (*ServiceRunOutput, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ServiceRun not implemented")
+func (UnimplementedEventListenerServer) ServiceStatus(context.Context, *ServiceStatusInput) (*ServiceStatusOutput, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ServiceStatus not implemented")
 }
 func (UnimplementedEventListenerServer) ServiceRemove(context.Context, *ServiceRemoveInput) (*ServiceRemoveOutput, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ServiceRemove not implemented")
@@ -302,24 +288,6 @@ func _EventListener_NewService_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EventListener_ServiceStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ServiceStatusInput)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EventListenerServer).ServiceStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EventListener/service_status",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EventListenerServer).ServiceStatus(ctx, req.(*ServiceStatusInput))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _EventListener_ServiceCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ServiceCallInput)
 	if err := dec(in); err != nil {
@@ -338,20 +306,20 @@ func _EventListener_ServiceCall_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EventListener_ServiceRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ServiceRunInput)
+func _EventListener_ServiceStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ServiceStatusInput)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EventListenerServer).ServiceRun(ctx, in)
+		return srv.(EventListenerServer).ServiceStatus(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/EventListener/service_run",
+		FullMethod: "/EventListener/service_status",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EventListenerServer).ServiceRun(ctx, req.(*ServiceRunInput))
+		return srv.(EventListenerServer).ServiceStatus(ctx, req.(*ServiceStatusInput))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -438,16 +406,12 @@ var EventListener_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EventListener_NewService_Handler,
 		},
 		{
-			MethodName: "service_status",
-			Handler:    _EventListener_ServiceStatus_Handler,
-		},
-		{
 			MethodName: "service_call",
 			Handler:    _EventListener_ServiceCall_Handler,
 		},
 		{
-			MethodName: "service_run",
-			Handler:    _EventListener_ServiceRun_Handler,
+			MethodName: "service_status",
+			Handler:    _EventListener_ServiceStatus_Handler,
 		},
 		{
 			MethodName: "service_remove",
