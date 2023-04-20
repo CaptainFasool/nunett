@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -21,7 +20,6 @@ func SetupRouter() *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.New(getCustomCorsConfig()))
 
-	fmt.Println("-------------------------------", tracing.ServiceName)
 	router.Use(otelgin.Middleware(tracing.ServiceName))
 
 	v1 := router.Group("/api/v1")

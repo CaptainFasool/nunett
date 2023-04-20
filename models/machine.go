@@ -1,6 +1,10 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type IP []any
 
@@ -107,6 +111,17 @@ type PeerData struct {
 	AvailableResources   FreeResources `json:"available_resources"`
 	Services             []Services    `json:"services"`
 	Timestamp            int64         `json:"timestamp,omitempty"`
+}
+
+type Connection struct {
+	gorm.Model
+	PeerID     string `json:"peer_id"`
+	Multiaddrs string `json:"multiaddrs"`
+}
+
+type PingResult struct {
+	RTT     time.Duration
+	Success bool
 }
 
 type Machines map[string]PeerData

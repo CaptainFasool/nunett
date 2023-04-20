@@ -1,15 +1,18 @@
 package machines
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal"
@@ -67,13 +70,41 @@ func HandleRequestService(c *gin.Context) {
 	}
 
 	filteredPeers := FilterPeers(depReq, libp2p.GetP2P().Host)
+	var onlinePeer models.PeerData
+	var rtt time.Duration = 1000000000000000000
+	ctx := context.Background()
+	defer ctx.Done()
+	for _, node := range filteredPeers {
+		targetPeer, err := peer.Decode(node.PeerID)
+		if err != nil {
+			zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
+			return
+		}
+		res := libp2p.PingPeer(ctx, libp2p.GetP2P().Host, targetPeer)
+		if res.Success {
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.Sugar().Info("Peer is online.", "RTT", res.RTT, "PeerID", node.PeerID)
+			}
+			if res.RTT < rtt {
+				rtt = res.RTT
+				onlinePeer = node
+			}
+		} else {
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.Sugar().Info("Peer -  ", node.PeerID, " is offline.")
+			}
+		}
+	}
+	if onlinePeer.PeerID == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("no peers found with matched specs"))
+		return
+	}
+	computeProvider := onlinePeer
 	if len(filteredPeers) < 1 {
 		c.AbortWithError(http.StatusBadRequest, errors.New("no peers found with matched specs"))
 		return
 	}
-	computeProvider := filteredPeers[0]
-
-	zlog.Sugar().Debugf("compute provider: %v", computeProvider)
+	zlog.Sugar().Debugf("compute provider: ", computeProvider)
 
 	depReq.Params.NodeID = computeProvider.PeerID
 
