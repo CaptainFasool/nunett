@@ -1,7 +1,6 @@
 package libp2p
 
 import (
-	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"gitlab.com/nunet/device-management-service/internal/logger"
@@ -9,8 +8,6 @@ import (
 )
 
 var zlog otelzap.Logger
-
-var sub event.Subscription
 
 func init() {
 	zlog = logger.OtelZapLogger("libp2p")
