@@ -19,7 +19,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.61
+// @version         0.4.62
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -39,6 +39,8 @@ func main() {
 	db.ConnectDatabase()
 
 	utils.GenerateMachineUUID()
+
+
 
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
