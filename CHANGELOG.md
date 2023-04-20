@@ -25,6 +25,10 @@ Types of changes
 ### Added
 - implemented ntx_payment event for sending transaction info to stats database
 
+## [0.4.61](#109)
+
+### Changed
+- Delete entries in services table after response with oracle
 ## [0.4.59](!114)
 
 ### Changed

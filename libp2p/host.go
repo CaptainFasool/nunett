@@ -14,7 +14,9 @@ import (
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -80,6 +82,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		zlog.Sugar().Errorf("Bootstraping failed: %s\n", err)
 	}
 
+	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler)
 	host.SetStreamHandler(protocol.ID(DHTProtocolID), DhtUpdateHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
@@ -143,12 +146,51 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			select {
 			case <-ticker2.C:
 				CleanupOldPeers()
+				UpdateConnections(host.Network().Conns())
 			case <-quit2:
 				ticker2.Stop()
 				return
 			}
 		}
 	}()
+
+	// Reconnect to peers on address change
+	events, _ := host.EventBus().Subscribe(new(event.EvtLocalAddressesUpdated))
+	go func() {
+		for evt := range events.Out() {
+			var connections []network.Conn = host.Network().Conns()
+			evt := evt.(event.EvtLocalAddressesUpdated)
+
+			if evt.Diffs {
+				// Connect to saved peers
+				savedConnections := GetConnections()
+				for _, conn := range savedConnections {
+					addr, err := multiaddr.NewMultiaddr(conn.Multiaddrs)
+					if err != nil {
+						zlog.Sugar().Error("Unable to convert multiaddr: ", err)
+					}
+					if err := host.Connect(ctx, peer.AddrInfo{
+						ID:    peer.ID(conn.PeerID),
+						Addrs: []multiaddr.Multiaddr{addr},
+					}); err != nil {
+						continue
+					}
+				}
+				for _, conn := range connections {
+
+					// Attempt to reconnect
+					if err := host.Connect(ctx, peer.AddrInfo{
+						ID:    conn.RemotePeer(),
+						Addrs: []multiaddr.Multiaddr{conn.RemoteMultiaddr()},
+					}); err != nil {
+						continue
+					}
+				}
+
+			}
+		}
+	}()
+
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {

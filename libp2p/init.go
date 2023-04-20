@@ -22,6 +22,9 @@ const (
 
 	// Stream Protocol for Chat
 	ChatProtocolID = "/nunet/dms/chat/0.0.1"
+
+	// Stream Protocol for Ping
+	PingProtocolID = "/nunet/dms/ping/1.0.0"
 )
 
 const (
