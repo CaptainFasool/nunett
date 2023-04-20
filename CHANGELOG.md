@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.63](#161)
+
+### Changed
+- Make sure deviceinfo is set for outlier machines such as VMs (#161 bug fix)
 ## [0.4.62](#149)
 
 ### Changed

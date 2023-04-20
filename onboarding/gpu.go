@@ -21,8 +21,9 @@ func Check_gpu() ([]models.Gpu, error) {
 		gpu.TotVram = 0
 		return gpu_info, nil
 	}
+
 	for _, v := range gpu.GraphicsCards {
-		if v.DeviceInfo.Driver == "nvidia" {
+		if v.DeviceInfo != nil && v.DeviceInfo.Driver == "nvidia" {
 			var gpu models.Gpu
 			gpu.Name = v.DeviceInfo.Product.Name
 			gpu.FreeVram = 0
