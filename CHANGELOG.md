@@ -20,15 +20,22 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.62](#149)
+
+### Changed
+- Enabled autorelay and holepunching
+- Upgraded libp2p and golang versions to 0.27 and 1.20
+## [0.4.61](#109)
+
+### Changed
+- Re-establish connection to peers on network change
+- Ping peers before sending Deployment requests
+- Added functions to set up PubSub communication
 ## [0.4.60](#134)
 
 ### Added
 - implemented ntx_payment event for sending transaction info to stats database
 
-## [0.4.61](#109)
-
-### Changed
-- Delete entries in services table after response with oracle
 ## [0.4.59](!114)
 
 ### Changed
