@@ -41,7 +41,7 @@ func ListPeers(c *gin.Context) {
 	peers, err := p2p.getPeers(c, "nunet")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "can not fetch peers"})
-		zlog.Sugar().Fatalf("Error Can Not Fetch Peers: %s\n", err.Error())
+		zlog.Sugar().Errorf("failed to fetch peers: %v", err)
 		return
 	}
 	c.JSON(200, peers)

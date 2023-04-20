@@ -22,6 +22,7 @@ func getAddress() string {
 		nunetTestAddr    string = "stats-event-listener.test.nunet.io:80"
 		nunetEdgeAddr    string = "stats-event-listener.edge.nunet.io:80"
 		nunetTeamAddr    string = "stats-event-listener.team.nunet.io:80"
+		nunetDevAddr     string = "stats-event-listener.dev.nunet.io:80"
 		localAddr        string = "127.0.0.1:50051"
 	)
 
@@ -33,8 +34,8 @@ func getAddress() string {
 		addr = nunetEdgeAddr
 	} else if channelName == "nunet-team" {
 		addr = nunetTeamAddr
-	} else if channelName == "" { // XXX -- setting empty(not yet onboarded) to test endpoint - not a good idea
-		addr = nunetTestAddr
+	} else if channelName == "" { // XXX -- setting empty(not yet onboarded) to dev endpoint
+		addr = nunetDevAddr
 	} else {
 		addr = localAddr
 	}
@@ -60,11 +61,11 @@ func GetTimestamp() int64 {
 func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Fatalf("did not connect: %v", err)
+		zlog.Sugar().Errorf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	res, err := client.NewDeviceOnboarded(ctx, &pb.NewDeviceOnboardedInput{
@@ -77,7 +78,7 @@ func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Fatalf("connection failed: %v", err)
+		zlog.Sugar().Errorf("connection failed: %v", err)
 	}
 	zlog.Sugar().Infof("Responding: %s", res.PeerId)
 }
@@ -86,11 +87,11 @@ func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 func ServiceCall(inputData models.ServiceCall) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Fatalf("did not connect: %v", err)
+		zlog.Sugar().Errorf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	res, err := client.ServiceCall(ctx, &pb.ServiceCallInput{
@@ -106,32 +107,33 @@ func ServiceCall(inputData models.ServiceCall) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Fatalf("connection failed: %v", err)
+		zlog.Sugar().Errorf("connection failed: %v", err)
 	}
 	zlog.Sugar().Infof("Responding: %s", res.Response)
 
 }
 
-// ServiceRun sends the status info of the service process on host machine to stats via grpc call.
-func ServiceRun(inputData models.ServiceRun) {
+// ServiceStatus updates the status of service process on host machine to stats db via gRPC call
+func ServiceStatus(inputData models.ServiceStatus) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Fatalf("did not connect: %v", err)
+		zlog.Sugar().Errorf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	res, err := client.ServiceRun(ctx, &pb.ServiceRunInput{
+	res, err := client.ServiceStatus(ctx, &pb.ServiceStatusInput{
 		CallId:              inputData.CallID,
 		PeerIdOfServiceHost: inputData.PeerIDOfServiceHost,
+		ServiceId:           inputData.ServiceID,
 		Status:              inputData.Status,
 		Timestamp:           inputData.Timestamp,
 	})
 
 	if err != nil {
-		zlog.Sugar().Fatalf("connection failed: %v", err)
+		zlog.Sugar().Errorf("connection failed: %v", err)
 	}
 	zlog.Sugar().Infof("Responding: %s", res.Response)
 }
@@ -141,7 +143,7 @@ func HeartBeat(peerID string) {
 	for {
 		conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			zlog.Sugar().Fatalf("did not connect: %v", err)
+			zlog.Sugar().Errorf("did not connect: %v", err)
 		}
 
 		client := pb.NewEventListenerClient(conn)
@@ -151,7 +153,7 @@ func HeartBeat(peerID string) {
 		})
 
 		if err != nil {
-			zlog.Sugar().Fatalf("connection failed: %v", err)
+			zlog.Sugar().Errorf("connection failed: %v", err)
 		}
 		zlog.Sugar().Infof("Responding: %s", res.PeerId)
 
@@ -172,11 +174,11 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		zlog.Sugar().Fatalf("did not connect: %v", err)
+		zlog.Sugar().Errorf("did not connect: %v", err)
 	}
 
 	client := pb.NewEventListenerClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	res, err := client.DeviceResourceChange(ctx, &pb.DeviceResourceChangeInput{
@@ -186,8 +188,34 @@ func DeviceResourceChange(inputData *models.MetadataV2) {
 	})
 
 	if err != nil {
-		zlog.Sugar().Fatalf("connection failed: %v", err)
+		zlog.Sugar().Errorf("connection failed: %v", err)
 	}
 
 	zlog.Sugar().Infof("Responding: %s", res.PeerId)
+}
+
+// NtxPayment sends the payment info of the service process on host machine to statsdb via grpc call.
+func NtxPayment(inputData models.NtxPayment) {
+	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		zlog.Sugar().Errorf("did not connect: %v", err)
+	}
+
+	client := pb.NewEventListenerClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	res, err := client.NtxPayment(ctx, &pb.NtxPaymentInput{
+		CallId:            inputData.CallID,
+		ServiceId:         inputData.ServiceID,
+		AmountOfNtx:       int32(inputData.AmountOfNtx),
+		PeerId:            inputData.PeerID,
+		SuccessFailStatus: inputData.SuccessFailStatus,
+		Timestamp:         inputData.Timestamp,
+	})
+
+	if err != nil {
+		zlog.Sugar().Errorf("connection failed: %v", err)
+	}
+	zlog.Sugar().Infof("Responding: %s", res.Response)
 }

@@ -49,14 +49,6 @@ type NewService struct {
 	Timestamp          float32
 }
 
-// ServiceStatus defines the schema of the data to be sent to stats db when an existing service gets offline or not operational
-type ServiceStatus struct {
-	ServiceID           string
-	PeerID              string
-	OnlineOfflineStatus string
-	Timestamp           float32
-}
-
 // ServiceCall defines the schema of the data to be sent to stats db when a host machine accepts a deployement request
 type ServiceCall struct {
 	CallID              float32
@@ -71,10 +63,11 @@ type ServiceCall struct {
 	Timestamp           float32
 }
 
-// ServiceRun defines the schema of the data to be sent to stats db about the status of the job being executed on host machine
-type ServiceRun struct {
+// ServiceStatus defines the schema of update the status of service to stats db of the job being executed on host machine
+type ServiceStatus struct {
 	CallID              float32
 	PeerIDOfServiceHost string
+	ServiceID           string
 	Status              string
 	Timestamp           float32
 }
@@ -87,14 +80,17 @@ type ServiceRemove struct {
 
 // NtxPayment defines the schema of the data to be sent to stats db when a payment is made to device for the completion of service.
 type NtxPayment struct {
-	ServiceID   string
-	AmountOfNtx float32
-	PeerID      string
-	Timestamp   float32
+	CallID            float32
+	ServiceID         string
+	AmountOfNtx       int32
+	PeerID            string
+	SuccessFailStatus string
+	Timestamp         float32
 }
 
 // RequestTracker defines the schema of the data to be saved in db for tracking the status of the deployement request
 type RequestTracker struct {
+	ID          uint
 	ServiceType string
 	NodeID      string
 	CallID      float32

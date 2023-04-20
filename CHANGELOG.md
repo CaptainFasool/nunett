@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.60](#134)
+
+### Added
+- implemented ntx_payment event for sending transaction info to stats database
 
 ## [0.4.59](!114)
 

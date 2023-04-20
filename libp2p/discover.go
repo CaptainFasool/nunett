@@ -33,7 +33,7 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 
 			peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
 			if err != nil {
-				zlog.Sugar().Fatalf("Error Discovering Peers: %s\n", err.Error())
+				zlog.Sugar().Errorf("failed to discover peers: %v", err)
 			}
 			peers = filterAddrs(peers)
 			for _, p := range peers {
