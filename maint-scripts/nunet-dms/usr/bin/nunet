@@ -23,29 +23,33 @@ usage() {
     echo "    -v, --verbose    Verbose output"
     echo -e "    -p, --pretty     Prettified JSON output\n"
     echo "Commands:"
-    echo "  available     Display available resources"
-    echo "  wallet        Get Current Wallet Address"
-    echo "  onboard       Onboard the device to NuNet"
-    echo "  info          Get info about currently onboarded machine"
-    echo "  onboard-gpu   Install NVIDIA GPU driver and Container Runtime"
-    echo "  onboard-ml    Prepare the system for Machine Learning with GPU"
-    echo "  shell         Send commands and receive answers to a vm instance via DMS"
-    echo "  peer          Interact with currently visible peers"
-    echo "  chat          Start,Join or List Chat Requests"
-    echo -e "  log           Returns the path of an archive containing all log files\n"
+    echo "  capacity            Display capacity of device resources"
+    echo "  wallet              Get Current Wallet Address"
+    echo "  onboard             Onboard the device to NuNet"
+    echo "  info                Get info about currently onboarded machine"
+    echo "  onboard-gpu         Install NVIDIA GPU driver and Container Runtime"
+    echo "  onboard-ml          Prepare the system for Machine Learning with GPU"
+    echo "  resource-config     Change the configuration of onboarded device"
+    echo "  shell               Send commands and receive answers to a vm instance via DMS"
+    echo "  peer                Interact with currently visible peers"
+    echo "  chat                Start,Join or List Chat Requests"
+    echo -e "  log                 Returns the path of an archive containing all log files\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
 
-available_usage() {
-    echo -e "Usage: $SELF_NAME available [OPTIONS]\n"
+capacity_usage() {
+    echo -e "Usage: $SELF_NAME capacity [OPTIONS]\n"
     echo -e "Command line interface for the NuNet Device Management Service.\n"
     echo "Options:"
-    echo "    -v, --verbose          Verbose output"
-    echo "    -p, --pretty           Prettified JSON output"
-    echo "    -gpu, --gpu-status     Check GPU Status in real time"
-    echo "    -ct, --cuda-tensor     Check availability of CUDA and Tensor Cores"
-    echo -e "    -h, --help             This Menu\n"
+    echo "    -v, --verbose           Verbose output"
+    echo "    -f, --full              Display full capacity of machine"
+    echo "    -o, --onboarded         Display onboarded/dedicated amount of resources to nunet"
+    echo "    -a, --available         Display availale capacity of machine"
+    echo "    -p, --pretty            Prettified JSON output"
+    echo "    -gpu, --gpu-status      Check GPU Status in real time"
+    echo "    -ct, --cuda-tensor      Check availability of CUDA and Tensor Cores"
+    echo -e "    -h, --help              This Menu\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -127,9 +131,21 @@ chat_join_usage() {
     exit
 }
 
+resource_config_usage() {
+    echo -e "Usage: $SELF_NAME config [-mcvp] \n"
+    echo -e "Change the configuration of onboarded device for make available on nunet.\n"
+    echo "Options:"
+    echo "    -m, --memory           Amount of memory in Megabytes"
+    echo "    -c, --cpu              Amount of CPU in Megahertz"
+    echo "    -v, --verbose          Verbose output"
+    echo -e "    -p, --pretty           Prettified JSON output\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
 gpu_status() {
     if ! command -v nvidia-smi > /dev/null; then
-        printf "${BAD_C}No 'nvidia-smi' command ${NORMAL_C}\n"
+        printf "${BAD_C}Unable to find 'nvidia-smi'.\nNo GPU or driver not installed. ${NORMAL_C}\n"
         exit
     fi
 
@@ -178,23 +194,31 @@ check_cuda_tensor() {
 }
 
 
-available() {
-    if [[ ${#@} -ge 6 ]] ; then
-        printf "\n${BAD_C}Wrong number of arguments to 'available' command${NORMAL_C}\n"
-        available_usage
+capacity() {
+    if [[ ${#@} -lt 1 ]] ; then
+        capacity_usage
         exit
     else
         avargs=($@)
         for avarg in "${avargs[@]}"; do
             case $avarg in
                 "-h" | "--help")
-                    available_usage
+                    capacity_usage
                     ;;
                 "-p" | "--pretty")
                     NPRETTY_OUT=1
                     ;;
                 "-v" | "--verbose")
                     NVERBOSE_OUT=1
+                    ;;
+                "-f" | "--full")
+                    NFULL_OUT=1
+                    ;;
+                "-o" | "--onboarded")
+                    NONBOARD_OUT=1
+                    ;;
+                "-a" | "--available")
+                    NAVAILABLE_OUT=1
                     ;;
                 "-gpu" | "--gpu-status")
                     gpu_status
@@ -206,18 +230,92 @@ available() {
                     exit
                     ;;
                 *)
-                    printf "${BAD_C}Bad argument \"$avarg\" for 'available' Command. ${NORMAL_C}\n"
+                    printf "${BAD_C}Bad argument \"$avarg\" for 'capacity' Command. ${NORMAL_C}\n"
                     exit
                     ;;
             esac
         done
     fi
-
+    
+    if [[ $NVERBOSE_OUT -eq 1 ]]; then
+        NFULL_OUT=1
+        NONBOARD_OUT=1
+        NAVAILABLE_OUT=1
+    fi
+    N_INFO=$(info)
     N_C_OUT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/provisioned)
-    if [[ $NPRETTY_OUT -eq 1 ]] ; then
-        echo $N_C_OUT | jq
+    if [[ $N_INFO == *"Error:"* ]] ; then
+        if [[ $NPRETTY_OUT -eq 1 ]] ; then
+            if [[ $NFULL_OUT -eq 1 ]]; then
+                echo "Total Machine Capacity"
+                echo $N_C_OUT | jq 
+                echo
+            fi
+            if [[ $NONBOARD_OUT -eq 1 ]]; then
+                echo "Reserved for Nunet"
+                echo '{ "cpu": 0, "memory": 0 }' | jq 
+                echo
+            fi
+            if [[ $NAVAILABLE_OUT -eq 1 ]]; then
+                echo "Available Machine Capacity"
+                echo $N_C_OUT | jq
+                echo
+            fi
+        else
+            if [[ $NFULL_OUT -eq 1 ]]; then
+                echo "Total Machine Capacity"
+                echo $N_C_OUT
+                echo
+            fi
+            if [[ $NONBOARD_OUT -eq 1 ]]; then
+                echo "Reserved for Nunet"
+                echo '{"cpu": 0, "memory": 0}'
+                echo
+            fi
+            if [[ $NAVAILABLE_OUT -eq 1 ]]; then
+                echo "Available Machine Capacity"
+                echo $N_C_OUT
+                echo
+            fi
+        fi
     else
-        echo $N_C_OUT
+        if [[ $NPRETTY_OUT -eq 1 ]] ; then
+            if [[ $NFULL_OUT -eq 1 ]]; then
+                echo "Total Machine Capacity"
+                echo $N_C_OUT | jq
+                echo
+            fi
+            if [[ $NONBOARD_OUT -eq 1 ]]; then
+                echo "Reserved for Nunet"
+                N_ONBOARD=$(echo $N_INFO | jq '.reserved')
+                echo $N_ONBOARD | jq
+                echo
+            fi
+            if [[ $NAVAILABLE_OUT -eq 1 ]]; then
+                echo "Available Machine Capacity"
+                N_AVAILABLE=$(echo $N_INFO | jq '.available')
+                echo $N_AVAILABLE | jq
+                echo
+            fi
+        else
+            if [[ $NFULL_OUT -eq 1 ]]; then
+                echo "Total Machine Capacity"
+                echo $N_C_OUT
+                echo
+            fi
+            if [[ $NONBOARD_OUT -eq 1 ]]; then
+                echo "Reserved for Nunet"
+                N_ONBOARD=$(echo $N_INFO | jq '.reserved')
+                echo $N_ONBOARD
+                echo
+            fi
+            if [[ $NAVAILABLE_OUT -eq 1 ]]; then
+                echo "Available Machine Capacity"
+                N_AVAILABLE=$(echo $N_INFO | jq '.available')
+                echo $N_AVAILABLE
+                echo
+            fi
+        fi
     fi
 }
 
@@ -320,11 +418,11 @@ onboard() {
     N_AVAILABLE_CPU=$(printf "%.0f" $(echo $N_AVAILABLE_CPU | bc)) # rounding in case of decimal values cpu freq such as cloud
     if [[ $N_ONBOARD_MEM -gt $((N_AVAILABLE_MEM*9/10)) || $N_ONBOARD_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
         printf "${BAD_C}Memory should be between 10%% and 90%% of the available memory ($((N_AVAILABLE_MEM/10)) and $((N_AVAILABLE_MEM*9/10))) ${NORMAL_C}\n"
-        printf "${INFO_C}Check available resources with 'nunet available --pretty'${NORMAL_C}\n"
+        printf "${INFO_C}Check available resource with 'nunet capacity --available --pretty'${NORMAL_C}\n"
         exit
     elif [[ $N_ONBOARD_CPU -gt $((N_AVAILABLE_CPU*9/10)) || $N_ONBOARD_CPU -lt $((N_AVAILABLE_CPU/10)) ]] ; then
         printf "${BAD_C}CPU should be between 10%% and 90%% of the available CPU ($((N_AVAILABLE_CPU/10)) and $((N_AVAILABLE_CPU*9/10))) ${NORMAL_C}\n"
-        printf "${INFO_C}Check available resources with 'nunet available --pretty'${NORMAL_C}\n"
+        printf "${INFO_C}Check available resource with 'nunet capacity --available --pretty'${NORMAL_C}\n"
         exit
     elif [[ "$N_ONBOARD_CHAN" != "nunet-test" && "$N_ONBOARD_CHAN" != "nunet-staging" && "$N_ONBOARD_CHAN" != "nunet-team" && "$N_ONBOARD_CHAN" != "nunet-edge" ]] ; then
         printf "${BAD_C}NuNet Channel should be 'nunet-test' or 'nunet-staging' not $N_ONBOARD_CHAN ${NORMAL_C}\n"
@@ -471,6 +569,57 @@ peer() {
         else
             printf "\n${UNDERLINE}DHT peers${NORMAL}\n"
             echo $N_LIST_PEERS_DHT | jq --raw-output '(.[])'
+        fi
+    fi
+}
+
+resource-config() {
+    N_CONFIG_OPTS=$(getopt -a -n nunet-onboard-config -o m:c:vp: --long memory:,cpu:,verbose,pretty -- "$@")
+    eval set -- "$N_CONFIG_OPTS"
+    if [[ ${#@} -le 1 ]] ; then
+        resource_config_usage
+    fi
+
+    while :
+        do
+            case "$1" in
+                -m | --memory)        N_CONFIG_MEM="$2"         ; shift 2 ;;
+                -c | --cpu)           N_CONFIG_CPU="$2"         ; shift 2 ;;
+                -v | --verbose)       N_CONFIG_VERBOSE=1        ; shift ;;
+                -p | --pretty)        N_CONFIG_PRETTY=1         ; shift ;;
+                --) shift; break ;;
+                *) echo "Unexpected option: $1."
+                    config_usage ;;
+            esac
+    done
+
+    [[ -z $N_CONFIG_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && config_usage
+    [[ -z $N_CONFIG_MEM ]] && printf "${BAD_C}Error: -m | --memory must be specified.${NORMAL_C}\n" && config_usage
+
+    N_AVAILABLE_RES=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/provisioned)
+    N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
+    N_AVAILABLE_CPU=$(echo $N_AVAILABLE_RES | jq ".cpu")
+    N_AVAILABLE_CPU=$(printf "%.0f" $(echo $N_AVAILABLE_CPU | bc)) # rounding in case of decimal values cpu freq such as cloud
+
+    if [[ $N_CONFIG_MEM -gt $((N_AVAILABLE_MEM*9/10)) || $N_CONFIG_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
+        printf "${BAD_C}Memory should be between 10%% and 90%% of the available memory ($((N_AVAILABLE_MEM/10)) and $((N_AVAILABLE_MEM*9/10))) ${NORMAL_C}\n"
+        printf "${INFO_C}Check capacity of resources with 'nunet capacity --pretty'${NORMAL_C}\n"
+        exit
+    elif [[ $N_CONFIG_CPU -gt $((N_AVAILABLE_CPU*9/10)) || $N_CONFIG_CPU -lt $((N_AVAILABLE_CPU/10)) ]] ; then
+        printf "${BAD_C}CPU should be between 10%% and 90%% of the available CPU ($((N_AVAILABLE_CPU/10)) and $((N_AVAILABLE_CPU*9/10))) ${NORMAL_C}\n"
+        printf "${INFO_C}Check capacity of resources with 'nunet capacity --pretty'${NORMAL_C}\n"
+        exit
+    else
+        N_CONFIG_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
+            -d "{\"memory\": $N_CONFIG_MEM, \"cpu\": $N_CONFIG_CPU}" \
+            $DMS_HOST:$DMS_PORT/api/v1/onboarding/resource-config)
+        # check if error
+        N_CONFIG_ERR_MSG=$(echo $N_CONFIG_RESPONSE | jq '. | select(.error != null) | .error')
+        if [[ ! -z $N_CONFIG_ERR_MSG ]] ; then
+            printf "${BAD_C}Error: $N_CONFIG_ERR_MSG ${NORMAL_C}\n"
+        else
+            printf "${GOOD_C}Resources Changed Successfully.${NORMAL_C}\n"
+            [[ -z $N_CONFIG_PRETTY ]] && echo $N_CONFIG_RESPONSE || echo $N_CONFIG_RESPONSE | jq
         fi
     fi
 }
@@ -707,7 +856,7 @@ check_dms_run() {
 }
 
 
-cmds=("available" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log")
+cmds=("capacity" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config")
 
 if [ $# -eq  0 ] ; then
     usage
