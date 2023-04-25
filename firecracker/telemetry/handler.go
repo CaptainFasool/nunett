@@ -7,6 +7,7 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
@@ -90,6 +91,8 @@ func CalcFreeResources() error {
 	freeResource.PriceRam = availableRes.PriceRam
 	freeResource.PriceDisk = availableRes.PriceDisk
 	// TODO: Calculate remaining disk space
+
+	statsdb.DeviceResourceChange(freeResource)
 
 	// Check if we have a previous entry in the table
 	var freeresource models.FreeResources

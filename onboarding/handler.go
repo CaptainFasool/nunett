@@ -81,7 +81,7 @@ func Onboard(c *gin.Context) {
 	_, err := AFS.Stat("/etc/nunet")
 	if os.IsNotExist(err) {
 		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "/etc/nunet does not exist. is nunet onboaded successfully?"})
+			gin.H{"error": "/etc/nunet does not exist. is nunet onboarded successfully?"})
 		return
 	}
 
@@ -149,15 +149,7 @@ func Onboard(c *gin.Context) {
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
-	if !fileExists("/etc/nunet/metadataV2.json") {
-		file, _ := json.MarshalIndent(metadata, "", " ")
-		err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
-		if err != nil {
-			c.JSON(http.StatusBadRequest,
-				gin.H{"error": "could not write metadata.json"})
-			return
-		}
-	} else {
+	if fileExists("/etc/nunet/metadataV2.json") {
 		content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError,
@@ -172,13 +164,6 @@ func Onboard(c *gin.Context) {
 			return
 		}
 		metadata.NodeID = metadata2.NodeID
-		file, _ := json.MarshalIndent(metadata, "", " ")
-		err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
-		if err != nil {
-			c.JSON(http.StatusBadRequest,
-				gin.H{"error": "could not write metadata.json"})
-			return
-		}
 	}
 
 	// Add available resources to database.
@@ -212,27 +197,36 @@ func Onboard(c *gin.Context) {
 	if err != nil {
 		zlog.Panic(err.Error())
 	}
-	telemetry.CalcFreeResources()
 	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
+
+	file, _ := json.MarshalIndent(metadata, "", " ")
+	err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	if err != nil {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "could not write metadata.json"})
+		return
+	}
 
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 	span.SetAttributes(attribute.String("PeerID", libp2p.GetP2P().Host.ID().String()))
 
+	// check if nodeID is empty
 	if len(metadata.NodeID) == 0 {
 		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
-
-		// Declare variable for sending requested data on NewDeviceOnboarded function of stats_db
-		NewDeviceOnboardParams := models.NewDeviceOnboarded{
-			PeerID:        metadata.NodeID,
-			CPU:           float32(metadata.Reserved.CPU),
-			RAM:           float32(metadata.Reserved.Memory),
-			Network:       0.0,
-			DedicatedTime: 0.0,
-			Timestamp:     float32(statsdb.GetTimestamp()),
-		}
-		statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
 	}
 
+	// Sending onboarding resources on stats_db via GRPC call
+	NewDeviceOnboardParams := models.NewDeviceOnboarded{
+		PeerID:        metadata.NodeID,
+		CPU:           float32(metadata.Reserved.CPU),
+		RAM:           float32(metadata.Reserved.Memory),
+		Network:       0.0,
+		DedicatedTime: 0.0,
+		Timestamp:     float32(statsdb.GetTimestamp()),
+	}
+	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
+
+	telemetry.CalcFreeResources()
 	c.JSON(http.StatusCreated, metadata)
 }
 
@@ -284,6 +278,65 @@ func CreatePaymentAddress(c *gin.Context) {
 			gin.H{"message": "error creating address"})
 	}
 	c.JSON(http.StatusOK, pair)
+}
+
+// Config        godoc
+// @Summary      changes the amount of resources of onboarded device .
+// @Tags         onboarding
+// @Produce      json
+// @Success      200  {array}  models.Metadata
+// @Router       /onboarding/resource-config [post]
+func ResourceConfig(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/resource-config"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+
+	// check if request body is empty
+	if c.Request.ContentLength == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "request body is empty"})
+		return
+	}
+
+	_, err := AFS.Stat("/etc/nunet/metadataV2.json")
+	if os.IsNotExist(err) {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "/etc/nunet/metadataV2.json does not exist. is nunet onboarded successfully?"})
+		return
+	}
+
+	// read the request body
+	capacityForNunet := models.CapacityForNunet{}
+	c.BindJSON(&capacityForNunet)
+
+	// read metadataV2.json file and update it with new resources
+	metadata, err := utils.ReadMetadataFile()
+	if err != nil {
+		zlog.Sugar().Errorf("could not read metadata: %v", err)
+	}
+	metadata.Reserved.CPU = capacityForNunet.CPU
+	metadata.Reserved.Memory = capacityForNunet.Memory
+
+	// read the existing data and update it with new resources
+	var availableRes models.AvailableResources
+	if res := db.DB.WithContext(c.Request.Context()).Find(&availableRes); res.RowsAffected == 0 {
+		zlog.Sugar().Errorf("availableRes table does not exist: %v", err)
+	}
+	availableRes.TotCpuHz = int(capacityForNunet.CPU)
+	availableRes.Ram = int(capacityForNunet.Memory)
+	db.DB.Save(&availableRes)
+
+	statsdb.DeviceResourceConfig(metadata)
+
+	file, _ := json.MarshalIndent(metadata, "", " ")
+	err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	if err != nil {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "could not write metadata.json"})
+		return
+	}
+
+	telemetry.CalcFreeResources()
+	c.JSON(http.StatusOK, metadata)
 }
 
 func fileExists(filename string) bool {

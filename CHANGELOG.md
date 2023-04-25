@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.64](#157)
+
+### Added
+- Rest endpoint to change amount of resource onboarded to NuNet
+- Subcommand `resource-config`
+- StatsDB event call on onboarded resource amount change
 ## [0.4.63](#161)
 
 ### Changed

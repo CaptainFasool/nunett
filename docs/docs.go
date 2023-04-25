@@ -130,6 +130,28 @@ const docTemplate = `{
                 }
             }
         },
+        "/onboarding/resource-config": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "changes the amount of resources of onboarded device .",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Metadata"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/peers": {
             "get": {
                 "description": "Gets a list of peers the libp2p node can see within the network and return a list of peers",
@@ -457,7 +479,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.63",
+	Version:          "0.4.64",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

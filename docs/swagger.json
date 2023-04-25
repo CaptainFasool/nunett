@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.63"
+        "version": "0.4.64"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -119,6 +119,28 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Provisioned"
+                        }
+                    }
+                }
+            }
+        },
+        "/onboarding/resource-config": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "changes the amount of resources of onboarded device .",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Metadata"
+                            }
                         }
                     }
                 }
