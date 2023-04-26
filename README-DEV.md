@@ -40,7 +40,7 @@ We provide a dev-setup shell script to ease the process of getting started. It d
 Run the script as follows:
 
 ```
-bash maint-script/dev-setup.sh
+bash maint-scripts/dev-setup.sh
 ```
 
 Once the env is setup, run the DMS as follows:
