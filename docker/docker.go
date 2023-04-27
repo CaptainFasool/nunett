@@ -113,7 +113,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		zlog.Error(res.Error.Error())
 	}
 	status := "started"
-	var requestTracker models.RequestTracker
 
 	ServiceStatusParams := models.ServiceStatus{
 		CallID:              requestTracker.CallID,
@@ -127,7 +126,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	// updating RequestTracker
 	requestTracker.Status = status
 	requestTracker.RequestID = resp.ID
-	res := db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
+	res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 	if res.Error != nil {
 		panic(res.Error)
 	}
@@ -186,22 +185,13 @@ outerLoop:
 			var services models.Services
 			if containerStatus.StatusCode == 0 {
 				services.JobStatus = "finished without errors"
-			} else if containerStatus.StatusCode > 0 {
-				services.JobStatus = "finished with errors"
-			}
-			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
-			if r.Error != nil {
-				panic(r.Error)
-			}
-
-			if depRes.Success {
 				ServiceCallParams := models.ServiceCall{
 					CallID:              requestTracker.CallID,
 					PeerIDOfServiceHost: requestTracker.NodeID,
 					ServiceID:           requestTracker.ServiceType,
-					CPUUsed:             maxUsedCPU,
+					CPUUsed:             float32(maxUsedCPU),
 					MaxRAM:              float32(depReq.Constraints.Vram),
-					MemoryUsed:          maxUsedRAM,
+					MemoryUsed:          float32(maxUsedRAM),
 					NetworkBwUsed:       0.0,
 					TimeTaken:           0.0,
 					Status:              "finished without errors",
@@ -209,7 +199,8 @@ outerLoop:
 				}
 				statsdb.ServiceCall(ServiceCallParams)
 				requestTracker.Status = "finished without errors"
-			} else if !depRes.Success {
+			} else if containerStatus.StatusCode > 0 {
+				services.JobStatus = "finished with errors"
 				ServiceStatusParams.CallID = requestTracker.CallID
 				ServiceStatusParams.PeerIDOfServiceHost = requestTracker.NodeID
 				ServiceStatusParams.Status = "finished with errors"
@@ -218,8 +209,12 @@ outerLoop:
 				statsdb.ServiceStatus(ServiceStatusParams)
 				requestTracker.Status = "finished with errors"
 			}
+			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
+			if r.Error != nil {
+				panic(r.Error)
+			}
 
-			res := db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
+			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
 				panic(res.Error)
 			}
