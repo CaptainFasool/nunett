@@ -74,9 +74,13 @@ func (p2p DMSp2p) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrI
 func filterAddrs(peers []peer.AddrInfo) []peer.AddrInfo {
 	var filtered []peer.AddrInfo
 	for _, p := range peers {
-		if len(p.Addrs) > 0 {
-			filtered = append(filtered, p)
+		if p.ID == p2p.Host.ID() {
+			continue
 		}
+		if len(p.Addrs) == 0 {
+			continue
+		}
+		filtered = append(filtered, p)
 	}
 	return filtered
 }

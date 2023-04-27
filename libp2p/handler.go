@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -31,20 +32,23 @@ var clients = make(map[internal.WebSocketConnection]string)
 func ListPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
-	peers, err := p2p.getPeers(c, "nunet")
-	if err != nil {
-		c.JSON(500, gin.H{"error": "can not fetch peers"})
-		zlog.Sugar().Errorf("failed to fetch peers: %v", err)
+	if p2p.peers == nil {
+		c.JSON(500, gin.H{"error": "Peers haven't yet been fetched."})
 		return
 	}
-	c.JSON(200, peers)
+	if len(p2p.peers) == 0 {
+		c.JSON(500, gin.H{"error": "No Peers Yet."})
+		return
+	}
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+
+	c.JSON(200, p2p.peers)
 
 }
 
@@ -58,24 +62,27 @@ func ListPeers(c *gin.Context) {
 func ListDHTPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/dht"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+
 	var dhtPeers []peer.ID
-	for _, peer := range p2p.Host.Peerstore().Peers() {
-		_, err := p2p.Host.Peerstore().Get(peer, "peer_info")
+	for _, peer := range p2p.peers {
+		_, err := p2p.Host.Peerstore().Get(peer.ID, "peer_info")
 		if err != nil {
-			zlog.ErrorContext(c.Request.Context(), fmt.Sprintf("coultn't retrieve dht content for peer: %s", peer.String()), zap.Error(err))
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.ErrorContext(c.Request.Context(), fmt.Sprintf("coultn't retrieve dht content for peer: %s", peer.String()), zap.Error(err))
+			}
 			continue
 		}
-		if peer == p2p.Host.ID() {
+		if peer.ID == p2p.Host.ID() {
 			continue
 		}
-		dhtPeers = append(dhtPeers, peer)
+		dhtPeers = append(dhtPeers, peer.ID)
 	}
 
 	if len(dhtPeers) == 0 {
@@ -102,13 +109,14 @@ func ListDHTPeers(c *gin.Context) {
 func SelfPeerInfo(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/self"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
+
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 
 	out := struct {
 		ID    string
@@ -131,7 +139,6 @@ func SelfPeerInfo(c *gin.Context) {
 func ListChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	chatRequests, err := incomingChatRequests()
@@ -139,6 +146,7 @@ func ListChatHandler(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 
 	c.JSON(200, chatRequests)
 }
@@ -153,13 +161,13 @@ func ListChatHandler(c *gin.Context) {
 func ClearChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat/clear"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	if err := clearIncomingChatRequests(); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 
 	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound Chat Requests."})
 }
@@ -291,19 +299,21 @@ func JoinChatHandler(c *gin.Context) {
 func DumpDHT(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/dht"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 
 	dhtContent := []models.PeerData{}
 	for _, peer := range p2p.Host.Peerstore().Peers() {
 		peerData, err := p2p.Host.Peerstore().Get(peer, "peer_info")
 		if err != nil {
-			zlog.ErrorContext(c.Request.Context(), fmt.Sprintf("Coultn't retrieve dht content for peer: %s", peer.String()), zap.Error(err))
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.ErrorContext(c.Request.Context(), fmt.Sprintf("Coultn't retrieve dht content for peer: %s", peer.String()), zap.Error(err))
+			}
 		}
 		if peer == p2p.Host.ID() {
 			continue
@@ -325,4 +335,8 @@ func DumpDHT(c *gin.Context) {
 
 	span.SetAttributes(attribute.String("Response", string(dhtContentJ)))
 	c.JSON(200, dhtContent)
+}
+
+func ManualDHTUpdateHandler(c *gin.Context) {
+	UpdateDHT()
 }

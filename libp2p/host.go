@@ -23,6 +23,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	"github.com/multiformats/go-multiaddr"
@@ -36,6 +37,7 @@ type DMSp2p struct {
 	Host host.Host
 	DHT  *dht.IpfsDHT
 	PS   peerstore.Peerstore
+	peers []peer.AddrInfo
 }
 
 func DMSp2pInit(node host.Host, dht *dht.IpfsDHT) *DMSp2p {
@@ -115,6 +117,8 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
 	}
 
+	// Start the DHT Update
+	UpdateDHT()
 	// Broadcast DHT updates every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
 	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
@@ -126,6 +130,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		zlog.Sugar().Infof("setting DHT update interval to %v seconds", interval)
 	}
 	quit := make(chan struct{})
+
 	go func() {
 		for {
 			select {
@@ -306,7 +311,21 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 		libp2p.ConnectionManager(connmgr),
 		libp2p.EnableRelay(),
 		libp2p.EnableHolePunching(),
-		libp2p.EnableRelayService(),
+		libp2p.EnableRelayService(
+			relay.WithResources(
+				relay.Resources{
+					MaxReservations: 256,
+					MaxCircuits:     32,
+					BufferSize:      4096,
+					MaxReservationsPerPeer: 8,
+					MaxReservationsPerIP:   16,
+				},
+			),
+			relay.WithLimit(&relay.RelayLimit{
+				Duration: 5 * time.Minute,
+				Data:     1 << 21, // 2 MiB
+			}),
+		),
 		libp2p.EnableAutoRelayWithPeerSource(
 			func(ctx context.Context, num int) <-chan peer.AddrInfo {
 				r := make(chan peer.AddrInfo)
@@ -314,7 +333,7 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 					defer close(r)
 					for i := 0; i < num; i++ {
 						select {
-						case p := <-nextPeer:
+						case p := <-relayPeer:
 							select {
 							case r <- p:
 							case <-ctx.Done():
@@ -331,7 +350,7 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 			autorelay.WithBackoff(30*time.Second),
 			autorelay.WithMinCandidates(2),
 			autorelay.WithMaxCandidates(3),
-			autorelay.WithNumRelays(1),
+			autorelay.WithNumRelays(2),
 		),
 	)
 
