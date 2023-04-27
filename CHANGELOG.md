@@ -20,6 +20,15 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.65](#164)
+
+### Changed
+- Avoid fetching peers at multiple places
+- Increase relay limits and reservation resources
+- Use only NuNet peers for relay and DHT update 
+
+### Removed
+- Removed the libp2p bootstrap nodes
 ## [0.4.64](#157)
 
 ### Added
