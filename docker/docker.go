@@ -6,10 +6,12 @@ import (
 	"io"
 	"math"
 	"os"
+	"strconv"
 
 	"strings"
 	"time"
 
+	"github.com/KyleBanks/dockerstats"
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -105,26 +107,27 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		panic(err)
 	}
 
-	peerIDOfServiceHost := depReq.Params.NodeID
+	var requestTracker models.RequestTracker
+	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
+	if res.Error != nil {
+		zlog.Error(res.Error.Error())
+	}
 	status := "started"
 	var requestTracker models.RequestTracker
 
-	if res := db.DB.Where("node_id = ?", peerIDOfServiceHost).Find(&requestTracker); res.RowsAffected == 0 {
-		panic("Service Not Found for Deployment")
-	}
 	ServiceStatusParams := models.ServiceStatus{
 		CallID:              requestTracker.CallID,
-		PeerIDOfServiceHost: peerIDOfServiceHost,
+		PeerIDOfServiceHost: requestTracker.NodeID,
 		ServiceID:           requestTracker.ServiceType,
 		Status:              status,
 		Timestamp:           float32(statsdb.GetTimestamp()),
 	}
-
 	statsdb.ServiceStatus(ServiceStatusParams)
+
 	// updating RequestTracker
 	requestTracker.Status = status
 	requestTracker.RequestID = resp.ID
-	res := db.DB.Model(&models.RequestTracker{}).Where("node_id = ?", peerIDOfServiceHost).Updates(requestTracker)
+	res := db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 	if res.Error != nil {
 		panic(res.Error)
 	}
@@ -158,7 +161,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	defer tick.Stop()
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	// maxUsedRAM, maxUsedCPU := 0.0, 0.0
+	maxUsedRAM, maxUsedCPU := 0.0, 0.0
 
 outerLoop:
 	for {
@@ -173,8 +176,10 @@ outerLoop:
 		case containerStatus := <-statusCh: // not running?
 			// get the last logs & exit...
 			updateGist(*createdGist.ID, resp.ID)
-			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
-				panic("Service Not Found for Deployment")
+			var requestTracker models.RequestTracker
+			res := db.DB.Where("id = ?", 1).Find(&requestTracker)
+			if res.Error != nil {
+				zlog.Error(res.Error.Error())
 			}
 
 			// add exitStatus to db
@@ -194,9 +199,9 @@ outerLoop:
 					CallID:              requestTracker.CallID,
 					PeerIDOfServiceHost: requestTracker.NodeID,
 					ServiceID:           requestTracker.ServiceType,
-					CPUUsed:             float32(depReq.Constraints.CPU), // XXX should be used instead of constraint. need to get how much used
+					CPUUsed:             maxUsedCPU,
 					MaxRAM:              float32(depReq.Constraints.Vram),
-					MemoryUsed:          float32(depReq.Constraints.RAM), // XXX should be used instead of constraint. need to get how much used
+					MemoryUsed:          maxUsedRAM,
 					NetworkBwUsed:       0.0,
 					TimeTaken:           0.0,
 					Status:              "finished without errors",
@@ -214,7 +219,7 @@ outerLoop:
 				requestTracker.Status = "finished with errors"
 			}
 
-			res := db.DB.Model(&models.RequestTracker{}).Where("request_id = ?", resp.ID).Updates(requestTracker)
+			res := db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
 				panic(res.Error)
 			}
@@ -223,6 +228,28 @@ outerLoop:
 		case <-tick.C:
 			// get the latest logs ...
 			zlog.Info("updating gist")
+			contID := requestTracker.RequestID[:12]
+			stats, err := dockerstats.Current()
+			if err != nil {
+				panic(err)
+			}
+
+			for _, s := range stats {
+				if s.Container == contID {
+					usedRAM := strings.Split(s.Memory.Raw, "MiB")
+					usedCPU := strings.Split(s.CPU, "%")
+					ramFloat64, _ := strconv.ParseFloat(usedRAM[0], 64)
+					cpuFloat64, _ := strconv.ParseFloat(usedCPU[0], 64)
+					cpuFloat64 = cpuUsage(cpuFloat64, float64(hostConfig.CPUQuota))
+					if ramFloat64 > maxUsedRAM {
+						maxUsedRAM = ramFloat64
+					}
+					if cpuFloat64 > maxUsedCPU {
+						maxUsedCPU = cpuFloat64
+					}
+				}
+			}
+
 			updateGist(*createdGist.ID, resp.ID)
 		}
 	}
