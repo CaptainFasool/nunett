@@ -15,32 +15,8 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-var nextPeer = make(chan peer.AddrInfo)
-
-func (p2p DMSp2p) autoRelay(ctx context.Context) {
-	for {
-		peers, err := p2p.DHT.GetClosestPeers(ctx, p2p.Host.ID().String())
-		if err != nil {
-			zlog.Sugar().Infof("GetClosestPeers error: %s", err.Error())
-			time.Sleep(time.Second)
-			continue
-		}
-		for _, p := range peers {
-			addrs := p2p.Host.Peerstore().Addrs(p)
-			if len(addrs) == 0 {
-				continue
-			}
-			nextPeer <- peer.AddrInfo{
-				ID:    p,
-				Addrs: addrs,
-			}
-		}
-	}
-}
-
 func (p2p DMSp2p) BootstrapNode(ctx context.Context) error {
 	Bootstrap(ctx, p2p.Host, p2p.DHT)
-	go p2p.autoRelay(ctx)
 
 	return nil
 }
@@ -163,15 +139,33 @@ func UpdateDHT() {
 	defer ctx.Done()
 
 	// Broadcast updated peer_info to connected nodes
-	for _, peer := range p2p.Host.Network().Peers() {
-		stream, err := p2p.Host.NewStream(ctx, peer, DHTProtocolID)
+	addr, err := p2p.getPeers(ctx, "nunet")
+
+	p2p.peers = addr
+	zlog.Sugar().Debugf("Obtained peers for DHT update: %v", addr)
+	if err != nil {
+		zlog.Sugar().Debugf("UpdateDHT error: %s", err.Error())
+	}
+
+	for _, addr := range addr {
+		zlog.Sugar().Debugf("Attempting to Send DHT Update to: %s", addr.ID.String())
+		peerID := addr.ID
+
+		relayPeer <- addr
+
+		// XXX wait 5 seconds for stream creation
+		//     needs better implementation in the future
+		streamCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		stream, err := p2p.Host.NewStream(streamCtx, peerID, DHTProtocolID)
 		// Ignoring error because some peers might not support specified protocol
 		if err != nil {
+			zlog.Sugar().Debugf("UpdateDHT Create Stream error: %v --- peer: %v", err, peerID.String())
 			continue
 		}
+		zlog.Sugar().Debugf("Sending DHT update to %s", peerID.String())
 		SendDHTUpdate(PeerInfo, stream)
 		stream.Close()
-
 	}
 }
 

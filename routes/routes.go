@@ -56,6 +56,7 @@ func SetupRouter() *gin.Engine {
 		dht := v1.Group("/dht")
 		{
 			dht.GET("", libp2p.DumpDHT)
+			dht.GET("/update", libp2p.ManualDHTUpdateHandler)
 		}
 	}
 
