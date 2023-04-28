@@ -206,7 +206,7 @@ func Onboard(c *gin.Context) {
 			gin.H{"error": "could not write metadata.json"})
 		return
 	}
-
+	telemetry.CalcFreeResources()
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 	span.SetAttributes(attribute.String("PeerID", libp2p.GetP2P().Host.ID().String()))
 
@@ -226,7 +226,6 @@ func Onboard(c *gin.Context) {
 	}
 	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
 
-	telemetry.CalcFreeResources()
 	c.JSON(http.StatusCreated, metadata)
 }
 

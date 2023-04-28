@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.66](#167)
+
+### Changed
+- Refactored statsdb device resource change calls
 ## [0.4.65](#164)
 
 ### Changed

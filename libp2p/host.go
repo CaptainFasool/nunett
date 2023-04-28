@@ -34,9 +34,9 @@ import (
 )
 
 type DMSp2p struct {
-	Host host.Host
-	DHT  *dht.IpfsDHT
-	PS   peerstore.Peerstore
+	Host  host.Host
+	DHT   *dht.IpfsDHT
+	PS    peerstore.Peerstore
 	peers []peer.AddrInfo
 }
 
@@ -118,7 +118,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	// Start the DHT Update
-	UpdateDHT()
+	go UpdateDHT()
 	// Broadcast DHT updates every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
 	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
@@ -314,9 +314,9 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 		libp2p.EnableRelayService(
 			relay.WithResources(
 				relay.Resources{
-					MaxReservations: 256,
-					MaxCircuits:     32,
-					BufferSize:      4096,
+					MaxReservations:        256,
+					MaxCircuits:            32,
+					BufferSize:             4096,
 					MaxReservationsPerPeer: 8,
 					MaxReservationsPerIP:   16,
 				},

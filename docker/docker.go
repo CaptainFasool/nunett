@@ -30,6 +30,11 @@ const (
 func freeUsedResources(contID string) {
 	// update the available resources table
 	telemetry.CalcFreeResources()
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
 }
 
@@ -149,6 +154,11 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	// TODO: Update service based on passed pk
 
 	telemetry.CalcFreeResources()
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
