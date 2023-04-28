@@ -12,6 +12,10 @@ import (
 )
 
 func createGist() (*github.Gist, *github.Response, error) {
+	if !gHealthy {
+		return nil, nil, errors.New("gist client not healthy")
+	}
+
 	gist := &github.Gist{
 		Description: github.String("Docker Logs to Gist"),
 		Public:      github.Bool(false),
@@ -36,6 +40,7 @@ func createGist() (*github.Gist, *github.Response, error) {
 }
 
 func updateGist(gistID string, containerID string) {
+
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 

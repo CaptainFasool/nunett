@@ -142,6 +142,6 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		}
 	}
 
-	depResp = docker.HandleDeployment(depReq)
-	sendDeploymentResponse(depResp.Success, depResp.Content, false)
+	depResp, closeStream := docker.HandleDeployment(depReq)
+	sendDeploymentResponse(depResp.Success, depResp.Content, closeStream)
 }
