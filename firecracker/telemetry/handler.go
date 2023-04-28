@@ -7,11 +7,18 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 )
+
+func GetFreeResources() (models.FreeResources, error) {
+	var freeResource models.FreeResources
+	if res := db.DB.Find(&freeResource); res.RowsAffected == 0 {
+		return freeResource, res.Error
+	}
+	return freeResource, nil
+}
 
 func QueryRunningVMs(DB *gorm.DB) []models.VirtualMachine {
 	var vm []models.VirtualMachine
@@ -91,8 +98,6 @@ func CalcFreeResources() error {
 	freeResource.PriceRam = availableRes.PriceRam
 	freeResource.PriceDisk = availableRes.PriceDisk
 	// TODO: Calculate remaining disk space
-
-	statsdb.DeviceResourceChange(freeResource)
 
 	// Check if we have a previous entry in the table
 	var freeresource models.FreeResources
