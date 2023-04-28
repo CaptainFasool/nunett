@@ -3,7 +3,6 @@ package machines
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -46,14 +45,14 @@ func HandleRequestService(c *gin.Context) {
 	var depReq models.DeploymentRequest
 	var depReqFlat models.DeploymentRequestFlat
 	if err := c.BindJSON(&depReq); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "json: cannot unmarshal object into Go"})
 		return
 	}
 
 	// add node_id and public_key in deployment request
 	pKey, err := libp2p.GetPublicKey()
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("unable to obtain public key: %v", err))
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to obtain public key"})
 		return
 	}
 	selfNodeID := libp2p.GetP2P().Host.ID().String()
@@ -65,7 +64,7 @@ func HandleRequestService(c *gin.Context) {
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
 	zlog.Sugar().Infof("estimated ntx price %v", estimatedNtx)
 	if estimatedNtx > float64(depReq.MaxNtx) {
-		c.AbortWithError(http.StatusBadRequest, errors.New("nunet estimation price is greater than client price"))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "nunet estimation price is greater than client price"})
 		return
 	}
 
@@ -96,40 +95,35 @@ func HandleRequestService(c *gin.Context) {
 		}
 	}
 	if onlinePeer.PeerID == "" {
-		c.AbortWithError(http.StatusBadRequest, errors.New("no peers found with matched specs"))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "no peers found with matched specs"})
 		return
 	}
 	computeProvider := onlinePeer
 	if len(filteredPeers) < 1 {
-		c.AbortWithError(http.StatusBadRequest, errors.New("no peers found with matched specs"))
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
 		return
 	}
 	zlog.Sugar().Debugf("compute provider: ", computeProvider)
-
-	depReq.Params.NodeID = computeProvider.PeerID
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Sugar().Infof("sending fund contract request to oracle")
 	fcr, err := oracle.FundContractRequest()
 	if err != nil {
 		zlog.Sugar().Infof("sending fund contract request to oracle failed")
-		c.AbortWithError(http.StatusBadRequest, errors.New("cannot connect to oracle"))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot connect to oracle"})
 		return
 	}
 
 	// Marshal struct to JSON
-	depReqBytes, err := json.Marshal(depReq)
-	if err != nil {
-		zlog.Sugar().Errorf("failed to marshal struct to json: %v", err)
-		return
-	}
-
+	depReqBytes, _ := json.Marshal(depReq)
 	// Convert JSON bytes to string
 	depReqStr := string(depReqBytes)
 	depReqFlat.DeploymentRequest = depReqStr
 
 	if err := db.DB.Create(&depReqFlat).Error; err != nil {
-		panic(err)
+		zlog.Sugar().Infof("cannot write to database")
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "cannot write to database"})
+		return
 	}
 
 	var requestTracker models.RequestTracker
@@ -327,7 +321,7 @@ func HandleSendStatus(c *gin.Context) {
 
 	body := BlockchainTxStatus{}
 	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot read payload body"})
 		return
 	}
 
