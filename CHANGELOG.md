@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.69](#168)
+
+### Changed
+- Obtain gist token from a public endpoint
+- Send depResp and close stream if unable to create gist
 ## [0.4.68](!129)
 
 ### Changed

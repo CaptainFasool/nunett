@@ -95,7 +95,7 @@ func HandleRequestService(c *gin.Context) {
 		}
 	}
 	if onlinePeer.PeerID == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "no peers found with matched specs"})
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
 		return
 	}
 	computeProvider := onlinePeer
@@ -110,7 +110,7 @@ func HandleRequestService(c *gin.Context) {
 	fcr, err := oracle.FundContractRequest()
 	if err != nil {
 		zlog.Sugar().Infof("sending fund contract request to oracle failed")
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot connect to oracle"})
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "cannot connect to oracle"})
 		return
 	}
 

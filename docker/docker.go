@@ -310,7 +310,7 @@ func cpuUsage(cpu float64, maxCPU float64) float64 {
 
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, delete container, send log to the requester
-func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse {
+func HandleDeployment(depReq models.DeploymentRequest) (models.DeploymentResponse, bool) {
 	// Pull the image
 	imageName := depReq.Params.ImageID
 	PullImage(imageName)
@@ -326,7 +326,11 @@ func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse
 	// create gist here and pass it to RunContainer to update logs
 	createdGist, _, err := createGist()
 	if err != nil {
-		zlog.Sugar().Errorln(err)
+		zlog.Sugar().Errorf("couldn't create gist: %v", err)
+		return models.DeploymentResponse{
+				Success: false,
+				Content: "Unable to create Gist."},
+			true
 	}
 
 	service.LogURL = *createdGist.HTMLURL
@@ -343,5 +347,5 @@ func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse
 
 	// Send back *createdGist.HTMLURL
 	res.Content = *createdGist.HTMLURL
-	return res
+	return res, false
 }
