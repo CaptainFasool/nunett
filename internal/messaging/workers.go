@@ -7,9 +7,11 @@ import (
 	"io"
 
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -99,6 +101,47 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 
 func handleDockerDeployment(depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
+	callID := statsdb.GetCallID()
+	peerIDOfServiceHost := depReq.Params.NodeID
+	timeStamp := float32(statsdb.GetTimestamp())
+	status := "accepted"
+
+	ServiceCallParams := models.ServiceCall{
+		CallID:              callID,
+		PeerIDOfServiceHost: peerIDOfServiceHost,
+		ServiceID:           depReq.ServiceType,
+		CPUUsed:             float32(depReq.Constraints.CPU),
+		MaxRAM:              float32(depReq.Constraints.Vram),
+		MemoryUsed:          float32(depReq.Constraints.RAM),
+		NetworkBwUsed:       0.0,
+		TimeTaken:           0.0,
+		Status:              status,
+		Timestamp:           timeStamp,
+	}
+	statsdb.ServiceCall(ServiceCallParams)
+
+	requestTracker := models.RequestTracker{
+		ID:          1,
+		ServiceType: depReq.ServiceType,
+		CallID:      callID,
+		NodeID:      peerIDOfServiceHost,
+		Status:      status,
+	}
+
+	// Check if we have a previous entry in the table
+	var reqTracker models.RequestTracker
+	if res := db.DB.Find(&reqTracker); res.RowsAffected == 0 {
+		result := db.DB.Create(&requestTracker)
+		if result.Error != nil {
+			zlog.Error(result.Error.Error())
+		}
+	} else {
+		result := db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Select("*").Updates(requestTracker)
+		if result.Error != nil {
+			zlog.Error(result.Error.Error())
+		}
+	}
+
 	depResp = docker.HandleDeployment(depReq)
 	sendDeploymentResponse(depResp.Success, depResp.Content, false)
 }

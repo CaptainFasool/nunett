@@ -42,6 +42,7 @@ replace gorm.io/gorm => gorm.io/gorm v1.23.8
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
+	github.com/KyleBanks/dockerstats v0.0.0-20180213183355-b5fec062e953 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
