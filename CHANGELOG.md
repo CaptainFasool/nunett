@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.68](!129)
+
+### Changed
+- Raise HTTP exceptions for internal DMS error occurred on route handlers
 ## [0.4.67](#165)
 
 ### Changed

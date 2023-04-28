@@ -34,19 +34,19 @@ func HandleRequestReward(c *gin.Context) {
 	// SELECTs the first record; first record which is not marked as delete
 	if err := db.DB.First(&service).Error; err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(500, gin.H{"message": "no services running"})
+		c.JSON(404, gin.H{"error": "no job deployed to request reward for"})
 		return
 	}
 
 	if service.JobStatus == "running" {
-		c.JSON(102, gin.H{"message": "the job is still running"})
+		c.JSON(102, gin.H{"error": "the job is still running"})
 		return
 	}
 
 	// Send the service data to oracle for examination
 	resp, err := oracle.WithdrawTokenRequest(service)
 	if err != nil {
-		c.JSON(500, gin.H{"message": "connetction to oracle failed"})
+		c.JSON(500, gin.H{"error": "connetction to oracle failed"})
 		return
 	}
 
