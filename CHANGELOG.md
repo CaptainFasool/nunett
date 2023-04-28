@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.67](#165)
+
+### Changed
+- Added ServiceCall event back after removed by mistake
 ## [0.4.66](#167)
 
 ### Changed
