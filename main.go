@@ -12,15 +12,14 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/otel"
+	"gitlab.com/nunet/device-management-service/utils"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // @title           Device Management Service
-// @version         0.4.41
+// @version         0.4.68
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -37,6 +36,12 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
+	db.ConnectDatabase()
+
+	utils.GenerateMachineUUID()
+
+
+
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
 
@@ -46,16 +51,6 @@ func main() {
 
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
-
-	//export traces to jaeger
-	tp, _ := libp2p.TracerProvider("http://testserver.nunet.io:14268/api/traces")
-
-	otel.SetTracerProvider(tp)
-	defer func() {
-		if err := tp.Shutdown(context.Background()); err != nil {
-			_ = err
-		}
-	}()
 
 	// get managed VMs, assume previous run left some VM running
 	firecracker.RunPreviouslyRunningVMs()
@@ -69,11 +64,9 @@ func startServer(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	router := routes.SetupRouter()
-	router.Use(otelgin.Middleware(tracing.ServiceName))
+	// router.Use(otelgin.Middleware(tracing.MachineName))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	db.ConnectDatabase()
 
 	router.Run(":9999")
 

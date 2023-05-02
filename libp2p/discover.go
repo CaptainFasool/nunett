@@ -2,7 +2,7 @@ package libp2p
 
 import (
 	"context"
-	"fmt"
+	"os"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -33,8 +33,9 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 
 			peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
 			if err != nil {
-				zlog.Sugar().Fatalf("Error Discovering Peers: %s\n", err.Error())
+				zlog.Sugar().Errorf("failed to discover peers: %v", err)
 			}
+			peers = filterAddrs(peers)
 			for _, p := range peers {
 				if p.ID == node.ID() {
 					continue
@@ -42,10 +43,14 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 				if node.Network().Connectedness(p.ID) != network.Connected {
 					_, err = node.Network().DialPeer(ctx, p.ID)
 					if err != nil {
-						// fmt.Println("++++========= connectedness with ", p.ID.String(), " failed - ", err.Error())
+						if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+							zlog.Sugar().Debugf("couldn't establish connection with: %s - error: %v", p.ID.String(), err)
+						}
 						continue
 					}
-					fmt.Println("++++========= connectedness with ", p.ID.String())
+					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+						zlog.Sugar().Debugf("connected with: %s", p.ID.String())
+					}
 
 				}
 			}
@@ -61,5 +66,21 @@ func (p2p DMSp2p) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrI
 	if err != nil {
 		zlog.Sugar().Errorf("Error Finding Peers: %s\n", err.Error())
 	}
+	peers = filterAddrs(peers)
+
 	return peers, nil
+}
+
+func filterAddrs(peers []peer.AddrInfo) []peer.AddrInfo {
+	var filtered []peer.AddrInfo
+	for _, p := range peers {
+		if p.ID == p2p.Host.ID() {
+			continue
+		}
+		if len(p.Addrs) == 0 {
+			continue
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
 }

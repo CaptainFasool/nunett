@@ -1,5 +1,11 @@
 package models
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 type IP []any
 
 type PeerInfo struct {
@@ -47,11 +53,15 @@ type AvailableResources struct {
 }
 
 type Services struct {
-	ID                   uint
+	gorm.Model
+	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
+	JobDuration          int64  // job duration in minutes
+	EstimatedJobDuration int64  // job duration in minutes
 	ServiceName          string
 	ContainerID          string
 	ResourceRequirements int
 	ImageID              string
+	LogURL               string
 	// TODO: Add ContainerType field
 
 }
@@ -69,6 +79,10 @@ type Libp2pInfo struct {
 	PrivateKey []byte `json:"private_key"`
 	PublicKey  []byte `json:"public_key"`
 	ServerMode bool   `json:"server_mode"`
+}
+
+type MachineUUID struct {
+	UUID string `json:"uuid"`
 }
 
 type Gpu struct {
@@ -96,6 +110,18 @@ type PeerData struct {
 	TokenomicsBlockchain string        `json:"tokenomics_blockchain"`
 	AvailableResources   FreeResources `json:"available_resources"`
 	Services             []Services    `json:"services"`
+	Timestamp            int64         `json:"timestamp,omitempty"`
+}
+
+type Connection struct {
+	gorm.Model
+	PeerID     string `json:"peer_id"`
+	Multiaddrs string `json:"multiaddrs"`
+}
+
+type PingResult struct {
+	RTT     time.Duration
+	Success bool
 }
 
 type Machines map[string]PeerData

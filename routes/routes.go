@@ -1,21 +1,26 @@
 package routes
 
 import (
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
-	"gitlab.com/nunet/device-management-service/integration/tokenomics"
+	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
+	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/libp2p/machines"
 	"gitlab.com/nunet/device-management-service/onboarding"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.New(getCustomCorsConfig()))
+
+	router.Use(otelgin.Middleware(tracing.ServiceName))
 
 	v1 := router.Group("/api/v1")
 
@@ -23,6 +28,7 @@ func SetupRouter() *gin.Engine {
 	{
 		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
 		onboardingRoute.POST("/onboard", onboarding.Onboard)
+		onboardingRoute.POST("/resource-config", onboarding.ResourceConfig)
 		onboardingRoute.GET("/provisioned", onboarding.ProvisionedCapacity)
 		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
 	}
@@ -35,8 +41,9 @@ func SetupRouter() *gin.Engine {
 
 	run := v1.Group("/run")
 	{
-		run.GET("/deploy", machines.HandleDeploymentRequest)
-		run.POST("/claim", tokenomics.HandleClaimCardanoTokens)
+		run.POST("/request-service", machines.HandleRequestService)
+		run.GET("/deploy", machines.HandleDeploymentRequest) // websocket
+		run.POST("/request-reward", tokenomics.HandleRequestReward)
 		run.POST("/send-status", machines.HandleSendStatus)
 	}
 
@@ -45,10 +52,19 @@ func SetupRouter() *gin.Engine {
 		tele.GET("/free", telemetry.GetFreeResource)
 	}
 
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		dht := v1.Group("/dht")
+		{
+			dht.GET("", libp2p.DumpDHT)
+			dht.GET("/update", libp2p.ManualDHTUpdateHandler)
+		}
+	}
+
 	p2p := v1.Group("/peers")
 	{
 		// peer.GET("", machines.ListPeers)
 		p2p.GET("", libp2p.ListPeers)
+		p2p.GET("/dht", libp2p.ListDHTPeers)
 		p2p.GET("/self", libp2p.SelfPeerInfo)
 		p2p.GET("/chat", libp2p.ListChatHandler)
 		p2p.GET("/chat/start", libp2p.StartChatHandler)
@@ -64,7 +80,7 @@ func SetupRouter() *gin.Engine {
 func getCustomCorsConfig() cors.Config {
 	config := DefaultConfig()
 	// FIXME: This is a security concern.
-	config.AllowOrigins = []string{"http://localhost:9998"}
+	config.AllowOrigins = []string{"http://localhost:9991", "http://localhost:9992"}
 	return config
 }
 

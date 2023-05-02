@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -14,11 +15,39 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
+var ServiceName = "NuNet DMS" // TODO: This should be unique to be able to see different DMS in dashboard.
+
 const (
-	ServiceName  = "NuNet DMS" // TODO: This should be unique to be able to see different DMS in dashboard.
-	CollectorURL = "telemetry-test.nunet.io:4317"
-	Insecure     = "true"
+	Insecure = "true"
 )
+
+func getAddress() string {
+	channelName := utils.GetChannelName()
+	var (
+		addr string
+		// sigNoz Address
+		sigNoznunetStagingAddr string = "telemetry-staging.nunet.io:14317"
+		sigNoznunetTestAddr    string = "telemetry-test.nunet.io:4317"
+		sigNoznunetEdgeAddr    string = "telemetry-edge.nunet.io:34317"
+		sigNoznunetTeamAddr    string = "telemetry-team.nunet.io:44317"
+		sigNozlocalAddr        string = "localhost:4317"
+	)
+	if channelName == "nunet-staging" {
+		addr = sigNoznunetStagingAddr
+	} else if channelName == "nunet-test" {
+		addr = sigNoznunetTestAddr
+	} else if channelName == "nunet-edge" {
+		addr = sigNoznunetEdgeAddr
+	} else if channelName == "nunet-team" {
+		addr = sigNoznunetTeamAddr
+	} else if channelName == "" { // XXX -- setting empty(not yet onboarded) to test endpoint - not a good idea
+		addr = sigNoznunetTestAddr
+	} else {
+		addr = sigNozlocalAddr
+	}
+
+	return addr
+}
 
 func InitTracer() func(context.Context) error {
 
@@ -31,7 +60,7 @@ func InitTracer() func(context.Context) error {
 		context.Background(),
 		otlptracegrpc.NewClient(
 			secureOption,
-			otlptracegrpc.WithEndpoint(CollectorURL),
+			otlptracegrpc.WithEndpoint(getAddress()),
 		),
 	)
 

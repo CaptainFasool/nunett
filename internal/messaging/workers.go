@@ -11,19 +11,25 @@ import (
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-
-	//"gitlab.com/nunet/device-management-service/statsdb" //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func sendDeploymentResponse(success bool, message string, close bool) {
-	jsonDepResp, _ := json.Marshal(models.DeploymentResponse{
+func sendDeploymentResponse(success bool, content string, close bool) {
+
+	zlog.Sugar().Debugf("send deployment response content: %s", content)
+	zlog.Sugar().Debugf("send deployment response close stream: %v", close)
+
+	depResp, _ := json.Marshal(&models.DeploymentResponse{
 		Success: success,
-		Content: message,
+		Content: content,
 	})
-	err := libp2p.DeploymentResponse(string(jsonDepResp), close)
+
+	zlog.Sugar().Debugf("marshalled deployment response from worker: %s", string(depResp))
+
+	err := libp2p.DeploymentResponse(string(depResp), close)
 	if err != nil {
-		zlog.Sugar().Errorln("Error Sending Deployment Response - ", err.Error())
+		zlog.Sugar().Errorf("Error Sending Deployment Response - ", err.Error())
 	}
 }
 
@@ -36,11 +42,10 @@ func DeploymentWorker() {
 			jsonDataMsg, _ := json.Marshal(msg)
 			json.Unmarshal(jsonDataMsg, &depReq)
 
-			sender := depReq.AddressUser
 			if depReq.ServiceType == "cardano_node" {
-				handleCardanoDeployment(depReq, sender)
-			} else if depReq.ServiceType == "ml-training-gpu" {
-				handleGpuDeployment(depReq, sender)
+				handleCardanoDeployment(depReq)
+			} else if depReq.ServiceType == "ml-training-cpu" || depReq.ServiceType == "ml-training-gpu" {
+				handleDockerDeployment(depReq)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
 				sendDeploymentResponse(false, "Unknown service type.", true)
@@ -49,7 +54,7 @@ func DeploymentWorker() {
 	}
 }
 
-func handleCardanoDeployment(depReq models.DeploymentRequest, sender string) {
+func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	// dowload kernel and filesystem files place them somewhere
 	// TODO : organize fc files
 	pKey := depReq.Params.PublicKey
@@ -94,44 +99,49 @@ func handleCardanoDeployment(depReq models.DeploymentRequest, sender string) {
 	sendDeploymentResponse(true, "Cardano Node Deployment Successful.", false)
 }
 
-func handleGpuDeployment(depReq models.DeploymentRequest, sender string) {
+func handleDockerDeployment(depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
-
-	callID := float32(1234) //statsdb.GetCallID() //XXX: Using dummy value until StatsDB works - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+	callID := statsdb.GetCallID()
 	peerIDOfServiceHost := depReq.Params.NodeID
-	//timeStamp := float32(statsdb.GetTimestamp()) //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+	timeStamp := float32(statsdb.GetTimestamp())
 	status := "accepted"
 
-	// ServiceCallParams := models.ServiceCall{ //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
-	// 	CallID:              callID,
-	// 	PeerIDOfServiceHost: peerIDOfServiceHost,
-	// 	ServiceID:           depReq.ServiceType,
-	// 	CPUUsed:             float32(depReq.Constraints.CPU),
-	// 	MaxRAM:              float32(depReq.Constraints.Vram),
-	// 	MemoryUsed:          float32(depReq.Constraints.RAM),
-	// 	NetworkBwUsed:       0.0,
-	// 	TimeTaken:           0.0,
-	// 	Status:              status,
-	// 	Timestamp:           timeStamp,
-	// }
-	// statsdb.ServiceCall(ServiceCallParams) //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+	ServiceCallParams := models.ServiceCall{
+		CallID:              callID,
+		PeerIDOfServiceHost: peerIDOfServiceHost,
+		ServiceID:           depReq.ServiceType,
+		CPUUsed:             float32(depReq.Constraints.CPU),
+		MaxRAM:              float32(depReq.Constraints.Vram),
+		MemoryUsed:          float32(depReq.Constraints.RAM),
+		NetworkBwUsed:       0.0,
+		TimeTaken:           0.0,
+		Status:              status,
+		Timestamp:           timeStamp,
+	}
+	statsdb.ServiceCall(ServiceCallParams)
 
 	requestTracker := models.RequestTracker{
+		ID:          1,
 		ServiceType: depReq.ServiceType,
 		CallID:      callID,
 		NodeID:      peerIDOfServiceHost,
 		Status:      status,
 	}
-	result := db.DB.Create(&requestTracker)
-	if result.Error != nil {
-		panic(result.Error)
+
+	// Check if we have a previous entry in the table
+	var reqTracker models.RequestTracker
+	if res := db.DB.Find(&reqTracker); res.RowsAffected == 0 {
+		result := db.DB.Create(&requestTracker)
+		if result.Error != nil {
+			zlog.Error(result.Error.Error())
+		}
+	} else {
+		result := db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Select("*").Updates(requestTracker)
+		if result.Error != nil {
+			zlog.Error(result.Error.Error())
+		}
 	}
 
-	depResp = docker.HandleDeployment(depReq, depResp)
-	var m map[string]interface{}
-	b, _ := json.Marshal(&depResp)
-	_ = json.Unmarshal(b, &m)
-
-	jsonGenericMsg, _ := json.Marshal(m)
-	sendDeploymentResponse(depResp.Success, string(jsonGenericMsg), false)
+	depResp = docker.HandleDeployment(depReq)
+	sendDeploymentResponse(depResp.Success, depResp.Content, false)
 }

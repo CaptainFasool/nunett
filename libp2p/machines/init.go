@@ -1,11 +1,12 @@
 package machines
 
 import (
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"gitlab.com/nunet/device-management-service/internal/logger"
 )
 
-var zlog *logger.Logger
+var zlog otelzap.Logger
 
 func init() {
-	zlog = logger.New("libp2p/machines")
+	zlog = logger.OtelZapLogger("libp2/machines")
 }

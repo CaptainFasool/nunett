@@ -18,6 +18,7 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -27,7 +28,7 @@ func RunPreviouslyRunningVMs() error {
 	var vms []models.VirtualMachine
 
 	if result := db.DB.Where("state = ?", "running").Find(&vms); result.Error != nil {
-		panic(result.Error)
+		zlog.Panic(result.Error.Error())
 	}
 
 	c := gin.Context{}
@@ -131,7 +132,7 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 
 	var freeRes models.FreeResources
 
-	if err := db.DB.Where("id = ?", 1).First(&freeRes).Error; err != nil {
+	if err := db.DB.WithContext(c.Request.Context()).Where("id = ?", 1).First(&freeRes).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
 		return
 	}
@@ -151,9 +152,14 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 
 	vm.State = "running"
 
-	db.DB.Save(&vm)
+	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	telemetry.CalcFreeResources()
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -172,8 +178,13 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 
 	vm.State = "stopped"
 
-	db.DB.Save(&vm)
+	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	telemetry.CalcFreeResources()
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
 }

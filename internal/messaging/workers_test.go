@@ -106,11 +106,11 @@ func TestDepReq(t *testing.T) {
 	assert.Equal(t, "Unknown service type.", resp.Content)
 
 	correctDepReq := models.DeploymentRequest{
-		AddressUser: host2.ID().Pretty(),
-		MaxNtx:      10,
-		Blockchain:  "cardano",
-		ServiceType: "cardano_node",
-		Timestamp:   time.Now(),
+		RequesterWalletAddress: host2.ID().Pretty(),
+		MaxNtx:                 10,
+		Blockchain:             "cardano",
+		ServiceType:            "cardano_node",
+		Timestamp:              time.Now(),
 	}
 	correctJsonDepReq, err := json.Marshal(correctDepReq)
 	err = stream.Close()

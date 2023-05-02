@@ -7,11 +7,13 @@ import (
 	"fmt"
 
 	"github.com/gorilla/websocket"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/models"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var inboundChatStreams []network.Stream
@@ -24,24 +26,30 @@ type openStream struct {
 }
 
 func depReqStreamHandler(stream network.Stream) {
-	zlog.Info("Got a new depReq stream!")
+	ctx := context.Background()
+	defer ctx.Done()
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String("MsgType", "DepReq Recv"))
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+
+	zlog.InfoContext(ctx, "Got a new depReq stream!")
 
 	// limit to 1 request
 	if inboundDepReqStream != nil {
 		w := bufio.NewWriter(stream)
 		_, err := w.WriteString("Open Stream Length Exceeded. Closing Stream.\n")
 		if err != nil {
-			zlog.Sugar().Errorln("Error Writing to Stream After DepReq Open Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorf("fialed to write to stream after DepReq open stream length exceeded - %v", err)
 		}
 
 		err = w.Flush()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Flushing Stream After DepReq Open Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorf("failed to flush stream after DepReq open stream length exceeded - %v", err)
 		}
 
 		err = stream.Close()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Closing Stream After DepReq Open Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorf("failed to close stream after DepReq open stream length exceeded - %v", err)
 		}
 		return
 	}
@@ -54,14 +62,15 @@ func depReqStreamHandler(stream network.Stream) {
 	//      reader looks for it as a delimiter. See also DeploymentResponse - w.WriteString
 	str, err := r.ReadString('\n')
 	if err != nil {
-		zlog.Sugar().Errorln("Error reading from buffer")
+		zlog.Sugar().Errorf("failed to read from buffer")
 		panic(err)
 	}
 
 	depreqMessage := models.DeploymentRequest{}
 	err = json.Unmarshal([]byte(str), &depreqMessage)
 	if err != nil {
-		zlog.Error(err.Error())
+		zlog.ErrorContext(ctx, fmt.Sprintf("unable to decode deployment request: %v", err))
+		// XXX : might be best to propagate context through depReq/depResp to encompass everything done starting with a single depReq
 		DeploymentResponse("Unable to decode deployment request", true)
 	} else {
 		DepReqQueue <- depreqMessage
@@ -71,7 +80,7 @@ func depReqStreamHandler(stream network.Stream) {
 func DeploymentResponseListener(stream network.Stream) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Sugar().Info("Connection Error: %v\n", r)
+			zlog.Sugar().Warnf("Connection Error: %v\n", r)
 			if stream != nil {
 				stream.Close()
 			}
@@ -81,6 +90,8 @@ func DeploymentResponseListener(stream network.Stream) {
 	r := bufio.NewReader(stream)
 	for {
 		resp, err := readData(r)
+
+		zlog.Sugar().Debugf("received deployment response: %s", resp)
 
 		if err != nil {
 			panic(err)
@@ -92,6 +103,9 @@ func DeploymentResponseListener(stream network.Stream) {
 			if err != nil {
 				panic(err)
 			} else {
+
+				zlog.Sugar().Debugf("deployment response message model: %v", depRespMessage)
+
 				DepResQueue <- depRespMessage
 			}
 		}
@@ -99,26 +113,36 @@ func DeploymentResponseListener(stream network.Stream) {
 }
 
 func DeploymentResponse(msg string, close bool) error {
+	ctx := context.Background()
+	defer ctx.Done()
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String("MsgType", "DepResp Send"))
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+
+	zlog.Sugar().DebugfContext(ctx, "send deployment response message: %s", msg)
+	zlog.Sugar().DebugfContext(ctx, "send deployment response close stream: %v", close)
+
 	if inboundDepReqStream == nil {
-		return fmt.Errorf("No Inbound Deployment Request to Respond to.")
+		zlog.Sugar().ErrorfContext(ctx, "no inbound deployment request to respond to")
+		return fmt.Errorf("no inbound deployment request to respond to")
 	}
 	w := bufio.NewWriter(inboundDepReqStream)
 	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
-		zlog.Sugar().Errorln("Error Writing Deployment Response to Buffer")
+		zlog.Sugar().ErrorfContext(ctx, "failed to write deployment response to buffer")
 		return err
 	}
 
 	err = w.Flush()
 	if err != nil {
-		zlog.Sugar().Errorln("Error flushing buffer")
+		zlog.Sugar().Errorf("failed to flush buffer")
 		return err
 	}
 
 	if close {
 		err = inboundDepReqStream.Close()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Closing InboundDepReqStream - ", err.Error())
+			zlog.Sugar().ErrorfContext(ctx, "failed to close inbound deployment request stream - %v", err)
 		}
 		inboundDepReqStream = nil
 	}
@@ -126,38 +150,43 @@ func DeploymentResponse(msg string, close bool) error {
 	return nil
 }
 
-func SendDeploymentRequest(ctx context.Context, peerData models.PeerData, depReq models.DeploymentRequest) (network.Stream, error) {
-	zlog.Info("Creating a new depReq!")
+func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest) (network.Stream, error) {
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String("MsgType", "DepReq Recv"))
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+	zlog.InfoContext(ctx, "Creating a new depReq!")
 
 	// limit to 1 request
 	if outboundDepReqStream != nil {
-		return nil, fmt.Errorf("Error: Couldn't Create Deployment Request. A request already in progress.")
+		return nil, fmt.Errorf("couldn't create deployment request. a request already in progress")
 	}
 
-	peerID, err := peer.Decode(peerData.PeerID)
+	peerID, err := peer.Decode(depReq.Params.NodeID)
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Decode Input PeerID '%s', : %v", peerData.PeerID, err)
+		return nil, fmt.Errorf("couldn't decode input peer-id '%s', : %v", depReq.Params.NodeID, err)
 	}
 
 	outboundDepReqStream, err := GetP2P().Host.NewStream(ctx, peerID, protocol.ID(DepReqProtocolID))
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Create Deployment Request Stream: %v", err)
+		return nil, fmt.Errorf("couldn't create deployment request stream: %v", err)
 	}
 
 	msg, err := json.Marshal(depReq)
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Convert Deployment Request to JSON: %v", err)
+		return nil, fmt.Errorf("couldn't convert deployment request to json: %v", err)
 	}
 
 	w := bufio.NewWriter(outboundDepReqStream)
 
+	zlog.Sugar().DebugfContext(ctx, "deployment request: %s", string(msg))
+
 	_, err = w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Write Deployment Request to Stream: %v", err)
+		return nil, fmt.Errorf("couldn't write deployment request to stream: %v", err)
 	}
 	err = w.Flush()
 	if err != nil {
-		return nil, fmt.Errorf("Error: Couldn't Flush Deployment Request to Stream: %v", err)
+		return nil, fmt.Errorf("couldn't flush deployment request to stream: %v", err)
 	}
 
 	return outboundDepReqStream, nil
@@ -171,17 +200,17 @@ func chatStreamHandler(stream network.Stream) {
 		w := bufio.NewWriter(stream)
 		_, err := w.WriteString("Unable to Accept Chat Request. Closing.\n")
 		if err != nil {
-			zlog.Sugar().Errorln("Error Writing to Stream After Open Chat Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorf("failed to write to stream after open chat stream length exceeded - %v", err)
 		}
 
 		err = w.Flush()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Flushing Buffer After Open Chat Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorf("failed to flush buffer after open chat stream length exceeded - %v", err)
 		}
 
 		err = stream.Close()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Closing Stream After Open Chat Stream Length Exceeded - ", err.Error())
+			zlog.Sugar().Errorf("failed to close stream after open chat stream length exceeded - %v", err)
 		}
 		return
 	}
@@ -194,7 +223,7 @@ func chatStreamHandler(stream network.Stream) {
 
 func incomingChatRequests() ([]openStream, error) {
 	if len(inboundChatStreams) == 0 {
-		return nil, fmt.Errorf("No Incoming Message Stream.")
+		return nil, fmt.Errorf("no incoming message stream")
 	}
 
 	var out []openStream
@@ -206,7 +235,7 @@ func incomingChatRequests() ([]openStream, error) {
 
 func clearIncomingChatRequests() error {
 	if len(inboundChatStreams) == 0 {
-		return fmt.Errorf("No Inbound Message Streams.")
+		return fmt.Errorf("no inbound message streams")
 	}
 	inboundChatStreams = nil
 	return nil
@@ -217,7 +246,7 @@ func readData(r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	zlog.Sugar().Debugf("received raw data from stream: %s", str)
 	if str == "\n" {
 		return "", nil
 	}
@@ -225,14 +254,17 @@ func readData(r *bufio.Reader) (string, error) {
 }
 
 func writeData(w *bufio.Writer, msg string) {
+
+	zlog.Sugar().Debugf("writing raw data to stream: %s", msg)
+
 	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
-		fmt.Println("Error writing to buffer:", err)
+		zlog.Sugar().Errorf("failed to write to buffer: %v", err)
 		panic(err)
 	}
 	err = w.Flush()
 	if err != nil {
-		fmt.Println("Error flushing buffer:", err)
+		zlog.Sugar().Errorf("failed to flush buffer: %v", err)
 		panic(err)
 	}
 }
@@ -247,7 +279,7 @@ func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stre
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			zlog.Sugar().Errorln("Error Reading From Websocket Connection - ", err.Error())
+			zlog.Sugar().Errorf("Error Reading From Websocket Connection - %v", err)
 			conn.Close()
 			stream.Close()
 			break
@@ -260,7 +292,7 @@ func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stre
 func StreamReadSockWrite(conn *internal.WebSocketConnection, stream network.Stream, r *bufio.Reader) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Sugar().Info("Connection Error: %v\n", r)
+			zlog.Sugar().Infof("Connection Error: %v\n", r)
 			conn.Close()
 			if stream != nil {
 				stream.Close()

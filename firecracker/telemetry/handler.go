@@ -12,6 +12,14 @@ import (
 	"gorm.io/gorm"
 )
 
+func GetFreeResources() (models.FreeResources, error) {
+	var freeResource models.FreeResources
+	if res := db.DB.Find(&freeResource); res.RowsAffected == 0 {
+		return freeResource, res.Error
+	}
+	return freeResource, nil
+}
+
 func QueryRunningVMs(DB *gorm.DB) []models.VirtualMachine {
 	var vm []models.VirtualMachine
 	result := DB.Where("state = ?", "running").Find(&vm)
@@ -24,7 +32,7 @@ func QueryRunningVMs(DB *gorm.DB) []models.VirtualMachine {
 
 func QueryRunningConts(DB *gorm.DB) []models.Services {
 	var services []models.Services
-	result := DB.Find(&services)
+	result := DB.Where("job_status = ?", "running").Find(&services)
 	if result.Error != nil {
 		panic(result.Error)
 	}
@@ -126,7 +134,7 @@ func GetFreeResource(c *gin.Context) {
 	}
 
 	var freeResource models.FreeResources
-	if res := db.DB.Find(&freeResource); res.RowsAffected == 0 {
+	if res := db.DB.WithContext(c.Request.Context()).Find(&freeResource); res.RowsAffected == 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": res.Error})
 		return
 	}

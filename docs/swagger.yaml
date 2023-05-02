@@ -66,8 +66,21 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.41
+  version: 0.4.68
 paths:
+  /dht:
+    get:
+      description: Returns entire DHT content
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Return a dump of the dht
+      tags:
+      - p2p
   /onboarding/address/new:
     get:
       description: Create a payment address from public key. Return payment address
@@ -126,6 +139,20 @@ paths:
       summary: Returns provisioned capacity on host.
       tags:
       - onboarding
+  /onboarding/resource-config:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Metadata'
+            type: array
+      summary: changes the amount of resources of onboarded device .
+      tags:
+      - onboarding
   /peers:
     get:
       description: Gets a list of peers the libp2p node can see within the network
@@ -180,6 +207,20 @@ paths:
       summary: Start chat with a peer
       tags:
       - chat
+  /peers/dht:
+    get:
+      description: Gets a list of peers the libp2p node has received a dht update
+        from
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Return list of peers which have sent a dht update
+      tags:
+      - p2p
   /peers/self:
     get:
       description: Gets self peer info of libp2p node
@@ -202,24 +243,35 @@ paths:
       summary: Sends a command to specific node and prints back response.
       tags:
       - peers
-  /run/claim:
-    get:
-      description: HandleClaimCardanoTokens takes request from the compute provider,
-        talks with Oracle and releases tokens if conditions are met.
-      responses: {}
-      summary: Get NTX tokens for work done.
   /run/deploy:
     get:
-      description: HandleDeploymentRequest searches the DHT for non-busy, available
-        devices with appropriate metadata. Then sends a deployment request to the
-        first machine
+      description: Loads deployment request from the DB after a successful blockchain
+        transaction has been made and passes it to compute provider.
       responses:
         "200":
           description: OK
           schema:
             type: string
-      summary: Search devices on DHT with appropriate machines and sends a deployment
-        request.
+      summary: Websocket endpoint responsible for sending deployment request and receiving
+        deployment response.
+  /run/request-reward:
+    post:
+      description: HandleRequestReward takes request from the compute provider, talks
+        with Oracle and releases tokens if conditions are met.
+      responses: {}
+      summary: Get NTX tokens for work done.
+  /run/request-service:
+    post:
+      description: HandleRequestService searches the DHT for non-busy, available devices
+        with appropriate metadata. Then informs parameters related to blockchain to
+        request to run a service on NuNet.
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Informs parameters related to blockchain to request to run a service
+        on NuNet
   /run/send-status:
     post:
       description: HandleSendStatus is used by webapps to send status of blockchain

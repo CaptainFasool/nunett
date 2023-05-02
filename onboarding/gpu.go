@@ -3,44 +3,36 @@ package onboarding
 import (
 	"fmt"
 
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"github.com/jaypipes/ghw"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
 func Check_gpu() ([]models.Gpu, error) {
 	var gpu_info []models.Gpu
-
-	ret := nvml.Init()
-	if ret != nvml.SUCCESS {
-		zlog.Sugar().Error("Unable to Setup NVML")
-		return nil, fmt.Errorf("unable to Detect GPU")
-	}
-	defer func() {
-		ret := nvml.Shutdown()
-		if ret != nvml.SUCCESS {
-			zlog.Sugar().Error("Unable to shutdown NVML: %v", nvml.ErrorString(ret))
-		}
-	}()
-	count, ret := nvml.DeviceGetCount()
-	if ret != nvml.SUCCESS {
-		zlog.Sugar().Error("Unable to get device count: %v", nvml.ErrorString(ret))
-		return nil, fmt.Errorf("unable to Detect GPU")
+	gpu, err := ghw.GPU()
+	if err != nil {
+		return nil, fmt.Errorf("unable to detect GPU info")
 	}
 
-	for i := 0; i < count; i++ {
-		device, ret := nvml.DeviceGetHandleByIndex(i)
-		if ret != nvml.SUCCESS {
-			zlog.Sugar().Error("Unable to get device at index %d: %v", i, nvml.ErrorString(ret))
-		}
-		name, _ := device.GetName()
-		memory, _ := nvml.DeviceGetMemoryInfo(device)
+	if len(gpu.GraphicsCards) == 0 {
 		var gpu models.Gpu
-		gpu.Name = name
-		gpu.TotVram = int(memory.Total / 1024 / 1024)
-		gpu.FreeVram = int(memory.Free / 1024 / 1024)
+		gpu.Name = ""
+		gpu.FreeVram = 0
+		gpu.TotVram = 0
+		return gpu_info, nil
+	}
 
-		gpu_info = append(gpu_info, gpu)
+	for _, v := range gpu.GraphicsCards {
+		if v.DeviceInfo != nil && v.DeviceInfo.Driver == "nvidia" {
+			var gpu models.Gpu
+			gpu.Name = v.DeviceInfo.Product.Name
+			gpu.FreeVram = 0
+			gpu.TotVram = 0
+			gpu_info = append(gpu_info, gpu)
+
+		}
 
 	}
 	return gpu_info, nil
+
 }

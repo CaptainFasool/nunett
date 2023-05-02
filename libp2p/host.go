@@ -7,18 +7,23 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	"github.com/multiformats/go-multiaddr"
@@ -29,9 +34,10 @@ import (
 )
 
 type DMSp2p struct {
-	Host host.Host
-	DHT  *dht.IpfsDHT
-	PS   peerstore.Peerstore
+	Host  host.Host
+	DHT   *dht.IpfsDHT
+	PS    peerstore.Peerstore
+	peers []peer.AddrInfo
 }
 
 func DMSp2pInit(node host.Host, dht *dht.IpfsDHT) *DMSp2p {
@@ -78,6 +84,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		zlog.Sugar().Errorf("Bootstraping failed: %s\n", err)
 	}
 
+	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler)
 	host.SetStreamHandler(protocol.ID(DHTProtocolID), DhtUpdateHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
@@ -99,6 +106,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		peerInfo := models.PeerData{}
 		peerInfo.PeerID = host.ID().String()
 		peerInfo.AllowCardano = metadata2.AllowCardano
+		peerInfo.TokenomicsAddress = metadata2.PublicKey
 		if len(metadata2.GpuInfo) == 0 {
 			peerInfo.HasGpu = false
 			peerInfo.GpuInfo = metadata2.GpuInfo
@@ -110,9 +118,20 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
 	}
 
+	// Start the DHT Update
+	go UpdateDHT()
 	// Broadcast DHT updates every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
+	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
+		interval, err := strconv.Atoi(val)
+		if err != nil {
+			zlog.Sugar().DPanicf("invalid value for $NUNET_DHT_UPDATE_INTERVAL - %v", val)
+		}
+		ticker = time.NewTicker(time.Duration(interval) * time.Second)
+		zlog.Sugar().Infof("setting DHT update interval to %v seconds", interval)
+	}
 	quit := make(chan struct{})
+
 	go func() {
 		for {
 			select {
@@ -124,6 +143,60 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			}
 		}
 	}()
+
+	// Clean up the DHT every 5 minutes
+	ticker2 := time.NewTicker(5 * time.Minute)
+	quit2 := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker2.C:
+				CleanupOldPeers()
+				UpdateConnections(host.Network().Conns())
+			case <-quit2:
+				ticker2.Stop()
+				return
+			}
+		}
+	}()
+
+	// Reconnect to peers on address change
+	events, _ := host.EventBus().Subscribe(new(event.EvtLocalAddressesUpdated))
+	go func() {
+		for evt := range events.Out() {
+			var connections []network.Conn = host.Network().Conns()
+			evt := evt.(event.EvtLocalAddressesUpdated)
+
+			if evt.Diffs {
+				// Connect to saved peers
+				savedConnections := GetConnections()
+				for _, conn := range savedConnections {
+					addr, err := multiaddr.NewMultiaddr(conn.Multiaddrs)
+					if err != nil {
+						zlog.Sugar().Error("Unable to convert multiaddr: ", err)
+					}
+					if err := host.Connect(ctx, peer.AddrInfo{
+						ID:    peer.ID(conn.PeerID),
+						Addrs: []multiaddr.Multiaddr{addr},
+					}); err != nil {
+						continue
+					}
+				}
+				for _, conn := range connections {
+
+					// Attempt to reconnect
+					if err := host.Connect(ctx, peer.AddrInfo{
+						ID:    conn.RemotePeer(),
+						Addrs: []multiaddr.Multiaddr{conn.RemoteMultiaddr()},
+					}); err != nil {
+						continue
+					}
+				}
+
+			}
+		}
+	}()
+
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {
@@ -161,16 +234,16 @@ func GetPublicKey() (crypto.PubKey, error) {
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
 	if result.Error != nil {
-		zlog.Sugar().Errorln("Error: Unable to Read from database: %v", result.Error)
+		zlog.Sugar().Errorf("Error: Unable to Read from database: %v", result.Error)
 		return nil, result.Error
 	}
 	if libp2pInfo.PublicKey == nil {
-		zlog.Sugar().Errorln("Error: No Public Key Found")
-		return nil, fmt.Errorf("No Public Key Found")
+		zlog.Error("filed to find public key")
+		return nil, fmt.Errorf("failed to find public key")
 	}
 	pubKey, err := crypto.UnmarshalPublicKey(libp2pInfo.PublicKey)
 	if err != nil {
-		zlog.Sugar().Errorln("Error: Unable to unmarshal Public Key: %v", err)
+		zlog.Sugar().Errorf("Error: Unable to unmarshal Public Key: %v", err)
 		return nil, err
 	}
 	return pubKey, nil
@@ -180,16 +253,16 @@ func GetPrivateKey() (crypto.PrivKey, error) {
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
 	if result.Error != nil {
-		zlog.Sugar().Errorln("Error: Unable to Read from database: %v", result.Error)
+		zlog.Sugar().Errorf("Error: Unable to Read from database: %v", result.Error)
 		return nil, result.Error
 	}
 	if libp2pInfo.PrivateKey == nil {
-		zlog.Sugar().Errorln("Error: No Private Key Found")
-		return nil, fmt.Errorf("No Private Key Found")
+		zlog.Error("failed to find private key")
+		return nil, fmt.Errorf("failed to find private key")
 	}
 	privKey, err := crypto.UnmarshalPrivateKey(libp2pInfo.PrivateKey)
 	if err != nil {
-		zlog.Sugar().Errorln("Error: Unable to unmarshal Private Key: %v", err)
+		zlog.Sugar().Errorf("Error: Unable to unmarshal Private Key: %v", err)
 		return nil, err
 	}
 	return privKey, nil
@@ -238,35 +311,49 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 		libp2p.ConnectionGater((*filtersConnectionGater)(filter)),
 		libp2p.ConnectionManager(connmgr),
 		libp2p.EnableRelay(),
-
-		libp2p.EnableRelayService(),
-		libp2p.EnableAutoRelay(
-			autorelay.WithBootDelay(0),
-			autorelay.WithPeerSource(
-				func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
-					r := make(chan peer.AddrInfo)
-					go func() {
-						defer close(r)
-						for i := 0; i < numPeers; i++ {
+		libp2p.EnableHolePunching(),
+		libp2p.EnableRelayService(
+			relay.WithResources(
+				relay.Resources{
+					MaxReservations:        256,
+					MaxCircuits:            32,
+					BufferSize:             4096,
+					MaxReservationsPerPeer: 8,
+					MaxReservationsPerIP:   16,
+				},
+			),
+			relay.WithLimit(&relay.RelayLimit{
+				Duration: 5 * time.Minute,
+				Data:     1 << 21, // 2 MiB
+			}),
+		),
+		libp2p.EnableAutoRelayWithPeerSource(
+			func(ctx context.Context, num int) <-chan peer.AddrInfo {
+				r := make(chan peer.AddrInfo)
+				go func() {
+					defer close(r)
+					for i := 0; i < num; i++ {
+						select {
+						case p := <-relayPeer:
 							select {
-							case p := <-make(chan peer.AddrInfo):
-								select {
-								case r <- p:
-								case <-ctx.Done():
-									return
-								}
+							case r <- p:
 							case <-ctx.Done():
 								return
 							}
+						case <-ctx.Done():
+							return
 						}
-					}()
-					return r
-				},
-				0,
-			),
+					}
+				}()
+				return r
+			},
+			autorelay.WithBootDelay(time.Minute),
+			autorelay.WithBackoff(30*time.Second),
+			autorelay.WithMinCandidates(2),
 			autorelay.WithMaxCandidates(3),
-			autorelay.WithNumRelays(1),
-			autorelay.WithBootDelay(0)))
+			autorelay.WithNumRelays(2),
+		),
+	)
 
 	if server {
 		libp2pOpts = append(libp2pOpts, libp2p.AddrsFactory(makeAddrsFactory([]string{}, []string{}, defaultServerFilters)))
@@ -274,7 +361,7 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 		libp2pOpts = append(libp2pOpts, libp2p.NATPortMap())
 	}
 
-	host, err := libp2p.NewWithoutDefaults(libp2pOpts...)
+	host, err := libp2p.New(libp2pOpts...)
 
 	if err != nil {
 		zlog.Sugar().Errorf("Couldn't Create Host: %v", err)

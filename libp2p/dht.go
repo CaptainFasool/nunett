@@ -15,30 +15,8 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-func (p2p DMSp2p) autoRelay(ctx context.Context) {
-	for {
-		peers, err := p2p.DHT.GetClosestPeers(ctx, p2p.Host.ID().String())
-		if err != nil {
-			zlog.Sugar().Infof("GetClosestPeers error: %s", err.Error())
-			time.Sleep(time.Second)
-			continue
-		}
-		for _, p := range peers {
-			addrs := p2p.Host.Peerstore().Addrs(p)
-			if len(addrs) == 0 {
-				continue
-			}
-			make(chan peer.AddrInfo) <- peer.AddrInfo{
-				ID:    p,
-				Addrs: addrs,
-			}
-		}
-	}
-}
-
 func (p2p DMSp2p) BootstrapNode(ctx context.Context) error {
 	Bootstrap(ctx, p2p.Host, p2p.DHT)
-	go p2p.autoRelay(ctx)
 
 	return nil
 }
@@ -48,8 +26,9 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 		return err
 	}
 
-	for _, p := range dht.GetDefaultBootstrapPeerAddrInfos() {
-		if err := node.Connect(ctx, p); err != nil {
+	for _, nb := range NuNetBootstrapPeers {
+		p, _ := peer.AddrInfoFromP2pAddr(nb)
+		if err := node.Connect(ctx, *p); err != nil {
 			zlog.Sugar().Errorf("failed to connect to bootstrap node %v\n", p.ID)
 		} else {
 			zlog.Sugar().Infof("Connected to Bootstrap Node %v\n", p.ID)
@@ -62,20 +41,28 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 
 func DhtUpdateHandler(s network.Stream) {
 	peerInfo := models.PeerData{}
+	peerInfo.Timestamp = time.Now().Unix()
 	var peerID peer.ID
 	data, err := io.ReadAll(s)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
 	err = json.Unmarshal(data, &peerInfo)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
 	// Update Peerstore
 	peerID, err = peer.Decode(peerInfo.PeerID)
 	if err != nil {
-		zlog.Sugar().Infof("DHTUpdateHandler error: %s", err.Error())
+		zlog.Sugar().Errorf("DHTUpdateHandler error: %v", err)
 	}
+
+	stringPeerInfo, err := json.Marshal(peerInfo)
+	if err != nil {
+		zlog.Sugar().Errorf("failed to json marshal peerInfo: %v", err)
+	}
+	zlog.Sugar().Debugf("dht update from: %s -> %v", peerID.String(), string(stringPeerInfo))
+
 	p2p.Host.Peerstore().Put(peerID, "peer_info", peerInfo)
 }
 
@@ -98,13 +85,31 @@ func SendDHTUpdate(peerInfo models.PeerData, s network.Stream) {
 	}
 }
 
+// Cleans up old peers from DHT
+func CleanupOldPeers() {
+	for _, peer := range p2p.Host.Peerstore().Peers() {
+		peerData, err := p2p.Host.Peerstore().Get(peer, "peer_info")
+		if err != nil {
+			continue
+		}
+		if peer == p2p.Host.ID() {
+			continue
+		}
+		if Data, ok := peerData.(models.PeerData); ok {
+			if time.Now().Unix()-Data.Timestamp > 180 {
+				p2p.Host.Peerstore().Put(peer, "peer_info", nil)
+			}
+		}
+	}
+}
+
 func UpdateDHT() {
 	// Get existing entry from Peerstore
 	var PeerInfo models.PeerData
 	PeerInfo.PeerID = p2p.Host.ID().String()
 	peerData, err := p2p.Host.Peerstore().Get(p2p.Host.ID(), "peer_info")
 	if err != nil {
-		zlog.Sugar().Infof("UpdateAvailableResources error: %s", err.Error())
+		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
 	}
 	if Data, ok := peerData.(models.PeerData); ok {
 		PeerInfo = models.PeerData(Data)
@@ -121,7 +126,7 @@ func UpdateDHT() {
 
 	// Update Services
 	var services []models.Services
-	result := db.DB.Find(&services)
+	result := db.DB.Where("job_status = ?", "running").Find(&services)
 	if result.Error != nil {
 		panic(result.Error)
 	}
@@ -134,15 +139,33 @@ func UpdateDHT() {
 	defer ctx.Done()
 
 	// Broadcast updated peer_info to connected nodes
-	for _, peer := range p2p.Host.Network().Peers() {
-		stream, err := p2p.Host.NewStream(ctx, peer, DHTProtocolID)
+	addr, err := p2p.getPeers(ctx, "nunet")
+
+	p2p.peers = addr
+	zlog.Sugar().Debugf("Obtained peers for DHT update: %v", addr)
+	if err != nil {
+		zlog.Sugar().Debugf("UpdateDHT error: %s", err.Error())
+	}
+
+	for _, addr := range addr {
+		zlog.Sugar().Debugf("Attempting to Send DHT Update to: %s", addr.ID.String())
+		peerID := addr.ID
+
+		relayPeer <- addr
+
+		// XXX wait 5 seconds for stream creation
+		//     needs better implementation in the future
+		streamCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		stream, err := p2p.Host.NewStream(streamCtx, peerID, DHTProtocolID)
 		// Ignoring error because some peers might not support specified protocol
 		if err != nil {
+			zlog.Sugar().Debugf("UpdateDHT Create Stream error: %v --- peer: %v", err, peerID.String())
 			continue
 		}
+		zlog.Sugar().Debugf("Sending DHT update to %s", peerID.String())
 		SendDHTUpdate(PeerInfo, stream)
 		stream.Close()
-
 	}
 }
 

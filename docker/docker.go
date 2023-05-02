@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"log"
 	"math"
 	"os"
 	"strconv"
+
 	"strings"
 	"time"
 
@@ -21,7 +21,7 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	//"gitlab.com/nunet/device-management-service/statsdb" //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
+	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
 const (
@@ -30,16 +30,13 @@ const (
 )
 
 func freeUsedResources(contID string) {
-	// Remove Service from Services table
-	// and update the available resources table
-	var service []models.Services
-	result := db.DB.Where("container_id = ?", contID).Find(&service)
-	if result.Error != nil {
-		panic(result.Error)
-	}
-	db.DB.Delete(&service)
-
+	// update the available resources table
 	telemetry.CalcFreeResources()
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
 }
 
@@ -68,8 +65,8 @@ func mhzToVCPU(cpuInMhz int) float64 {
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
 // log update every gistUpdateDuration.
-func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse) {
-	log.Println("Entering RunContainer")
+func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse, servicePK uint) {
+	zlog.Info("Entering RunContainer")
 	machine_type := depReq.Params.MachineType
 	gpuOpts := opts.GpuOpts{}
 	if machine_type == "gpu" {
@@ -96,7 +93,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 
 	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
 		panic("Record not found!")
-
 	}
 
 	// Check if we have enough free resources before running Container
@@ -116,34 +112,36 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		panic(err)
 	}
 
-	peerIDOfServiceHost := depReq.Params.NodeID
-	status := "started"
 	var requestTracker models.RequestTracker
-
-	if res := db.DB.Where("node_id = ?", peerIDOfServiceHost).Find(&requestTracker); res.RowsAffected == 0 {
-		panic("Service Not Found for Deployment")
+	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
+	if res.Error != nil {
+		zlog.Error(res.Error.Error())
 	}
-	// ServiceRunParams := models.ServiceRun{  //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
-	// 	CallID:              requestTracker.CallID,
-	// 	PeerIDOfServiceHost: peerIDOfServiceHost,
-	// 	Status:              status,
-	// 	Timestamp:           float32(statsdb.GetTimestamp()),
-	// }
+	status := "started"
 
-	//statsdb.ServiceRun(ServiceRunParams) //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
-	//update RequestTracker
+	ServiceStatusParams := models.ServiceStatus{
+		CallID:              requestTracker.CallID,
+		PeerIDOfServiceHost: requestTracker.NodeID,
+		ServiceID:           requestTracker.ServiceType,
+		Status:              status,
+		Timestamp:           float32(statsdb.GetTimestamp()),
+	}
+	statsdb.ServiceStatus(ServiceStatusParams)
+
+	// updating RequestTracker
 	requestTracker.Status = status
 	requestTracker.RequestID = resp.ID
-	res := db.DB.Model(&models.RequestTracker{}).Where("node_id = ?", peerIDOfServiceHost).Updates(requestTracker)
+	res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 	if res.Error != nil {
 		panic(res.Error)
 	}
 
-	// Update db
+	// Update db - find the service based on primary key and update container id
 	var service models.Services
-	service.ContainerID = resp.ID
-	service.ImageID = depReq.Params.ImageID
-	service.ServiceName = depReq.Params.ImageID
+	res = db.DB.Model(&service).Where("id = ?", servicePK).Updates(models.Services{ContainerID: resp.ID})
+	if res.Error != nil {
+		panic(res.Error)
+	}
 
 	var resourceRequirements models.ServiceResourceRequirements
 	resourceRequirements.CPU = depReq.Constraints.CPU
@@ -155,12 +153,14 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 
 	service.ResourceRequirements = int(resourceRequirements.ID)
-	result = db.DB.Create(&service)
-	if result.Error != nil {
-		panic(result.Error)
-	}
+	// TODO: Update service based on passed pk
 
 	telemetry.CalcFreeResources()
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
@@ -171,6 +171,8 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	maxUsedRAM, maxUsedCPU := 0.0, 0.0
+
+outerLoop:
 	for {
 		select {
 		case err := <-errCh:
@@ -178,64 +180,59 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 			if err != nil {
 				panic(err)
 			}
-			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
-				panic("Service Not Found for Deployment")
-			}
-
-			// ServiceRunParams.CallID = requestTracker.CallID  //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
-			// ServiceRunParams.PeerIDOfServiceHost = requestTracker.NodeID
-			// ServiceRunParams.Status = "unknown"
-			// ServiceRunParams.Timestamp = float32(statsdb.GetTimestamp())
-
-			// statsdb.ServiceRun(ServiceRunParams) //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
-			requestTracker.Status = "unknown"
-			res := db.DB.Model(&models.RequestTracker{}).Where("request_id = ?", resp.ID).Updates(requestTracker)
-			if res.Error != nil {
-				panic(res.Error)
-			}
 			freeUsedResources(resp.ID)
 			return
-		case <-statusCh: // not running?
+		case containerStatus := <-statusCh: // not running?
 			// get the last logs & exit...
 			updateGist(*createdGist.ID, resp.ID)
-			if res := db.DB.Where("request_id= ?", resp.ID).Find(&requestTracker); res.RowsAffected == 0 {
-				panic("Service Not Found for Deployment")
-			}
-			if depRes.Success {
-				// ServiceCallParams := models.ServiceCall{   //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
-				// 	CallID:              requestTracker.CallID,
-				// 	PeerIDOfServiceHost: requestTracker.NodeID,
-				// 	ServiceID:           requestTracker.ServiceType,
-				// 	CPUUsed:             float32(maxUsedCPU),
-				// 	MaxRAM:              float32(depReq.Constraints.Vram),
-				// 	MemoryUsed:          float32(maxUsedRAM),
-				// 	NetworkBwUsed:       0.0,
-				// 	TimeTaken:           0.0,
-				// 	Status:              "success",
-				// 	Timestamp:           float32(statsdb.GetTimestamp()),
-				// }
-				// statsdb.ServiceCall(ServiceCallParams)
-				requestTracker.Status = "success"
-			} else if !depRes.Success {
-				// ServiceRunParams.CallID = requestTracker.CallID   //XXX: Disabled StatsDB Calls - Refer to https://gitlab.com/nunet/device-management-service/-/issues/138
-				// ServiceRunParams.PeerIDOfServiceHost = requestTracker.NodeID
-				// ServiceRunParams.Status = "failed"
-				// ServiceRunParams.Timestamp = float32(statsdb.GetTimestamp())
-
-				// statsdb.ServiceRun(ServiceRunParams)
-				requestTracker.Status = "failed"
+			var requestTracker models.RequestTracker
+			res := db.DB.Where("id = ?", 1).Find(&requestTracker)
+			if res.Error != nil {
+				zlog.Error(res.Error.Error())
 			}
 
-			res := db.DB.Model(&models.RequestTracker{}).Where("request_id = ?", resp.ID).Updates(requestTracker)
+			// add exitStatus to db
+			var services models.Services
+			if containerStatus.StatusCode == 0 {
+				services.JobStatus = "finished without errors"
+				ServiceCallParams := models.ServiceCall{
+					CallID:              requestTracker.CallID,
+					PeerIDOfServiceHost: requestTracker.NodeID,
+					ServiceID:           requestTracker.ServiceType,
+					CPUUsed:             float32(maxUsedCPU),
+					MaxRAM:              float32(depReq.Constraints.Vram),
+					MemoryUsed:          float32(maxUsedRAM),
+					NetworkBwUsed:       0.0,
+					TimeTaken:           0.0,
+					Status:              "finished without errors",
+					Timestamp:           float32(statsdb.GetTimestamp()),
+				}
+				statsdb.ServiceCall(ServiceCallParams)
+				requestTracker.Status = "finished without errors"
+			} else if containerStatus.StatusCode > 0 {
+				services.JobStatus = "finished with errors"
+				ServiceStatusParams.CallID = requestTracker.CallID
+				ServiceStatusParams.PeerIDOfServiceHost = requestTracker.NodeID
+				ServiceStatusParams.Status = "finished with errors"
+				ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
+
+				statsdb.ServiceStatus(ServiceStatusParams)
+				requestTracker.Status = "finished with errors"
+			}
+			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
+			if r.Error != nil {
+				panic(r.Error)
+			}
+
+			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
 				panic(res.Error)
 			}
 			freeUsedResources(resp.ID)
-			return
+			break outerLoop
 		case <-tick.C:
 			// get the latest logs ...
-			log.Println("updating gist")
-
+			zlog.Info("updating gist")
 			contID := requestTracker.RequestID[:12]
 			stats, err := dockerstats.Current()
 			if err != nil {
@@ -257,6 +254,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 					}
 				}
 			}
+
 			updateGist(*createdGist.ID, resp.ID)
 		}
 	}
@@ -312,25 +310,38 @@ func cpuUsage(cpu float64, maxCPU float64) float64 {
 
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, delete container, send log to the requester
-func HandleDeployment(depReq models.DeploymentRequest, depRes models.DeploymentResponse) models.DeploymentResponse {
+func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse {
 	// Pull the image
 	imageName := depReq.Params.ImageID
 	PullImage(imageName)
 
+	// create a service and pass the primary key to the RunContainer to update ContainerID
+	var service models.Services
+	service.ImageID = depReq.Params.ImageID
+	service.ServiceName = depReq.Params.ImageID
+	service.JobStatus = "running"
+	service.JobDuration = 5           // these are dummy data, implementation pending
+	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
+
+	// create gist here and pass it to RunContainer to update logs
 	createdGist, _, err := createGist()
 	if err != nil {
-		log.Panicln(err)
+		zlog.Sugar().Errorln(err)
 	}
 
+	service.LogURL = *createdGist.HTMLURL
+	// Save the service with logs
+	if err := db.DB.Create(&service).Error; err != nil {
+		panic(err)
+	}
 	resCh := make(chan models.DeploymentResponse)
 
 	// Run the container.
-	go RunContainer(depReq, createdGist, resCh)
+	go RunContainer(depReq, createdGist, resCh, service.ID)
 
 	res := <-resCh
 
 	// Send back *createdGist.HTMLURL
-	depRes.Content = *createdGist.HTMLURL
-	depRes.Success = res.Success
-	return depRes
+	res.Content = *createdGist.HTMLURL
+	return res
 }

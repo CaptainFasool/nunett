@@ -20,6 +20,141 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.68](!129)
+
+### Changed
+- Raise HTTP exceptions for internal DMS error occurred on route handlers
+## [0.4.67](#165)
+
+### Changed
+- Added ServiceCall event back after removed by mistake
+## [0.4.66](#167)
+
+### Changed
+- Refactored statsdb device resource change calls
+## [0.4.65](#164)
+
+### Changed
+- Avoid fetching peers at multiple places
+- Increase relay limits and reservation resources
+- Use only NuNet peers for relay and DHT update 
+
+### Removed
+- Removed the libp2p bootstrap nodes
+## [0.4.64](#157)
+
+### Added
+- Rest endpoint to change amount of resource onboarded to NuNet
+- Subcommand `resource-config`
+- StatsDB event call on onboarded resource amount change
+## [0.4.63](#161)
+
+### Changed
+- Make sure deviceinfo is set for outlier machines such as VMs (#161 bug fix)
+## [0.4.62](#149)
+
+### Changed
+- Enabled autorelay and holepunching
+- Upgraded libp2p and golang versions to 0.27 and 1.20
+## [0.4.61](#109)
+
+### Changed
+- Re-establish connection to peers on network change
+- Ping peers before sending Deployment requests
+- Added functions to set up PubSub communication
+## [0.4.60](#134)
+
+### Added
+- implemented ntx_payment event for sending transaction info to stats database
+
+## [0.4.59](!114)
+
+### Changed
+- Delete entries in services table after response with oracle
+## [0.4.58](#128)
+
+### Changed
+- Machine uuid for identification before onboarding and peerID attribute for opentelemetry
+- Fix logger configuration for opentelemetry
+- Remove unncessary env check for debug print and minor log format fix
+
+## [0.4.57](!113)
+
+### Changed
+- Fix for base64 issue (cause for gist not being received by webapp)
+- Improve log formatting
+## [0.4.56](!112)
+
+### Changed
+- Debug mode DHT update interval env var and logging fix
+## [0.4.55](!111)
+
+### Changed
+- Decode base64 message coming from libp2p stream
+## [0.4.54](#153)
+
+### Changed
+- Set peerInfo struct to empty instead of removing peer from peerstore
+## [0.4.53](#154)
+
+### Changed
+- Mark all records as deleted when forwarding deployment request to compute provider.
+- Read first non-deleted record when reading temporary record.
+## [0.4.52](#150)
+
+### Changed
+- Added List DHT peers endpoint
+- Remove old peers from DHT
+## [0.4.51](!106)
+
+### Changed
+- Set JobStatus to be finished with errors if container exited with non-zero exit status.
+- Set JobStatus to be finished without errors if container exited with zero exit status.
+- Return 102 status code when container is still running. DMS won't contact Oracle in such case.
+## [0.4.50](!104)
+
+### Changed
+- add dht/peers route and debug print on deployment request
+- bug fixes and debug prints with debug env var
+## [0.4.49](!102)
+
+### Changed
+- filter machines for cpu only ml jobs
+- fence index error
+## [0.4.48](#143)
+
+### Changed
+- Fix for problem with CPU-only job deployment
+## [0.4.47](#142)
+
+### Changed
+- Save LogURL and other service related data on service run
+- Fetch LogURL and other service related data on request reward
+## [0.4.46](!96)
+
+### Changed
+- Correct the wrong formatting of deployment response.
+- Minor refactoring
+## [0.4.45](#144)
+
+### Changed
+- Quick install script to query for blockchain when creating wallet
+- Fix instruction on readme to avoid running in a subshell
+- Use NuNet bootstrap servers and default libp2p host options 
+## [0.4.44](!94)
+
+### Changed
+- Fix for the problem with non-flat model db migration
+## [0.4.43](#123)
+
+### Changed
+- DMS integration with Oracle to get blockchain data
+  
+## [0.4.42](#139)
+
+### Changed
+- Replaced GPU detection library 
+  
 ## [0.4.41](#125)
 
 ### Added
