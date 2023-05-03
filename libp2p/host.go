@@ -88,7 +88,6 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID(DHTProtocolID), DhtUpdateHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
-	host.SetStreamHandler(protocol.ID(FileTransferProtocolID), fileStreamHandler)
 
 	go p2p.StartDiscovery(ctx, "nunet")
 

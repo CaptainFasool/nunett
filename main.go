@@ -13,6 +13,7 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
 	"gitlab.com/nunet/device-management-service/utils"
+	"go.uber.org/fx"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -36,7 +37,10 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
-	db.ConnectDatabase()
+	DMS := fx.New(
+		db.Module,
+	)
+	DMS.Run()
 
 	utils.GenerateMachineUUID()
 
