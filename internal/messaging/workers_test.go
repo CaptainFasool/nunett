@@ -1,4 +1,4 @@
-package messaging
+package messaging_test
 
 import (
 	"bufio"
@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -20,7 +21,7 @@ import (
 
 func TestDepReq(t *testing.T) {
 	// start depreq worker
-	go DeploymentWorker()
+	go messaging.DeploymentWorker()
 
 	ctx := context.Background()
 
@@ -112,7 +113,7 @@ func TestDepReq(t *testing.T) {
 		ServiceType:            "cardano_node",
 		Timestamp:              time.Now(),
 	}
-	correctJsonDepReq, err := json.Marshal(correctDepReq)
+	correctJsonDepReq, _ := json.Marshal(correctDepReq)
 	err = stream.Close()
 	if err != nil {
 		t.Error("Error Closing Frist Stream:", err.Error())
