@@ -57,8 +57,8 @@ func HandleRequestService(c *gin.Context) {
 	}
 	selfNodeID := libp2p.GetP2P().Host.ID().String()
 
-	depReq.Params.NodeID = selfNodeID
-	depReq.Params.PublicKey = pKey.Type().String()
+	depReq.Params.LocalNodeID = selfNodeID
+	depReq.Params.LocalPublicKey = pKey.Type().String()
 
 	// check if the pricing matched
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
@@ -105,6 +105,20 @@ func HandleRequestService(c *gin.Context) {
 	}
 	zlog.Sugar().Debugf("compute provider: ", computeProvider)
 
+	depReq.Params.RemoteNodeID = computeProvider.PeerID
+	computeProviderPeerID, err := peer.Decode(computeProvider.PeerID)
+	if err != nil {
+		zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
+		return
+	}
+	computeProviderPubKey, err := computeProviderPeerID.ExtractPublicKey()
+	if err != nil {
+		zlog.Sugar().Errorf("unable to extract public key from peer id: %v", err)
+		depReq.Params.RemotePublicKey = ""
+	} else {
+		depReq.Params.RemotePublicKey = computeProviderPubKey.Type().String()
+		zlog.Sugar().Debugf("compute provider public key: ", computeProviderPubKey.Type().String())
+	}
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Sugar().Infof("sending fund contract request to oracle")
 	fcr, err := oracle.FundContractRequest()
@@ -125,22 +139,6 @@ func HandleRequestService(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "cannot write to database"})
 		return
 	}
-
-	var requestTracker models.RequestTracker
-	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
-	if res.Error != nil {
-		zlog.Error(res.Error.Error())
-	}
-
-	// sending ntx_payment info to stats database via grpc Call
-	NtxPaymentParams := models.NtxPayment{
-		CallID:      requestTracker.CallID,
-		ServiceID:   requestTracker.ServiceType,
-		AmountOfNtx: int32(estimatedNtx),
-		PeerID:      requestTracker.NodeID,
-		Timestamp:   float32(statsdb.GetTimestamp()),
-	}
-	statsdb.NtxPayment(NtxPaymentParams)
 
 	// oracle outputs: compute provider user address, estimated price, signature, oracle message
 	fundingRespToWebapp := struct {

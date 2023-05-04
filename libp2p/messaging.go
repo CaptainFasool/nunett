@@ -54,17 +54,32 @@ func depReqStreamHandler(stream network.Stream) {
 		return
 	}
 
-	inboundDepReqStream = stream
-
 	r := bufio.NewReader(stream)
 	//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
 	//      from/to the buffer. So far, all messages are sent with a \n at the end and the
 	//      reader looks for it as a delimiter. See also DeploymentResponse - w.WriteString
 	str, err := r.ReadString('\n')
 	if err != nil {
-		zlog.Sugar().Errorf("failed to read from buffer")
-		panic(err)
+		zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
+		w := bufio.NewWriter(stream)
+		_, err := w.WriteString("Unable to read DepReq. Closing Stream.\n")
+		if err != nil {
+			zlog.Sugar().Errorf("fialed to write to stream after unable to read DepReq - %v", err)
+		}
+
+		err = w.Flush()
+		if err != nil {
+			zlog.Sugar().Errorf("failed to flush stream after unable to read DepReq - %v", err)
+		}
+
+		err = stream.Close()
+		if err != nil {
+			zlog.Sugar().Errorf("failed to close stream after unable to read DepReq - %v", err)
+		}
+		return
 	}
+
+	inboundDepReqStream = stream
 
 	depreqMessage := models.DeploymentRequest{}
 	err = json.Unmarshal([]byte(str), &depreqMessage)
@@ -94,14 +109,14 @@ func DeploymentResponseListener(stream network.Stream) {
 		zlog.Sugar().Debugf("received deployment response: %s", resp)
 
 		if err != nil {
-			panic(err)
+			zlog.Sugar().Errorf("failed to read deployment response: %v", err)
 		} else if resp == "" {
 			// do nothing
 		} else {
 			depRespMessage := models.DeploymentResponse{}
 			err = json.Unmarshal([]byte(resp), &depRespMessage)
 			if err != nil {
-				panic(err)
+				zlog.Sugar().Errorf("failed to unmarshal deployment response: %v", err)
 			} else {
 
 				zlog.Sugar().Debugf("deployment response message model: %v", depRespMessage)
@@ -161,9 +176,9 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 		return nil, fmt.Errorf("couldn't create deployment request. a request already in progress")
 	}
 
-	peerID, err := peer.Decode(depReq.Params.NodeID)
+	peerID, err := peer.Decode(depReq.Params.RemoteNodeID)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't decode input peer-id '%s', : %v", depReq.Params.NodeID, err)
+		return nil, fmt.Errorf("couldn't decode input peer-id '%s', : %v", depReq.Params.RemoteNodeID, err)
 	}
 
 	outboundDepReqStream, err := GetP2P().Host.NewStream(ctx, peerID, protocol.ID(DepReqProtocolID))
@@ -259,13 +274,13 @@ func writeData(w *bufio.Writer, msg string) {
 
 	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
+		// XXX: need to handle unsent messages better - retry, notify upstream or clean up
 		zlog.Sugar().Errorf("failed to write to buffer: %v", err)
-		panic(err)
 	}
 	err = w.Flush()
 	if err != nil {
+		// XXX: need to handle unsent messages better - retry, notify upstream or clean up
 		zlog.Sugar().Errorf("failed to flush buffer: %v", err)
-		panic(err)
 	}
 }
 

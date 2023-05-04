@@ -20,6 +20,17 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.70](#170)
+
+### Changed
+- Avoid error on unreplied ping
+- Fix `dial to self attempted` bug
+- ntx_payment event on claim by CP instead of on depReq by SP
+- Avoid panic on deployment errors and send appropriate deployment response
+- Avoid panic on gist update and dht update errors
+
+### Added
+- Oracle instances for channels other than team channel
 ## [0.4.69](#168)
 
 ### Changed

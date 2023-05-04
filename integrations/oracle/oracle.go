@@ -5,17 +5,40 @@ import (
 	"time"
 
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const (
-	oracleAddr = "dev.nunet.io:40052"
-)
+func getAddress() string {
+	channelName := utils.GetChannelName()
+	var (
+		addr string
 
+		// Oracle Address
+		nunetStagingAddr string = "test.nunet.io:10052"
+		nunetTestAddr    string = "test.nunet.io:20052"
+		nunetTeamAddr    string = "dev.nunet.io:40052"
+		nunetEdgeAddr    string = "dev.nunet.io:50052"
+	)
+
+	if channelName == "nunet-staging" {
+		addr = nunetStagingAddr
+	} else if channelName == "nunet-test" {
+		addr = nunetTestAddr
+	} else if channelName == "nunet-edge" {
+		addr = nunetEdgeAddr
+	} else if channelName == "nunet-team" {
+		addr = nunetTeamAddr
+	} else {
+		addr = nunetTeamAddr
+	}
+
+	return addr
+}
 // WithdrawTokenRequest acts as a middleman between withdraw endpoint handler and Oracle to withdraw token
 func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
-	conn, err := grpc.Dial(oracleAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return WithdrawResponse{}, err
 	}
@@ -54,7 +77,7 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 // FundContractRequest is called from the HandleRequestService to cummunicate Oracle for
 // Signature and OracleMessage
 func FundContractRequest() (FundingResponse, error) {
-	conn, err := grpc.Dial(oracleAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return FundingResponse{}, err
 	}

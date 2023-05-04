@@ -96,4 +96,5 @@ type RequestTracker struct {
 	CallID      float32
 	Status      string
 	RequestID   string
+	MaxTokens   int32
 }
