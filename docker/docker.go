@@ -3,6 +3,7 @@ package docker
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -40,12 +41,13 @@ func freeUsedResources(contID string) {
 	libp2p.UpdateDHT()
 }
 
-func mhzPerCore() float64 {
+func mhzPerCore() (float64, error) {
 	cpus, err := cpu.Info()
 	if err != nil {
-		panic(err)
+		zlog.Sugar().Errorf("failed to get cpu info: %v", err)
+		return 0, err
 	}
-	return cpus[0].Mhz
+	return cpus[0].Mhz, nil
 }
 
 func round(num float64) int {
@@ -57,9 +59,13 @@ func toFixed(num float64, precision int) float64 {
 	return float64(round(num*output)) / output
 }
 
-func mhzToVCPU(cpuInMhz int) float64 {
-	vcpu := float64(cpuInMhz) / mhzPerCore()
-	return toFixed(vcpu, 2)
+func mhzToVCPU(cpuInMhz int) (float64, error) {
+	mhz, err := mhzPerCore()
+	if err != nil {
+		return 0, err
+	}
+	vcpu := float64(cpuInMhz) / mhz
+	return toFixed(vcpu, 2), nil
 }
 
 // RunContainer goes through the process of setting constraints,
@@ -80,7 +86,13 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		// Tty:          true,
 	}
 	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
-	VCPU := mhzToVCPU(depReq.Constraints.CPU)
+	VCPU, err := mhzToVCPU(depReq.Constraints.CPU)
+	if err != nil {
+		zlog.Sugar().Errorf("Error converting MHz to VCPU: %v", err)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with CPU Constraints. Unable to process request."}
+		resCh <- depRes
+		return
+	}
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
@@ -92,24 +104,35 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	var freeRes models.FreeResources
 
 	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
-		panic("Record not found!")
+		zlog.Sugar().Errorf("Record not found!")
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with Free Resources. Unable to process request."}
+		resCh <- depRes
+		return
 	}
 
 	// Check if we have enough free resources before running Container
 	if (depReq.Constraints.RAM > freeRes.Ram) ||
 		(depReq.Constraints.CPU > freeRes.TotCpuHz) {
-		panic("Not enough resources available to deploy container")
-
+		zlog.Sugar().Errorf("Not enough resources available to deploy container")
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with resources for deployment. Unable to process request."}
+		resCh <- depRes
+		return
 	}
 
 	resp, err := dc.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
 
 	if err != nil {
-		panic(err)
+		zlog.Sugar().Errorf("Unable to create container: %v", err)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with container. Unable to process request."}
+		resCh <- depRes
+		return
 	}
 
 	if err := dc.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		panic(err)
+		zlog.Sugar().Errorf("Unable to start container: %v", err)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with running container. Unable to process request."}
+		resCh <- depRes
+		return
 	}
 
 	var requestTracker models.RequestTracker
@@ -133,14 +156,20 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	requestTracker.RequestID = resp.ID
 	res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 	if res.Error != nil {
-		panic(res.Error)
+		zlog.Sugar().Errorf("unable to update request tracker: %v", res.Error)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with request tracker. Unable to process request."}
+		resCh <- depRes
+		return
 	}
 
 	// Update db - find the service based on primary key and update container id
 	var service models.Services
 	res = db.DB.Model(&service).Where("id = ?", servicePK).Updates(models.Services{ContainerID: resp.ID})
 	if res.Error != nil {
-		panic(res.Error)
+		zlog.Sugar().Errorf("unable to update services: %v", res.Error)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with services tracker. Unable to process request."}
+		resCh <- depRes
+		return
 	}
 
 	var resourceRequirements models.ServiceResourceRequirements
@@ -149,7 +178,10 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 
 	result := db.DB.Create(&resourceRequirements)
 	if result.Error != nil {
-		panic(result.Error)
+		zlog.Sugar().Errorf("unable to create resource requirements: %v", res.Error)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with resource requirements. Unable to process request."}
+		resCh <- depRes
+		return
 	}
 
 	service.ResourceRequirements = int(resourceRequirements.ID)
@@ -159,8 +191,10 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	freeResource, err := telemetry.GetFreeResources()
 	if err != nil {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	} else {
+		statsdb.DeviceResourceChange(freeResource)
 	}
-	statsdb.DeviceResourceChange(freeResource)
+
 	libp2p.UpdateDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
@@ -178,10 +212,12 @@ outerLoop:
 		case err := <-errCh:
 			// handle error & exit
 			if err != nil {
-				panic(err)
+				zlog.Sugar().Errorf("problem in running contianer: %v", err)
+				depRes := models.DeploymentResponse{Success: false, Content: "Problem occurred with container. Unable to complete request."}
+				resCh <- depRes
+				freeUsedResources(resp.ID)
+				return
 			}
-			freeUsedResources(resp.ID)
-			return
 		case containerStatus := <-statusCh: // not running?
 			// get the last logs & exit...
 			updateGist(*createdGist.ID, resp.ID)
@@ -221,12 +257,18 @@ outerLoop:
 			}
 			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
 			if r.Error != nil {
-				panic(r.Error)
+				zlog.Sugar().Errorf("problemn updating services: %v", r.Error)
+				depRes := models.DeploymentResponse{Success: false, Content: "Problem with services tracker. Unable to complete request."}
+				resCh <- depRes
+				return
 			}
 
 			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
-				panic(res.Error)
+				zlog.Sugar().Errorf("problem updating request tracker: %v", res.Error)
+				depRes := models.DeploymentResponse{Success: false, Content: "Problem with request tracker. Unable to complete request."}
+				resCh <- depRes
+				return
 			}
 			freeUsedResources(resp.ID)
 			break outerLoop
@@ -236,7 +278,10 @@ outerLoop:
 			contID := requestTracker.RequestID[:12]
 			stats, err := dockerstats.Current()
 			if err != nil {
-				panic(err)
+				zlog.Sugar().Errorf("problem obtaining docker stats: %v", err)
+				depRes := models.DeploymentResponse{Success: false, Content: "Problem Obtaining Container Metric. Unable to complete request."}
+				resCh <- depRes
+				return
 			}
 
 			for _, s := range stats {
@@ -279,29 +324,30 @@ func cleanFlushInfo(bytesBuffer *bytes.Buffer) string {
 }
 
 // PullImage is a wrapper around Docker SDK's function with same name.
-func PullImage(imageName string) {
+func PullImage(imageName string) error {
 	out, err := dc.ImagePull(ctx, imageName, types.ImagePullOptions{})
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to pull image: %v", err)
 	}
 
 	defer out.Close()
 	io.Copy(os.Stdout, out)
+	return nil
 }
 
 // GetLogs return logs from the container io.ReadCloser. It's the caller duty
 // duty to do a stdcopy.StdCopy. Any other method might render unknown
 // unicode character as log output has both stdout and stderr. That starting
 // has info if that line is stderr or stdout.
-func GetLogs(contName string) (logOutput io.ReadCloser) {
+func GetLogs(contName string) (io.ReadCloser, error) {
 	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
 
 	out, err := dc.ContainerLogs(ctx, contName, options)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("unable to get logs: %v", err)
 	}
 
-	return out
+	return out, nil
 }
 
 func cpuUsage(cpu float64, maxCPU float64) float64 {
@@ -313,7 +359,14 @@ func cpuUsage(cpu float64, maxCPU float64) float64 {
 func HandleDeployment(depReq models.DeploymentRequest) (models.DeploymentResponse, bool) {
 	// Pull the image
 	imageName := depReq.Params.ImageID
-	PullImage(imageName)
+	err := PullImage(imageName)
+	if err != nil {
+		zlog.Sugar().Errorf("couldn't pull image: %v", err)
+		return models.DeploymentResponse{
+				Success: false,
+				Content: "Unable to pull image."},
+			true
+	}
 
 	// create a service and pass the primary key to the RunContainer to update ContainerID
 	var service models.Services
@@ -336,7 +389,11 @@ func HandleDeployment(depReq models.DeploymentRequest) (models.DeploymentRespons
 	service.LogURL = *createdGist.HTMLURL
 	// Save the service with logs
 	if err := db.DB.Create(&service).Error; err != nil {
-		panic(err)
+		zlog.Sugar().Errorf("couldn't save service: %v", err)
+		return models.DeploymentResponse{
+				Success: false,
+				Content: "Unable to pull image."},
+			true
 	}
 	resCh := make(chan models.DeploymentResponse)
 

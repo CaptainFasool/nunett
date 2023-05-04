@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"strings"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-github/github"
@@ -25,6 +26,7 @@ func init() {
 	ctx = context.Background()
 
 	gist_token, err := utils.ReadHttpString("https://d.nunet.io/gist_token")
+	gist_token = strings.TrimSpace(gist_token)
 	if err != nil {
 		zlog.Sugar().Errorf("unable to read gist token: %v", err)
 		gHealthy = false

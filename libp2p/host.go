@@ -31,6 +31,7 @@ import (
 	mafilt "github.com/whyrusleeping/multiaddr-filter"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 type DMSp2p struct {
@@ -89,7 +90,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 
-	go p2p.StartDiscovery(ctx, "nunet")
+	go p2p.StartDiscovery(ctx, utils.GetChannelName())
 
 	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
 	if err != nil {

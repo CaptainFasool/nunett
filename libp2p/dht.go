@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 func (p2p DMSp2p) BootstrapNode(ctx context.Context) error {
@@ -109,7 +110,7 @@ func UpdateDHT() {
 	PeerInfo.PeerID = p2p.Host.ID().String()
 	peerData, err := p2p.Host.Peerstore().Get(p2p.Host.ID(), "peer_info")
 	if err != nil {
-		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
+		zlog.Sugar().Errorf("UpdateDHT error: unable to read self peer_info: %v", err)
 	}
 	if Data, ok := peerData.(models.PeerData); ok {
 		PeerInfo = models.PeerData(Data)
@@ -118,8 +119,8 @@ func UpdateDHT() {
 	//Get freeResources from DB
 	var freeResources models.FreeResources
 	if err := db.DB.Where("id = ?", 1).First(&freeResources).Error; err != nil {
-		panic(err)
-
+		zlog.Sugar().Errorf("UpdateDHT error: unable to read free resources %v", err)
+		return
 	}
 	// Update Free Resources
 	PeerInfo.AvailableResources = freeResources
@@ -128,7 +129,8 @@ func UpdateDHT() {
 	var services []models.Services
 	result := db.DB.Where("job_status = ?", "running").Find(&services)
 	if result.Error != nil {
-		panic(result.Error)
+		zlog.Sugar().Errorf("UpdateDHT error: Unable to read services: %v", err)
+		return
 	}
 	PeerInfo.Services = services
 
@@ -139,7 +141,7 @@ func UpdateDHT() {
 	defer ctx.Done()
 
 	// Broadcast updated peer_info to connected nodes
-	addr, err := p2p.getPeers(ctx, "nunet")
+	addr, err := p2p.getPeers(ctx, utils.GetChannelName())
 
 	p2p.peers = addr
 	zlog.Sugar().Debugf("Obtained peers for DHT update: %v", addr)

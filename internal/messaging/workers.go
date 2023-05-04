@@ -57,8 +57,8 @@ func DeploymentWorker() {
 func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	// dowload kernel and filesystem files place them somewhere
 	// TODO : organize fc files
-	pKey := depReq.Params.PublicKey
-	nodeId := depReq.Params.NodeID
+	pKey := depReq.Params.LocalPublicKey
+	nodeId := depReq.Params.LocalNodeID
 
 	err := utils.DownloadFile(utils.KernelFileURL, utils.KernelFilePath)
 	if err != nil {
@@ -102,7 +102,7 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 func handleDockerDeployment(depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
 	callID := statsdb.GetCallID()
-	peerIDOfServiceHost := depReq.Params.NodeID
+	peerIDOfServiceHost := depReq.Params.LocalNodeID
 	timeStamp := float32(statsdb.GetTimestamp())
 	status := "accepted"
 
@@ -126,6 +126,7 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		CallID:      callID,
 		NodeID:      peerIDOfServiceHost,
 		Status:      status,
+		MaxTokens:   int32(depReq.MaxNtx),
 	}
 
 	// Check if we have a previous entry in the table
