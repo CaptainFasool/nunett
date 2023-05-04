@@ -34,22 +34,19 @@ func sendDeploymentResponse(success bool, content string, close bool) {
 }
 
 func DeploymentWorker() {
-	for {
-		select {
-		case msg := <-libp2p.DepReqQueue:
-			var depReq models.DeploymentRequest
+	for msg := range libp2p.DepReqQueue {
+		var depReq models.DeploymentRequest
 
-			jsonDataMsg, _ := json.Marshal(msg)
-			json.Unmarshal(jsonDataMsg, &depReq)
+		jsonDataMsg, _ := json.Marshal(msg)
+		json.Unmarshal(jsonDataMsg, &depReq)
 
-			if depReq.ServiceType == "cardano_node" {
-				handleCardanoDeployment(depReq)
-			} else if depReq.ServiceType == "ml-training-cpu" || depReq.ServiceType == "ml-training-gpu" {
-				handleDockerDeployment(depReq)
-			} else {
-				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
-				sendDeploymentResponse(false, "Unknown service type.", true)
-			}
+		if depReq.ServiceType == "cardano_node" {
+			handleCardanoDeployment(depReq)
+		} else if depReq.ServiceType == "ml-training-cpu" || depReq.ServiceType == "ml-training-gpu" {
+			handleDockerDeployment(depReq)
+		} else {
+			zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
+			sendDeploymentResponse(false, "Unknown service type.", true)
 		}
 	}
 }
