@@ -57,7 +57,7 @@ func CalcUsedResourcesVMs(vms []models.VirtualMachine) (int, int) {
 
 func CalcUsedResourcesConts(services []models.Services) (int, int, error) {
 	if len(services) == 0 {
-		return 0, 0, fmt.Errorf("no running services")
+		return 0, 0, nil
 	}
 	var tot_cpu, tot_mem int
 	for i := 0; i < len(services); i++ {
