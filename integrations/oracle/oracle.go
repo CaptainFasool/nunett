@@ -22,7 +22,7 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	oracleClient := NewOracleClient(conn)
@@ -37,7 +37,7 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 	zlog.Sugar().Info("sending withdraw request to oracle")
 	res, err := oracleClient.ValidateWithdrawReq(ctx, &withdrawReq)
 	if err != nil {
-		zlog.Sugar().Info("withdraw request failed %v", err)
+		zlog.Sugar().Infof("withdraw request failed %v", err)
 		return WithdrawResponse{}, err
 	}
 
@@ -47,7 +47,7 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 		RewardType:    res.GetRewardType(),
 	}
 
-	zlog.Sugar().Info("withdraw response from oracle: %v", withdrawRes)
+	zlog.Sugar().Infof("withdraw response from oracle: %v", withdrawRes)
 	return withdrawRes, nil
 }
 
