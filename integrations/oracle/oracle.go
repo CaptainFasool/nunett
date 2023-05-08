@@ -36,6 +36,7 @@ func getAddress() string {
 
 	return addr
 }
+
 // WithdrawTokenRequest acts as a middleman between withdraw endpoint handler and Oracle to withdraw token
 func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -45,7 +46,7 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	oracleClient := NewOracleClient(conn)
@@ -57,10 +58,10 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 		LogPath:              service.LogURL,
 	}
 
-	zlog.Sugar().Info("sending withdraw request to oracle")
+	zlog.Sugar().Infof("sending withdraw request to oracle")
 	res, err := oracleClient.ValidateWithdrawReq(ctx, &withdrawReq)
 	if err != nil {
-		zlog.Sugar().Info("withdraw request failed %v", err)
+		zlog.Sugar().Infof("withdraw request failed %v", err)
 		return WithdrawResponse{}, err
 	}
 
@@ -70,7 +71,7 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 		RewardType:    res.GetRewardType(),
 	}
 
-	zlog.Sugar().Info("withdraw response from oracle: %v", withdrawRes)
+	zlog.Sugar().Infof("withdraw response from oracle: %v", withdrawRes)
 	return withdrawRes, nil
 }
 
@@ -84,15 +85,15 @@ func FundContractRequest() (FundingResponse, error) {
 
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	oracleClient := NewOracleClient(conn)
 
-	zlog.Sugar().Info("sending funding request to oracle")
+	zlog.Sugar().Infof("sending funding request to oracle")
 	res, err := oracleClient.ValidateFundingReq(ctx, &FundingRequest{})
 	if err != nil {
-		zlog.Sugar().Info("funding request failed %v", err)
+		zlog.Sugar().Infof("funding request failed %v", err)
 		return FundingResponse{}, err
 	}
 
@@ -101,6 +102,6 @@ func FundContractRequest() (FundingResponse, error) {
 		OracleMessage: res.GetOracleMessage(),
 	}
 
-	zlog.Sugar().Info("funding response from oracle: %v", fundingRes)
+	zlog.Sugar().Infof("funding response from oracle: %v", fundingRes)
 	return fundingRes, nil
 }

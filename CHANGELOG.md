@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.73](#175)
+
+### Changed
+- Increase timeout when connecting to Oracle
 # [0.4.72](#173)
 
 ### Changed
