@@ -80,6 +80,30 @@ nunet onboard -m 4000 -c 15000 -n nunet-test -a addr1q8pakf7kuac2fupvvwym4nq9rvu
 - The `-C` option is optional and allows deployment of a Cardano node. Your device must have at least 10,000 MB of memory and 6,000 MHz of compute capacity to be eligible.
 - The `-l` option is optional but important. Use `-l` when running the DMS on a local machine (e.g., a laptop or desktop computer) to enable advertisement and discovery on a local network address. Do not use `-l` when running the DMS on a machine from a datacenter.
 
+4. Onboard your NVIDIA GPU
+
+Install the NVIDIA GPU driver and container runtime. To run this command, use the following command:
+
+```
+nunet onboard-gpu
+```
+
+This command will work on both native Linux (Debian) and WSL machines. It also checks for Secure Boot if
+necessary.
+
+5. Prepare the system for Machine Learning
+
+Prepare the system for machine learning with GPU. We include this step to reduce the time for starting jobs
+because of large-sized GPU based ML images of TensorFlow and PyTorch. To do this, use the following
+command:
+
+```
+sudo nunet onboard-ml
+```
+
+The above command preloads (downloads) the latest ML on GPU images for training/inferencing/computing
+on NuNet.
+
 4. Wait a few minutes for components to start and peers to be discovered.
 
 5. Check your peer information and the peers your DMS is connected to by running the following commands:
@@ -177,27 +201,6 @@ Get information about the currently onboarded machine. To run this command, use 
 ```
 nunet info
 ```
-
-## Onboard NVIDIA GPU
-
-Install the NVIDIA GPU driver and container runtime. To run this command, use the following command:
-
-```
-nunet onboard-gpu
-```
-
-This command will work on both native Linux (Debian) and WSL machines. It also checks for Secure Boot if necessary.
-
-## Prepare the System for Machine Learning
-
-Prepare the system for machine learning with GPU. We include this step to reduce the time for starting jobs because of large-sized GPU based ML images of TensorFlow and PyTorch. To do this, use the following command:
-
-
-```
-nunet onboard-ml
-```
-
-The above command preloads (downloads) the latest ML on GPU images for training/inferencing/computing on NuNet.
 
 ## Check the GPU status in real time
 
