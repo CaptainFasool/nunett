@@ -20,10 +20,15 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.72](#173)
+
+### Changed
+- Bug fix: disable local address filter when not on server mode
 ## [0.4.71](!137)
 
 ### Changed
 - No error on calcUsedResources when no services
+
 ## [0.4.70](#170)
 
 ### Changed

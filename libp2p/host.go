@@ -308,7 +308,6 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.DefaultTransports,
 		libp2p.EnableNATService(),
-		libp2p.ConnectionGater((*filtersConnectionGater)(filter)),
 		libp2p.ConnectionManager(connmgr),
 		libp2p.EnableRelay(),
 		libp2p.EnableHolePunching(),
@@ -357,6 +356,7 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 
 	if server {
 		libp2pOpts = append(libp2pOpts, libp2p.AddrsFactory(makeAddrsFactory([]string{}, []string{}, defaultServerFilters)))
+		libp2pOpts = append(libp2pOpts, libp2p.ConnectionGater((*filtersConnectionGater)(filter)))
 	} else {
 		libp2pOpts = append(libp2pOpts, libp2p.NATPortMap())
 	}
