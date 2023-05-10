@@ -3,6 +3,7 @@ package docker
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -263,6 +264,18 @@ outerLoop:
 				return
 			}
 
+			// Send service status update
+			var tempService models.Services
+			if err := db.DB.Where("container_id = ?", resp.ID).First(&tempService).Error; err != nil {
+				panic(err)
+			}
+			serviceBytes, _ := json.Marshal(tempService)
+			var closeStream bool
+			if strings.HasPrefix("finished", service.JobStatus) {
+				closeStream = true
+			}
+			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
+
 			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
 				zlog.Sugar().Errorf("problem updating request tracker: %v", res.Error)
@@ -356,16 +369,13 @@ func cpuUsage(cpu float64, maxCPU float64) float64 {
 
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, delete container, send log to the requester
-func HandleDeployment(depReq models.DeploymentRequest) (models.DeploymentResponse, bool) {
+func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse {
 	// Pull the image
 	imageName := depReq.Params.ImageID
 	err := PullImage(imageName)
 	if err != nil {
 		zlog.Sugar().Errorf("couldn't pull image: %v", err)
-		return models.DeploymentResponse{
-				Success: false,
-				Content: "Unable to pull image."},
-			true
+		return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}
 	}
 
 	// create a service and pass the primary key to the RunContainer to update ContainerID
@@ -380,21 +390,20 @@ func HandleDeployment(depReq models.DeploymentRequest) (models.DeploymentRespons
 	createdGist, _, err := createGist()
 	if err != nil {
 		zlog.Sugar().Errorf("couldn't create gist: %v", err)
-		return models.DeploymentResponse{
-				Success: false,
-				Content: "Unable to create Gist."},
-			true
+		return models.DeploymentResponse{Success: false, Content: "Unable to create Gist."}
 	}
 
 	service.LogURL = *createdGist.HTMLURL
 	// Save the service with logs
 	if err := db.DB.Create(&service).Error; err != nil {
 		zlog.Sugar().Errorf("couldn't save service: %v", err)
-		return models.DeploymentResponse{
-				Success: false,
-				Content: "Unable to pull image."},
-			true
+		return models.DeploymentResponse{Success: false, Content: "Couldn't save service."}
 	}
+
+	// Send service status update
+	serviceBytes, _ := json.Marshal(service)
+	libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), false)
+
 	resCh := make(chan models.DeploymentResponse)
 
 	// Run the container.
@@ -404,5 +413,5 @@ func HandleDeployment(depReq models.DeploymentRequest) (models.DeploymentRespons
 
 	// Send back *createdGist.HTMLURL
 	res.Content = *createdGist.HTMLURL
-	return res, false
+	return res
 }
