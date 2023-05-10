@@ -19,13 +19,13 @@ const (
 	DHTProtocolID = "/nunet/dms/dht/0.0.1"
 
 	// Stream Protocol for Deployment Requests
-	DepReqProtocolID = "/nunet/dms/depreq/0.0.1"
+	DepReqProtocolID = "/nunet/dms/depreq/0.0.2"
 
 	// Stream Protocol for Chat
 	ChatProtocolID = "/nunet/dms/chat/0.0.1"
 
 	// Stream Protocol for Ping
-	PingProtocolID = "/nunet/dms/ping/1.0.0"
+	PingProtocolID = "/nunet/dms/ping/0.0.1"
 )
 
 const (

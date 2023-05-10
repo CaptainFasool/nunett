@@ -15,10 +15,9 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func sendDeploymentResponse(success bool, content string, close bool) {
+func sendDeploymentResponse(success bool, content string) {
 
 	zlog.Sugar().Debugf("send deployment response content: %s", content)
-	zlog.Sugar().Debugf("send deployment response close stream: %v", close)
 
 	depResp, _ := json.Marshal(&models.DeploymentResponse{
 		Success: success,
@@ -27,7 +26,12 @@ func sendDeploymentResponse(success bool, content string, close bool) {
 
 	zlog.Sugar().Debugf("marshalled deployment response from worker: %s", string(depResp))
 
-	err := libp2p.DeploymentResponse(string(depResp), close)
+	var closeStream bool
+	if !success {
+		closeStream = true
+	}
+
+	err := libp2p.DeploymentUpdate(libp2p.MsgDepResp, string(depResp), closeStream)
 	if err != nil {
 		zlog.Sugar().Errorf("Error Sending Deployment Response - ", err.Error())
 	}
@@ -48,7 +52,7 @@ func DeploymentWorker() {
 				handleDockerDeployment(depReq)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
-				sendDeploymentResponse(false, "Unknown service type.", true)
+				sendDeploymentResponse(false, "Unknown service type.")
 			}
 		}
 	}
@@ -64,14 +68,14 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	if err != nil {
 		zlog.Error(fmt.Sprintf("Downloading %s, - %s", utils.KernelFileURL, err.Error()))
 		sendDeploymentResponse(false,
-			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.KernelFileURL), true)
+			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.KernelFileURL))
 		return
 	}
 	err = utils.DownloadFile(utils.FilesystemURL, utils.FilesystemPath)
 	if err != nil {
 		zlog.Error(fmt.Sprintf("Downloading %s - %s", utils.FilesystemURL, err.Error()))
 		sendDeploymentResponse(false,
-			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.FilesystemURL), true)
+			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.FilesystemURL))
 		return
 	}
 
@@ -93,10 +97,10 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	_, err = io.ReadAll(resp.Body)
 	if err != nil {
 		zlog.Error(err.Error())
-		sendDeploymentResponse(false, "Cardano Node Deployment Failed. Unable to spawn VM.", true)
+		sendDeploymentResponse(false, "Cardano Node Deployment Failed. Unable to spawn VM.")
 		return
 	}
-	sendDeploymentResponse(true, "Cardano Node Deployment Successful.", false)
+	sendDeploymentResponse(true, "Cardano Node Deployment Successful.")
 }
 
 func handleDockerDeployment(depReq models.DeploymentRequest) {
@@ -143,6 +147,6 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		}
 	}
 
-	depResp, closeStream := docker.HandleDeployment(depReq)
-	sendDeploymentResponse(depResp.Success, depResp.Content, closeStream)
+	depResp = docker.HandleDeployment(depReq)
+	sendDeploymentResponse(depResp.Success, depResp.Content)
 }
