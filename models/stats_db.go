@@ -60,6 +60,7 @@ type ServiceCall struct {
 	NetworkBwUsed       float32
 	TimeTaken           float32
 	Status              string
+	AmountOfNtx         int32
 	Timestamp           float32
 }
 

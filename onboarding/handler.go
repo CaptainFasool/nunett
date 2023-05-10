@@ -149,25 +149,15 @@ func Onboard(c *gin.Context) {
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
-	if fileExists("/etc/nunet/metadataV2.json") {
-		content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": "metadata.json does not exists or not readable"})
-			return
-		}
-		var metadata2 models.MetadataV2
-		err = json.Unmarshal(content, &metadata2)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": "unable to parse metadata.json"})
-			return
-		}
-		metadata.NodeID = metadata2.NodeID
+	file, _ := json.MarshalIndent(metadata, "", " ")
+	err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	if err != nil {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "could not write metadata.json"})
+		return
 	}
 
 	// Add available resources to database.
-
 	available_resources := models.AvailableResources{
 		TotCpuHz:  int(capacityForNunet.CPU),
 		CpuNo:     int(numCores),
@@ -198,26 +188,13 @@ func Onboard(c *gin.Context) {
 		zlog.Panic(err.Error())
 	}
 	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
-
-	file, _ := json.MarshalIndent(metadata, "", " ")
-	err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
-	if err != nil {
-		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "could not write metadata.json"})
-		return
-	}
 	telemetry.CalcFreeResources()
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 	span.SetAttributes(attribute.String("PeerID", libp2p.GetP2P().Host.ID().String()))
 
-	// check if nodeID is empty
-	if len(metadata.NodeID) == 0 {
-		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
-	}
-
 	// Sending onboarding resources on stats_db via GRPC call
 	NewDeviceOnboardParams := models.NewDeviceOnboarded{
-		PeerID:        metadata.NodeID,
+		PeerID:        libp2p.GetP2P().Host.ID().Pretty(),
 		CPU:           float32(metadata.Reserved.CPU),
 		RAM:           float32(metadata.Reserved.Memory),
 		Network:       0.0,
@@ -225,7 +202,7 @@ func Onboard(c *gin.Context) {
 		Timestamp:     float32(statsdb.GetTimestamp()),
 	}
 	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
-
+	go statsdb.HeartBeat(false)
 	c.JSON(http.StatusCreated, metadata)
 }
 

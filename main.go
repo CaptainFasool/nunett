@@ -12,6 +12,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
+	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -40,8 +41,6 @@ func main() {
 
 	utils.GenerateMachineUUID()
 
-
-
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
 
@@ -57,6 +56,10 @@ func main() {
 
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
+	_, err := utils.ReadMetadataFile()
+	if err == nil {
+		go statsdb.HeartBeat(true)
+	}
 	wg.Wait()
 }
 

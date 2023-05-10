@@ -142,13 +142,12 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 	status := "started"
 
-	ServiceStatusParams := models.ServiceStatus{
-		CallID:              requestTracker.CallID,
-		PeerIDOfServiceHost: requestTracker.NodeID,
-		ServiceID:           requestTracker.ServiceType,
-		Status:              status,
-		Timestamp:           float32(statsdb.GetTimestamp()),
-	}
+	var ServiceStatusParams models.ServiceStatus
+	ServiceStatusParams.CallID = requestTracker.CallID
+	ServiceStatusParams.PeerIDOfServiceHost = requestTracker.NodeID
+	ServiceStatusParams.ServiceID = requestTracker.ServiceType
+	ServiceStatusParams.Status = status
+	ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
 	statsdb.ServiceStatus(ServiceStatusParams)
 
 	// updating RequestTracker
@@ -231,30 +230,17 @@ outerLoop:
 			var services models.Services
 			if containerStatus.StatusCode == 0 {
 				services.JobStatus = "finished without errors"
-				ServiceCallParams := models.ServiceCall{
-					CallID:              requestTracker.CallID,
-					PeerIDOfServiceHost: requestTracker.NodeID,
-					ServiceID:           requestTracker.ServiceType,
-					CPUUsed:             float32(maxUsedCPU),
-					MaxRAM:              float32(depReq.Constraints.Vram),
-					MemoryUsed:          float32(maxUsedRAM),
-					NetworkBwUsed:       0.0,
-					TimeTaken:           0.0,
-					Status:              "finished without errors",
-					Timestamp:           float32(statsdb.GetTimestamp()),
-				}
-				statsdb.ServiceCall(ServiceCallParams)
+				ServiceStatusParams.Status = "finished without errors"
+				ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
 				requestTracker.Status = "finished without errors"
 			} else if containerStatus.StatusCode > 0 {
 				services.JobStatus = "finished with errors"
-				ServiceStatusParams.CallID = requestTracker.CallID
-				ServiceStatusParams.PeerIDOfServiceHost = requestTracker.NodeID
 				ServiceStatusParams.Status = "finished with errors"
 				ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
 
-				statsdb.ServiceStatus(ServiceStatusParams)
 				requestTracker.Status = "finished with errors"
 			}
+			statsdb.ServiceStatus(ServiceStatusParams)
 			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
 			if r.Error != nil {
 				zlog.Sugar().Errorf("problemn updating services: %v", r.Error)
@@ -275,7 +261,7 @@ outerLoop:
 		case <-tick.C:
 			// get the latest logs ...
 			zlog.Info("updating gist")
-			contID := requestTracker.RequestID[:12]
+			contID := resp.ID[:12]
 			stats, err := dockerstats.Current()
 			if err != nil {
 				zlog.Sugar().Errorf("problem obtaining docker stats: %v", err)
@@ -290,7 +276,7 @@ outerLoop:
 					usedCPU := strings.Split(s.CPU, "%")
 					ramFloat64, _ := strconv.ParseFloat(usedRAM[0], 64)
 					cpuFloat64, _ := strconv.ParseFloat(usedCPU[0], 64)
-					cpuFloat64 = cpuUsage(cpuFloat64, float64(hostConfig.CPUQuota))
+					cpuFloat64 = cpuUsage(cpuFloat64, float64(depReq.Constraints.CPU))
 					if ramFloat64 > maxUsedRAM {
 						maxUsedRAM = ramFloat64
 					}
@@ -300,6 +286,20 @@ outerLoop:
 				}
 			}
 
+			ServiceCallParams := models.ServiceCall{
+				CallID:              requestTracker.CallID,
+				PeerIDOfServiceHost: depReq.Params.LocalNodeID,
+				ServiceID:           requestTracker.ServiceType,
+				CPUUsed:             float32(maxUsedCPU),
+				MemoryUsed:          float32(maxUsedRAM),
+				MaxRAM:              float32(depReq.Constraints.RAM),
+				NetworkBwUsed:       0.0,
+				TimeTaken:           0.0,
+				Status:              "started",
+				AmountOfNtx:         requestTracker.MaxTokens,
+				Timestamp:           float32(statsdb.GetTimestamp()),
+			}
+			statsdb.ServiceCall(ServiceCallParams)
 			updateGist(*createdGist.ID, resp.ID)
 		}
 	}
