@@ -16,6 +16,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
@@ -41,7 +42,7 @@ func RunPreviouslyRunningVMs() error {
 
 // GenerateSocketFile generates a path for socket file to be used for communication with firecracker.
 func GenerateSocketFile(n int) string {
-	prefix := "/etc/nunet/sockets/"
+	prefix := fmt.Sprintf("%s/sockets/", config.GetConfig().General.MetadataPath)
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	rand.Seed(time.Now().Unix())
 

@@ -42,7 +42,7 @@ func TestDepReq(t *testing.T) {
 
 	// initialize second node
 	priv2, _, _ := libp2p.GenerateKey(time.Now().Unix())
-	host2, idht2, err := libp2p.NewHost(ctx, 9501, priv2, true)
+	host2, idht2, err := libp2p.NewHost(ctx, priv2, true)
 	if err != nil {
 		t.Fatalf("Second Node Initialization Failed: %v", err)
 	}

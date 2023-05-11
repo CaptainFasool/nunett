@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	pb "gitlab.com/nunet/device-management-service/statsdb/event_listener_spec"
@@ -72,7 +73,12 @@ func GetPeerID() (string, error) {
 	if len(metadata.NodeID) == 0 {
 		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
 		file, _ := json.MarshalIndent(metadata, "", " ")
-		err := os.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+		err := os.WriteFile(
+			fmt.Sprintf(
+				"%s/metadataV2.json",
+				config.GetConfig().General.MetadataPath),
+			file,
+			0644)
 		if err != nil {
 			zlog.Sugar().Errorf("couldn't write metadata file: %v", err)
 			return "", fmt.Errorf("couldn't write metadata file: %v", err)

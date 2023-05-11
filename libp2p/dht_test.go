@@ -19,7 +19,7 @@ const CIRendevousPoint string = "testing-nunet"
 func TestBootstrap(t *testing.T) {
 	ctx := context.Background()
 	priv, _, _ := GenerateKey(0)
-	host, idht, _ := NewHost(ctx, 9000, priv, true)
+	host, idht, _ := NewHost(ctx, priv, true)
 	defer host.Close()
 	// Test successful Bootstrap
 	err := Bootstrap(ctx, host, idht)
@@ -35,7 +35,7 @@ func TestSendDHTUpdate(t *testing.T) {
 	priv1, _, _ := GenerateKey(0)
 	priv2, _, _ := GenerateKey(0)
 
-	host1, idht1, err := NewHost(ctx, 9500, priv1, true)
+	host1, idht1, err := NewHost(ctx, priv1, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestSendDHTUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Bootstrap returned error: %v", err)
 	}
-	host2, idht2, err := NewHost(ctx, 9501, priv2, true)
+	host2, idht2, err := NewHost(ctx, priv2, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestFetchDhtContents(t *testing.T) {
 	priv1, _, _ := GenerateKey(0)
 	priv2, _, _ := GenerateKey(0)
 
-	host1, idht1, err := NewHost(ctx, 9500, priv1, true)
+	host1, idht1, err := NewHost(ctx, priv1, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestFetchDhtContents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Bootstrap returned error: %v", err)
 	}
-	host2, idht2, err := NewHost(ctx, 9501, priv2, true)
+	host2, idht2, err := NewHost(ctx, priv2, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestFetchMachines(t *testing.T) {
 	priv1, _, _ := GenerateKey(0)
 	priv2, _, _ := GenerateKey(0)
 
-	host1, idht1, err := NewHost(ctx, 9500, priv1, true)
+	host1, idht1, err := NewHost(ctx, priv1, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
@@ -273,7 +273,7 @@ func TestFetchMachines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Bootstrap returned error: %v", err)
 	}
-	host2, idht2, err := NewHost(ctx, 9501, priv2, true)
+	host2, idht2, err := NewHost(ctx, priv2, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
@@ -327,7 +327,7 @@ func TestFetchAvailableResources(t *testing.T) {
 	priv1, _, _ := GenerateKey(0)
 	priv2, _, _ := GenerateKey(0)
 
-	host1, idht1, err := NewHost(ctx, 9500, priv1, true)
+	host1, idht1, err := NewHost(ctx, priv1, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
@@ -353,7 +353,7 @@ func TestFetchAvailableResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Bootstrap returned error: %v", err)
 	}
-	host2, idht2, err := NewHost(ctx, 9501, priv2, true)
+	host2, idht2, err := NewHost(ctx,  priv2, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestGetPeers(t *testing.T) {
 	ctx := context.Background()
 	// Initialize host and dht objects
 	priv, _, _ := GenerateKey(0)
-	host, idht, _ := NewHost(ctx, 9000, priv, true)
+	host, idht, _ := NewHost(ctx, priv, true)
 
 	p2p = *DMSp2pInit(host, idht)
 
