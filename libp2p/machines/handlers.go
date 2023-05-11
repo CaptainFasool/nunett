@@ -183,14 +183,16 @@ func HandleDeploymentRequest(c *gin.Context) {
 
 	conn := internal.WebSocketConnection{Conn: ws}
 
-	go listenForDeploymentStatus(c, &conn)
-	go listenForDeploymentResponse(c, &conn)
+	go listenToOutgoingMessage(c, &conn)
+	go listenForIncomingMessage(c, &conn)
 }
 
-func listenForDeploymentStatus(ctx *gin.Context, conn *internal.WebSocketConnection) {
+// listenToOutgoingMessage is for sending message to websocket server.
+// If you want to add a new message to receive, see listenForDeploymentResponse.
+func listenToOutgoingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Error(fmt.Sprintf("%v", r))
+			zlog.Sugar().Errorf("%v", r)
 		}
 	}()
 
@@ -202,11 +204,13 @@ func listenForDeploymentStatus(ctx *gin.Context, conn *internal.WebSocketConnect
 			return
 		}
 
-		handleWebsocketAction(ctx, p)
+		handleWebsocketAction(ctx, p, conn)
 	}
 }
 
-func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConnection) {
+// listenForDeploymentStatus is for receiving message to websocket client.
+// If you want to add a new message to send to server, see listenForDeploymentStatus.
+func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	for {
 		// 1. check if DepResQueue has anything
 		select {
@@ -237,7 +241,7 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 	}
 }
 
-func handleWebsocketAction(ctx *gin.Context, payload []byte) {
+func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebSocketConnection) {
 	// convert json to go values
 	var m wsMessage
 	err := json.Unmarshal(payload, &m)
@@ -257,14 +261,14 @@ func handleWebsocketAction(ctx *gin.Context, payload []byte) {
 			return
 		}
 
-		err = sendDeploymentRequest(ctx)
+		err = sendDeploymentRequest(ctx, conn)
 		if err != nil {
 			zlog.Error(err.Error())
 		}
 	}
 }
 
-func sendDeploymentRequest(ctx *gin.Context) error {
+func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection) error {
 	span := trace.SpanFromContext(ctx.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
 	span.SetAttributes(attribute.String("TransactionStatus", "success"))
@@ -293,6 +297,10 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	depReq.Timestamp = time.Now()
 
 	zlog.Sugar().Debugf("deployment request: %v", depReq)
+
+	// notify websocket client about the
+	submitted := map[string]string{"action": "job-submitted"}
+	conn.WriteJSON(submitted)
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {

@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.75](#176)
+
+### Added
+- Respond with {"action": "job-submitted"} just before deployment request is handed over to compute provider
 # [0.4.74](!135)
 
 ### Added
