@@ -568,7 +568,7 @@ peer() {
             printf "${BAD_C}No peers available in DHT. Please try again in a few minutes.${NORMAL_C}\n"
         else
             printf "\n${UNDERLINE}DHT peers${NORMAL}\n"
-            echo $N_LIST_PEERS_DHT | jq --raw-output '(.[])'
+            echo "$N_LIST_PEERS_DHT" | jq --raw-output '(.[])'
         fi
     fi
 }

@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.76](#171)
+
+### Added
+- Fixes #171 parse error on `nunet peer list`
 # [0.4.75](#176)
 
 ### Added
