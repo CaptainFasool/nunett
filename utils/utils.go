@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -68,19 +70,22 @@ func RandomString(n int) string {
 
 func GetChannelName() string {
 	metadata, err := ReadMetadataFile()
-	if err != nil {
-		zlog.Sugar().Errorf("could not read metadata: %v", err)
+	if err != nil || metadata.Network == "" {
+		return "" // nunet not onboarded or something wrong with metadata file
 	}
 	return metadata.Network
 }
 
 func GenerateMachineUUID() (string, error) {
 	var machine models.MachineUUID
+
 	machineUUID, err := uuid.NewDCEGroup()
 	if err != nil {
 		return "", err
 	}
 	machine.UUID = machineUUID.String()
+
+	db.DB.Where("uuid <> ?", "*").Delete(&models.MachineUUID{})
 
 	result := db.DB.Create(&machine)
 	if result.Error != nil {
@@ -95,19 +100,20 @@ func GetMachineUUID() string {
 
 	// try db
 	result := db.DB.First(&machine)
-	if result.Error == nil {
-		if machine.UUID != "" {
-			return machine.UUID
+	if result.Error == nil || machine.UUID == "" {
+		uuid, err := GenerateMachineUUID()
+		if err != nil {
+			zlog.Sugar().Errorf("could not generate machine uuid: %v", err)
 		}
+		machine.UUID = uuid
 	}
-
 	return machine.UUID
 
 }
 
 // ReadMetadata returns metadata from metadataV2.json file
 func ReadMetadataFile() (models.MetadataV2, error) {
-	metadataF, err := os.ReadFile("/etc/nunet/metadataV2.json")
+	metadataF, err := os.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
 		return models.MetadataV2{}, err
 	}

@@ -2,6 +2,7 @@ package onboarding
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
@@ -41,7 +43,7 @@ func GetMetadata(c *gin.Context) {
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	// read the info
-	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
+	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
 			gin.H{"error": "metadata.json does not exists or not readable"})
@@ -78,10 +80,10 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
-	_, err := AFS.Stat("/etc/nunet")
+	_, err := AFS.Stat(config.GetConfig().General.MetadataPath)
 	if os.IsNotExist(err) {
 		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "/etc/nunet does not exist. is nunet onboarded successfully?"})
+			gin.H{"error": fmt.Sprintf("%s does not exist. is nunet onboarded successfully?", config.GetConfig().General.MetadataPath)})
 		return
 	}
 
@@ -149,8 +151,8 @@ func Onboard(c *gin.Context) {
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
-	if fileExists("/etc/nunet/metadataV2.json") {
-		content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
+	if fileExists(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath)) {
+		content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError,
 				gin.H{"error": "metadata.json does not exists or not readable"})
@@ -200,7 +202,7 @@ func Onboard(c *gin.Context) {
 	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
-	err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	err = AFS.WriteFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath), file, 0644)
 	if err != nil {
 		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "could not write metadata.json"})
@@ -296,10 +298,12 @@ func ResourceConfig(c *gin.Context) {
 		return
 	}
 
-	_, err := AFS.Stat("/etc/nunet/metadataV2.json")
+	_, err := AFS.Stat(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if os.IsNotExist(err) {
 		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "/etc/nunet/metadataV2.json does not exist. is nunet onboarded successfully?"})
+			gin.H{"error": fmt.Sprintf(
+				"%s/metadataV2.json does not exist. is nunet onboarded successfully?",
+				config.GetConfig().General.MetadataPath)})
 		return
 	}
 
@@ -327,7 +331,7 @@ func ResourceConfig(c *gin.Context) {
 	statsdb.DeviceResourceConfig(metadata)
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
-	err = AFS.WriteFile("/etc/nunet/metadataV2.json", file, 0644)
+	err = AFS.WriteFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath), file, 0644)
 	if err != nil {
 		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "could not write metadata.json"})

@@ -21,14 +21,15 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
-const (
+var (
 	vcpuToMicroseconds float64       = 100000
-	gistUpdateDuration time.Duration = 2 * time.Minute
+	gistUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.GistUpdateInterval) * time.Minute
 )
 
 func freeUsedResources(contID string) {
@@ -201,7 +202,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	depRes := models.DeploymentResponse{Success: true}
 	resCh <- depRes
 
-	tick := time.NewTicker(gistUpdateDuration)
+	tick := time.NewTicker(gistUpdateInterval)
 	defer tick.Stop()
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)

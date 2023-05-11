@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.77](#179)
+
+### Added
+- Add config module for configuring DMS runtime
+
 # [0.4.76](#171)
 
 ### Added
