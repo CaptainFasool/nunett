@@ -43,7 +43,14 @@ type DeploymentResponse struct {
 	Content string `json:"content"`
 }
 
+type DeploymentUpdate struct {
+	MsgType string `json:"msg_type"`
+	Msg     string `json:"msg"`
+}
+
 type DeploymentRequestFlat struct {
 	gorm.Model
 	DeploymentRequest string `json:"deployment_request"`
+	// represents job status from services table; goal is to keep then in sync (both tables are on different DMSes).
+	JobStatus string `json:"job_status"`
 }

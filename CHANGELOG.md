@@ -20,6 +20,16 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.74](!135)
+
+### Added
+- Generate Events whenever there is an update to JobStatus field in service table
+
+### Changed
+- Send events on the same stream which is responsible for deployment response
+- Update DeploymentRequestFlat table with JobStatus on service provider side
+- Raise an error on frontend if a job is already running
+- Close libp2p network stream when job is done either with success or failure
 # [0.4.73](#175)
 
 ### Changed

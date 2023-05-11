@@ -49,6 +49,11 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
+	// Check if there is already a running job
+	if result := db.DB.Where("deleted_at IS NULL").Find(&depReqFlat).RowsAffected; result > 0 {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "a service is already running; only 1 service is supported at the moment"})
+	}
+
 	// add node_id and public_key in deployment request
 	pKey, err := libp2p.GetPublicKey()
 	if err != nil {
@@ -133,6 +138,7 @@ func HandleRequestService(c *gin.Context) {
 	// Convert JSON bytes to string
 	depReqStr := string(depReqBytes)
 	depReqFlat.DeploymentRequest = depReqStr
+	depReqFlat.JobStatus = "awaiting"
 
 	if err := db.DB.Create(&depReqFlat).Error; err != nil {
 		zlog.Sugar().Infof("cannot write to database")
@@ -273,13 +279,6 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 		zlog.Sugar().Errorf("%v", err)
 	}
 
-	// delete temporary record
-	// XXX: Needs to be modified to take multiple deployment requests from same service provider
-	// deletes all the record in table; deletes == mark as delete
-	if err := db.DB.Where("deleted_at IS NULL").Delete(&models.DeploymentRequestFlat{}).Error; err != nil {
-		zlog.Sugar().Errorf("%v", err)
-	}
-
 	err := json.Unmarshal([]byte(depReqFlat.DeploymentRequest), &depReq)
 	if err != nil {
 		zlog.Sugar().Errorf("%v", err)
@@ -303,7 +302,7 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	//TODO: Context handling and cancellation on all messaging related code
 	//      most importantly, depreq/depres messaging
 	//XXX: needs a lot of testing.
-	go libp2p.DeploymentResponseListener(depReqStream)
+	go libp2p.DeploymentUpdateListener(depReqStream)
 
 	return nil
 }

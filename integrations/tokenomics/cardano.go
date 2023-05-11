@@ -39,7 +39,7 @@ func HandleRequestReward(c *gin.Context) {
 	}
 
 	if service.JobStatus == "running" {
-		c.JSON(102, gin.H{"error": "the job is still running"})
+		c.JSON(503, gin.H{"error": "the job is still running"})
 		return
 	}
 
