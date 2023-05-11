@@ -145,7 +145,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	var ServiceStatusParams models.ServiceStatus
 	ServiceStatusParams.CallID = requestTracker.CallID
 	ServiceStatusParams.PeerIDOfServiceHost = requestTracker.NodeID
-	ServiceStatusParams.ServiceID = requestTracker.ServiceType
 	ServiceStatusParams.Status = status
 	ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
 	statsdb.ServiceStatus(ServiceStatusParams)
@@ -230,17 +229,14 @@ outerLoop:
 			var services models.Services
 			if containerStatus.StatusCode == 0 {
 				services.JobStatus = "finished without errors"
-				ServiceStatusParams.Status = "finished without errors"
-				ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
+				status = "finished without errors"
 				requestTracker.Status = "finished without errors"
 			} else if containerStatus.StatusCode > 0 {
 				services.JobStatus = "finished with errors"
-				ServiceStatusParams.Status = "finished with errors"
-				ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
-
+				status = "finished with errors"
 				requestTracker.Status = "finished with errors"
 			}
-			statsdb.ServiceStatus(ServiceStatusParams)
+
 			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
 			if r.Error != nil {
 				zlog.Sugar().Errorf("problemn updating services: %v", r.Error)
@@ -248,6 +244,22 @@ outerLoop:
 				resCh <- depRes
 				return
 			}
+
+			duration := time.Now().Sub(service.CreatedAt)
+			timeTakenSeconds := duration.Seconds()
+			ServiceCallParams := models.ServiceCall{
+				CallID:              requestTracker.CallID,
+				PeerIDOfServiceHost: depReq.Params.LocalNodeID,
+				CPUUsed:             float32(maxUsedCPU),
+				MemoryUsed:          float32(maxUsedRAM),
+				MaxRAM:              float32(depReq.Constraints.RAM),
+				NetworkBwUsed:       0.0,
+				TimeTaken:           float32(timeTakenSeconds),
+				Status:              status,
+				AmountOfNtx:         requestTracker.MaxTokens,
+				Timestamp:           float32(statsdb.GetTimestamp()),
+			}
+			statsdb.ServiceCall(ServiceCallParams)
 
 			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
@@ -289,7 +301,6 @@ outerLoop:
 			ServiceCallParams := models.ServiceCall{
 				CallID:              requestTracker.CallID,
 				PeerIDOfServiceHost: depReq.Params.LocalNodeID,
-				ServiceID:           requestTracker.ServiceType,
 				CPUUsed:             float32(maxUsedCPU),
 				MemoryUsed:          float32(maxUsedRAM),
 				MaxRAM:              float32(depReq.Constraints.RAM),
@@ -303,7 +314,6 @@ outerLoop:
 			updateGist(*createdGist.ID, resp.ID)
 		}
 	}
-
 }
 
 // cleanFlushInfo takes in bytes.Buffer from docker logs output and for each line

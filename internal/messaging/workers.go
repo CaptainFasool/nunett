@@ -109,7 +109,6 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 	ServiceCallParams := models.ServiceCall{
 		CallID:              callID,
 		PeerIDOfServiceHost: peerIDOfServiceHost,
-		ServiceID:           depReq.ServiceType,
 		CPUUsed:             0.0,
 		MaxRAM:              float32(depReq.Constraints.RAM),
 		MemoryUsed:          0.0,

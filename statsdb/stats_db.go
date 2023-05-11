@@ -81,22 +81,18 @@ func GetPeerID() (string, error) {
 	return metadata.NodeID, nil
 }
 
-func GetGRPCConnection() (statsdbClient pb.EventListenerClient, ctx context.Context) {
+// NewDeviceOnboarded sends the newly onboarded telemetry info to the stats db via grpc call.
+func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 	statsdbConn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		zlog.Sugar().Errorf("did not connect: %v", err)
 		return
 	}
 
-	client := pb.NewEventListenerClient(statsdbConn)
+	statsdbClient := pb.NewEventListenerClient(statsdbConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	return client, ctx
-}
 
-// NewDeviceOnboarded sends the newly onboarded telemetry info to the stats db via grpc call.
-func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
-	statsdbClient, ctx := GetGRPCConnection()
 	res, err := statsdbClient.NewDeviceOnboarded(ctx, &pb.NewDeviceOnboardedInput{
 		PeerId:        inputData.PeerID,
 		Cpu:           inputData.CPU,
@@ -115,7 +111,16 @@ func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 
 // ServiceCall sends the info of the service call made to dms to stats via grpc call.
 func ServiceCall(inputData models.ServiceCall) {
-	statsdbClient, ctx := GetGRPCConnection()
+	statsdbConn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		zlog.Sugar().Errorf("did not connect: %v", err)
+		return
+	}
+
+	statsdbClient := pb.NewEventListenerClient(statsdbConn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
 	res, err := statsdbClient.ServiceCall(ctx, &pb.ServiceCallInput{
 		CallId:              inputData.CallID,
 		PeerIdOfServiceHost: inputData.PeerIDOfServiceHost,
@@ -139,7 +144,16 @@ func ServiceCall(inputData models.ServiceCall) {
 
 // ServiceStatus updates the status of service process on host machine to stats db via gRPC call
 func ServiceStatus(inputData models.ServiceStatus) {
-	statsdbClient, ctx := GetGRPCConnection()
+	statsdbConn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		zlog.Sugar().Errorf("did not connect: %v", err)
+		return
+	}
+
+	statsdbClient := pb.NewEventListenerClient(statsdbConn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
 	res, err := statsdbClient.ServiceStatus(ctx, &pb.ServiceStatusInput{
 		CallId:              inputData.CallID,
 		PeerIdOfServiceHost: inputData.PeerIDOfServiceHost,
@@ -207,7 +221,16 @@ func DeviceResourceChange(inputData models.FreeResources) {
 		DedicatedTime: 0.0,
 	}
 
-	statsdbClient, ctx := GetGRPCConnection()
+	statsdbConn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		zlog.Sugar().Errorf("did not connect: %v", err)
+		return
+	}
+
+	statsdbClient := pb.NewEventListenerClient(statsdbConn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
 	res, err := statsdbClient.DeviceResourceChange(ctx, &pb.DeviceResourceChangeInput{
 		PeerId:                   peerID,
 		ChangedAttributeAndValue: &DeviceResourceParams,
@@ -236,7 +259,16 @@ func DeviceResourceConfig(inputData models.MetadataV2) {
 		DedicatedTime: 0.0,
 	}
 
-	statsdbClient, ctx := GetGRPCConnection()
+	statsdbConn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		zlog.Sugar().Errorf("did not connect: %v", err)
+		return
+	}
+
+	statsdbClient := pb.NewEventListenerClient(statsdbConn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
 	res, err := statsdbClient.DeviceResourceConfig(ctx, &pb.DeviceResourceConfigInput{
 		PeerId:                   peerID,
 		ChangedAttributeAndValue: &DeviceResourceParams,
@@ -253,7 +285,16 @@ func DeviceResourceConfig(inputData models.MetadataV2) {
 
 // NtxPayment sends the payment info of the service process on host machine to statsdb via grpc call.
 func NtxPayment(inputData models.NtxPayment) {
-	statsdbClient, ctx := GetGRPCConnection()
+	statsdbConn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		zlog.Sugar().Errorf("did not connect: %v", err)
+		return
+	}
+
+	statsdbClient := pb.NewEventListenerClient(statsdbConn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
 	res, err := statsdbClient.NtxPayment(ctx, &pb.NtxPaymentInput{
 		CallId:            inputData.CallID,
 		ServiceId:         inputData.ServiceID,
