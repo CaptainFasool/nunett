@@ -717,8 +717,8 @@ onboard-gpu() {
         printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have installed the latest Windows Driver for your NVIDIA GPU before proceeding.${NORMAL_C}\n"
         sleep 5 # adding some time to read the message
 
-        # Check if nvidia-smi is in stalled
-        if ! command -v nvidia-smi > /dev/null; then
+        # Check if nvidia-smi is available on WSL
+        if ! command -v /usr/lib/wsl/lib/nvidia-smi > /dev/null; then
           printf "${BAD_C}Error: nvidia-smi is not installed. Make sure you have installed the latest Windows Driver for your NVIDIA GPU and try again."
           exit
         fi
@@ -770,8 +770,24 @@ onboard-gpu() {
             secure_boot_check
             printf "${INFO_C}-----Starting NVIDIA GPU Driver Installation-----${NORMAL_C}\n"
             if [[ $linux_distro = "ubuntu" ]]; then
-                sudo apt update && sudo apt install -y ubuntu-drivers-common #package required for below command
-                sudo ubuntu-drivers install               #autoinstall is deprecated
+                sudo apt update
+                #!/bin/bash
+                # Detect the Ubuntu version
+                ubuntu_version=$(lsb_release -sr)
+                # Install the correct NVIDIA driver based on the Ubuntu version
+                if [ "$ubuntu_version" == "18.04" ]; then
+                    printf "${INFO_C}Detected Ubuntu 18.04. Installing NVIDIA Driver 470...${NORMAL_C}"
+                    sudo apt install nvidia-driver-470
+                elif [ "$ubuntu_version" == "20.04" ]; then
+                    printf "${INFO_C}Detected Ubuntu 20.04. Installing NVIDIA Driver 470...${NORMAL_C}"
+                    sudo apt install nvidia-driver-470
+                elif [ "$ubuntu_version" == "22.04" ]; then
+                    printf "${INFO_C}Detected Ubuntu 22.04. Installing NVIDIA driver 520...${NORMAL_C}"
+                    sudo apt install nvidia-driver-520
+                else
+                    printf "${BAD_C}Unsupported Ubuntu version: $ubuntu_version${NORMAL_C}"
+                fi
+
             elif [[ $linux_distro = "kali" ]]; then
                 sudo apt update && sudo apt install -y nvidia-driver
             else

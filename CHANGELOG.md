@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.78](#180)
+
+### Added
+- Replace ubuntu-drivers with nvidia meta packages for better compatibility
 # [0.4.77](#179)
 
 ### Added
