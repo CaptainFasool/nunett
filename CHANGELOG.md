@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.79](#185)
+
+### Added
+- Remove /etc/nunet during dpkg purge
 # [0.4.78](#180)
 
 ### Added
