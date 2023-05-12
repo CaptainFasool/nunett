@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/credentials"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -26,11 +27,11 @@ func getAddress() string {
 	var (
 		addr string
 		// sigNoz Address
-		sigNoznunetStagingAddr string = "telemetry-staging.nunet.io:14317"
-		sigNoznunetTestAddr    string = "telemetry-test.nunet.io:4317"
-		sigNoznunetEdgeAddr    string = "telemetry-edge.nunet.io:34317"
-		sigNoznunetTeamAddr    string = "telemetry-team.nunet.io:44317"
-		sigNozlocalAddr        string = "localhost:4317"
+		sigNoznunetStagingAddr string = "dev.nunet.io:21002" //"telemetry-staging.nunet.io:14317"
+		sigNoznunetTestAddr    string = "dev.nunet.io:21002" //"telemetry-test.nunet.io:4317"
+		sigNoznunetEdgeAddr    string = "dev.nunet.io:21002" //"telemetry-edge.nunet.io:34317"
+		sigNoznunetTeamAddr    string = "dev.nunet.io:21002" //"telemetry-team.nunet.io:44317"
+		sigNozlocalAddr        string = "dev.nunet.io:21002" //"localhost:4317"
 	)
 	if channelName == "nunet-staging" {
 		addr = sigNoznunetStagingAddr
@@ -86,4 +87,10 @@ func InitTracer() func(context.Context) error {
 		),
 	)
 	return exporter.Shutdown
+}
+
+func Info(msg string, span trace.Span) trace.Span {
+	span.AddEvent("{'level':'info','msg':'if response is valid','url':'url','attempt':3,'backoff':'time', 'trace-id':" + span.SpanContext().TraceID().String() + ", 'span-id':" + span.SpanContext().SpanID().String() + "}")
+	span.SetAttributes(attribute.String("level", "info"), attribute.String("msg", msg), attribute.Bool("boolean", true))
+	return span
 }
