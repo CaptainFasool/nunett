@@ -754,65 +754,77 @@ onboard-gpu() {
 
     nvidia="$(lspci | grep 'VGA compatible controller: NVIDIA' | awk '{print $5}')" # a variable with value "NVIDIA"
     gpu="$(lspci | grep 'VGA compatible controller: NVIDIA' | awk '{print $8 " " $9 " " $10 " " $11}')" # tries to fetch the gpu name
-    all_gpus=$(nvidia-smi -L)
-    gpu_driver_version="$(nvidia-smi | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')" # the gpu driver version
-    gpu_driver_var="$(nvidia-smi | grep Driver | awk '{print $4}')" # a variable with value "Driver"
     linux_distro=$(grep -Po "(?<=^ID=).+" /etc/os-release | sed 's/"//g') # we add support for specific linux distributions through this variable.
+
     # CHECK IF THERE IS NVIDIA GPU
     if [ -n "$nvidia" ]; then
         printf "${GOOD_C}$nvidia $gpu GPU device found! ${NORMAL_C}\n"
-        printf "${INFO_C}All available GPU(s):\n$all_gpus ${NORMAL_C}\n"
-        sleep 3 #adding some time for the onboarder to see all GPUs on the machine
-        # IF gpu_driver_var IS not EMPTY WE WILL SKIP DRIVER AND Install container runtime
-        if [ -n "$gpu_driver_var" ]; then #IF $gpu_driver_var is not empty
-            printf "${INFO_C}$gpu_driver_version is already installed. Skipping installation of driver.${NORMAL_C}\n"
-        else
-            secure_boot_check
-            printf "${INFO_C}-----Starting NVIDIA GPU Driver Installation-----${NORMAL_C}\n"
-            if [[ $linux_distro = "ubuntu" ]]; then
-                sudo apt update
-                #!/bin/bash
-                # Detect the Ubuntu version
-                ubuntu_version=$(lsb_release -sr)
-                # Install the correct NVIDIA driver based on the Ubuntu version
-                if [ "$ubuntu_version" == "18.04" ]; then
-                    printf "${INFO_C}Detected Ubuntu 18.04. Installing NVIDIA Driver 470...${NORMAL_C}"
-                    sudo apt install nvidia-driver-470
-                elif [ "$ubuntu_version" == "20.04" ]; then
-                    printf "${INFO_C}Detected Ubuntu 20.04. Installing NVIDIA Driver 470...${NORMAL_C}"
-                    sudo apt install nvidia-driver-470
-                elif [ "$ubuntu_version" == "22.04" ]; then
-                    printf "${INFO_C}Detected Ubuntu 22.04. Installing NVIDIA driver 520...${NORMAL_C}"
-                    sudo apt install nvidia-driver-520
+        all_gpus=$(nvidia-smi -L)
+        if [ $? -eq 0 ]; then
+            printf "${INFO_C}All available GPU(s):\n$all_gpus ${NORMAL_C}\n"
+            sleep 3 #adding some time for the onboarder to see all GPUs on the machine
+
+            gpu_driver_version="$(nvidia-smi | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')" # the gpu driver version
+            gpu_driver_var="$(nvidia-smi | grep Driver | awk '{print $4}')" # a variable with value "Driver"
+            
+            # IF gpu_driver_var IS not EMPTY WE WILL SKIP DRIVER AND Install container runtime
+            if [ -n "$gpu_driver_var" ]; then #IF $gpu_driver_var is not empty
+                printf "${INFO_C}$gpu_driver_version is already installed. Skipping installation of driver.${NORMAL_C}\n"
+            else
+                secure_boot_check
+                printf "${INFO_C}-----Starting NVIDIA GPU Driver Installation-----${NORMAL_C}\n"
+                if [[ $linux_distro = "ubuntu" ]]; then
+                    sudo apt update
+                    # Detect the Ubuntu version
+                    ubuntu_version=$(lsb_release -sr)
+                    # Install the correct NVIDIA driver based on the Ubuntu version
+                    if [ "$ubuntu_version" == "18.04" ]; then
+                        printf "${INFO_C}Detected Ubuntu 18.04. Installing NVIDIA Driver 470...${NORMAL_C}"
+                        sudo apt install nvidia-driver-470
+                    elif [ "$ubuntu_version" == "20.04" ]; then
+                        printf "${INFO_C}Detected Ubuntu 20.04. Installing NVIDIA Driver 470...${NORMAL_C}"
+                        sudo apt install nvidia-driver-470
+                    elif [ "$ubuntu_version" == "22.04" ]; then
+                        printf "${INFO_C}Detected Ubuntu 22.04. Installing NVIDIA driver 520...${NORMAL_C}"
+                        sudo apt install nvidia-driver-520
+                    else
+                        printf "${BAD_C}Unsupported Ubuntu version: $ubuntu_version${NORMAL_C}"
+                    fi
+                    gpu_driver_version="$(nvidia-smi | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')" # the gpu driver version
+                    gpu_driver_var="$(nvidia-smi | grep Driver | awk '{print $4}')" # a variable with value "Driver"
+            
+                    if [[ $gpu_driver_var = "Driver" ]]; then
+                        printf "${GOOD_C}-----NVIDIA GPU Driver $gpu_driver_version Installed-----${NORMAL_C}\n"
+                    else
+                        printf "${BAD_C}-----NVIDIA GPU Driver Still Not Found. Please Retry-----${NORMAL_C}\n"
+                    fi
+
+                elif [[ $linux_distro = "kali" ]]; then
+                    sudo apt update && sudo apt install -y nvidia-driver
+                    gpu_driver_var="$(nvidia-smi | grep Driver | awk '{print $4}')"
+                    gpu_driver_version="$(nvidia-smi | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')"
+
+                    if [[ $gpu_driver_var = "Driver" ]]; then
+                        printf "${GOOD_C}-----NVIDIA GPU Driver $gpu_driver_version Installed-----${NORMAL_C}\n"
+                    else
+                        printf "${BAD_C}-----NVIDIA GPU Driver Still Not Found. Please Retry-----${NORMAL_C}\n"
+                    fi                    
                 else
-                    printf "${BAD_C}Unsupported Ubuntu version: $ubuntu_version${NORMAL_C}"
+                    printf "${INFO_C}Currently, only Ubuntu and Kali Linux Distributions are supported. But we will definitely add support for more distros in future.${NORMAL_C}\n"
                 fi
-
-            elif [[ $linux_distro = "kali" ]]; then
-                sudo apt update && sudo apt install -y nvidia-driver
-            else
-                printf "${INFO_C}Currently, only Ubuntu and Kali Linux Distributions are supported. But we will definitely add support for more distros in future.${NORMAL_C}\n"
             fi
-            gpu_driver_var="$(nvidia-smi | grep Driver | awk '{print $4}')"
-            gpu_driver_version="$(nvidia-smi | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')"
-            if [[ $gpu_driver_var = "Driver" ]]; then
-                printf "${GOOD_C}-----NVIDIA GPU Driver $gpu_driver_version Installed-----${NORMAL_C}\n"
-            else
-                printf "${BAD_C}-----NVIDIA GPU Driver Still Not Found. Please Retry-----${NORMAL_C}\n"
-            fi
-        fi
 
-        printf "${INFO_C}-----Starting NVIDIA Container Runtime Installation-----${NORMAL_C}\n"
-        curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | sudo apt-key add -
-        distribution=$(
-            . /etc/os-release
-            echo $ID$VERSION_ID
-        )
-        curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
-        sudo apt update
-        sudo apt install -y nvidia-container-runtime
-        sudo systemctl restart docker
-        printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
+            printf "${INFO_C}-----Starting NVIDIA Container Runtime Installation-----${NORMAL_C}\n"
+            curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | sudo apt-key add -
+            distribution=$(
+                . /etc/os-release
+                echo $ID$VERSION_ID
+            )
+            curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+            sudo apt update
+            sudo apt install -y nvidia-container-runtime
+            sudo systemctl restart docker
+            printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
     else
         # IF THERE IS NO NVIDIA GPU THE nvidia VARIABLE WILL BE EMPTY SO WE REPORT MISSING GPU
         printf "${INFO_C}This machine does not have an NVIDIA GPU. Skipping GPU Driver and Container Runtime Installation.${NORMAL_C}\n"
