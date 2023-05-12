@@ -20,6 +20,23 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.78](#180)
+
+### Added
+- Replace ubuntu-drivers with nvidia meta packages for better compatibility
+# [0.4.77](#179)
+
+### Added
+- Add config module for configuring DMS runtime
+
+# [0.4.76](#171)
+
+### Added
+- Fixes #171 parse error on `nunet peer list`
+# [0.4.75](#176)
+
+### Added
+- Respond with {"action": "job-submitted"} just before deployment request is handed over to compute provider
 # [0.4.74](!135)
 
 ### Added

@@ -52,6 +52,7 @@ type NewService struct {
 // ServiceCall defines the schema of the data to be sent to stats db when a host machine accepts a deployement request
 type ServiceCall struct {
 	CallID              float32
+	PeerIDOfComputeHost string
 	PeerIDOfServiceHost string
 	ServiceID           string
 	CPUUsed             float32

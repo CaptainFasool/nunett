@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.12.4
-// source: event_listener.proto
+// source: event_listener_spec/event_listener.proto
 
 package event_listener_spec
 
@@ -427,5 +427,5 @@ var EventListener_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "event_listener.proto",
+	Metadata: "event_listener_spec/event_listener.proto",
 }

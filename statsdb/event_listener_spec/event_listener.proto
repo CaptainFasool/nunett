@@ -64,16 +64,17 @@ message NewServiceOutput{
 
 message ServiceCallInput{
     float call_id = 1;
-    string peer_id_of_service_host = 2; 
-    string service_id = 3;
-    float cpu_used = 4; 
-    float max_ram = 5; 
-    float memory_used = 6;
-    float network_bw_used = 7; 
-    float time_taken = 8;
-    string status = 9; 
-    int32 amount_of_ntx = 10;
-    float timestamp = 11;
+    string peer_id_of_compute_host = 2; 
+    string peer_id_of_service_host = 3; 
+    string service_id = 4;
+    float cpu_used = 5; 
+    float max_ram = 6; 
+    float memory_used = 7;
+    float network_bw_used = 8; 
+    float time_taken = 9;
+    string status = 10; 
+    int32 amount_of_ntx = 11;
+    float timestamp = 12;
 }
 
 message ServiceCallOutput{

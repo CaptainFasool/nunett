@@ -123,6 +123,7 @@ func ServiceCall(inputData models.ServiceCall) {
 
 	res, err := statsdbClient.ServiceCall(ctx, &pb.ServiceCallInput{
 		CallId:              inputData.CallID,
+		PeerIdOfComputeHost: libp2p.GetP2P().Host.ID().Pretty(),
 		PeerIdOfServiceHost: inputData.PeerIDOfServiceHost,
 		ServiceId:           inputData.ServiceID,
 		CpuUsed:             inputData.CPUUsed, MaxRam: inputData.MaxRAM,

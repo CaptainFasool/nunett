@@ -21,14 +21,15 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
-const (
+var (
 	vcpuToMicroseconds float64       = 100000
-	gistUpdateDuration time.Duration = 2 * time.Minute
+	gistUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.GistUpdateInterval) * time.Minute
 )
 
 func freeUsedResources(contID string) {
@@ -199,7 +200,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	depRes := models.DeploymentResponse{Success: true}
 	resCh <- depRes
 
-	tick := time.NewTicker(gistUpdateDuration)
+	tick := time.NewTicker(gistUpdateInterval)
 	defer tick.Stop()
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
@@ -228,6 +229,13 @@ outerLoop:
 
 			// add exitStatus to db
 			var services models.Services
+			r := db.DB.Where("container_id = ?", resp.ID).Find(&services)
+			if r.Error != nil {
+				zlog.Sugar().Errorf("problemn updating services: %v", r.Error)
+				depRes := models.DeploymentResponse{Success: false, Content: "Problem with services tracker. Unable to complete request."}
+				resCh <- depRes
+				return
+			}
 			if containerStatus.StatusCode == 0 {
 				services.JobStatus = "finished without errors"
 				status = "finished without errors"
@@ -238,16 +246,10 @@ outerLoop:
 				requestTracker.Status = "finished with errors"
 			}
 
-			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
-			if r.Error != nil {
-				zlog.Sugar().Errorf("problemn updating services: %v", r.Error)
-				depRes := models.DeploymentResponse{Success: false, Content: "Problem with services tracker. Unable to complete request."}
-				resCh <- depRes
-				return
-			}
-
-			duration := time.Now().Sub(service.CreatedAt)
-			timeTakenSeconds := duration.Seconds()
+			duration := time.Now().Sub(services.CreatedAt)
+			fmt.Println("Time is :", services.CreatedAt)
+			timeTaken := duration.Seconds()
+			zlog.Sugar().Infof("the time is Taken by the container is: %v", timeTaken)
 			ServiceCallParams := models.ServiceCall{
 				CallID:              requestTracker.CallID,
 				PeerIDOfServiceHost: depReq.Params.LocalNodeID,
@@ -255,13 +257,14 @@ outerLoop:
 				MemoryUsed:          float32(maxUsedRAM),
 				MaxRAM:              float32(depReq.Constraints.RAM),
 				NetworkBwUsed:       0.0,
-				TimeTaken:           float32(timeTakenSeconds),
+				TimeTaken:           float32(timeTaken),
 				Status:              status,
 				AmountOfNtx:         requestTracker.MaxTokens,
 				Timestamp:           float32(statsdb.GetTimestamp()),
 			}
 			statsdb.ServiceCall(ServiceCallParams)
 
+			db.DB.Save(&services)
 			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
 				zlog.Sugar().Errorf("problem updating request tracker: %v", res.Error)

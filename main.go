@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"gitlab.com/nunet/device-management-service/db"
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -20,7 +22,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.74
+// @version         0.4.78
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 
@@ -34,12 +36,12 @@ import (
 // @host      localhost:9999
 // @BasePath  /api/v1
 func main() {
+	config.LoadConfig()
+
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
 	db.ConnectDatabase()
-
-	utils.GenerateMachineUUID()
 
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
@@ -71,6 +73,6 @@ func startServer(wg *sync.WaitGroup) {
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	router.Run(":9999")
+	router.Run(fmt.Sprintf(":%d", config.GetConfig().Rest.Port))
 
 }
