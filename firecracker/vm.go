@@ -16,8 +16,10 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -40,7 +42,7 @@ func RunPreviouslyRunningVMs() error {
 
 // GenerateSocketFile generates a path for socket file to be used for communication with firecracker.
 func GenerateSocketFile(n int) string {
-	prefix := "/etc/nunet/sockets/"
+	prefix := fmt.Sprintf("%s/sockets/", config.GetConfig().General.MetadataPath)
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	rand.Seed(time.Now().Unix())
 
@@ -154,6 +156,11 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	telemetry.CalcFreeResources()
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -175,5 +182,10 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	telemetry.CalcFreeResources()
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
 }

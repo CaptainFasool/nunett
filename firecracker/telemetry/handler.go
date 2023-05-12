@@ -1,36 +1,44 @@
 package telemetry
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 )
 
-func QueryRunningVMs(DB *gorm.DB) []models.VirtualMachine {
+func GetFreeResources() (models.FreeResources, error) {
+	var freeResource models.FreeResources
+	if res := db.DB.Find(&freeResource); res.RowsAffected == 0 {
+		return freeResource, res.Error
+	}
+	return freeResource, nil
+}
+
+func QueryRunningVMs(DB *gorm.DB) ([]models.VirtualMachine, error) {
 	var vm []models.VirtualMachine
 	result := DB.Where("state = ?", "running").Find(&vm)
 	if result.Error != nil {
-		panic(result.Error)
+		return nil, fmt.Errorf("unable to query running vms - %v", result.Error)
 	}
-	return vm
+	return vm, nil
 
 }
 
-func QueryRunningConts(DB *gorm.DB) []models.Services {
+func QueryRunningConts(DB *gorm.DB) ([]models.Services, error) {
 	var services []models.Services
 	result := DB.Where("job_status = ?", "running").Find(&services)
 	if result.Error != nil {
-		panic(result.Error)
+		return nil, fmt.Errorf("unable to query running containers - %v", result.Error)
 	}
 
-	return services
+	return services, nil
 }
 
 func CalcUsedResourcesVMs(vms []models.VirtualMachine) (int, int) {
@@ -47,9 +55,9 @@ func CalcUsedResourcesVMs(vms []models.VirtualMachine) (int, int) {
 	return totalCPUMhz, totalMemSizeMib
 }
 
-func CalcUsedResourcesConts(services []models.Services) (int, int) {
+func CalcUsedResourcesConts(services []models.Services) (int, int, error) {
 	if len(services) == 0 {
-		return 0, 0
+		return 0, 0, nil
 	}
 	var tot_cpu, tot_mem int
 	for i := 0; i < len(services); i++ {
@@ -57,21 +65,30 @@ func CalcUsedResourcesConts(services []models.Services) (int, int) {
 		var resourceReq models.ServiceResourceRequirements
 		result := db.DB.Where("id = ?", idx).Find(&resourceReq)
 		if result.Error != nil {
-			panic(result.Error)
+			return 0, 0, fmt.Errorf("unable to query resource requirements - %v", result.Error)
 		}
 		tot_cpu += resourceReq.CPU
 		tot_mem += resourceReq.RAM
 	}
 
-	return tot_cpu, tot_mem
+	return tot_cpu, tot_mem, nil
 }
 
 func CalcFreeResources() error {
-	vms := QueryRunningVMs(db.DB)
-	conts := QueryRunningConts(db.DB)
+	vms, err := QueryRunningVMs(db.DB)
+	if err != nil {
+		return err
+	}
+	conts, err := QueryRunningConts(db.DB)
+	if err != nil {
+		return err
+	}
 
 	tot_cpu_vm, tot_mem_vm := CalcUsedResourcesVMs(vms)
-	tot_cpu_cont, tot_mem_cont := CalcUsedResourcesConts(conts)
+	tot_cpu_cont, tot_mem_cont, err := CalcUsedResourcesConts(conts)
+	if err != nil {
+		return err
+	}
 
 	tot_cpu_used := tot_cpu_cont + tot_cpu_vm
 	tot_mem := tot_mem_cont + tot_mem_vm
@@ -91,8 +108,6 @@ func CalcFreeResources() error {
 	freeResource.PriceRam = availableRes.PriceRam
 	freeResource.PriceDisk = availableRes.PriceDisk
 	// TODO: Calculate remaining disk space
-
-	statsdb.DeviceResourceChange(freeResource)
 
 	// Check if we have a previous entry in the table
 	var freeresource models.FreeResources

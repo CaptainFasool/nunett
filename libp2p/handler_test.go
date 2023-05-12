@@ -193,7 +193,7 @@ func TestStartChatCorrect(t *testing.T) {
 
 	// initialize Other node
 	priv2, _, _ := GenerateKey(time.Now().Unix())
-	host2, idht2, err := NewHost(ctx, 9501, priv2, true)
+	host2, idht2, err := NewHost(ctx, priv2, true)
 	if err != nil {
 		t.Fatalf("Second Node Initialization Failed: %v", err)
 	}

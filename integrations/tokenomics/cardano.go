@@ -9,6 +9,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
 type ClaimCardanoTokenBody struct {
@@ -34,21 +35,37 @@ func HandleRequestReward(c *gin.Context) {
 	// SELECTs the first record; first record which is not marked as delete
 	if err := db.DB.First(&service).Error; err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(500, gin.H{"message": "no services running"})
+		c.JSON(404, gin.H{"error": "no job deployed to request reward for"})
 		return
 	}
 
 	if service.JobStatus == "running" {
-		c.JSON(102, gin.H{"message": "the job is still running"})
+		c.JSON(503, gin.H{"error": "the job is still running"})
 		return
 	}
 
 	// Send the service data to oracle for examination
 	resp, err := oracle.WithdrawTokenRequest(service)
 	if err != nil {
-		c.JSON(500, gin.H{"message": "connetction to oracle failed"})
+		c.JSON(500, gin.H{"error": "connetction to oracle failed"})
 		return
 	}
+
+	var requestTracker models.RequestTracker
+	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
+	if res.Error != nil {
+		zlog.Error(res.Error.Error())
+	}
+
+	// sending ntx_payment info to stats database via grpc Call
+	NtxPaymentParams := models.NtxPayment{
+		CallID:      requestTracker.CallID,
+		ServiceID:   requestTracker.ServiceType,
+		AmountOfNtx: requestTracker.MaxTokens,
+		PeerID:      requestTracker.NodeID,
+		Timestamp:   float32(statsdb.GetTimestamp()),
+	}
+	statsdb.NtxPayment(NtxPaymentParams)
 
 	c.JSON(200, resp)
 }

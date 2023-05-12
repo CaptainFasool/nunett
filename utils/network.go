@@ -2,20 +2,22 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-)
-
-const (
-	// DMSBaseURL is base of all API endpoints on DMS
-	DMSBaseURL = "http://localhost:9999/api/v1"
+	"gitlab.com/nunet/device-management-service/internal/config"
 )
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
 func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) http.Response {
-	req, err := http.NewRequest(methodType, DMSBaseURL+internalEndpoint, bytes.NewBuffer(body))
+	req, err := http.NewRequest(
+		methodType,
+		fmt.Sprintf(
+			"http://localhost:%d/api/v1",
+			config.GetConfig().Rest.Port)+internalEndpoint,
+		bytes.NewBuffer(body))
 	if err != nil {
 		panic(err)
 	}

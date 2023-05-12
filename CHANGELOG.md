@@ -20,6 +20,84 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.80](!146)
+
+### Changed
+- Fix CLI unit tests
+- Allow SetConfig to set parameters at runtime
+- Improve UUID generation and db storage
+# [0.4.79](#185)
+
+### Added
+- Remove /etc/nunet during dpkg purge
+# [0.4.78](#180)
+
+### Changed
+- Replace ubuntu-drivers with nvidia meta packages for better compatibility
+# [0.4.77](#179)
+
+### Added
+- Add config module for configuring DMS runtime
+
+# [0.4.76](#171)
+
+### Changed
+- Fixes #171 parse error on `nunet peer list`
+# [0.4.75](#176)
+
+### Added
+- Respond with {"action": "job-submitted"} just before deployment request is handed over to compute provider
+# [0.4.74](!135)
+
+### Changed
+- Generate Events whenever there is an update to JobStatus field in service table
+
+### Changed
+- Send events on the same stream which is responsible for deployment response
+- Update DeploymentRequestFlat table with JobStatus on service provider side
+- Raise an error on frontend if a job is already running
+- Close libp2p network stream when job is done either with success or failure
+# [0.4.73](#175)
+
+### Changed
+- Increase timeout when connecting to Oracle
+# [0.4.72](#173)
+
+### Changed
+- Bug fix: disable local address filter when not on server mode
+## [0.4.71](!137)
+
+### Changed
+- No error on calcUsedResources when no services
+
+## [0.4.70](#170)
+
+### Changed
+- Avoid error on unreplied ping
+- Fix `dial to self attempted` bug
+- ntx_payment event on claim by CP instead of on depReq by SP
+- Avoid panic on deployment errors and send appropriate deployment response
+- Avoid panic on gist update and dht update errors
+
+### Added
+- Oracle instances for channels other than team channel
+## [0.4.69](#168)
+
+### Changed
+- Obtain gist token from a public endpoint
+- Send depResp and close stream if unable to create gist
+## [0.4.68](!129)
+
+### Changed
+- Raise HTTP exceptions for internal DMS error occurred on route handlers
+## [0.4.67](#165)
+
+### Changed
+- Added ServiceCall event back after removed by mistake
+## [0.4.66](#167)
+
+### Changed
+- Refactored statsdb device resource change calls
 ## [0.4.65](#164)
 
 ### Changed

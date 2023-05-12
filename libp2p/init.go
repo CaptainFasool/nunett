@@ -4,6 +4,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/logger"
 	"gitlab.com/nunet/device-management-service/models"
 )
@@ -16,16 +17,16 @@ func init() {
 
 const (
 	// Stream Protocol for DHT
-	DHTProtocolID = "/nunet/dms/dht/0.0.1"
+	DHTProtocolID = "/nunet/dms/dht/0.0.2"
 
 	// Stream Protocol for Deployment Requests
-	DepReqProtocolID = "/nunet/dms/depreq/0.0.1"
+	DepReqProtocolID = "/nunet/dms/depreq/0.0.2"
 
 	// Stream Protocol for Chat
 	ChatProtocolID = "/nunet/dms/chat/0.0.1"
 
 	// Stream Protocol for Ping
-	PingProtocolID = "/nunet/dms/ping/1.0.0"
+	PingProtocolID = "/nunet/dms/ping/0.0.1"
 )
 
 const (
@@ -54,11 +55,7 @@ var relayPeer = make(chan peer.AddrInfo)
 var NuNetBootstrapPeers []multiaddr.Multiaddr
 
 func init() {
-	for _, s := range []string{
-		"/dnsaddr/bootstrap.p2p.nunet.io/p2p/QmQ2irHa8aFTLRhkbkQCRrounE4MbttNp8ki7Nmys4F9NP",
-		"/dnsaddr/bootstrap.p2p.nunet.io/p2p/Qmf16N2ecJVWufa29XKLNyiBxKWqVPNZXjbL3JisPcGqTw",
-		"/dnsaddr/bootstrap.p2p.nunet.io/p2p/QmTkWP72uECwCsiiYDpCFeTrVeUM9huGTPsg3m6bHxYQFZ",
-	} {
+	for _, s := range config.GetConfig().P2P.BootstrapPeers {
 		ma, err := multiaddr.NewMultiaddr(s)
 		if err != nil {
 			panic(err)

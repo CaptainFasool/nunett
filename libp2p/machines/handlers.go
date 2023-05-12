@@ -3,7 +3,6 @@ package machines
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -46,26 +45,31 @@ func HandleRequestService(c *gin.Context) {
 	var depReq models.DeploymentRequest
 	var depReqFlat models.DeploymentRequestFlat
 	if err := c.BindJSON(&depReq); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "json: cannot unmarshal object into Go"})
 		return
+	}
+
+	// Check if there is already a running job
+	if result := db.DB.Where("deleted_at IS NULL").Find(&depReqFlat).RowsAffected; result > 0 {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "a service is already running; only 1 service is supported at the moment"})
 	}
 
 	// add node_id and public_key in deployment request
 	pKey, err := libp2p.GetPublicKey()
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("unable to obtain public key: %v", err))
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to obtain public key"})
 		return
 	}
 	selfNodeID := libp2p.GetP2P().Host.ID().String()
 
-	depReq.Params.NodeID = selfNodeID
-	depReq.Params.PublicKey = pKey.Type().String()
+	depReq.Params.LocalNodeID = selfNodeID
+	depReq.Params.LocalPublicKey = pKey.Type().String()
 
 	// check if the pricing matched
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
 	zlog.Sugar().Infof("estimated ntx price %v", estimatedNtx)
 	if estimatedNtx > float64(depReq.MaxNtx) {
-		c.AbortWithError(http.StatusBadRequest, errors.New("nunet estimation price is greater than client price"))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "nunet estimation price is greater than client price"})
 		return
 	}
 
@@ -96,57 +100,51 @@ func HandleRequestService(c *gin.Context) {
 		}
 	}
 	if onlinePeer.PeerID == "" {
-		c.AbortWithError(http.StatusBadRequest, errors.New("no peers found with matched specs"))
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
 		return
 	}
 	computeProvider := onlinePeer
 	if len(filteredPeers) < 1 {
-		c.AbortWithError(http.StatusBadRequest, errors.New("no peers found with matched specs"))
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
 		return
 	}
 	zlog.Sugar().Debugf("compute provider: ", computeProvider)
 
-	depReq.Params.NodeID = computeProvider.PeerID
-
+	depReq.Params.RemoteNodeID = computeProvider.PeerID
+	computeProviderPeerID, err := peer.Decode(computeProvider.PeerID)
+	if err != nil {
+		zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
+		return
+	}
+	computeProviderPubKey, err := computeProviderPeerID.ExtractPublicKey()
+	if err != nil {
+		zlog.Sugar().Errorf("unable to extract public key from peer id: %v", err)
+		depReq.Params.RemotePublicKey = ""
+	} else {
+		depReq.Params.RemotePublicKey = computeProviderPubKey.Type().String()
+		zlog.Sugar().Debugf("compute provider public key: ", computeProviderPubKey.Type().String())
+	}
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Sugar().Infof("sending fund contract request to oracle")
 	fcr, err := oracle.FundContractRequest()
 	if err != nil {
 		zlog.Sugar().Infof("sending fund contract request to oracle failed")
-		c.AbortWithError(http.StatusBadRequest, errors.New("cannot connect to oracle"))
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "cannot connect to oracle"})
 		return
 	}
 
 	// Marshal struct to JSON
-	depReqBytes, err := json.Marshal(depReq)
-	if err != nil {
-		zlog.Sugar().Errorf("failed to marshal struct to json: %v", err)
-		return
-	}
-
+	depReqBytes, _ := json.Marshal(depReq)
 	// Convert JSON bytes to string
 	depReqStr := string(depReqBytes)
 	depReqFlat.DeploymentRequest = depReqStr
+	depReqFlat.JobStatus = "awaiting"
 
 	if err := db.DB.Create(&depReqFlat).Error; err != nil {
-		panic(err)
+		zlog.Sugar().Infof("cannot write to database")
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "cannot write to database"})
+		return
 	}
-
-	var requestTracker models.RequestTracker
-	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
-	if res.Error != nil {
-		zlog.Error(res.Error.Error())
-	}
-
-	// sending ntx_payment info to stats database via grpc Call
-	NtxPaymentParams := models.NtxPayment{
-		CallID:      requestTracker.CallID,
-		ServiceID:   requestTracker.ServiceType,
-		AmountOfNtx: int32(estimatedNtx),
-		PeerID:      requestTracker.NodeID,
-		Timestamp:   float32(statsdb.GetTimestamp()),
-	}
-	statsdb.NtxPayment(NtxPaymentParams)
 
 	// oracle outputs: compute provider user address, estimated price, signature, oracle message
 	fundingRespToWebapp := struct {
@@ -185,14 +183,16 @@ func HandleDeploymentRequest(c *gin.Context) {
 
 	conn := internal.WebSocketConnection{Conn: ws}
 
-	go listenForDeploymentStatus(c, &conn)
-	go listenForDeploymentResponse(c, &conn)
+	go listenToOutgoingMessage(c, &conn)
+	go listenForIncomingMessage(c, &conn)
 }
 
-func listenForDeploymentStatus(ctx *gin.Context, conn *internal.WebSocketConnection) {
+// listenToOutgoingMessage is for sending message to websocket server.
+// If you want to add a new message to receive, see listenForDeploymentResponse.
+func listenToOutgoingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Error(fmt.Sprintf("%v", r))
+			zlog.Sugar().Errorf("%v", r)
 		}
 	}()
 
@@ -204,11 +204,13 @@ func listenForDeploymentStatus(ctx *gin.Context, conn *internal.WebSocketConnect
 			return
 		}
 
-		handleWebsocketAction(ctx, p)
+		handleWebsocketAction(ctx, p, conn)
 	}
 }
 
-func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConnection) {
+// listenForDeploymentStatus is for receiving message to websocket client.
+// If you want to add a new message to send to server, see listenForDeploymentStatus.
+func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	for {
 		// 1. check if DepResQueue has anything
 		select {
@@ -239,7 +241,7 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 	}
 }
 
-func handleWebsocketAction(ctx *gin.Context, payload []byte) {
+func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebSocketConnection) {
 	// convert json to go values
 	var m wsMessage
 	err := json.Unmarshal(payload, &m)
@@ -259,14 +261,14 @@ func handleWebsocketAction(ctx *gin.Context, payload []byte) {
 			return
 		}
 
-		err = sendDeploymentRequest(ctx)
+		err = sendDeploymentRequest(ctx, conn)
 		if err != nil {
 			zlog.Error(err.Error())
 		}
 	}
 }
 
-func sendDeploymentRequest(ctx *gin.Context) error {
+func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection) error {
 	span := trace.SpanFromContext(ctx.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
 	span.SetAttributes(attribute.String("TransactionStatus", "success"))
@@ -278,13 +280,6 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 
 	// SELECTs the first record; first record which is not marked as delete
 	if err := db.DB.First(&depReqFlat).Error; err != nil {
-		zlog.Sugar().Errorf("%v", err)
-	}
-
-	// delete temporary record
-	// XXX: Needs to be modified to take multiple deployment requests from same service provider
-	// deletes all the record in table; deletes == mark as delete
-	if err := db.DB.Where("deleted_at IS NULL").Delete(&models.DeploymentRequestFlat{}).Error; err != nil {
 		zlog.Sugar().Errorf("%v", err)
 	}
 
@@ -303,6 +298,10 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 
 	zlog.Sugar().Debugf("deployment request: %v", depReq)
 
+	// notify websocket client about the
+	submitted := map[string]string{"action": "job-submitted"}
+	conn.WriteJSON(submitted)
+
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {
 		return err
@@ -311,7 +310,7 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	//TODO: Context handling and cancellation on all messaging related code
 	//      most importantly, depreq/depres messaging
 	//XXX: needs a lot of testing.
-	go libp2p.DeploymentResponseListener(depReqStream)
+	go libp2p.DeploymentUpdateListener(depReqStream)
 
 	return nil
 }
@@ -327,7 +326,7 @@ func HandleSendStatus(c *gin.Context) {
 
 	body := BlockchainTxStatus{}
 	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot read payload body"})
 		return
 	}
 

@@ -106,7 +106,9 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 	// Create a new stream to the target peer using the ping protocol
 	stream, err := h.NewStream(ctx, target, PingProtocolID)
 	if err != nil {
-		zlog.Sugar().Errorf("failed to create stream to peer %s: %w", target, err)
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("failed to create stream to peer %s: %w", target, err)
+		}
 		pingResult.Success = false
 		return pingResult
 	}
@@ -114,13 +116,18 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 	w := bufio.NewWriter(stream)
 	_, err = w.WriteString("ping" + "\n")
 	if err != nil {
-		zlog.Sugar().Errorf("failed to write ping message: %w", err)
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("failed to write ping message: %w", err)
+		}
+
 		pingResult.Success = false
 		return pingResult
 	}
 	err = w.Flush()
 	if err != nil {
-		zlog.Sugar().Errorf("failed to flush ping message: %w", err)
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("failed to flush ping message: %w", err)
+		}
 		pingResult.Success = false
 		return pingResult
 	}
@@ -129,14 +136,18 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 
 	pongMsg, err := r.ReadString('\n')
 	if err != nil {
-		zlog.Sugar().Errorf("failed to read pong message: %w", err)
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("failed to read pong message: %w", err)
+		}
 		pingResult.Success = false
 		return pingResult
 	}
 
 	// Check if the pong message is the same as the ping message
 	if pongMsg != "ping"+"\n" {
-		zlog.Sugar().Errorf("unexpected pong message: %s", string(pongMsg))
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("unexpected pong message: %s", string(pongMsg))
+		}
 		pingResult.Success = false
 		return pingResult
 	}

@@ -7,10 +7,9 @@ import (
 
 func TestNewHost(t *testing.T) {
 	ctx := context.Background()
-	port := 9000
 	priv, _, _ := GenerateKey(0)
 
-	host, dht, err := NewHost(ctx, port, priv, true)
+	host, dht, err := NewHost(ctx, priv, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}

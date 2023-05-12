@@ -21,7 +21,7 @@ func TestChat(t *testing.T) {
 	defer ctx.Done()
 	priv1, _, _ := GenerateKey(time.Now().Unix())
 
-	host1, idht1, err := NewHost(ctx, 9500, priv1, true)
+	host1, idht1, err := NewHost(ctx, priv1, true)
 	// p2p = *DMSp2pInit(host1, idht1)
 
 	if err != nil {
@@ -43,7 +43,7 @@ func TestChat(t *testing.T) {
 
 	// initialize second node
 	priv2, _, _ := GenerateKey(time.Now().Unix())
-	host2, idht2, err := NewHost(ctx, 9501, priv2, true)
+	host2, idht2, err := NewHost(ctx, priv2, true)
 	if err != nil {
 		t.Fatalf("Second Node Initialization Failed: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestWrongFormatDepReq(t *testing.T) {
 	defer ctx.Done()
 	priv1, _, _ := GenerateKey(time.Now().Unix())
 
-	host1, idht1, err := NewHost(ctx, 9500, priv1, true)
+	host1, idht1, err := NewHost(ctx, priv1, true)
 
 	if err != nil {
 		t.Fatalf("First Node Initialization Failed: %v", err)
@@ -123,7 +123,7 @@ func TestWrongFormatDepReq(t *testing.T) {
 
 	// initialize second node
 	priv2, _, _ := GenerateKey(time.Now().Unix())
-	host2, idht2, err := NewHost(ctx, 9501, priv2, true)
+	host2, idht2, err := NewHost(ctx, priv2, true)
 	if err != nil {
 		t.Fatalf("Second Node Initialization Failed: %v", err)
 	}

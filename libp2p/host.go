@@ -30,13 +30,15 @@ import (
 	"github.com/spf13/afero"
 	mafilt "github.com/whyrusleeping/multiaddr-filter"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 type DMSp2p struct {
-	Host host.Host
-	DHT  *dht.IpfsDHT
-	PS   peerstore.Peerstore
+	Host  host.Host
+	DHT   *dht.IpfsDHT
+	PS    peerstore.Peerstore
 	peers []peer.AddrInfo
 }
 
@@ -72,7 +74,7 @@ func CheckOnboarding() {
 func RunNode(priv crypto.PrivKey, server bool) {
 	ctx := context.Background()
 
-	host, dht, err := NewHost(ctx, 9000, priv, server)
+	host, dht, err := NewHost(ctx, priv, server)
 	if err != nil {
 		panic(err)
 	}
@@ -89,9 +91,9 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 
-	go p2p.StartDiscovery(ctx, "nunet")
+	go p2p.StartDiscovery(ctx, utils.GetChannelName())
 
-	content, err := AFS.ReadFile("/etc/nunet/metadataV2.json")
+	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
 		zlog.Sugar().Errorf("metadata.json does not exists or not readable: %s\n", err)
 	}
@@ -118,7 +120,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	// Start the DHT Update
-	UpdateDHT()
+	go UpdateDHT()
 	// Broadcast DHT updates every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
 	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
@@ -267,7 +269,7 @@ func GetPrivateKey() (crypto.PrivKey, error) {
 	return privKey, nil
 }
 
-func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (host.Host, *dht.IpfsDHT, error) {
+func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, *dht.IpfsDHT, error) {
 
 	var idht *dht.IpfsDHT
 
@@ -293,8 +295,7 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 
 	var libp2pOpts []libp2p.Option
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(
-		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),      // regular tcp connections
-		fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port), // a UDP endpoint for the QUIC transport
+		config.GetConfig().P2P.ListenAddress...
 	),
 		libp2p.Identity(priv),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
@@ -307,16 +308,15 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.DefaultTransports,
 		libp2p.EnableNATService(),
-		libp2p.ConnectionGater((*filtersConnectionGater)(filter)),
 		libp2p.ConnectionManager(connmgr),
 		libp2p.EnableRelay(),
 		libp2p.EnableHolePunching(),
 		libp2p.EnableRelayService(
 			relay.WithResources(
 				relay.Resources{
-					MaxReservations: 256,
-					MaxCircuits:     32,
-					BufferSize:      4096,
+					MaxReservations:        256,
+					MaxCircuits:            32,
+					BufferSize:             4096,
 					MaxReservationsPerPeer: 8,
 					MaxReservationsPerIP:   16,
 				},
@@ -356,6 +356,7 @@ func NewHost(ctx context.Context, port int, priv crypto.PrivKey, server bool) (h
 
 	if server {
 		libp2pOpts = append(libp2pOpts, libp2p.AddrsFactory(makeAddrsFactory([]string{}, []string{}, defaultServerFilters)))
+		libp2pOpts = append(libp2pOpts, libp2p.ConnectionGater((*filtersConnectionGater)(filter)))
 	} else {
 		libp2pOpts = append(libp2pOpts, libp2p.NATPortMap())
 	}
