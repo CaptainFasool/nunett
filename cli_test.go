@@ -1,16 +1,21 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
@@ -35,6 +40,7 @@ func SetupRouter() *gin.Engine {
 type MyTestSuite struct {
 	suite.Suite
 	sync.WaitGroup
+	cleanup func(context.Context) error
 }
 
 func TestMyTestSuite(t *testing.T) {
@@ -43,14 +49,25 @@ func TestMyTestSuite(t *testing.T) {
 }
 
 func (s *MyTestSuite) SetupSuite() {
+	os.Mkdir("/tmp/nunet.test", 0755)
+	config.LoadConfig()
+	config.SetConfig("general.metadata_path", "/tmp/nunet.test/")
+
+	db.ConnectDatabase()
+
+	s.cleanup = tracing.InitTracer()
+
 	s.WaitGroup.Add(1)
 
 	router := SetupRouter()
 	go router.Run(":9999")
+	time.Sleep(4 * time.Second)
 }
 
 func (s *MyTestSuite) TearDownSuite() {
 	s.WaitGroup.Done()
+	s.cleanup(context.Background())
+	os.RemoveAll("/tmp/nunet.test")
 }
 
 func (s *MyTestSuite) TestNunetWalletNewEthereumCLI() {
@@ -87,18 +104,40 @@ func (s *MyTestSuite) TestNunetWalletNewCardanoCLI() {
 
 func (s *MyTestSuite) TestNuNetAvailableCLI() {
 	out, err := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
-		"available").Output()
+		"capacity", "-v").Output()
 
 	s.Nil(err)
 
-	type AvailableOutput struct {
-		CPU      float64 `json:"cpu"`
-		Memory   uint64  `json:"memory"`
-		NumCores uint64  `json:"total_cores"`
-	}
-	var resp AvailableOutput
-	err = json.Unmarshal(out, &resp)
+	outLines := strings.Split(string(out), "\n")
 
+	s.Equal("Total Machine Capacity", outLines[0])
+
+	type TotalMachineCapacityOutput struct {
+		CPU        float64 `json:"cpu"`
+		Memory     float64 `json:"memory"`
+		TotalCores int     `json:"total_cores"`
+	}
+	var totalResp TotalMachineCapacityOutput
+	err = json.Unmarshal([]byte(outLines[1]), &totalResp)
+	s.Nil(err)
+
+	s.Equal("Reserved for Nunet", outLines[3])
+	type ReservedForNuNetOutput struct {
+		CPU    float64 `json:"cpu"`
+		Memory float64 `json:"memory"`
+	}
+
+	var reservedResp ReservedForNuNetOutput
+	err = json.Unmarshal([]byte(outLines[4]), &reservedResp)
+	s.Nil(err)
+
+	s.Equal("Available Machine Capacity", outLines[6])
+	type AvailableOutput struct {
+		CPU    float64 `json:"cpu"`
+		Memory float64 `json:"memory"`
+	}
+	var availableResp AvailableOutput
+	err = json.Unmarshal([]byte(outLines[7]), &availableResp)
 	s.Nil(err)
 }
 
@@ -180,10 +219,6 @@ func (s *MyTestSuite) TestNunetOnboardLowCPUCLI() {
 }
 
 func (s *MyTestSuite) TestNunetOnboardLowCardanoValuesCLI() {
-	onboarding.FS = afero.NewMemMapFs()
-	onboarding.AFS = &afero.Afero{Fs: onboarding.FS}
-	onboarding.AFS.Mkdir("/etc/nunet", 0777)
-
 	provisioned := onboarding.GetTotalProvisioned()
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	var minimumCardanoMemory uint64 = 10000
@@ -211,10 +246,6 @@ func (s *MyTestSuite) TestNunetOnboardLowCardanoValuesCLI() {
 }
 
 func (s *MyTestSuite) TestNunetInfoNoMetadataCLI() {
-	onboarding.FS = afero.NewMemMapFs()
-	onboarding.AFS = &afero.Afero{Fs: onboarding.FS}
-	onboarding.AFS.Mkdir("/etc/nunet", 0777)
-
 	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
 	s.Contains(string(out), "metadata.json does not exists or not readable")
 }
@@ -222,10 +253,6 @@ func (s *MyTestSuite) TestNunetInfoNoMetadataCLI() {
 func (s *MyTestSuite) TestNunetInfoCLICPU() {
 	gpu, _ := onboarding.Check_gpu()
 	if len(gpu) == 0 {
-
-		onboarding.FS = afero.NewMemMapFs()
-		onboarding.AFS = &afero.Afero{Fs: onboarding.FS}
-		onboarding.AFS.Mkdir("/etc/nunet", 0777)
 		expectedJsonString := `{
 		"name": "TestMachineData",
 		"update_timestamp": 11111111111,
@@ -245,9 +272,14 @@ func (s *MyTestSuite) TestNunetInfoCLICPU() {
 		"network": "test-data",
 		"public_key": "test-address"
 		}`
-		onboarding.AFS.WriteFile("/etc/nunet/metadataV2.json", []byte(expectedJsonString), 0644)
+		onboarding.AFS.WriteFile(
+			fmt.Sprintf("%s/metadataV2.json", config.GetConfig().MetadataPath),
+			[]byte(expectedJsonString), 0644)
+
 		out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
 		var expectedMetadata, receivedMetadata models.MetadataV2
+
+		onboarding.AFS.Remove(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().MetadataPath))
 
 		err := json.Unmarshal(out, &receivedMetadata)
 		s.Nil(err)
@@ -262,9 +294,6 @@ func (s *MyTestSuite) TestNunetInfoCLICPU() {
 func (s *MyTestSuite) TestNunetInfoCLIGPU() {
 	gpu, _ := onboarding.Check_gpu()
 	if len(gpu) > 0 {
-		onboarding.FS = afero.NewMemMapFs()
-		onboarding.AFS = &afero.Afero{Fs: onboarding.FS}
-		onboarding.AFS.Mkdir("/etc/nunet", 0777)
 		expectedJsonString := `{
 		"name": "TestMachineData",
 		"update_timestamp": 11111111111,

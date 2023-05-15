@@ -17,7 +17,7 @@ func init() {
 
 const (
 	// Stream Protocol for DHT
-	DHTProtocolID = "/nunet/dms/dht/0.0.1"
+	DHTProtocolID = "/nunet/dms/dht/0.0.2"
 
 	// Stream Protocol for Deployment Requests
 	DepReqProtocolID = "/nunet/dms/depreq/0.0.2"

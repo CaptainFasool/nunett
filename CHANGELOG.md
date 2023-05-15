@@ -20,9 +20,19 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
-# [0.4.78](#180)
+# [0.4.80](!146)
+
+### Changed
+- Fix CLI unit tests
+- Allow SetConfig to set parameters at runtime
+- Improve UUID generation and db storage
+# [0.4.79](#185)
 
 ### Added
+- Remove /etc/nunet during dpkg purge
+# [0.4.78](#180)
+
+### Changed
 - Replace ubuntu-drivers with nvidia meta packages for better compatibility
 # [0.4.77](#179)
 
@@ -31,7 +41,7 @@ Types of changes
 
 # [0.4.76](#171)
 
-### Added
+### Changed
 - Fixes #171 parse error on `nunet peer list`
 # [0.4.75](#176)
 
@@ -39,7 +49,7 @@ Types of changes
 - Respond with {"action": "job-submitted"} just before deployment request is handed over to compute provider
 # [0.4.74](!135)
 
-### Added
+### Changed
 - Generate Events whenever there is an update to JobStatus field in service table
 
 ### Changed

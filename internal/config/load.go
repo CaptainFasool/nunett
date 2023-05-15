@@ -46,6 +46,16 @@ func LoadConfig() {
 	}
 }
 
+func SetConfig(key string, value interface{}) {
+	v := getViper()
+	v.Set(key, value)
+	err := v.Unmarshal(&cfg)
+	if err != nil {
+		// error unmarshalling config file - using default config
+		setDefaultConfig().Unmarshal(&cfg)
+	}
+}
+
 func GetConfig() *Config {
 	if reflect.DeepEqual(cfg, Config{}) {
 		LoadConfig()
