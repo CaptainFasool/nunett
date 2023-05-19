@@ -20,6 +20,13 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.81](#190)
+
+### Changed
+- Fix for #190 by improving how depReqFlat is updated during deployment requests
+- Return job status to SP webapp when job finishes on compute provider
+- Fix for #163 by downgrading kad-dht package to 0.22.0 
+
 # [0.4.80](!146)
 
 ### Changed
