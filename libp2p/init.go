@@ -13,6 +13,14 @@ var zlog otelzap.Logger
 
 func init() {
 	zlog = logger.OtelZapLogger("libp2p")
+
+	for _, s := range config.GetConfig().P2P.BootstrapPeers {
+		ma, err := multiaddr.NewMultiaddr(s)
+		if err != nil {
+			panic(err)
+		}
+		NuNetBootstrapPeers = append(NuNetBootstrapPeers, ma)
+	}
 }
 
 const (
@@ -53,13 +61,3 @@ var relayPeer = make(chan peer.AddrInfo)
 
 // bootstrap peers provided by NuNet
 var NuNetBootstrapPeers []multiaddr.Multiaddr
-
-func init() {
-	for _, s := range config.GetConfig().P2P.BootstrapPeers {
-		ma, err := multiaddr.NewMultiaddr(s)
-		if err != nil {
-			panic(err)
-		}
-		NuNetBootstrapPeers = append(NuNetBootstrapPeers, ma)
-	}
-}
