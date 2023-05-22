@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.82](#181)
+
+### Added
+- Man page that helps with nunet cli
 # [0.4.81](#190)
 
 ### Changed
