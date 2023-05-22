@@ -157,3 +157,30 @@ To update the DMS to the latest version, follow these steps in the given sequenc
 ​	b. Download the latest DMS package (Step 1) 
 ​	c. Install the new DMS package (Step 2)
 
+# DMS Test Simulation
+
+This is a Python script that runs a test simulation for requesting a machine learning service. The user is prompted for their wallet address, a service request is sent, and updates are received via a WebSocket. The user can run multiple tests in a loop.
+
+## How to Run the Script
+
+Run the script by using the Python command followed by the script name:
+
+python test_dms.py
+
+
+Replace `test_dms.py` with the actual name of the script.
+
+When the script runs, it will ask for your wallet address. After entering the address, the script will send a service request and then listen for updates from a WebSocket.
+
+## How it Works
+
+The script works in the following way:
+
+1. It first sets up a logger to keep track of the events and responses during the simulation.
+2. It then prompts the user to enter their wallet address, which will be used to form a service request payload.
+3. The payload includes information about the service request, such as the type of service requested (machine learning training on GPU in this case), blockchain information, the number of transactions, and constraints on system resources.
+4. A WebSocket connection is established and a connection message is received. If the connection is successful, the script proceeds to send the service request payload as a POST request to the specified API endpoint.
+5. The response from the POST request is processed. If the request is successful and a compute provider address is received in the response, a success status is sent over the WebSocket. If the request fails, a failure status is sent instead.
+6. The script then listens for job status updates from the WebSocket. It expects to receive either a job-completed or job-failed action.
+7. If the job is completed successfully, the script logs this and informs the user that the simulation is complete. If the job fails or a timeout occurs while waiting for the job status, the script logs this and informs the user that the simulation failed.
+8. After each simulation, the user is asked whether they want to run another test. If they respond with 'yes', the simulation loop continues. If they respond with anything else, the loop ends and the script terminates.
