@@ -85,27 +85,21 @@ func GenerateMachineUUID() (string, error) {
 	}
 	machine.UUID = machineUUID.String()
 
-	db.DB.Where("uuid <> ?", "*").Delete(&models.MachineUUID{})
-
-	result := db.DB.Create(&machine)
-	if result.Error != nil {
-		return "", result.Error
-	}
-
 	return machine.UUID, nil
 }
 
 func GetMachineUUID() string {
 	var machine models.MachineUUID
+	uuid, err := GenerateMachineUUID()
+	if err != nil {
+		zlog.Sugar().Errorf("could not generate machine uuid: %v", err)
+	}
 
-	// try db
-	result := db.DB.First(&machine)
-	if result.Error == nil || machine.UUID == "" {
-		uuid, err := GenerateMachineUUID()
-		if err != nil {
-			zlog.Sugar().Errorf("could not generate machine uuid: %v", err)
-		}
-		machine.UUID = uuid
+	machine.UUID = uuid
+
+	result := db.DB.FirstOrCreate(&machine)
+	if result.Error != nil {
+		zlog.Sugar().Errorf("could not find or create machine uuid record in DB: %v", result.Error)
 	}
 	return machine.UUID
 

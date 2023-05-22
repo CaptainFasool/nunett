@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -52,8 +53,22 @@ func HandleRequestService(c *gin.Context) {
 	}
 
 	// Check if there is already a running job
-	if result := db.DB.Where("deleted_at IS NULL").Find(&depReqFlat).RowsAffected; result > 0 {
+	if libp2p.IsDepReqStreamOpen() {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "a service is already running; only 1 service is supported at the moment"})
+		return
+	}
+
+	// since IsDepReqStreamOpen() is false, we can assume that there is no running job because we've lost connection to the peer
+	if result := db.DB.Where("deleted_at IS NULL").Find(&depReqFlat).RowsAffected; result > 0 {
+		zlog.Sugar().Infof(
+			"Deployed job unknown status (outbound depReq not open anymore). Deleting DepReqFlat record (i=%d, n=%d) from DB",
+			depReqFlat.ID, result)
+		// XXX: Needs to be modified to take multiple deployment requests from same service provider
+		// deletes all the record in table; deletes == mark as delete
+		if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
+			// TODO: Do not delete, update JobStatus
+			zlog.Sugar().Errorf("%v", err)
+		}
 	}
 
 	// add node_id and public_key in deployment request
@@ -139,6 +154,8 @@ func HandleRequestService(c *gin.Context) {
 	depReqBytes, _ := json.Marshal(depReq)
 	// Convert JSON bytes to string
 	depReqStr := string(depReqBytes)
+
+	depReqFlat = models.DeploymentRequestFlat{} // reset
 	depReqFlat.DeploymentRequest = depReqStr
 	depReqFlat.JobStatus = "awaiting"
 
@@ -195,18 +212,20 @@ func HandleDeploymentRequest(c *gin.Context) {
 func listenToOutgoingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Sugar().Errorf("%v", r)
+			zlog.Sugar().Warnf("closing sock after panic - %v", r)
+			if conn != nil {
+				conn.Close()
+			}
 		}
 	}()
 
 	for {
 		_, p, err := conn.ReadMessage()
 		if err != nil {
-			zlog.Error(err.Error())
-			conn.Close()
-			return
+			zlog.Sugar().Warnf("unable to read from websocket  - panicking: %v", err.Error())
+			panic(err)
 		}
-
+		zlog.Sugar().Debugf("Received message from websocket client: %v", string(p))
 		handleWebsocketAction(ctx, p, conn)
 	}
 }
@@ -217,26 +236,48 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 	for {
 		// 1. check if DepResQueue has anything
 		select {
-		case msg, ok := <-libp2p.DepResQueue:
+		case rawMsg, ok := <-libp2p.DepResQueue:
+			zlog.Sugar().Infof("Deployment response received. - msg: %v , ok: %v", rawMsg, ok)
 			if ok {
-				zlog.Info("Deployment response received. Sending it to connected websocket client")
+				zlog.Info("Sending Received DepResp to connected websocket client")
 				var depRes models.DeploymentResponse
 
-				jsonDataMsg, _ := json.Marshal(msg)
+				jsonDataMsg, _ := json.Marshal(rawMsg)
 				json.Unmarshal(jsonDataMsg, &depRes)
 				msg, _ := json.Marshal(depRes)
 
-				// 2. Send the content to the client connected
-				wsResponse := wsMessage{
-					Action:  "deployment-response",
-					Message: json.RawMessage(msg),
+				var wsResponse wsMessage
+
+				if strings.Contains(depRes.Content, libp2p.ContainerJobFinishedWithErrors) {
+					zlog.Info("Finished: Sending Deployment failed to websock")
+					err := conn.WriteJSON(map[string]string{"action": libp2p.JobFailed})
+					if err != nil {
+						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+						break
+					}
+					zlog.Info("Closing websocket connection")
+					conn.Close()
+				} else if strings.Contains(depRes.Content, libp2p.ContainerJobFinishedWithoutErrors) {
+					zlog.Info("Finished: Sending Deployment success to websock")
+					err := conn.WriteJSON(map[string]string{"action": libp2p.JobCompleted})
+					if err != nil {
+						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+						break
+					}
+					zlog.Info("Closing websocket connection")
+					conn.Close()
+				} else {
+					zlog.Info("Sending Deployment status/response to websock")
+					wsResponse = wsMessage{
+						Action:  "deployment-response",
+						Message: json.RawMessage(msg),
+					}
+					err := conn.WriteJSON(wsResponse)
+					if err != nil {
+						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+						break
+					}
 				}
-
-				msg, _ = json.Marshal(wsResponse)
-
-				zlog.Sugar().Debugf("deployment response to websock: %s", string(msg))
-
-				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
 				zlog.Info("Channel closed!")
 			}
@@ -304,8 +345,11 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection)
 	zlog.Sugar().Debugf("deployment request: %v", depReq)
 
 	// notify websocket client about the
-	submitted := map[string]string{"action": "job-submitted"}
-	conn.WriteJSON(submitted)
+	submitted := map[string]string{"action": libp2p.JobSubmitted}
+	err = conn.WriteJSON(submitted)
+	if err != nil {
+		zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+	}
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {

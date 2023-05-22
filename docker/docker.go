@@ -232,7 +232,7 @@ outerLoop:
 			// add exitStatus to db
 			var services models.Services
 			if containerStatus.StatusCode == 0 {
-				services.JobStatus = "finished without errors"
+				services.JobStatus = libp2p.ContainerJobFinishedWithoutErrors
 				ServiceCallParams := models.ServiceCall{
 					CallID:              requestTracker.CallID,
 					PeerIDOfServiceHost: requestTracker.NodeID,
@@ -242,20 +242,20 @@ outerLoop:
 					MemoryUsed:          float32(maxUsedRAM),
 					NetworkBwUsed:       0.0,
 					TimeTaken:           0.0,
-					Status:              "finished without errors",
+					Status:              libp2p.ContainerJobFinishedWithoutErrors,
 					Timestamp:           float32(statsdb.GetTimestamp()),
 				}
 				statsdb.ServiceCall(ServiceCallParams)
-				requestTracker.Status = "finished without errors"
+				requestTracker.Status = libp2p.ContainerJobFinishedWithoutErrors
 			} else if containerStatus.StatusCode > 0 {
-				services.JobStatus = "finished with errors"
+				services.JobStatus = libp2p.ContainerJobFinishedWithErrors
 				ServiceStatusParams.CallID = requestTracker.CallID
 				ServiceStatusParams.PeerIDOfServiceHost = requestTracker.NodeID
-				ServiceStatusParams.Status = "finished with errors"
+				ServiceStatusParams.Status = libp2p.ContainerJobFinishedWithErrors
 				ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
 
 				statsdb.ServiceStatus(ServiceStatusParams)
-				requestTracker.Status = "finished with errors"
+				requestTracker.Status = libp2p.ContainerJobFinishedWithErrors
 			}
 			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
 			if r.Error != nil {
