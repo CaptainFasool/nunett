@@ -90,7 +90,10 @@ func InitTracer() func(context.Context) error {
 }
 
 func Info(msg string, span trace.Span) trace.Span {
-	span.AddEvent("{'level':'info','msg':'if response is valid','url':'url','attempt':3,'backoff':'time', 'trace-id':" + span.SpanContext().TraceID().String() + ", 'span-id':" + span.SpanContext().SpanID().String() + "}")
-	span.SetAttributes(attribute.String("level", "info"), attribute.String("msg", msg), attribute.Bool("boolean", true))
+	span.SetAttributes(attribute.String("level", "info"), attribute.String("msg", msg))
 	return span
+}
+
+func Resource(avilablecpu int, availableram int, span trace.Span) {
+	span.SetAttributes(attribute.String("event", "onboarding"), attribute.Int("avilablecpu", avilablecpu), attribute.Int("avilableram", availableram))
 }
