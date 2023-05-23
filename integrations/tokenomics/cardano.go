@@ -9,7 +9,6 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 )
 
 type ClaimCardanoTokenBody struct {
@@ -50,22 +49,6 @@ func HandleRequestReward(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "connetction to oracle failed"})
 		return
 	}
-
-	var requestTracker models.RequestTracker
-	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
-	if res.Error != nil {
-		zlog.Error(res.Error.Error())
-	}
-
-	// sending ntx_payment info to stats database via grpc Call
-	NtxPaymentParams := models.NtxPayment{
-		CallID:      requestTracker.CallID,
-		ServiceID:   requestTracker.ServiceType,
-		AmountOfNtx: requestTracker.MaxTokens,
-		PeerID:      requestTracker.NodeID,
-		Timestamp:   float32(statsdb.GetTimestamp()),
-	}
-	statsdb.NtxPayment(NtxPaymentParams)
 
 	c.JSON(200, resp)
 }

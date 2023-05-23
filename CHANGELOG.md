@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.83](stats-database#17)
+
+### Added
+- Time elapsed and average network bandwidth used during a job in Service_call event
 # [0.4.82](#181)
 
 ### Added
