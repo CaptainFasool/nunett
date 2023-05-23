@@ -105,7 +105,7 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 
 func handleDockerDeployment(depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
-	callID := statsdb.GetCallID()
+	callID := float32(statsdb.GetCallID())
 	peerIDOfServiceHost := depReq.Params.LocalNodeID
 	timeStamp := float32(statsdb.GetTimestamp())
 	status := "accepted"
@@ -114,9 +114,9 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		CallID:              callID,
 		PeerIDOfServiceHost: peerIDOfServiceHost,
 		ServiceID:           depReq.ServiceType,
-		CPUUsed:             float32(depReq.Constraints.CPU),
-		MaxRAM:              float32(depReq.Constraints.Vram),
-		MemoryUsed:          float32(depReq.Constraints.RAM),
+		CPUUsed:             0.0,
+		MaxRAM:              float32(depReq.Constraints.RAM),
+		MemoryUsed:          0.0,
 		NetworkBwUsed:       0.0,
 		TimeTaken:           0.0,
 		Status:              status,

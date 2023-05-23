@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"regexp"
 	"strconv"
 
 	"strings"
@@ -147,7 +148,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	ServiceStatusParams := models.ServiceStatus{
 		CallID:              requestTracker.CallID,
 		PeerIDOfServiceHost: requestTracker.NodeID,
-		ServiceID:           requestTracker.ServiceType,
 		Status:              status,
 		Timestamp:           float32(statsdb.GetTimestamp()),
 	}
@@ -206,7 +206,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	defer tick.Stop()
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	maxUsedRAM, maxUsedCPU := 0.0, 0.0
+	maxUsedRAM, maxUsedCPU, networkBwUsed := 0.0, 0.0, 0.0
 
 outerLoop:
 	for {
@@ -233,28 +233,11 @@ outerLoop:
 			var services models.Services
 			if containerStatus.StatusCode == 0 {
 				services.JobStatus = libp2p.ContainerJobFinishedWithoutErrors
-				ServiceCallParams := models.ServiceCall{
-					CallID:              requestTracker.CallID,
-					PeerIDOfServiceHost: requestTracker.NodeID,
-					ServiceID:           requestTracker.ServiceType,
-					CPUUsed:             float32(maxUsedCPU),
-					MaxRAM:              float32(depReq.Constraints.Vram),
-					MemoryUsed:          float32(maxUsedRAM),
-					NetworkBwUsed:       0.0,
-					TimeTaken:           0.0,
-					Status:              libp2p.ContainerJobFinishedWithoutErrors,
-					Timestamp:           float32(statsdb.GetTimestamp()),
-				}
-				statsdb.ServiceCall(ServiceCallParams)
+				status = libp2p.ContainerJobFinishedWithoutErrors
 				requestTracker.Status = libp2p.ContainerJobFinishedWithoutErrors
 			} else if containerStatus.StatusCode > 0 {
 				services.JobStatus = libp2p.ContainerJobFinishedWithErrors
-				ServiceStatusParams.CallID = requestTracker.CallID
-				ServiceStatusParams.PeerIDOfServiceHost = requestTracker.NodeID
-				ServiceStatusParams.Status = libp2p.ContainerJobFinishedWithErrors
-				ServiceStatusParams.Timestamp = float32(statsdb.GetTimestamp())
-
-				statsdb.ServiceStatus(ServiceStatusParams)
+				status = libp2p.ContainerJobFinishedWithErrors
 				requestTracker.Status = libp2p.ContainerJobFinishedWithErrors
 			}
 			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
@@ -277,6 +260,23 @@ outerLoop:
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
 
+			duration := time.Now().Sub(tempService.CreatedAt)
+			timeTaken := duration.Seconds()
+			averageNetBw := networkBwUsed / timeTaken
+			ServiceCallParams := models.ServiceCall{
+				CallID:              requestTracker.CallID,
+				PeerIDOfServiceHost: depReq.Params.LocalNodeID,
+				CPUUsed:             float32(maxUsedCPU),
+				MemoryUsed:          float32(maxUsedRAM),
+				MaxRAM:              float32(depReq.Constraints.RAM),
+				NetworkBwUsed:       float32(averageNetBw),
+				TimeTaken:           float32(timeTaken),
+				Status:              status,
+				AmountOfNtx:         requestTracker.MaxTokens,
+				Timestamp:           float32(statsdb.GetTimestamp()),
+			}
+			statsdb.ServiceCall(ServiceCallParams)
+
 			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
 				zlog.Sugar().Errorf("problem updating request tracker: %v", res.Error)
@@ -289,7 +289,7 @@ outerLoop:
 		case <-tick.C:
 			// get the latest logs ...
 			zlog.Info("updating gist")
-			contID := requestTracker.RequestID[:12]
+			contID := resp.ID[:12]
 			stats, err := dockerstats.Current()
 			if err != nil {
 				zlog.Sugar().Errorf("problem obtaining docker stats: %v", err)
@@ -298,26 +298,52 @@ outerLoop:
 				return
 			}
 
+			var tempService models.Services
+			if err := db.DB.Where("container_id = ?", resp.ID).First(&tempService).Error; err != nil {
+				panic(err)
+			}
+			duration := time.Now().Sub(tempService.CreatedAt)
+			timeTaken := duration.Seconds()
 			for _, s := range stats {
 				if s.Container == contID {
-					usedRAM := strings.Split(s.Memory.Raw, "MiB")
+					usedRAM := strings.Split(s.Memory.Raw, "/")
 					usedCPU := strings.Split(s.CPU, "%")
-					ramFloat64, _ := strconv.ParseFloat(usedRAM[0], 64)
+					usedNetwork := strings.Split(s.IO.Network, "/")
+					ramFloat64 := calculateResourceUsage(usedRAM[0])
 					cpuFloat64, _ := strconv.ParseFloat(usedCPU[0], 64)
-					cpuFloat64 = cpuUsage(cpuFloat64, float64(hostConfig.CPUQuota))
+					cpuFloat64 = cpuUsage(cpuFloat64, float64(depReq.Constraints.CPU))
+					networkFloat64Pre := calculateResourceUsage(usedNetwork[0])
+					networkFloat64Suf := calculateResourceUsage(usedNetwork[1])
+					networkFloat64 := networkFloat64Pre + networkFloat64Suf
 					if ramFloat64 > maxUsedRAM {
-						maxUsedRAM = ramFloat64
+						maxUsedRAM = ramFloat64 / 1024
 					}
 					if cpuFloat64 > maxUsedCPU {
 						maxUsedCPU = cpuFloat64
 					}
+					if networkFloat64 > networkBwUsed {
+						networkBwUsed = networkFloat64
+					}
 				}
 			}
+			averageNetBw := networkBwUsed / timeTaken
+			ServiceCallParams := models.ServiceCall{
+				CallID:              requestTracker.CallID,
+				PeerIDOfServiceHost: depReq.Params.LocalNodeID,
+				CPUUsed:             float32(maxUsedCPU),
+				MemoryUsed:          float32(maxUsedRAM),
+				MaxRAM:              float32(depReq.Constraints.RAM),
+				NetworkBwUsed:       float32(averageNetBw),
+				TimeTaken:           0.0,
+				Status:              "started",
+				AmountOfNtx:         requestTracker.MaxTokens,
+				Timestamp:           float32(statsdb.GetTimestamp()),
+			}
+			statsdb.ServiceCall(ServiceCallParams)
 
 			updateGist(*createdGist.ID, resp.ID)
 		}
 	}
-
 }
 
 // cleanFlushInfo takes in bytes.Buffer from docker logs output and for each line
@@ -366,6 +392,34 @@ func GetLogs(contName string) (io.ReadCloser, error) {
 
 func cpuUsage(cpu float64, maxCPU float64) float64 {
 	return maxCPU * cpu / 100
+}
+
+func extractResourceUsage(input string) (float64, string) {
+	re := regexp.MustCompile(`(\d+(\.\d+)?)([KkMmGgTt][Bb]|[KkMmGgTt][Ii]?[Bb])`)
+	matches := re.FindStringSubmatch(input)
+	valueStr := matches[1]
+	unit := matches[3]
+
+	value, err := strconv.ParseFloat(valueStr, 64)
+	if err != nil {
+		return 0.0, unit
+	}
+
+	return value, unit
+}
+
+func calculateResourceUsage(input string) float64 {
+	value, unit := extractResourceUsage(input)
+	switch strings.ToLower(unit) {
+	case "kb", "kib":
+		return value
+	case "mb", "mib":
+		return value * 1024
+	case "gb", "gib":
+		return value * 1024 * 1024
+	default:
+		return 0.0
+	}
 }
 
 // HandleDeployment does following docker based actions in the sequence:

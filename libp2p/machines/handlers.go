@@ -374,21 +374,28 @@ func HandleSendStatus(c *gin.Context) {
 		return
 	}
 
-	if body.TransactionType == "withdraw" && body.TransactionStatus == "success" {
-		// Delete the entry
-		if err := db.DB.Where("deleted_at IS NULL").Delete(&models.Services{}).Error; err != nil {
-			zlog.Sugar().Errorln(err)
-		}
-	}
-
-	serviceStatus := body.TransactionType + " with " + body.TransactionStatus
-
 	var requestTracker models.RequestTracker
 	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
 	if res.Error != nil {
 		zlog.Error(res.Error.Error())
 	}
+	if body.TransactionType == "withdraw" && body.TransactionStatus == "success" {
+		// Delete the entry
+		if err := db.DB.Where("deleted_at IS NULL").Delete(&models.Services{}).Error; err != nil {
+			zlog.Sugar().Errorln(err)
+		}
+		// sending ntx_payment info to stats database via grpc Call
+		NtxPaymentParams := models.NtxPayment{
+			CallID:      requestTracker.CallID,
+			ServiceID:   requestTracker.ServiceType,
+			AmountOfNtx: requestTracker.MaxTokens,
+			PeerID:      requestTracker.NodeID,
+			Timestamp:   float32(statsdb.GetTimestamp()),
+		}
+		statsdb.NtxPayment(NtxPaymentParams)
+	}
 
+	serviceStatus := body.TransactionType + " with " + body.TransactionStatus
 	ServiceStatusParams := models.ServiceStatus{
 		CallID:              requestTracker.CallID,
 		PeerIDOfServiceHost: requestTracker.NodeID,
