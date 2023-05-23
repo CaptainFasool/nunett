@@ -94,6 +94,18 @@ func Info(msg string, span trace.Span) trace.Span {
 	return span
 }
 
-func Resource(avilablecpu int, availableram int, span trace.Span) {
-	span.SetAttributes(attribute.String("event", "onboarding"), attribute.Int("avilablecpu", avilablecpu), attribute.Int("avilableram", availableram))
+func Resource(availablecpu int, availableram int, availablenetwork int, availabletime int, span trace.Span) {
+	span.SetAttributes(attribute.String("event", "onboarding"), attribute.Int("availablecpu", availablecpu), attribute.Int("availableram", availableram), attribute.Int("availablenetwork", availablenetwork), attribute.Int("availabletime", availabletime))
+}
+
+func Used(callid int, usedcpu int, usedram int, networkused int, timetaken int) {
+	span := trace.SpanFromContext(context.Background())
+
+	span.SetAttributes(attribute.String("event", "usedresource"), attribute.Int("usedcpu", usedcpu), attribute.Int("usedram", usedram), attribute.Int("usednetwork", networkused), attribute.Int("timetaken", timetaken))
+}
+
+func NtxPaid(callid int, paidntx int) {
+	span := trace.SpanFromContext(context.Background())
+
+	span.SetAttributes(attribute.String("event", "paidntx"), attribute.Int("paidntx", paidntx))
 }

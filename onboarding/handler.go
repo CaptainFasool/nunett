@@ -183,7 +183,7 @@ func Onboard(c *gin.Context) {
 		PriceDisk: 0,
 	}
 
-	kLogger.Resource(int(capacityForNunet.CPU), int(capacityForNunet.Memory), span)
+	kLogger.Resource(int(capacityForNunet.CPU), int(capacityForNunet.Memory), 0, 0, span)
 
 	var availableRes models.AvailableResources
 	if res := db.DB.WithContext(c.Request.Context()).Find(&availableRes); res.RowsAffected == 0 {
