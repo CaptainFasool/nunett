@@ -54,8 +54,10 @@ func init() {
 }
 
 // GetCallID returns a call ID to track the deployement request
-func GetCallID() float32 {
-	return rand.Float32()
+func GetCallID() int64 {
+	min := int64(1e15)
+	max := int64(1e16 - 1)
+	return min + rand.Int63n(max-min+1)
 }
 
 // GetTimestamp returns current unix timestamp
@@ -114,7 +116,7 @@ func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 		zlog.Sugar().Errorf("connection failed: %v", err)
 		return
 	}
-	zlog.Sugar().Infof("Responding: %s", res.PeerId)
+	zlog.Sugar().Infof("NewDeviceOnboarded is Responding: %s", res.PeerId)
 }
 
 // ServiceCall sends the info of the service call made to dms to stats via grpc call.
@@ -138,6 +140,7 @@ func ServiceCall(inputData models.ServiceCall) {
 		NetworkBwUsed: inputData.NetworkBwUsed,
 		TimeTaken:     inputData.TimeTaken,
 		Status:        inputData.Status,
+		AmountOfNtx:   inputData.AmountOfNtx,
 		Timestamp:     inputData.Timestamp,
 	})
 
@@ -147,7 +150,7 @@ func ServiceCall(inputData models.ServiceCall) {
 		zlog.Sugar().Errorf("connection failed: %v", err)
 		return
 	}
-	zlog.Sugar().Infof("Responding: %s", res.Response)
+	zlog.Sugar().Infof("ServiceCall is Responding: %s", res.Response)
 
 }
 
@@ -175,7 +178,7 @@ func ServiceStatus(inputData models.ServiceStatus) {
 		zlog.Sugar().Errorf("connection failed: %v", err)
 		return
 	}
-	zlog.Sugar().Infof("Responding: %s", res.Response)
+	zlog.Sugar().Infof("ServiceStatus is Responding: %s", res.Response)
 }
 
 // HeartBeat pings the statsdb in every 10s for detacting live status of device via grpc call.
@@ -203,7 +206,7 @@ func HeartBeat() {
 			zlog.Sugar().Errorf("connection failed: %v", err)
 			return
 		}
-		zlog.Sugar().Infof("Responding: %s", res.PeerId)
+		zlog.Sugar().Infof("HeartBeat is Responding: %s", res.PeerId)
 
 		time.Sleep(10 * time.Second)
 	}
@@ -244,11 +247,16 @@ func DeviceResourceChange(inputData models.FreeResources) {
 		return
 	}
 
-	zlog.Sugar().Infof("Responding: %s", res.PeerId)
+	zlog.Sugar().Infof("DeviceResourceChange is Responding: %s", res.PeerId)
 }
 
 // DeviceResourceConfig sends the info of change the configuration resources of onboarded device via GRPC call.
 func DeviceResourceConfig(inputData models.MetadataV2) {
+	peerID, err := GetPeerID()
+	if err != nil {
+		zlog.Sugar().Errorf("couldn't get PeerID: %v", err)
+		return
+	}
 	DeviceResourceParams := pb.DeviceResource{
 		Cpu:           float32(inputData.Reserved.CPU),
 		Ram:           float32(inputData.Reserved.Memory),
@@ -267,7 +275,7 @@ func DeviceResourceConfig(inputData models.MetadataV2) {
 	defer cancel()
 
 	res, err := client.DeviceResourceConfig(ctx, &pb.DeviceResourceConfigInput{
-		PeerId:                   inputData.NodeID,
+		PeerId:                   peerID,
 		ChangedAttributeAndValue: &DeviceResourceParams,
 		Timestamp:                float32(GetTimestamp()),
 	})
@@ -277,7 +285,7 @@ func DeviceResourceConfig(inputData models.MetadataV2) {
 		return
 	}
 
-	zlog.Sugar().Infof("Responding: %s", res.Response)
+	zlog.Sugar().Infof("DeviceResourceConfig is Responding: %s", res.Response)
 }
 
 // NtxPayment sends the payment info of the service process on host machine to statsdb via grpc call.
@@ -305,7 +313,7 @@ func NtxPayment(inputData models.NtxPayment) {
 		zlog.Sugar().Errorf("connection failed: %v", err)
 		return
 	}
-	zlog.Sugar().Infof("Responding: %s", res.Response)
 	kLogger.NtxPaid(int(inputData.CallID), int(inputData.AmountOfNtx))
 
+	zlog.Sugar().Infof("NtxPayment is Responding: %s", res.Response)
 }
