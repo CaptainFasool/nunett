@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.84](#201)
+
+### Changed
+- Refuse replying to depReq ping if already running a job
 # [0.4.83](stats-database#17)
 
 ### Added

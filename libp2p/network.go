@@ -85,6 +85,12 @@ func PingHandler(s network.Stream) {
 		return
 	}
 
+	// refuse replying to ping if already running a job
+	if IsDepRespStreamOpen() {
+		zlog.Sugar().Info("Refusing to reply to a ping because already running a job")
+		return
+	}
+
 	// Echo the string back over the stream.
 	_, err = writer.WriteString(data)
 	if err != nil {
