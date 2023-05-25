@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.85](#174)
+
+### Changed
+- Send logs from CP-DMS to SP-DMS in chunks of 2 minutes (configurable).
+- Job status messages "job-failed" and "job-complete" expected by SP-DMS
 # [0.4.84](#201)
 
 ### Changed

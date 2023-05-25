@@ -67,7 +67,7 @@ func initVM(c *gin.Context, vm models.VirtualMachine) {
 	if err := cmd.Start(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message":   fmt.Sprintf("Failed to start cmd: %v", stderr.String()),
-			"timestamp": time.Now(),
+			"timestamp": time.Now().In(time.UTC),
 		})
 		return
 	}
@@ -165,7 +165,7 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "VM started successfully.",
-		"timestamp": time.Now(),
+		"timestamp": time.Now().In(time.UTC),
 	})
 }
 

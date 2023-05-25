@@ -847,6 +847,7 @@ onboard-ml()
 {
     sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
     sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
+    sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu
     ml_info
 }
 

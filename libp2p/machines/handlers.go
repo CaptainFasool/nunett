@@ -77,6 +77,7 @@ func HandleRequestService(c *gin.Context) {
 	}
 	selfNodeID := libp2p.GetP2P().Host.ID().String()
 
+	depReq.Timestamp = time.Now().In(time.UTC)
 	depReq.Params.LocalNodeID = selfNodeID
 	depReq.Params.LocalPublicKey = pKey.Type().String()
 
@@ -275,6 +276,75 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 						break
 					}
 				}
+
+				msg, _ = json.Marshal(wsResponse)
+
+				zlog.Sugar().Debugf("[websocket] deployment response to websocket: %s", string(msg))
+
+				conn.WriteMessage(websocket.TextMessage, msg)
+			} else {
+				zlog.Info("Channel closed!")
+			}
+		case msg, ok := <-libp2p.JobLogStdoutQueue:
+			if ok {
+				stdoutLog := struct {
+					Action string `json:"action"`
+					Stdout string `json:"stdout"`
+				}{
+					Action: "log-stream-response",
+					Stdout: msg,
+				}
+
+				resp, _ := json.Marshal(stdoutLog)
+				zlog.Sugar().Debugf("[websocket] stdout update to websocket")
+				conn.WriteMessage(websocket.TextMessage, resp)
+
+			} else {
+				zlog.Info("Channel closed!")
+			}
+		case msg, ok := <-libp2p.JobLogStderrQueue:
+			if ok {
+				stderrLog := struct {
+					Action string `json:"action"`
+					Stderr string `json:"stderr"`
+				}{
+					Action: "log-stream-response",
+					Stderr: msg,
+				}
+
+				resp, _ := json.Marshal(stderrLog)
+				zlog.Sugar().Debugf("[websocket] stderr update to websocket")
+				conn.WriteMessage(websocket.TextMessage, resp)
+
+			} else {
+				zlog.Info("Channel closed!")
+			}
+		case _, ok := <-libp2p.JobCompletedQueue:
+			if ok {
+				wsResponse := wsMessage{
+					Action: "job-completed",
+				}
+				resp, _ := json.Marshal(wsResponse)
+				zlog.Sugar().Debugf("[websocket] job-completed to websocket")
+				conn.WriteMessage(websocket.TextMessage, resp)
+			} else {
+				zlog.Info("Channel closed!")
+			}
+		case msg, ok := <-libp2p.JobFailedQueue:
+			if ok {
+				zlog.Sugar().Debugf("[websocket] job-failed to websocket")
+				wsResponse := struct {
+					Action  string `json:"action"`
+					Message string `json:"message"`
+				}{
+					Action:  "job-failed",
+					Message: msg,
+				}
+				resp, err := json.Marshal(wsResponse)
+				if err != nil {
+					zlog.Error("error in job-failed websocket response")
+				}
+				conn.WriteMessage(websocket.TextMessage, resp)
 			} else {
 				zlog.Info("Channel closed!")
 			}
@@ -334,8 +404,6 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection)
 	depReq.TraceInfo.TraceID = span.SpanContext().SpanID().String()
 	depReq.TraceInfo.TraceFlags = span.SpanContext().TraceFlags().String()
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
-
-	depReq.Timestamp = time.Now()
 
 	zlog.Sugar().Debugf("deployment request: %v", depReq)
 

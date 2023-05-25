@@ -1,3 +1,5 @@
+![latest release version](https://gitlab.com/nunet/device-management-service/-/badges/release.svg) ![unit tests](https://gitlab.com/nunet/device-management-service/badges/develop/pipeline.svg) ![coverage](https://gitlab.com/nunet/device-management-service/badges/develop/coverage.svg)
+
 # What is the Device Management Service (DMS)?
 
 A **device management service** or **DMS** is a program that helps users run various computational services, including machine learning (ML) jobs, on a compute provider machine, based on an NTX token request system on NuNet. In simple terms, it connects users who want to perform computational tasks to powerful CPU/GPU enabled computers that can handle these tasks. The purpose of the DMS is to connect users on NuNet, allow them to run any service (not only ML jobs) and be rewarded for it.

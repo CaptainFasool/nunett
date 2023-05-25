@@ -26,11 +26,11 @@ func SetupRouter() *gin.Engine {
 
 	onboardingRoute := v1.Group("/onboarding")
 	{
-		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
-		onboardingRoute.POST("/onboard", onboarding.Onboard)
-		onboardingRoute.POST("/resource-config", onboarding.ResourceConfig)
 		onboardingRoute.GET("/provisioned", onboarding.ProvisionedCapacity)
 		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
+		onboardingRoute.POST("/onboard", onboarding.Onboard)
+		onboardingRoute.POST("/resource-config", onboarding.ResourceConfig)
+		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
 	}
 
 	virtualmachine := v1.Group("/vm")
