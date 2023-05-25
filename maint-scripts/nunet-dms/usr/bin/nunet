@@ -33,7 +33,8 @@ usage() {
     echo "  shell               Send commands and receive answers to a vm instance via DMS"
     echo "  peer                Interact with currently visible peers"
     echo "  chat                Start,Join or List Chat Requests"
-    echo -e "  log                 Returns the path of an archive containing all log files\n"
+    echo "  log                 Returns the path of an archive containing all log files"
+    echo -e "  version             Current DMS Version \n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -531,6 +532,9 @@ peer() {
                 "list")
                     N_LIST_PEERS=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers)
                     N_LIST_PEERS_DHT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/dht)
+                    if [[ "$NUNET_DEBUG" == "true" ]]; then
+                        N_LIST_PEERS_KAD_DHT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/kad-dht)
+                    fi
                     ;;
                 "self")
                     N_SELF_PEER=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/self)
@@ -575,6 +579,20 @@ peer() {
             echo "$N_LIST_PEERS_DHT" | jq --raw-output '(.[])'
         fi
     fi
+    if [[ "$NUNET_DEBUG" == "true" ]]; then
+        if [[ -v N_LIST_PEERS_KAD_DHT ]] ; then
+            N_LIST_PEERS_KAD_DHT_ERR_MSG=$(echo $N_LIST_PEERS_KAD_DHT | jq '. | select(.error != null) | .error' 2>/dev/null)
+            if [[ ! -z "$N_LIST_PEERS_KAD_DHT_ERR_MSG" ]] ; then
+                printf "${BAD_C}Error: $N_LIST_PEERS_KAD_DHT_ERR_MSG ${NORMAL_C}\n"
+            elif [[ N_LIST_PEERS_KAD_DHT == "" ]] ; then
+                printf "${BAD_C}No peers available in DHT. Please try again in a few minutes.${NORMAL_C}\n"
+            else
+                printf "\n${UNDERLINE}KAD DHT peers${NORMAL}\n"
+                echo "$N_LIST_PEERS_KAD_DHT" | jq --raw-output '(.[])'
+            fi
+        fi
+    fi
+    
 }
 
 resource-config() {
@@ -886,6 +904,11 @@ log(){
 
 }
 
+version(){
+    N_DMS_VERSION=$(curl -s $DMS_HOST:$DMS_PORT/swagger/doc.json | jq -r .info.version)
+    echo "DMS Version: $N_DMS_VERSION"
+}
+
 check_dms_run() {
     N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":$DMS_PORT")
     if [[ ! $? -eq 0 ]] ; then
@@ -896,7 +919,7 @@ check_dms_run() {
 }
 
 
-cmds=("capacity" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config")
+cmds=("capacity" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config", "version")
 
 if [ $# -eq  0 ] ; then
     usage

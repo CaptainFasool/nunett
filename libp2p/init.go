@@ -1,6 +1,7 @@
 package libp2p
 
 import (
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
@@ -36,6 +37,8 @@ const (
 	// Stream Protocol for Ping
 	PingProtocolID = "/nunet/dms/ping/0.0.1"
 )
+
+var kadPrefix = dht.ProtocolPrefix("/nunet")
 
 const (
 	// Team Rendezvous
