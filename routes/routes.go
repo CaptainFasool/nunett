@@ -58,6 +58,10 @@ func SetupRouter() *gin.Engine {
 			dht.GET("", libp2p.DumpDHT)
 			dht.GET("/update", libp2p.ManualDHTUpdateHandler)
 		}
+		kadDht := v1.Group("/kad-dht")
+		{
+			kadDht.GET("", libp2p.DumpKademliaDHT)
+		}
 	}
 
 	p2p := v1.Group("/peers")
@@ -65,6 +69,7 @@ func SetupRouter() *gin.Engine {
 		// peer.GET("", machines.ListPeers)
 		p2p.GET("", libp2p.ListPeers)
 		p2p.GET("/dht", libp2p.ListDHTPeers)
+		p2p.GET("/kad-dht", libp2p.ListKadDHTPeers)
 		p2p.GET("/self", libp2p.SelfPeerInfo)
 		p2p.GET("/chat", libp2p.ListChatHandler)
 		p2p.GET("/chat/start", libp2p.StartChatHandler)

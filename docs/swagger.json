@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.85"
+        "version": "0.4.86"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -28,6 +28,26 @@
                     "p2p"
                 ],
                 "summary": "Return a dump of the dht",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/kad-dht": {
+            "get": {
+                "description": "Returns entire Kademlia DHT content",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "p2p"
+                ],
+                "summary": "Return a dump of the Kademlia dht",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -229,6 +249,26 @@
             }
         },
         "/peers/dht": {
+            "get": {
+                "description": "Gets a list of peers the libp2p node has received a dht update from",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "p2p"
+                ],
+                "summary": "Return list of peers which have sent a dht update",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/peers/kad-dht": {
             "get": {
                 "description": "Gets a list of peers the libp2p node has received a dht update from",
                 "produces": [

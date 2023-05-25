@@ -41,6 +41,7 @@ func freeUsedResources(contID string) {
 	}
 	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
+	libp2p.UpdateKadDHT()
 }
 
 func mhzPerCore() (float64, error) {
@@ -163,16 +164,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		return
 	}
 
-	// Update db - find the service based on primary key and update container id
-	var service models.Services
-	res = db.DB.Model(&service).Where("id = ?", servicePK).Updates(models.Services{ContainerID: resp.ID})
-	if res.Error != nil {
-		zlog.Sugar().Errorf("unable to update services: %v", res.Error)
-		depRes := models.DeploymentResponse{Success: false, Content: "Problem with services tracker. Unable to process request."}
-		resCh <- depRes
-		return
-	}
-
 	var resourceRequirements models.ServiceResourceRequirements
 	resourceRequirements.CPU = depReq.Constraints.CPU
 	resourceRequirements.RAM = depReq.Constraints.RAM
@@ -185,7 +176,16 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		return
 	}
 
-	service.ResourceRequirements = int(resourceRequirements.ID)
+	// Update db - find the service based on primary key and update container id
+	var service models.Services
+	res = db.DB.Model(&service).Where("id = ?", servicePK).Updates(models.Services{ContainerID: resp.ID, ResourceRequirements: int(resourceRequirements.ID)})
+	if res.Error != nil {
+		zlog.Sugar().Errorf("unable to update services: %v", res.Error)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with services tracker. Unable to process request."}
+		resCh <- depRes
+		return
+	}
+	// TODO: Update service based on passed pk
 
 	telemetry.CalcFreeResources()
 	freeResource, err := telemetry.GetFreeResources()
@@ -196,6 +196,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 
 	libp2p.UpdateDHT()
+	libp2p.UpdateKadDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
 	resCh <- depRes
