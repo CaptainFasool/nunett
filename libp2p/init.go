@@ -54,8 +54,14 @@ const (
 	ProdRendezvous = "nunet"
 )
 
-var DepReqQueue = make(chan models.DeploymentRequest)
-var DepResQueue = make(chan models.DeploymentResponse)
+var (
+	DepReqQueue       = make(chan models.DeploymentRequest)
+	DepResQueue       = make(chan models.DeploymentResponse)
+	JobLogStderrQueue = make(chan string)
+	JobLogStdoutQueue = make(chan string)
+	JobFailedQueue    = make(chan string)
+	JobCompletedQueue = make(chan string)
+)
 
 var relayPeer = make(chan peer.AddrInfo)
 

@@ -16,15 +16,12 @@ import (
 )
 
 func sendDeploymentResponse(success bool, content string) {
-
-	zlog.Sugar().Debugf("send deployment response content: %s", content)
-
 	depResp, _ := json.Marshal(&models.DeploymentResponse{
 		Success: success,
 		Content: content,
 	})
 
-	zlog.Sugar().Debugf("marshalled deployment response from worker: %s", string(depResp))
+	zlog.Sugar().Debugf("marshalled deployment response: %s", string(depResp))
 
 	var closeStream bool
 	if !success {

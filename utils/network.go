@@ -46,7 +46,7 @@ func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, e
 	if err != nil {
 		c.JSON(400, gin.H{
 			"message":   errMsg,
-			"timestamp": time.Now(),
+			"timestamp": time.Now().In(time.UTC),
 		})
 		return
 	}
