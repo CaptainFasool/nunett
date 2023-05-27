@@ -4,13 +4,10 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
-	"os"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -91,32 +88,17 @@ func SendDHTUpdate(peerInfo models.PeerData, s network.Stream) {
 
 // Cleans up old peers from DHT
 func CleanupOldPeers() {
-	ctx := context.Background()
-	for _, node := range p2p.Host.Peerstore().Peers() {
-		peerData, err := p2p.Host.Peerstore().Get(node, "peer_info")
+	for _, peer := range p2p.Host.Peerstore().Peers() {
+		peerData, err := p2p.Host.Peerstore().Get(peer, "peer_info")
 		if err != nil {
 			continue
 		}
-		if node == p2p.Host.ID() {
+		if peer == p2p.Host.ID() {
 			continue
 		}
 		if Data, ok := peerData.(models.PeerData); ok {
-			targetPeer, err := peer.Decode(Data.PeerID)
-			if err != nil {
-				zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
-				return
-			}
-			res := PingPeer(ctx, p2p.Host, targetPeer)
-			if res.Success {
-				if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-					zlog.Sugar().Info("Peer is reachable.", "PeerID", Data.PeerID)
-					continue
-				}
-			} else {
-				if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-					zlog.Sugar().Info("Peer -  ", Data.PeerID, " is unreachable. Removing from Peerstore.")
-					p2p.Host.Peerstore().Put(node, "peer_info", nil)
-				}
+			if time.Now().Unix()-Data.Timestamp > 180 {
+				p2p.Host.Peerstore().Put(peer, "peer_info", nil)
 			}
 		}
 	}
@@ -189,72 +171,6 @@ func UpdateDHT() {
 	}
 }
 
-// UpdateKadDHT updates the Kad-DHT with the current node's peer info
-func UpdateKadDHT() {
-	// Get existing entry from Peerstore
-	var PeerInfo models.PeerData
-	PeerInfo.PeerID = p2p.Host.ID().String()
-	peerData, err := p2p.Host.Peerstore().Get(p2p.Host.ID(), "peer_info")
-	if err != nil {
-		zlog.Sugar().Errorf("UpdateDHT error: unable to read self peer_info: %v", err)
-	}
-	if Data, ok := peerData.(models.PeerData); ok {
-		PeerInfo = models.PeerData(Data)
-	}
-
-	//Get freeResources from DB
-	var freeResources models.FreeResources
-	if err := db.DB.Where("id = ?", 1).First(&freeResources).Error; err != nil {
-		zlog.Sugar().Errorf("UpdateDHT error: unable to read free resources %v", err)
-		return
-	}
-	// Update Free Resources
-	PeerInfo.AvailableResources = freeResources
-
-	// Update Services
-	var services []models.Services
-	result := db.DB.Where("job_status = ?", "running").Find(&services)
-	if result.Error != nil {
-		zlog.Sugar().Errorf("UpdateDHT error: Unable to read services: %v", err)
-		return
-	}
-	PeerInfo.Services = services
-
-	bytes, err := json.Marshal(PeerInfo)
-	if err != nil {
-		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
-	}
-	signature, err := signData(p2p.Host.Peerstore().PrivKey(p2p.Host.ID()), bytes)
-	if err != nil {
-		zlog.Sugar().Infof("Unable to sign DHT update: %s", err.Error())
-	}
-	type update struct {
-		Data      []byte `json:"data"`
-		Signature []byte `json:"signature"`
-	}
-	dhtUpdate := update{
-		Data:      bytes,
-		Signature: signature,
-	}
-
-	dht, err := json.Marshal(dhtUpdate)
-	if err != nil {
-		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
-	}
-
-	// Store updated data in DHT
-	const customNamespace = "/nunet-dht/"
-	peerID := p2p.Host.ID().String()
-
-	// Add custom namespace to the key
-	namespacedKey := customNamespace + peerID
-
-	err = p2p.DHT.PutValue(context.Background(), namespacedKey, dht)
-	if err != nil {
-		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
-	}
-}
-
 func fetchDhtContents(node host.Host) []models.PeerData {
 	var dhtContent []models.PeerData
 	var PeerInfo models.PeerData
@@ -274,58 +190,6 @@ func fetchDhtContents(node host.Host) []models.PeerData {
 		dhtContent = append(dhtContent, PeerInfo)
 	}
 	return dhtContent
-}
-
-func fetchKadDhtContents() ([]models.PeerData, error) {
-	var dhtContent []models.PeerData
-	context := context.Background()
-	for _, peer := range p2p.peers {
-		var updates update
-		var peerInfo models.PeerData
-
-		// Add custom namespace to the key
-		namespacedKey := customNamespace + peer.ID.String()
-		bytes, err := p2p.DHT.GetValue(context, namespacedKey)
-		if err != nil {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.String()))
-			}
-			continue
-		}
-		err = json.Unmarshal(bytes, &updates)
-		if err != nil {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
-			}
-			continue
-		}
-		err = json.Unmarshal(updates.Data, &peerInfo)
-		if err != nil {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
-			}
-			continue
-		}
-
-		dhtContent = append(dhtContent, peerInfo)
-	}
-	return dhtContent, nil
-
-}
-
-// FetchKadMachines returns Machines on Kad-DHT.
-func FetchKadMachines() (models.Machines, error) {
-	machines := make(models.Machines)
-	dhtContent, err := fetchKadDhtContents()
-	if err != nil {
-		zlog.Sugar().Errorf("FetchKadMachines error: %s", err.Error())
-		return nil, err
-	}
-	for _, peerData := range dhtContent {
-		id := peerData.PeerID
-		machines[id] = peerData
-	}
-	return machines, nil
 }
 
 // FetchMachines returns Machines on DHT.
@@ -392,40 +256,4 @@ func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequ
 		}
 	}
 	return peerWithMachingSpec
-}
-
-// Fetches peer info of peers from Kad-DHT and updates Peerstore.
-func GetDHTUpdates() {
-	machines, err := fetchKadDhtContents()
-	if err != nil {
-		zlog.Sugar().Errorf("GetDHTUpdates error: %s", err.Error())
-	}
-	ctx := context.Background()
-	defer ctx.Done()
-	for _, machine := range machines {
-		targetPeer, err := peer.Decode(machine.PeerID)
-		if err != nil {
-			zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
-			return
-		}
-		res := PingPeer(ctx, p2p.Host, targetPeer)
-		if res.Success {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.Sugar().Info("Peer is reachable.", "PeerID", machine.PeerID)
-			}
-			p2p.Host.Peerstore().Put(targetPeer, "peer_info", machine)
-		} else {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.Sugar().Info("Peer -  ", machine.PeerID, " is unreachable.")
-			}
-		}
-	}
-}
-
-func signData(hostPrivateKey crypto.PrivKey, data []byte) ([]byte, error) {
-	signature, err := hostPrivateKey.Sign(data)
-	if err != nil {
-		return nil, err
-	}
-	return signature, nil
 }
