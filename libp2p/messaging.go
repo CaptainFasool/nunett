@@ -24,6 +24,24 @@ const (
 	MsgDepResp   = "DepResp"
 	MsgDepReq    = "DepReq"
 	MsgJobStatus = "JobStatus"
+	MsgLogStderr = "LogStderr"
+	MsgLogStdout = "LogStdout"
+)
+
+// constants for job status messaging
+const (
+	ContainerJobPending               = "pending"
+	ContainerJobRunning               = "running"
+	ContainerJobFinishedWithErrors    = "finished with errors"
+	ContainerJobFinishedWithoutErrors = "finished without errors"
+	ContainerJobFailed                = "failed"
+)
+
+// constants for job status actions
+const (
+	JobSubmitted = "job-submitted"
+	JobFailed    = "job-failed"
+	JobCompleted = "job-completed"
 )
 
 var inboundChatStreams []network.Stream
@@ -46,8 +64,23 @@ func depReqStreamHandler(stream network.Stream) {
 
 	// limit to 1 request
 	if inboundDepReqStream != nil {
+		zlog.Sugar().Debugf("[depReq recv] depReq already in progress. Refusing to accept.")
+		depRes := models.DeploymentResponse{Success: false, Content: "Open Stream Length Exceeded. Closing Stream."}
+		depResJson, err := json.Marshal(depRes)
+		if err != nil {
+			zlog.Sugar().Errorf("failed to marshal depRes - %v", err)
+			stream.Close()
+			return
+		}
+		depUpdate := models.DeploymentUpdate{MsgType: MsgDepResp, Msg: string(depResJson)}
+		depUpdateJson, err := json.Marshal(depUpdate)
+		if err != nil {
+			zlog.Sugar().Errorf("failed to marshal depUpdate - %v", err)
+			stream.Close()
+			return
+		}
 		w := bufio.NewWriter(stream)
-		_, err := w.WriteString("Open Stream Length Exceeded. Closing Stream.\n")
+		_, err = w.WriteString(fmt.Sprintf("%s\n", depUpdateJson))
 		if err != nil {
 			zlog.Sugar().Errorf("fialed to write to stream after DepReq open stream length exceeded - %v", err)
 		}
@@ -64,6 +97,7 @@ func depReqStreamHandler(stream network.Stream) {
 		return
 	}
 
+	zlog.Sugar().DebugfContext(ctx, "[depReq recv] no existing depReq. Proceeding to read from stream.")
 	r := bufio.NewReader(stream)
 	//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
 	//      from/to the buffer. So far, all messages are sent with a \n at the end and the
@@ -89,6 +123,8 @@ func depReqStreamHandler(stream network.Stream) {
 		return
 	}
 
+	zlog.Sugar().DebugfContext(ctx, "[depReq recv] message: %s", str)
+
 	inboundDepReqStream = stream
 
 	depreqMessage := models.DeploymentRequest{}
@@ -106,9 +142,10 @@ func depReqStreamHandler(stream network.Stream) {
 func DeploymentUpdateListener(stream network.Stream) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Sugar().Warnf("Connection Error: %v\n", r)
+			zlog.Sugar().Errorf("connection error: closing stream and websocket %v", r)
 			if stream != nil {
 				stream.Close()
+				outboundDepReqStream = nil
 			}
 		}
 	}()
@@ -137,32 +174,45 @@ func DeploymentUpdateListener(stream network.Stream) {
 			panic(err)
 		}
 
-		if depUpd.MsgType == "JobStatus" {
+		var depReqFlat models.DeploymentRequestFlat
+
+		if depUpd.MsgType == MsgJobStatus {
 			service := models.Services{}
 			err = json.Unmarshal([]byte(depUpd.Msg), &service)
 			if err != nil {
 				zlog.Sugar().Errorf("failed to unmarshal deployment JobStatus update: %v", err)
 			}
 
-			var depReqFlat models.DeploymentRequestFlat
+			if strings.HasPrefix(service.JobStatus, "finished") {
+				if service.JobStatus == "finished without errors" {
+					JobCompletedQueue <- "finished"
+				} else if service.JobStatus == "finished with errors" {
+					JobFailedQueue <- "Job finished with errors"
+				}
 
-			if service.JobStatus == "running" {
-				// update deplreqflat.jobstatus
-				db.DB.First(&depReqFlat)
-				depReqFlat.JobStatus = service.JobStatus
-				db.DB.Save(&depReqFlat)
-
-			} else if strings.HasPrefix(service.JobStatus, "finished") {
-				// XXX: Needs to be modified to take multiple deployment requests from same service provider
-				// deletes all the record in table; deletes == mark as delete
-				if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
-					// TODO: Do not delete, update JobStatus
-					zlog.Sugar().Errorf("%v", err)
+				// job finished, closing stream
+				if stream != nil {
+					stream.Close()
+					outboundDepReqStream = nil
 				}
 			}
 
-		} else if depUpd.MsgType == "DepResp" {
+			// update deplreqflat.jobstatus
+			db.DB.Last(&depReqFlat)
+			zlog.Sugar().Infof("Updating DepReqFlat Job Status record in DB (id=%d, jobstatus=%s)", depReqFlat.ID, service.JobStatus)
+			depReqFlat.JobStatus = service.JobStatus
+			if err := db.DB.Save(&depReqFlat).Error; err != nil {
+				zlog.Sugar().Errorf("unable to update job status on finish. %v", err)
+			}
 
+			zlog.Sugar().Infof("Deployed job finished. Deleting DepReqFlat record (id=%d) from DB", depReqFlat.ID)
+			// XXX: Needs to be modified to take multiple deployment requests from same service provider
+			// deletes all the record in table; deletes == mark as delete
+			if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
+				zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
+			}
+
+		} else if depUpd.MsgType == MsgDepResp {
 			zlog.Sugar().Debugf("received deployment response: %s", resp)
 
 			if err != nil {
@@ -174,12 +224,30 @@ func DeploymentUpdateListener(stream network.Stream) {
 				err = json.Unmarshal([]byte(depUpd.Msg), &depRespMessage)
 				if err != nil {
 					zlog.Sugar().Errorf("failed to unmarshal deployment response: %v", err)
-				} else {
-
-					zlog.Sugar().Debugf("deployment update message model: %v", depRespMessage)
-
-					DepResQueue <- depRespMessage
 				}
+				zlog.Sugar().Debugf("deployment update message model: %v", depRespMessage)
+
+				if depRespMessage.Success {
+					DepResQueue <- depRespMessage
+				} else if !depRespMessage.Success {
+					JobFailedQueue <- depRespMessage.Content
+				}
+
+				// XXX: Needs to be modified to take multiple deployment requests from same service provider
+				// deletes all the record in table; deletes == mark as delete
+				if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
+					// TODO: Do not delete, update JobStatus
+					zlog.Sugar().Errorf("%v", err)
+				}
+			}
+
+		} else if depUpd.MsgType == MsgLogStdout || depUpd.MsgType == MsgLogStderr {
+			zlog.Sugar().Debugf("received log response with length: %d", len(resp))
+
+			if depUpd.MsgType == MsgLogStdout {
+				JobLogStdoutQueue <- depUpd.Msg
+			} else if depUpd.MsgType == MsgLogStderr {
+				JobLogStderrQueue <- depUpd.Msg
 			}
 		}
 	}
@@ -195,13 +263,7 @@ func DeploymentUpdate(msgType, msg string, close bool) error {
 	span.SetAttributes(attribute.String("MsgType", MsgDepResp))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 
-	zlog.Sugar().DebugfContext(ctx, "send %s message: %s", msgType, msg)
-	zlog.Sugar().DebugfContext(ctx, "send %s close stream: %v", msgType, close)
-
-	if inboundDepReqStream == nil {
-		zlog.Sugar().ErrorfContext(ctx, "no inbound deployment request to respond to")
-		return fmt.Errorf("no inbound deployment request to respond to")
-	}
+	zlog.Sugar().DebugfContext(ctx, "DeploymentUpdate -- msgType: %s -- closeStream: %t -- msg: %s", msgType, close, msg)
 
 	// Construct the outer message before sending
 	depUpdateMsg := &models.DeploymentUpdate{
@@ -210,6 +272,11 @@ func DeploymentUpdate(msgType, msg string, close bool) error {
 	}
 
 	msgBytes, _ := json.Marshal(depUpdateMsg)
+
+	if inboundDepReqStream == nil {
+		zlog.Sugar().ErrorfContext(ctx, "no inbound deployment request to respond to")
+		return fmt.Errorf("no inbound deployment request to respond to")
+	}
 
 	w := bufio.NewWriter(inboundDepReqStream)
 	_, err := w.WriteString(fmt.Sprintf("%s\n", string(msgBytes)))
@@ -357,17 +424,21 @@ func writeData(w *bufio.Writer, msg string) {
 func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stream, w *bufio.Writer) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Sugar().Errorf("Error: %v\n", r)
+			zlog.Sugar().Errorf("Error: closing stream and conn after panic -  %v", r)
+			if conn != nil {
+				conn.Close()
+			}
+			if stream != nil {
+				stream.Close()
+			}
 		}
 	}()
 
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			zlog.Sugar().Errorf("Error Reading From Websocket Connection - %v", err)
-			conn.Close()
-			stream.Close()
-			break
+			zlog.Sugar().Errorf("Error Reading From Websocket Connection.  - %v", err)
+			panic(err)
 		} else {
 			writeData(w, string(msg))
 		}
@@ -377,8 +448,10 @@ func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stre
 func StreamReadSockWrite(conn *internal.WebSocketConnection, stream network.Stream, r *bufio.Reader) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Sugar().Infof("Connection Error: %v\n", r)
-			conn.Close()
+			zlog.Sugar().Infof("Error: closing stream and conn after panic - %v", r)
+			if conn != nil {
+				conn.Close()
+			}
 			if stream != nil {
 				stream.Close()
 			}
@@ -395,4 +468,12 @@ func StreamReadSockWrite(conn *internal.WebSocketConnection, stream network.Stre
 			conn.Conn.WriteMessage(websocket.TextMessage, []byte("Peer: "+reply))
 		}
 	}
+}
+
+func IsDepReqStreamOpen() bool {
+	return outboundDepReqStream != nil
+}
+
+func IsDepRespStreamOpen() bool {
+	return inboundDepReqStream != nil
 }

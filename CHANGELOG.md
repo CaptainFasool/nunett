@@ -20,6 +20,30 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.85](#174)
+
+### Changed
+- Send logs from CP-DMS to SP-DMS in chunks of 2 minutes (configurable).
+- Job status messages "job-failed" and "job-complete" expected by SP-DMS
+# [0.4.84](#201)
+
+### Changed
+- Refuse replying to depReq ping if already running a job
+# [0.4.83](stats-database#17)
+
+### Added
+- Time elapsed and average network bandwidth used during a job in Service_call event
+# [0.4.82](#181)
+
+### Added
+- Man page that helps with nunet cli
+# [0.4.81](#190)
+
+### Changed
+- Fix for #190 by improving how depReqFlat is updated during deployment requests
+- Return job status to SP webapp when job finishes on compute provider
+- Fix for #163 by downgrading kad-dht package to 0.22.0 
+
 # [0.4.80](!146)
 
 ### Changed
