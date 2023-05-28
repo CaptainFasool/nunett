@@ -25,7 +25,6 @@
 projectRoot=$(pwd)
 outputDir="$projectRoot/dist"
 version=$(cat main.go | grep @version | awk {'print $3'})
-
 mkdir -p $outputDir
 
 for arch in amd64 # arm64
@@ -49,14 +48,18 @@ do
     rm -rf $archDir/firecracker-v1.1.1-x86_64.tgz
     # including firecracker ends
 
-    #install websocat 
+    # download websocat 
     wget -qO $archDir/usr/bin/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl
     chmod a+x $archDir/usr/bin/websocat
+
+    # create man page
+    pandoc -s -t man $archDir/usr/share/man/man1/NUNET-CLI-MANUAL.md -o $archDir/usr/share/man/man1/nunet.1
+    gzip $archDir/usr/share/man/man1/nunet.1
+    rm $archDir/usr/share/man/man1/NUNET-CLI-MANUAL.md
 
     find $archDir -name .gitkeep | xargs rm
     chmod -R 755 $archDir
     dpkg-deb --build --root-owner-group $archDir $outputDir
-
     rm -r $archDir
 
     # The remaining part of this script used to upload artifact from build.sh to GitLab Package Registry.

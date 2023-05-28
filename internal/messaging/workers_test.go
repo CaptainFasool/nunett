@@ -110,7 +110,7 @@ func TestDepReq(t *testing.T) {
 		MaxNtx:                 10,
 		Blockchain:             "cardano",
 		ServiceType:            "cardano_node",
-		Timestamp:              time.Now(),
+		Timestamp:              time.Now().In(time.UTC),
 	}
 	correctJsonDepReq, err := json.Marshal(correctDepReq)
 	err = stream.Close()

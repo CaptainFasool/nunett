@@ -33,7 +33,8 @@ usage() {
     echo "  shell               Send commands and receive answers to a vm instance via DMS"
     echo "  peer                Interact with currently visible peers"
     echo "  chat                Start,Join or List Chat Requests"
-    echo -e "  log                 Returns the path of an archive containing all log files\n"
+    echo "  log                 Returns the path of an archive containing all log files"
+    echo -e "  version             Current DMS Version \n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -847,6 +848,7 @@ onboard-ml()
 {
     sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
     sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
+    sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu
     ml_info
 }
 
@@ -885,6 +887,11 @@ log(){
 
 }
 
+version(){
+    N_DMS_VERSION=$(curl -s $DMS_HOST:$DMS_PORT/swagger/doc.json | jq -r .info.version)
+    echo "DMS Version: $N_DMS_VERSION"
+}
+
 check_dms_run() {
     N_CHECK_DMS=$(ss -tnlp 2>/dev/null | grep ":$DMS_PORT")
     if [[ ! $? -eq 0 ]] ; then
@@ -895,7 +902,7 @@ check_dms_run() {
 }
 
 
-cmds=("capacity" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config")
+cmds=("capacity" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version")
 
 if [ $# -eq  0 ] ; then
     usage
