@@ -7,6 +7,8 @@ import (
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"gitlab.com/nunet/device-management-service/internal/config"
 )
 
 var (
@@ -20,7 +22,7 @@ type Logger struct {
 }
 
 func (l *Logger) init() error {
-	if _, debug := os.LookupEnv("NUNET_DEBUG"); debug {
+	if _, debug := os.LookupEnv("NUNET_DEBUG"); debug || config.GetConfig().General.Debug {
 		zapConfig := zap.NewDevelopmentConfig()
 		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		l.Logger, _ = zapConfig.Build()

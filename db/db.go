@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -82,7 +83,7 @@ func (g *DMSGormDB) Updates(model interface{}, dest interface{}, attrib string, 
 }
 
 func ConnectDatabase() {
-	database, err := gorm.Open(sqlite.Open("/etc/nunet/nunet.db"), &gorm.Config{})
+	database, err := gorm.Open(sqlite.Open(fmt.Sprintf("%s/nunet.db", config.GetConfig().General.MetadataPath)), &gorm.Config{})
 
 	if err != nil {
 		panic("Failed to connect to database!")

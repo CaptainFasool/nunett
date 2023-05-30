@@ -12,6 +12,10 @@ import (
 )
 
 func createGist() (*github.Gist, *github.Response, error) {
+	if !gHealthy {
+		return nil, nil, errors.New("gist client not healthy")
+	}
+
 	gist := &github.Gist{
 		Description: github.String("Docker Logs to Gist"),
 		Public:      github.Bool(false),
@@ -36,10 +40,15 @@ func createGist() (*github.Gist, *github.Response, error) {
 }
 
 func updateGist(gistID string, containerID string) {
+
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	containerLog := GetLogs(containerID)
+	containerLog, err := GetLogs(containerID)
+	if err != nil {
+		zlog.Sugar().Errorf("failed to get logs from container - %v", err)
+		return
+	}
 	stdcopy.StdCopy(&stdout, &stderr, containerLog)
 
 	var errGistFile github.GistFile
@@ -64,10 +73,11 @@ func updateGist(gistID string, containerID string) {
 	}
 	editedGist, resp, err := gh.Gists.Edit(ctx, gistID, gist)
 	if err != nil {
-		panic(err)
+		zlog.Sugar().Errorf("failed to update gist - %v", err)
+		return
 	}
-
 	zlog.Info(fmt.Sprintf("[gist]: UpdatedAt: %s", editedGist.GetUpdatedAt()))
 	zlog.Info(fmt.Sprintf("[gist]: Resp Code %d:", resp.StatusCode)) // if this is equal to 0, we have exhausted limit for 24 hours.
 	// log.Printf("%v\n", resp.Header)
+
 }

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -49,6 +50,25 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
+	// Check if there is already a running job
+	if libp2p.IsDepReqStreamOpen() {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "a service is already running; only 1 service is supported at the moment"})
+		return
+	}
+
+	// since IsDepReqStreamOpen() is false, we can assume that there is no running job because we've lost connection to the peer
+	if result := db.DB.Where("deleted_at IS NULL").Find(&depReqFlat).RowsAffected; result > 0 {
+		zlog.Sugar().Infof(
+			"Deployed job unknown status (outbound depReq not open anymore). Deleting DepReqFlat record (i=%d, n=%d) from DB",
+			depReqFlat.ID, result)
+		// XXX: Needs to be modified to take multiple deployment requests from same service provider
+		// deletes all the record in table; deletes == mark as delete
+		if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
+			// TODO: Do not delete, update JobStatus
+			zlog.Sugar().Errorf("%v", err)
+		}
+	}
+
 	// add node_id and public_key in deployment request
 	pKey, err := libp2p.GetPublicKey()
 	if err != nil {
@@ -57,8 +77,9 @@ func HandleRequestService(c *gin.Context) {
 	}
 	selfNodeID := libp2p.GetP2P().Host.ID().String()
 
-	depReq.Params.NodeID = selfNodeID
-	depReq.Params.PublicKey = pKey.Type().String()
+	depReq.Timestamp = time.Now().In(time.UTC)
+	depReq.Params.LocalNodeID = selfNodeID
+	depReq.Params.LocalPublicKey = pKey.Type().String()
 
 	// check if the pricing matched
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
@@ -95,7 +116,7 @@ func HandleRequestService(c *gin.Context) {
 		}
 	}
 	if onlinePeer.PeerID == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "no peers found with matched specs"})
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
 		return
 	}
 	computeProvider := onlinePeer
@@ -105,12 +126,26 @@ func HandleRequestService(c *gin.Context) {
 	}
 	zlog.Sugar().Debugf("compute provider: ", computeProvider)
 
+	depReq.Params.RemoteNodeID = computeProvider.PeerID
+	computeProviderPeerID, err := peer.Decode(computeProvider.PeerID)
+	if err != nil {
+		zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
+		return
+	}
+	computeProviderPubKey, err := computeProviderPeerID.ExtractPublicKey()
+	if err != nil {
+		zlog.Sugar().Errorf("unable to extract public key from peer id: %v", err)
+		depReq.Params.RemotePublicKey = ""
+	} else {
+		depReq.Params.RemotePublicKey = computeProviderPubKey.Type().String()
+		zlog.Sugar().Debugf("compute provider public key: ", computeProviderPubKey.Type().String())
+	}
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Sugar().Infof("sending fund contract request to oracle")
 	fcr, err := oracle.FundContractRequest()
 	if err != nil {
 		zlog.Sugar().Infof("sending fund contract request to oracle failed")
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot connect to oracle"})
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "cannot connect to oracle"})
 		return
 	}
 
@@ -118,29 +153,16 @@ func HandleRequestService(c *gin.Context) {
 	depReqBytes, _ := json.Marshal(depReq)
 	// Convert JSON bytes to string
 	depReqStr := string(depReqBytes)
+
+	depReqFlat = models.DeploymentRequestFlat{} // reset
 	depReqFlat.DeploymentRequest = depReqStr
+	depReqFlat.JobStatus = "awaiting"
 
 	if err := db.DB.Create(&depReqFlat).Error; err != nil {
 		zlog.Sugar().Infof("cannot write to database")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "cannot write to database"})
 		return
 	}
-
-	var requestTracker models.RequestTracker
-	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
-	if res.Error != nil {
-		zlog.Error(res.Error.Error())
-	}
-
-	// sending ntx_payment info to stats database via grpc Call
-	NtxPaymentParams := models.NtxPayment{
-		CallID:      requestTracker.CallID,
-		ServiceID:   requestTracker.ServiceType,
-		AmountOfNtx: int32(estimatedNtx),
-		PeerID:      requestTracker.NodeID,
-		Timestamp:   float32(statsdb.GetTimestamp()),
-	}
-	statsdb.NtxPayment(NtxPaymentParams)
 
 	// oracle outputs: compute provider user address, estimated price, signature, oracle message
 	fundingRespToWebapp := struct {
@@ -179,53 +201,150 @@ func HandleDeploymentRequest(c *gin.Context) {
 
 	conn := internal.WebSocketConnection{Conn: ws}
 
-	go listenForDeploymentStatus(c, &conn)
-	go listenForDeploymentResponse(c, &conn)
+	go listenToOutgoingMessage(c, &conn)
+	go listenForIncomingMessage(c, &conn)
 }
 
-func listenForDeploymentStatus(ctx *gin.Context, conn *internal.WebSocketConnection) {
+// listenToOutgoingMessage is for sending message to websocket server.
+// If you want to add a new message to receive, see listenForDeploymentResponse.
+func listenToOutgoingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
-			zlog.Error(fmt.Sprintf("%v", r))
+			zlog.Sugar().Warnf("closing sock after panic - %v", r)
+			if conn != nil {
+				conn.Close()
+			}
 		}
 	}()
 
 	for {
 		_, p, err := conn.ReadMessage()
 		if err != nil {
-			zlog.Error(err.Error())
-			conn.Close()
-			return
+			zlog.Sugar().Warnf("unable to read from websocket  - panicking: %v", err.Error())
+			panic(err)
 		}
-
-		handleWebsocketAction(ctx, p)
+		zlog.Sugar().Debugf("Received message from websocket client: %v", string(p))
+		handleWebsocketAction(ctx, p, conn)
 	}
 }
 
-func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConnection) {
+// listenForDeploymentStatus is for receiving message to websocket client.
+// If you want to add a new message to send to server, see listenForDeploymentStatus.
+func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
 	for {
 		// 1. check if DepResQueue has anything
 		select {
-		case msg, ok := <-libp2p.DepResQueue:
+		case rawMsg, ok := <-libp2p.DepResQueue:
+			zlog.Sugar().Infof("Deployment response received. - msg: %v , ok: %v", rawMsg, ok)
 			if ok {
-				zlog.Info("Deployment response received. Sending it to connected websocket client")
+				zlog.Info("Sending Received DepResp to connected websocket client")
 				var depRes models.DeploymentResponse
 
-				jsonDataMsg, _ := json.Marshal(msg)
+				jsonDataMsg, _ := json.Marshal(rawMsg)
 				json.Unmarshal(jsonDataMsg, &depRes)
 				msg, _ := json.Marshal(depRes)
 
-				// 2. Send the content to the client connected
-				wsResponse := wsMessage{
-					Action:  "deployment-response",
-					Message: json.RawMessage(msg),
+				var wsResponse wsMessage
+
+				if strings.Contains(depRes.Content, libp2p.ContainerJobFinishedWithErrors) {
+					zlog.Info("Finished: Sending Deployment failed to websock")
+					err := conn.WriteJSON(map[string]string{"action": libp2p.JobFailed})
+					if err != nil {
+						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+						break
+					}
+					zlog.Info("Closing websocket connection")
+					conn.Close()
+				} else if strings.Contains(depRes.Content, libp2p.ContainerJobFinishedWithoutErrors) {
+					zlog.Info("Finished: Sending Deployment success to websock")
+					err := conn.WriteJSON(map[string]string{"action": libp2p.JobCompleted})
+					if err != nil {
+						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+						break
+					}
+					zlog.Info("Closing websocket connection")
+					conn.Close()
+				} else {
+					zlog.Info("Sending Deployment status/response to websock")
+					wsResponse = wsMessage{
+						Action:  "deployment-response",
+						Message: json.RawMessage(msg),
+					}
+					err := conn.WriteJSON(wsResponse)
+					if err != nil {
+						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+						break
+					}
 				}
 
 				msg, _ = json.Marshal(wsResponse)
 
-				zlog.Sugar().Debugf("deployment response to websock: %s", string(msg))
+				zlog.Sugar().Debugf("[websocket] deployment response to websocket: %s", string(msg))
 
 				conn.WriteMessage(websocket.TextMessage, msg)
+			} else {
+				zlog.Info("Channel closed!")
+			}
+		case msg, ok := <-libp2p.JobLogStdoutQueue:
+			if ok {
+				stdoutLog := struct {
+					Action string `json:"action"`
+					Stdout string `json:"stdout"`
+				}{
+					Action: "log-stream-response",
+					Stdout: msg,
+				}
+
+				resp, _ := json.Marshal(stdoutLog)
+				zlog.Sugar().Debugf("[websocket] stdout update to websocket")
+				conn.WriteMessage(websocket.TextMessage, resp)
+
+			} else {
+				zlog.Info("Channel closed!")
+			}
+		case msg, ok := <-libp2p.JobLogStderrQueue:
+			if ok {
+				stderrLog := struct {
+					Action string `json:"action"`
+					Stderr string `json:"stderr"`
+				}{
+					Action: "log-stream-response",
+					Stderr: msg,
+				}
+
+				resp, _ := json.Marshal(stderrLog)
+				zlog.Sugar().Debugf("[websocket] stderr update to websocket")
+				conn.WriteMessage(websocket.TextMessage, resp)
+
+			} else {
+				zlog.Info("Channel closed!")
+			}
+		case _, ok := <-libp2p.JobCompletedQueue:
+			if ok {
+				wsResponse := wsMessage{
+					Action: "job-completed",
+				}
+				resp, _ := json.Marshal(wsResponse)
+				zlog.Sugar().Debugf("[websocket] job-completed to websocket")
+				conn.WriteMessage(websocket.TextMessage, resp)
+			} else {
+				zlog.Info("Channel closed!")
+			}
+		case msg, ok := <-libp2p.JobFailedQueue:
+			if ok {
+				zlog.Sugar().Debugf("[websocket] job-failed to websocket")
+				wsResponse := struct {
+					Action  string `json:"action"`
+					Message string `json:"message"`
+				}{
+					Action:  "job-failed",
+					Message: msg,
+				}
+				resp, err := json.Marshal(wsResponse)
+				if err != nil {
+					zlog.Error("error in job-failed websocket response")
+				}
+				conn.WriteMessage(websocket.TextMessage, resp)
 			} else {
 				zlog.Info("Channel closed!")
 			}
@@ -233,7 +352,7 @@ func listenForDeploymentResponse(ctx *gin.Context, conn *internal.WebSocketConne
 	}
 }
 
-func handleWebsocketAction(ctx *gin.Context, payload []byte) {
+func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebSocketConnection) {
 	// convert json to go values
 	var m wsMessage
 	err := json.Unmarshal(payload, &m)
@@ -253,14 +372,14 @@ func handleWebsocketAction(ctx *gin.Context, payload []byte) {
 			return
 		}
 
-		err = sendDeploymentRequest(ctx)
+		err = sendDeploymentRequest(ctx, conn)
 		if err != nil {
 			zlog.Error(err.Error())
 		}
 	}
 }
 
-func sendDeploymentRequest(ctx *gin.Context) error {
+func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection) error {
 	span := trace.SpanFromContext(ctx.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
 	span.SetAttributes(attribute.String("TransactionStatus", "success"))
@@ -275,13 +394,6 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 		zlog.Sugar().Errorf("%v", err)
 	}
 
-	// delete temporary record
-	// XXX: Needs to be modified to take multiple deployment requests from same service provider
-	// deletes all the record in table; deletes == mark as delete
-	if err := db.DB.Where("deleted_at IS NULL").Delete(&models.DeploymentRequestFlat{}).Error; err != nil {
-		zlog.Sugar().Errorf("%v", err)
-	}
-
 	err := json.Unmarshal([]byte(depReqFlat.DeploymentRequest), &depReq)
 	if err != nil {
 		zlog.Sugar().Errorf("%v", err)
@@ -293,9 +405,14 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	depReq.TraceInfo.TraceFlags = span.SpanContext().TraceFlags().String()
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
-	depReq.Timestamp = time.Now()
-
 	zlog.Sugar().Debugf("deployment request: %v", depReq)
+
+	// notify websocket client about the
+	submitted := map[string]string{"action": libp2p.JobSubmitted}
+	err = conn.WriteJSON(submitted)
+	if err != nil {
+		zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+	}
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {
@@ -305,7 +422,7 @@ func sendDeploymentRequest(ctx *gin.Context) error {
 	//TODO: Context handling and cancellation on all messaging related code
 	//      most importantly, depreq/depres messaging
 	//XXX: needs a lot of testing.
-	go libp2p.DeploymentResponseListener(depReqStream)
+	go libp2p.DeploymentUpdateListener(depReqStream)
 
 	return nil
 }
@@ -325,21 +442,28 @@ func HandleSendStatus(c *gin.Context) {
 		return
 	}
 
-	if body.TransactionType == "withdraw" && body.TransactionStatus == "success" {
-		// Delete the entry
-		if err := db.DB.Where("deleted_at IS NULL").Delete(&models.Services{}).Error; err != nil {
-			zlog.Sugar().Errorln(err)
-		}
-	}
-
-	serviceStatus := body.TransactionType + " with " + body.TransactionStatus
-
 	var requestTracker models.RequestTracker
 	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
 	if res.Error != nil {
 		zlog.Error(res.Error.Error())
 	}
+	if body.TransactionType == "withdraw" && body.TransactionStatus == "success" {
+		// Delete the entry
+		if err := db.DB.Where("deleted_at IS NULL").Delete(&models.Services{}).Error; err != nil {
+			zlog.Sugar().Errorln(err)
+		}
+		// sending ntx_payment info to stats database via grpc Call
+		NtxPaymentParams := models.NtxPayment{
+			CallID:      requestTracker.CallID,
+			ServiceID:   requestTracker.ServiceType,
+			AmountOfNtx: requestTracker.MaxTokens,
+			PeerID:      requestTracker.NodeID,
+			Timestamp:   float32(statsdb.GetTimestamp()),
+		}
+		statsdb.NtxPayment(NtxPaymentParams)
+	}
 
+	serviceStatus := body.TransactionType + " with " + body.TransactionStatus
 	ServiceStatusParams := models.ServiceStatus{
 		CallID:              requestTracker.CallID,
 		PeerIDOfServiceHost: requestTracker.NodeID,

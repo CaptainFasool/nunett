@@ -60,6 +60,7 @@ type ServiceCall struct {
 	NetworkBwUsed       float32
 	TimeTaken           float32
 	Status              string
+	AmountOfNtx         int32
 	Timestamp           float32
 }
 
@@ -96,4 +97,5 @@ type RequestTracker struct {
 	CallID      float32
 	Status      string
 	RequestID   string
+	MaxTokens   int32
 }

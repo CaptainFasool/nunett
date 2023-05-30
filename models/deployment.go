@@ -16,8 +16,10 @@ type DeploymentRequest struct {
 		ImageID     string   `json:"image_id"`
 		ModelURL    string   `json:"model_url"`
 		Packages    []string `json:"packages"`
-		NodeID      string   `json:"node_id"`
-		PublicKey   string   `json:"public_key"`
+		RemoteNodeID      string   `json:"node_id"` // NodeID of compute provider (machine to deploy the job on)
+		RemotePublicKey   string   `json:"public_key"` // Public key of compute provider
+		LocalNodeID      string   `json:"local_node_id"` // NodeID of service provider (machine triggering the job)
+		LocalPublicKey   string   `json:"local_public_key"` // Public key of service provider
 		MachineType string   `json:"machine_type"`
 	} `json:"params"`
 	Constraints struct {
@@ -41,7 +43,14 @@ type DeploymentResponse struct {
 	Content string `json:"content"`
 }
 
+type DeploymentUpdate struct {
+	MsgType string `json:"msg_type"`
+	Msg     string `json:"msg"`
+}
+
 type DeploymentRequestFlat struct {
 	gorm.Model
 	DeploymentRequest string `json:"deployment_request"`
+	// represents job status from services table; goal is to keep then in sync (both tables are on different DMSes).
+	JobStatus string `json:"job_status"`
 }

@@ -15,19 +15,20 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func sendDeploymentResponse(success bool, content string, close bool) {
-
-	zlog.Sugar().Debugf("send deployment response content: %s", content)
-	zlog.Sugar().Debugf("send deployment response close stream: %v", close)
-
+func sendDeploymentResponse(success bool, content string) {
 	depResp, _ := json.Marshal(&models.DeploymentResponse{
 		Success: success,
 		Content: content,
 	})
 
-	zlog.Sugar().Debugf("marshalled deployment response from worker: %s", string(depResp))
+	zlog.Sugar().Debugf("marshalled deployment response: %s", string(depResp))
 
-	err := libp2p.DeploymentResponse(string(depResp), close)
+	var closeStream bool
+	if !success {
+		closeStream = true
+	}
+
+	err := libp2p.DeploymentUpdate(libp2p.MsgDepResp, string(depResp), closeStream)
 	if err != nil {
 		zlog.Sugar().Errorf("Error Sending Deployment Response - ", err.Error())
 	}
@@ -48,7 +49,7 @@ func DeploymentWorker() {
 				handleDockerDeployment(depReq)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
-				sendDeploymentResponse(false, "Unknown service type.", true)
+				sendDeploymentResponse(false, "Unknown service type.")
 			}
 		}
 	}
@@ -57,21 +58,21 @@ func DeploymentWorker() {
 func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	// dowload kernel and filesystem files place them somewhere
 	// TODO : organize fc files
-	pKey := depReq.Params.PublicKey
-	nodeId := depReq.Params.NodeID
+	pKey := depReq.Params.LocalPublicKey
+	nodeId := depReq.Params.LocalNodeID
 
 	err := utils.DownloadFile(utils.KernelFileURL, utils.KernelFilePath)
 	if err != nil {
 		zlog.Error(fmt.Sprintf("Downloading %s, - %s", utils.KernelFileURL, err.Error()))
 		sendDeploymentResponse(false,
-			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.KernelFileURL), true)
+			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.KernelFileURL))
 		return
 	}
 	err = utils.DownloadFile(utils.FilesystemURL, utils.FilesystemPath)
 	if err != nil {
 		zlog.Error(fmt.Sprintf("Downloading %s - %s", utils.FilesystemURL, err.Error()))
 		sendDeploymentResponse(false,
-			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.FilesystemURL), true)
+			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.FilesystemURL))
 		return
 	}
 
@@ -93,16 +94,16 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	_, err = io.ReadAll(resp.Body)
 	if err != nil {
 		zlog.Error(err.Error())
-		sendDeploymentResponse(false, "Cardano Node Deployment Failed. Unable to spawn VM.", true)
+		sendDeploymentResponse(false, "Cardano Node Deployment Failed. Unable to spawn VM.")
 		return
 	}
-	sendDeploymentResponse(true, "Cardano Node Deployment Successful.", false)
+	sendDeploymentResponse(true, "Cardano Node Deployment Successful.")
 }
 
 func handleDockerDeployment(depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
-	callID := statsdb.GetCallID()
-	peerIDOfServiceHost := depReq.Params.NodeID
+	callID := float32(statsdb.GetCallID())
+	peerIDOfServiceHost := depReq.Params.LocalNodeID
 	timeStamp := float32(statsdb.GetTimestamp())
 	status := "accepted"
 
@@ -110,9 +111,9 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		CallID:              callID,
 		PeerIDOfServiceHost: peerIDOfServiceHost,
 		ServiceID:           depReq.ServiceType,
-		CPUUsed:             float32(depReq.Constraints.CPU),
-		MaxRAM:              float32(depReq.Constraints.Vram),
-		MemoryUsed:          float32(depReq.Constraints.RAM),
+		CPUUsed:             0.0,
+		MaxRAM:              float32(depReq.Constraints.RAM),
+		MemoryUsed:          0.0,
 		NetworkBwUsed:       0.0,
 		TimeTaken:           0.0,
 		Status:              status,
@@ -126,6 +127,7 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		CallID:      callID,
 		NodeID:      peerIDOfServiceHost,
 		Status:      status,
+		MaxTokens:   int32(depReq.MaxNtx),
 	}
 
 	// Check if we have a previous entry in the table
@@ -143,5 +145,5 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 	}
 
 	depResp = docker.HandleDeployment(depReq)
-	sendDeploymentResponse(depResp.Success, depResp.Content, false)
+	sendDeploymentResponse(depResp.Success, depResp.Content)
 }

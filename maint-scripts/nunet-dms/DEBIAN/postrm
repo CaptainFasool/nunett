@@ -9,3 +9,11 @@ if [ -x "$(command -v deluser)" ]; then
   else
      echo >&2 "not removing nunet system account because deluser command was not found"
 fi
+
+if [ $1 = "purge" ]; then
+    rm -rf /etc/nunet
+    rm -rf /usr/share/man/man1/nunet.1.gz
+    if command -v mandb > /dev/null; then
+        mandb -q
+    fi
+fi
