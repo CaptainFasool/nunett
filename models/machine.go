@@ -113,6 +113,7 @@ type PeerData struct {
 	AvailableResources   FreeResources `json:"available_resources"`
 	Services             []Services    `json:"services"`
 	Timestamp            int64         `json:"timestamp,omitempty"`
+	EnabledPlugins       []string      `json:"enabled_plugins"`
 }
 
 type Connection struct {

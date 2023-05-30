@@ -13,6 +13,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/plugins"
 	"gitlab.com/nunet/device-management-service/routes"
 	"gitlab.com/nunet/device-management-service/utils"
 
@@ -45,9 +46,14 @@ func Run() {
 
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
+
 	if libp2p.GetP2P().Host != nil {
 		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
 	}
+
+	// Iniate plugins if any enabled
+	plugins.StartPlugins()
+
 	wg.Wait()
 }
 
@@ -60,5 +66,4 @@ func startServer(wg *sync.WaitGroup) {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.Run(fmt.Sprintf(":%d", config.GetConfig().Rest.Port))
-
 }
