@@ -13,6 +13,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/plugins"
 	"gitlab.com/nunet/device-management-service/routes"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -44,6 +45,10 @@ func Run() {
 
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
+
+	// Iniate plugins if any enabled
+	plugins.StartPlugins()
+
 	wg.Wait()
 }
 
@@ -56,5 +61,4 @@ func startServer(wg *sync.WaitGroup) {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.Run(fmt.Sprintf(":%d", config.GetConfig().Rest.Port))
-
 }
