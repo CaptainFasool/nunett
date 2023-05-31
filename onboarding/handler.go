@@ -324,7 +324,7 @@ func ResourceConfig(c *gin.Context) {
 
 	// read the existing data and update it with new resources
 	var availableRes models.AvailableResources
-	if res := db.DB.WithContext(c.Request.Context()).Find(&availableRes); res.RowsAffected == 0 {
+	if res := db.DB.WithContext(c.Request.Context()).First(&availableRes); res.RowsAffected == 0 {
 		zlog.Sugar().Errorf("availableRes table does not exist: %v", err)
 	}
 	availableRes.TotCpuHz = int(capacityForNunet.CPU)

@@ -1,8 +1,6 @@
 package docker
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,6 +24,7 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
+	"go.uber.org/zap"
 )
 
 var (
@@ -187,7 +186,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 
 	service.ResourceRequirements = int(resourceRequirements.ID)
-	// TODO: Update service based on passed pk
 
 	telemetry.CalcFreeResources()
 	freeResource, err := telemetry.GetFreeResources()
@@ -212,6 +210,7 @@ outerLoop:
 	for {
 		select {
 		case err := <-errCh:
+			zlog.Info("[container running] entering first case; container didn't start")
 			// handle error & exit
 			if err != nil {
 				zlog.Sugar().Errorf("problem in running contianer: %v", err)
@@ -221,8 +220,18 @@ outerLoop:
 				return
 			}
 		case containerStatus := <-statusCh: // not running?
+			zlog.Info("[container running] entering second case; container exiting")
+
 			// get the last logs & exit...
 			updateGist(*createdGist.ID, resp.ID)
+
+			// Add a response for log update
+			if r := db.DB.Where("container_id = ?", resp.ID).First(&service); r.Error != nil {
+				zlog.Sugar().Errorf("problemn updating services: %v", r.Error)
+				service.JobStatus = "finished with errors"
+			}
+			sendLogsToSPD(resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+
 			var requestTracker models.RequestTracker
 			res := db.DB.Where("id = ?", 1).Find(&requestTracker)
 			if res.Error != nil {
@@ -230,37 +239,27 @@ outerLoop:
 			}
 
 			// add exitStatus to db
-			var services models.Services
 			if containerStatus.StatusCode == 0 {
-				services.JobStatus = libp2p.ContainerJobFinishedWithoutErrors
+				service.JobStatus = libp2p.ContainerJobFinishedWithoutErrors
 				status = libp2p.ContainerJobFinishedWithoutErrors
 				requestTracker.Status = libp2p.ContainerJobFinishedWithoutErrors
 			} else if containerStatus.StatusCode > 0 {
-				services.JobStatus = libp2p.ContainerJobFinishedWithErrors
+				service.JobStatus = libp2p.ContainerJobFinishedWithErrors
 				status = libp2p.ContainerJobFinishedWithErrors
 				requestTracker.Status = libp2p.ContainerJobFinishedWithErrors
 			}
-			r := db.DB.Model(services).Where("container_id = ?", resp.ID).Updates(services)
-			if r.Error != nil {
-				zlog.Sugar().Errorf("problemn updating services: %v", r.Error)
-				depRes := models.DeploymentResponse{Success: false, Content: "Problem with services tracker. Unable to complete request."}
-				resCh <- depRes
-				return
-			}
+
+			db.DB.Save(&service)
 
 			// Send service status update
-			var tempService models.Services
-			if err := db.DB.Where("container_id = ?", resp.ID).First(&tempService).Error; err != nil {
-				panic(err)
-			}
-			serviceBytes, _ := json.Marshal(tempService)
+			serviceBytes, _ := json.Marshal(service)
 			var closeStream bool
 			if strings.HasPrefix("finished", service.JobStatus) {
 				closeStream = true
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
 
-			duration := time.Now().Sub(tempService.CreatedAt)
+			duration := time.Now().Sub(service.CreatedAt)
 			timeTaken := duration.Seconds()
 			averageNetBw := networkBwUsed / timeTaken
 			ServiceCallParams := models.ServiceCall{
@@ -287,22 +286,20 @@ outerLoop:
 			freeUsedResources(resp.ID)
 			break outerLoop
 		case <-tick.C:
+			zlog.Info("[container running] entering third case; time ticker")
+
 			// get the latest logs ...
-			zlog.Info("updating gist")
-			contID := resp.ID[:12]
+			contID := requestTracker.RequestID[:12]
 			stats, err := dockerstats.Current()
 			if err != nil {
 				zlog.Sugar().Errorf("problem obtaining docker stats: %v", err)
-				depRes := models.DeploymentResponse{Success: false, Content: "Problem Obtaining Container Metric. Unable to complete request."}
-				resCh <- depRes
-				return
 			}
 
 			var tempService models.Services
 			if err := db.DB.Where("container_id = ?", resp.ID).First(&tempService).Error; err != nil {
 				panic(err)
 			}
-			duration := time.Now().Sub(tempService.CreatedAt)
+			duration := time.Since(tempService.CreatedAt)
 			timeTaken := duration.Seconds()
 			for _, s := range stats {
 				if s.Container == contID {
@@ -342,25 +339,17 @@ outerLoop:
 			statsdb.ServiceCall(ServiceCallParams)
 
 			updateGist(*createdGist.ID, resp.ID)
+
+			// Add a response for log update
+			db.DB.Where("container_id = ?", resp.ID).First(&service)
+			zlog.Debug("service.LastLogFetch",
+				zap.String("value", service.LastLogFetch.Format("2006-01-02T15:04:05Z")),
+			)
+			sendLogsToSPD(resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+			service.LastLogFetch = time.Now().In(time.UTC)
+			db.DB.Save(&service)
 		}
 	}
-}
-
-// cleanFlushInfo takes in bytes.Buffer from docker logs output and for each line
-// if it has a \r in the lines, takes the last one and compose another string
-// out of that.
-func cleanFlushInfo(bytesBuffer *bytes.Buffer) string {
-	scanner := bufio.NewScanner(bytesBuffer)
-	finalString := ""
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		chunks := strings.Split(line, "\r")
-		lastChunk := chunks[len(chunks)-1] // fetch the last update of the line
-		finalString += lastChunk + "\n"
-	}
-
-	return finalString
 }
 
 // PullImage is a wrapper around Docker SDK's function with same name.
@@ -373,21 +362,6 @@ func PullImage(imageName string) error {
 	defer out.Close()
 	io.Copy(os.Stdout, out)
 	return nil
-}
-
-// GetLogs return logs from the container io.ReadCloser. It's the caller duty
-// duty to do a stdcopy.StdCopy. Any other method might render unknown
-// unicode character as log output has both stdout and stderr. That starting
-// has info if that line is stderr or stdout.
-func GetLogs(contName string) (io.ReadCloser, error) {
-	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
-
-	out, err := dc.ContainerLogs(ctx, contName, options)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get logs: %v", err)
-	}
-
-	return out, nil
 }
 
 func cpuUsage(cpu float64, maxCPU float64) float64 {

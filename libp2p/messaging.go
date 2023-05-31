@@ -25,22 +25,24 @@ const (
 	MsgDepResp   = "DepResp"
 	MsgDepReq    = "DepReq"
 	MsgJobStatus = "JobStatus"
+	MsgLogStderr = "LogStderr"
+	MsgLogStdout = "LogStdout"
 )
 
 // constants for job status messaging
 const (
-	ContainerJobPending   = "pending"
-	ContainerJobRunning   = "running"
-	ContainerJobFinishedWithErrors = "finished with errors"
+	ContainerJobPending               = "pending"
+	ContainerJobRunning               = "running"
+	ContainerJobFinishedWithErrors    = "finished with errors"
 	ContainerJobFinishedWithoutErrors = "finished without errors"
-	ContainerJobFailed    = "failed"
+	ContainerJobFailed                = "failed"
 )
 
 // constants for job status actions
 const (
 	JobSubmitted = "job-submitted"
-	JobFailed  = "job-failed"
-	JobCompleted  = "job-completed"
+	JobFailed    = "job-failed"
+	JobCompleted = "job-completed"
 )
 
 var inboundChatStreams []network.Stream
@@ -174,42 +176,20 @@ func DeploymentUpdateListener(stream network.Stream) {
 			panic(err)
 		}
 
-		if depUpd.MsgType == "JobStatus" {
+		var depReqFlat models.DeploymentRequestFlat
+
+		if depUpd.MsgType == MsgJobStatus {
 			service := models.Services{}
 			err = json.Unmarshal([]byte(depUpd.Msg), &service)
 			if err != nil {
 				zlog.Sugar().Errorf("failed to unmarshal deployment JobStatus update: %v", err)
 			}
 
-			var depReqFlat models.DeploymentRequestFlat
-
-			if service.JobStatus == "running" {
-				// update deplreqflat.jobstatus
-				db.DB.Last(&depReqFlat)
-				zlog.Sugar().Infof("Updating DepReqFlat Job Status record in DB (id=%d, jobstatus=%s)", depReqFlat.ID, service.JobStatus)
-				depReqFlat.JobStatus = service.JobStatus
-				db.DB.Save(&depReqFlat)
-
-			} else if strings.HasPrefix(service.JobStatus, "finished") {
-				// update deplreqflat.jobstatus
-				// depReqFlat = models.DeploymentRequestFlat{} // reset
-				db.DB.Last(&depReqFlat)
-
-				zlog.Sugar().Infof(
-					"Updating DepReqFlat Job Status record in DB (id=%d, jobstatus=%s => %s)",
-					depReqFlat.ID, depReqFlat.JobStatus, service.JobStatus)
-
-				depReqFlat.JobStatus = service.JobStatus
-				if err := db.DB.Save(&depReqFlat).Error; err != nil {
-					zlog.Sugar().Errorf("unable to update job status on finish. %v", err)
-				}
-
-				zlog.Sugar().Infof("Deployed job finished. Deleting DepReqFlat record (id=%d) from DB", depReqFlat.ID)
-				// XXX: Needs to be modified to take multiple deployment requests from same service provider
-				// deletes all the record in table; deletes == mark as delete
-				if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
-					// TODO: Do not delete, update JobStatus
-					zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
+			if strings.HasPrefix(service.JobStatus, "finished") {
+				if service.JobStatus == "finished without errors" {
+					JobCompletedQueue <- "finished"
+				} else if service.JobStatus == "finished with errors" {
+					JobFailedQueue <- "Job finished with errors"
 				}
 
 				// job finished, closing stream
@@ -217,13 +197,24 @@ func DeploymentUpdateListener(stream network.Stream) {
 					stream.Close()
 					outboundDepReqStream = nil
 				}
-
-				DepResQueue <- models.DeploymentResponse{Success: true, Content: service.JobStatus}
-
 			}
 
-		} else if depUpd.MsgType == "DepResp" {
+			// update deplreqflat.jobstatus
+			db.DB.Last(&depReqFlat)
+			zlog.Sugar().Infof("Updating DepReqFlat Job Status record in DB (id=%d, jobstatus=%s)", depReqFlat.ID, service.JobStatus)
+			depReqFlat.JobStatus = service.JobStatus
+			if err := db.DB.Save(&depReqFlat).Error; err != nil {
+				zlog.Sugar().Errorf("unable to update job status on finish. %v", err)
+			}
 
+			zlog.Sugar().Infof("Deployed job finished. Deleting DepReqFlat record (id=%d) from DB", depReqFlat.ID)
+			// XXX: Needs to be modified to take multiple deployment requests from same service provider
+			// deletes all the record in table; deletes == mark as delete
+			if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
+				zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
+			}
+
+		} else if depUpd.MsgType == MsgDepResp {
 			zlog.Sugar().Debugf("received deployment response: %s", resp)
 
 			if err != nil {
@@ -235,12 +226,30 @@ func DeploymentUpdateListener(stream network.Stream) {
 				err = json.Unmarshal([]byte(depUpd.Msg), &depRespMessage)
 				if err != nil {
 					zlog.Sugar().Errorf("failed to unmarshal deployment response: %v", err)
-				} else {
-
-					zlog.Sugar().Debugf("deployment update message model: %v", depRespMessage)
-
-					DepResQueue <- depRespMessage
 				}
+				zlog.Sugar().Debugf("deployment update message model: %v", depRespMessage)
+
+				if depRespMessage.Success {
+					DepResQueue <- depRespMessage
+				} else if !depRespMessage.Success {
+					JobFailedQueue <- depRespMessage.Content
+				}
+
+				// XXX: Needs to be modified to take multiple deployment requests from same service provider
+				// deletes all the record in table; deletes == mark as delete
+				if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
+					// TODO: Do not delete, update JobStatus
+					zlog.Sugar().Errorf("%v", err)
+				}
+			}
+
+		} else if depUpd.MsgType == MsgLogStdout || depUpd.MsgType == MsgLogStderr {
+			zlog.Sugar().Debugf("received log response with length: %d", len(resp))
+
+			if depUpd.MsgType == MsgLogStdout {
+				JobLogStdoutQueue <- depUpd.Msg
+			} else if depUpd.MsgType == MsgLogStderr {
+				JobLogStderrQueue <- depUpd.Msg
 			}
 		}
 	}
@@ -257,13 +266,7 @@ func DeploymentUpdate(msgType, msg string, close bool) error {
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	kLogger.Info("Deployment update", span)
 
-	zlog.Sugar().DebugfContext(ctx, "send %s message: %s", msgType, msg)
-	zlog.Sugar().DebugfContext(ctx, "send %s close stream: %v", msgType, close)
-
-	if inboundDepReqStream == nil {
-		zlog.Sugar().ErrorfContext(ctx, "no inbound deployment request to respond to")
-		return fmt.Errorf("no inbound deployment request to respond to")
-	}
+	zlog.Sugar().DebugfContext(ctx, "DeploymentUpdate -- msgType: %s -- closeStream: %t -- msg: %s", msgType, close, msg)
 
 	// Construct the outer message before sending
 	depUpdateMsg := &models.DeploymentUpdate{
@@ -272,6 +275,11 @@ func DeploymentUpdate(msgType, msg string, close bool) error {
 	}
 
 	msgBytes, _ := json.Marshal(depUpdateMsg)
+
+	if inboundDepReqStream == nil {
+		zlog.Sugar().ErrorfContext(ctx, "no inbound deployment request to respond to")
+		return fmt.Errorf("no inbound deployment request to respond to")
+	}
 
 	w := bufio.NewWriter(inboundDepReqStream)
 	_, err := w.WriteString(fmt.Sprintf("%s\n", string(msgBytes)))

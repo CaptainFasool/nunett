@@ -62,6 +62,7 @@ type Services struct {
 	ResourceRequirements int
 	ImageID              string
 	LogURL               string
+	LastLogFetch         time.Time
 	// TODO: Add ContainerType field
 
 }
