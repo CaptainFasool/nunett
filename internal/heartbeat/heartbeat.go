@@ -34,8 +34,8 @@ func Heartbeat() {
 func Create() {
 	cfg := elasticsearch.Config{
 		Addresses: []string{"http://dev.nunet.io:21001"},
-		Username:  "admin",
-		Password:  "changeme",
+		Username:  "",
+		Password:  "",
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
