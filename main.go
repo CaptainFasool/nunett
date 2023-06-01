@@ -52,6 +52,10 @@ func main() {
 
 	heartbeat.Done = make(chan bool)
 	go heartbeat.Heartbeat()
+
+	// Iniate plugins if any enabled
+	plugins.StartPlugins()
+
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
 
@@ -60,9 +64,6 @@ func main() {
 
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
-
-	// Iniate plugins if any enabled
-	plugins.StartPlugins()
 
 	wg.Wait()
 }
