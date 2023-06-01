@@ -8,8 +8,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-
-
 func RunCommand(command string) (*ResultOutput, error) {
 	// Set up a connection to the server.
 	address := "dev.nunet.io:9998"
