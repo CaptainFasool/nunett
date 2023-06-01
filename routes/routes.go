@@ -67,6 +67,7 @@ func SetupRouter() *gin.Engine {
 		p2p.GET("/dht", libp2p.ListDHTPeers)
 		p2p.GET("/self", libp2p.SelfPeerInfo)
 		p2p.GET("/chat", libp2p.ListChatHandler)
+		p2p.GET("/depreq", libp2p.DefaultDepReqPeer)
 		p2p.GET("/chat/start", libp2p.StartChatHandler)
 		p2p.GET("/chat/join", libp2p.JoinChatHandler)
 		p2p.GET("/chat/clear", libp2p.ClearChatHandler)
