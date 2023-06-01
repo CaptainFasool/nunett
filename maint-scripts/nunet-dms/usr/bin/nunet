@@ -578,6 +578,23 @@ peer() {
     fi
 }
 
+default-depreq-peer() {
+    if [[ -z $1 ]] ; then
+        # echo "Usage: $SELF_NAME default-depreq-peer"
+        N_DEFAULT_DEPREQ_PEER_RESP=$(curl -s "http://$DMS_HOST:$DMS_PORT/api/v1/peers/depreq")
+    else
+        # echo "Usage: $SELF_NAME default-depreq-peer [PEER_ID]"
+        N_DEFAULT_DEPREQ_PEER_RESP=$(curl -s "http://$DMS_HOST:$DMS_PORT/api/v1/peers/depreq?peerID=$1")
+    fi
+    N_DEFAULT_DEPREQ_PEER_RESP_ERR_MSG=$(echo $N_DEFAULT_DEPREQ_PEER_RESP | jq '. | select(.error != null) | .error')
+    if [[ -z "$N_DEFAULT_DEPREQ_PEER_RESP_ERR_MSG" ]] ; then
+        # echo $N_SELF_PEER | jq --raw-output '(. | [.ID, ([.Addrs[]] | select(length > 0) | join(" , "))]) | map( gsub("\t";"\t") ) | join("|")' | column -t -N "ID,Listening Addresses" -c 150 -W2 --separator "|"
+        echo $N_DEFAULT_DEPREQ_PEER_RESP | jq --raw-output .message
+    else
+        printf "${BAD_C}Error: $N_DEFAULT_DEPREQ_PEER_RESP_ERR_MSG ${NORMAL_C}\n"
+    fi
+}
+
 resource-config() {
     N_CONFIG_OPTS=$(getopt -a -n nunet-onboard-config -o m:c:vp: --long memory:,cpu:,verbose,pretty -- "$@")
     eval set -- "$N_CONFIG_OPTS"
@@ -902,7 +919,7 @@ check_dms_run() {
 }
 
 
-cmds=("capacity" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version")
+cmds=("capacity" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version" "default-depreq-peer")
 
 if [ $# -eq  0 ] ; then
     usage

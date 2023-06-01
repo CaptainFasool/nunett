@@ -33,6 +33,7 @@ func setDefaultConfig() *viper.Viper {
 		"/dnsaddr/bootstrap.p2p.nunet.io/p2p/QmTkWP72uECwCsiiYDpCFeTrVeUM9huGTPsg3m6bHxYQFZ",
 	})
 	v.SetDefault("job.gist_update_interval", 2)
+	v.SetDefault("job.target_peer", "")
 	return v
 }
 
