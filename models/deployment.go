@@ -13,14 +13,14 @@ type DeploymentRequest struct {
 	ServiceType            string    `json:"service_type"`
 	Timestamp              time.Time `json:"timestamp"`
 	Params                 struct {
-		ImageID     string   `json:"image_id"`
-		ModelURL    string   `json:"model_url"`
-		Packages    []string `json:"packages"`
-		RemoteNodeID      string   `json:"node_id"` // NodeID of compute provider (machine to deploy the job on)
-		RemotePublicKey   string   `json:"public_key"` // Public key of compute provider
-		LocalNodeID      string   `json:"local_node_id"` // NodeID of service provider (machine triggering the job)
-		LocalPublicKey   string   `json:"local_public_key"` // Public key of service provider
-		MachineType string   `json:"machine_type"`
+		ImageID         string   `json:"image_id"`
+		ModelURL        string   `json:"model_url"`
+		Packages        []string `json:"packages"`
+		RemoteNodeID    string   `json:"node_id"`          // NodeID of compute provider (machine to deploy the job on)
+		RemotePublicKey string   `json:"public_key"`       // Public key of compute provider
+		LocalNodeID     string   `json:"local_node_id"`    // NodeID of service provider (machine triggering the job)
+		LocalPublicKey  string   `json:"local_public_key"` // Public key of service provider
+		MachineType     string   `json:"machine_type"`
 	} `json:"params"`
 	Constraints struct {
 		Complexity string `json:"complexity"`
