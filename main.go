@@ -49,6 +49,9 @@ func main() {
 
 	go messaging.DeploymentWorker()
 
+	// Iniate plugins if any enabled
+	plugins.StartPlugins()
+
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
 
@@ -57,9 +60,6 @@ func main() {
 
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
-
-	// Iniate plugins if any enabled
-	plugins.StartPlugins()
 
 	wg.Wait()
 }

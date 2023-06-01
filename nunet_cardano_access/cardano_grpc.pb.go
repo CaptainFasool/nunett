@@ -6,7 +6,6 @@
 
 package nunet_cardano_access
 
-
 import (
 	context "context"
 	grpc "google.golang.org/grpc"
