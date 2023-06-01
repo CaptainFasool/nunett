@@ -20,11 +20,11 @@ var (
 
 // 1. Pull Container Image
 // 2. Run Container Image
-// 3. Update DHT with decreased free/available resources
+// 3. Calculate resources usage by plugin
+// 4. Update DB with those resources and updated DHT with decreased free/available resources
 // 4. (Optional) Do things while container is running
 // 5. When job is finished, remove stored IPFS data for the specific job (send /delete call)
-// 6. Free resources (delete container image)
-// 7. Update DHT with increased free/available resources
+// 6. Free resources (delete container image when stopping DMS)
 
 func init() {
 	var err error
@@ -37,9 +37,4 @@ func init() {
 		zlog.Sugar().Errorf("Unable to initialize Docker client for plugins: %v", err)
 		return
 	}
-}
-
-func StartPlugins() {
-	// TODO: Init all plugins
-	go RunContainer()
 }
