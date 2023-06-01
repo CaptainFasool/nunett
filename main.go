@@ -10,6 +10,7 @@ import (
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -48,6 +49,7 @@ func main() {
 
 	go messaging.DeploymentWorker()
 
+	go heartbeat.Heartbeat()
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
 
