@@ -169,6 +169,11 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			evt := evt.(event.EvtLocalAddressesUpdated)
 
 			if evt.Diffs {
+				zlog.InfoContext(ctx,
+					fmt.Sprintf("DMS Local addresses updated, reconnecting to peers. [PeerID: %s], [Current: %v], [Removed: %v]",
+						host.ID().String(),
+						evt.Current,
+						evt.Removed))
 				// Connect to saved peers
 				savedConnections := GetConnections()
 				for _, conn := range savedConnections {
@@ -295,7 +300,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 
 	var libp2pOpts []libp2p.Option
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(
-		config.GetConfig().P2P.ListenAddress...
+		config.GetConfig().P2P.ListenAddress...,
 	),
 		libp2p.Identity(priv),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
