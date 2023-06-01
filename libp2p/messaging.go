@@ -170,24 +170,27 @@ func DeploymentUpdateListener(stream network.Stream) {
 		var depUpd models.DeploymentUpdate
 		err = json.Unmarshal([]byte(resp), &depUpd)
 		if err != nil {
-			zlog.Sugar().Info("cannot unmarshal json")
-			panic(err)
+			zlog.Sugar().Info("couldn't unmarshal deployment update")
+			continue
 		}
 
 		var depReqFlat models.DeploymentRequestFlat
 
 		if depUpd.MsgType == MsgJobStatus {
+
 			service := models.Services{}
 			err = json.Unmarshal([]byte(depUpd.Msg), &service)
 			if err != nil {
 				zlog.Sugar().Errorf("failed to unmarshal deployment JobStatus update: %v", err)
 			}
 
-			if strings.HasPrefix(service.JobStatus, "finished") {
+			zlog.Sugar().Debugf("received deployment job status: %s", service.JobStatus)
+
+			if strings.Contains(string(service.JobStatus), "finished") {
 				if service.JobStatus == "finished without errors" {
-					JobCompletedQueue <- "finished"
+					JobCompletedQueue <- ContainerJobFinishedWithoutErrors
 				} else if service.JobStatus == "finished with errors" {
-					JobFailedQueue <- "Job finished with errors"
+					JobFailedQueue <- ContainerJobFinishedWithErrors
 				}
 
 				// job finished, closing stream
@@ -195,6 +198,13 @@ func DeploymentUpdateListener(stream network.Stream) {
 					stream.Close()
 					outboundDepReqStream = nil
 				}
+				zlog.Sugar().Infof("Deployed job finished. Deleting DepReqFlat record (id=%d) from DB", depReqFlat.ID)
+				// XXX: Needs to be modified to take multiple deployment requests from same service provider
+				// deletes all the record in table; deletes == mark as delete
+				if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
+					zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
+				}
+				return
 			}
 
 			// update deplreqflat.jobstatus
@@ -203,13 +213,6 @@ func DeploymentUpdateListener(stream network.Stream) {
 			depReqFlat.JobStatus = service.JobStatus
 			if err := db.DB.Save(&depReqFlat).Error; err != nil {
 				zlog.Sugar().Errorf("unable to update job status on finish. %v", err)
-			}
-
-			zlog.Sugar().Infof("Deployed job finished. Deleting DepReqFlat record (id=%d) from DB", depReqFlat.ID)
-			// XXX: Needs to be modified to take multiple deployment requests from same service provider
-			// deletes all the record in table; deletes == mark as delete
-			if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
-				zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
 			}
 
 		} else if depUpd.MsgType == MsgDepResp {

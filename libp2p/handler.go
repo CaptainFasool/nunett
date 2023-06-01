@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/internal"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
@@ -339,4 +340,62 @@ func DumpDHT(c *gin.Context) {
 
 func ManualDHTUpdateHandler(c *gin.Context) {
 	UpdateDHT()
+}
+
+// DefaultDepReqPeer  godoc
+// @Summary      Manage default deplyment request receiver peer
+// @Description  Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request. 
+// @Description  Show peer set as default deployment request receiver by sending a GET request without any parameters.
+// @Description  Remove default deployment request receiver by sending a GET request with peerID parameter set to '0'.
+// @Tags         peers
+// @Success      200
+// @Router       /peers/depreq [get]
+func DefaultDepReqPeer(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/depreq"))
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+
+	peerID := c.Query("peerID")
+
+	if peerID == "0" {
+		config.SetConfig("job.target_peer", "")
+		c.JSON(200, gin.H{"message": "default peer successfully removed"})
+		return
+	}
+	if peerID == "" {
+		if config.GetConfig().Job.TargetPeer == "" {
+			c.JSON(200, gin.H{"message": "no default peer set"})
+		} else {
+			c.JSON(200, gin.H{"message": fmt.Sprintf("default peer is %s", config.GetConfig().Job.TargetPeer)})
+		}
+		return
+	}
+	if peerID == p2p.Host.ID().String() {
+		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
+		return
+	}
+
+	targetPeer, err := peer.Decode(peerID)
+	if err != nil {
+		zlog.Sugar().Errorf("Could not decode string ID to peerID:", err)
+		c.JSON(400, gin.H{"error": "Could not decode string ID to peerID"})
+		return
+	}
+
+	_, err = p2p.Host.Peerstore().Get(targetPeer, "peer_info")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Peer not in DHT yet.\nPlease use peerID from DHT Peers section of 'nunet peer list'"})
+		return
+	}
+
+	res := PingPeer(c, GetP2P().Host, targetPeer)
+	if res.Success {
+		config.SetConfig("job.target_peer", peerID)
+		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully set %s as default deployment request receiver.", peerID)})
+	} else {
+		zlog.Sugar().Errorf("Could not ping peer:", err)
+		c.JSON(400, gin.H{"error": "Peer not online."})
+		return
+	}
 }

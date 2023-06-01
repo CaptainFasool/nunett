@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.86](#182)
+
+### Changed
+- Allow setting a default peer for sending deployment requests to
+- Do not panic on improperly formatted deployment update
+- Bug fixes on job completion and second time deployment request
 # [0.4.85](#174)
 
 ### Changed

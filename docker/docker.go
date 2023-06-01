@@ -254,7 +254,7 @@ outerLoop:
 			// Send service status update
 			serviceBytes, _ := json.Marshal(service)
 			var closeStream bool
-			if strings.HasPrefix("finished", service.JobStatus) {
+			if strings.Contains(string(service.JobStatus), "finished") {
 				closeStream = true
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
