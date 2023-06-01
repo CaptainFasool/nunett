@@ -2,7 +2,7 @@ package heartbeat
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"github.com/elastic/go-elasticsearch/esapi"
 	"github.com/elastic/go-elasticsearch/v8"
 	"log"
@@ -34,30 +34,39 @@ func Heartbeat() {
 func Create() {
 	cfg := elasticsearch.Config{
 		Addresses: []string{"http://dev.nunet.io:21001"},
-		Username:  "",
-		Password:  "",
+		Username:  "admin",
+		Password:  "changeme",
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("Error creating the Elasticsearch client: %s", err)
 	}
 
-	indexName := "nunet-dms"
-	documentID := "1"
+	indexName := "nunet-dms-heartbeat"
+	documentID := "2"
 	documentData := `{
-		"cpu": "60",
+		"cpu": "90",
 		"ram": "120",
 		"network": "180",
 		"time": "240",
-		"ID": "unique-id"
-
+		"ID": "unique-id",
+		"timestamp":""
 		}`
+
+	var docMap map[string]interface{}
+	json.Unmarshal([]byte(documentData), &docMap)
+
+	// Modify the timestamp field with the current timestamp
+	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
+	updatedDocBytes, _ := json.Marshal(docMap)
+
+	updatedDocString := string(updatedDocBytes)
 
 	// Create the request
 	req := esapi.IndexRequest{
 		Index:      indexName,
 		DocumentID: documentID,
-		Body:       strings.NewReader(documentData),
+		Body:       strings.NewReader(updatedDocString),
 		Refresh:    "true",
 	}
 
