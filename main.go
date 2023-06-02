@@ -14,6 +14,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
+	"go.uber.org/fx"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -39,7 +40,10 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
-	db.ConnectDatabase()
+	DMS := fx.New(
+		db.Module,
+	)
+	DMS.Run()
 
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
