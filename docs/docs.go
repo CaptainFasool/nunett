@@ -234,6 +234,20 @@ const docTemplate = `{
                 }
             }
         },
+        "/peers/depreq": {
+            "get": {
+                "description": "Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request.\nShow peer set as default deployment request receiver by sending a GET request without any parameters.\nRemove default deployment request receiver by sending a GET request with peerID parameter set to '0'.",
+                "tags": [
+                    "peers"
+                ],
+                "summary": "Manage default deplyment request receiver peer",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/peers/dht": {
             "get": {
                 "description": "Gets a list of peers the libp2p node has received a dht update from",
@@ -479,7 +493,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.85",
+	Version:          "0.4.86",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
