@@ -1,9 +1,13 @@
 package plugins
 
-import "fmt"
+import (
+	"fmt"
+
+	"gitlab.com/nunet/device-management-service/plugins/ipfs_plugin"
+)
 
 type plugin interface {
-	start(chan error) // TODO: pass also as a param the model.peerInfo
+	Start(chan error) // TODO: pass also as a param the model.peerInfo
 }
 
 // TODOs:
@@ -25,10 +29,13 @@ func StartPlugins() {
 
 	enabledPlugins, err := getEnablePlugins()
 	if err != nil {
-		zlog.Sugar().Errorf("Couldn't get enable plugins: %v", err)
-		return
+		zlog.Sugar().Errorf("Couldn't get enabled plugins: %v", err)
 	}
 
+	if enabledPlugins == nil {
+		zlog.Sugar().Info("No plugins enabled")
+		return
+	}
 
 	errCh := make(chan error)
 	go pluginsManager(errCh)
@@ -39,23 +46,19 @@ func StartPlugins() {
 		currentPlugin, err = getPluginType(pluginName)
 		if err != nil {
 			zlog.Sugar().Errorf(err.Error())
-			return
+			continue
 		}
-		go currentPlugin.start(errCh)
+		go currentPlugin.Start(errCh)
 	}
-
-}
-
-func pluginsManager(errCh chan error) {
-	i := <-errCh
-	fmt.Println(i)
+	zlog.Info("Exiting StartPlugins")
+	return
 }
 
 // getEnablePlugins retrieves from the DB the plugins enabled by the user.
 func getEnablePlugins() ([]string, error) {
 	// TODO (get plugins from user local DB)
-	enablePlugins := []string{"ipfs-plugin"}
-	return enablePlugins, nil
+	// enablePlugins := []string{"ipfs-plugin"}
+	return nil, nil
 }
 
 // getPluginType returns, based on the plugin name, the specific plugin type struct
@@ -63,8 +66,8 @@ func getEnablePlugins() ([]string, error) {
 func getPluginType(pluginName string) (plugin, error) {
 	switch pluginName {
 	case "ipfs-plugin":
-		return &IPFSPlugin{}, nil
+		return &ipfs_plugin.IPFSPlugin{}, nil
 	default:
-		return nil, fmt.Errorf("Plugin name wrong or not implemented on DMS side")
+		return nil, fmt.Errorf("Plugin name wrong or not implemented on DMS side: %v", pluginName)
 	}
 }
