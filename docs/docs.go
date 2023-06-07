@@ -44,6 +44,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/kad-dht": {
+            "get": {
+                "description": "Returns entire Kademlia DHT content",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "p2p"
+                ],
+                "summary": "Return a dump of the Kademlia dht",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/onboarding/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
@@ -249,6 +269,26 @@ const docTemplate = `{
             }
         },
         "/peers/dht": {
+            "get": {
+                "description": "Gets a list of peers the libp2p node has received a dht update from",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "p2p"
+                ],
+                "summary": "Return list of peers which have sent a dht update",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/peers/kad-dht": {
             "get": {
                 "description": "Gets a list of peers the libp2p node has received a dht update from",
                 "produces": [
@@ -493,7 +533,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.86",
+	Version:          "0.4.87",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

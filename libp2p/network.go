@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"strings"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -228,3 +230,65 @@ func (ps *PubSub) Publish(msg any) error {
 func (ps *PubSub) Unsubscribe() {
 	ps.Sub.Cancel()
 }
+
+const customNamespace = "/nunet-dht/"
+
+type blankValidator struct{}
+type update struct {
+	Data      []byte `json:"data"`
+	Signature []byte `json:"signature"`
+}
+
+func (blankValidator) Validate(key string, value []byte) error {
+	// Check if the key has the correct namespace
+	if !strings.HasPrefix(key, customNamespace) {
+		return errors.New("invalid key namespace")
+	}
+
+	components := strings.Split(key, "/")
+	key = components[len(components)-1]
+	var dhtUpdate update
+
+	err := json.Unmarshal(value, &dhtUpdate)
+	if err != nil {
+		zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+		return err
+	}
+
+	// Extract data and signature fields
+	data := dhtUpdate.Data
+	var peerInfo models.PeerData
+	err = json.Unmarshal(dhtUpdate.Data, &peerInfo)
+	if err != nil {
+		zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+		return err
+	}
+
+	signature := dhtUpdate.Signature
+	remotePeerID, err := peer.Decode(key)
+	if err != nil {
+		zlog.Sugar().Errorf("Error decoding peerID: %v", err)
+		return errors.New("error decoding peerID")
+	}
+
+	// Get the public key of the remote peer from the peerstore
+	remotePeerPublicKey := p2p.Host.Peerstore().PubKey(remotePeerID)
+	if remotePeerPublicKey == nil {
+		return errors.New("public key for remote peer not found in peerstore")
+	}
+	verify, err := remotePeerPublicKey.Verify(data, signature)
+	if err != nil {
+		zlog.Sugar().Errorf("Error verifying signature: %v", err)
+		return err
+	}
+	if !verify {
+		zlog.Sugar().Info("Invalid signature")
+		return errors.New("invalid signature")
+	}
+
+	if len(value) == 0 {
+		return errors.New("value cannot be empty")
+	}
+	return nil
+}
+func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
