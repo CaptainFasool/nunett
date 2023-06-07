@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.87](#162, !160)
+
+### Changed
+- Stored peerInfo of nodes in Kad-DHT
+- Added a new endpoint to list Kad-DHT contents
+- Fixed a bug with free resource calculation after job deployment
 # [0.4.86](#182)
 
 ### Changed
