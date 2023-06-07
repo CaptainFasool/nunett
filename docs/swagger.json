@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.85"
+        "version": "0.4.86"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -221,6 +221,20 @@
                     "chat"
                 ],
                 "summary": "Start chat with a peer",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/peers/depreq": {
+            "get": {
+                "description": "Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request.\nShow peer set as default deployment request receiver by sending a GET request without any parameters.\nRemove default deployment request receiver by sending a GET request with peerID parameter set to '0'.",
+                "tags": [
+                    "peers"
+                ],
+                "summary": "Manage default deplyment request receiver peer",
                 "responses": {
                     "200": {
                         "description": "OK"

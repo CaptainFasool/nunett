@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +15,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
@@ -91,7 +91,23 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
-	filteredPeers := FilterPeers(depReq, libp2p.GetP2P().Host)
+	var filteredPeers []models.PeerData
+
+	// XXX setting target peer if specified in config
+	if config.GetConfig().Job.TargetPeer != "" {
+		zlog.Debug("Going for target peer specified in config")
+		machines := libp2p.FetchMachines(libp2p.GetP2P().Host)
+		filteredPeers = libp2p.PeersWithMatchingSpec([]models.PeerData{machines[config.GetConfig().Job.TargetPeer]}, depReq)
+	} else {
+		zlog.Debug("Filtering peers - no default target peer specified")
+		filteredPeers = FilterPeers(depReq, libp2p.GetP2P().Host)
+	}
+
+	if len(filteredPeers) < 1 {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
+		return
+	}
+
 	var onlinePeer models.PeerData
 	var rtt time.Duration = 1000000000000000000
 	ctx := context.Background()
@@ -122,10 +138,7 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 	computeProvider := onlinePeer
-	if len(filteredPeers) < 1 {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
-		return
-	}
+
 	zlog.Sugar().Debugf("compute provider: ", computeProvider)
 
 	depReq.Params.RemoteNodeID = computeProvider.PeerID
@@ -241,50 +254,24 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 			zlog.Sugar().Infof("Deployment response received. - msg: %v , ok: %v", rawMsg, ok)
 			if ok {
 				zlog.Info("Sending Received DepResp to connected websocket client")
-				var depRes models.DeploymentResponse
 
+				var depRes models.DeploymentResponse
 				jsonDataMsg, _ := json.Marshal(rawMsg)
 				json.Unmarshal(jsonDataMsg, &depRes)
 				msg, _ := json.Marshal(depRes)
 
-				var wsResponse wsMessage
-
-				if strings.Contains(depRes.Content, libp2p.ContainerJobFinishedWithErrors) {
-					zlog.Info("Finished: Sending Deployment failed to websock")
-					err := conn.WriteJSON(map[string]string{"action": libp2p.JobFailed})
-					if err != nil {
-						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
-						break
-					}
-					zlog.Info("Closing websocket connection")
-					conn.Close()
-				} else if strings.Contains(depRes.Content, libp2p.ContainerJobFinishedWithoutErrors) {
-					zlog.Info("Finished: Sending Deployment success to websock")
-					err := conn.WriteJSON(map[string]string{"action": libp2p.JobCompleted})
-					if err != nil {
-						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
-						break
-					}
-					zlog.Info("Closing websocket connection")
-					conn.Close()
-				} else {
-					zlog.Info("Sending Deployment status/response to websock")
-					wsResponse = wsMessage{
-						Action:  "deployment-response",
-						Message: json.RawMessage(msg),
-					}
-					err := conn.WriteJSON(wsResponse)
-					if err != nil {
-						zlog.Sugar().Errorf("unable to write to websocket: %v", err)
-						break
-					}
+				var wsResponse = wsMessage{
+					Action:  "deployment-response",
+					Message: json.RawMessage(msg),
 				}
 
-				msg, _ = json.Marshal(wsResponse)
+				resp, _ := json.Marshal(wsResponse)
+				zlog.Sugar().Debugf("[websocket] deployment response to websocket: %s", string(resp))
+				err := conn.WriteMessage(websocket.TextMessage, resp)
+				if err != nil {
+					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+				}
 
-				zlog.Sugar().Debugf("[websocket] deployment response to websocket: %s", string(msg))
-
-				conn.WriteMessage(websocket.TextMessage, msg)
 			} else {
 				zlog.Info("Channel closed!")
 			}
@@ -300,8 +287,10 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 
 				resp, _ := json.Marshal(stdoutLog)
 				zlog.Sugar().Debugf("[websocket] stdout update to websocket")
-				conn.WriteMessage(websocket.TextMessage, resp)
-
+				err := conn.WriteMessage(websocket.TextMessage, resp)
+				if err != nil {
+					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+				}
 			} else {
 				zlog.Info("Channel closed!")
 			}
@@ -317,8 +306,10 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 
 				resp, _ := json.Marshal(stderrLog)
 				zlog.Sugar().Debugf("[websocket] stderr update to websocket")
-				conn.WriteMessage(websocket.TextMessage, resp)
-
+				err := conn.WriteMessage(websocket.TextMessage, resp)
+				if err != nil {
+					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+				}
 			} else {
 				zlog.Info("Channel closed!")
 			}
@@ -329,10 +320,16 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 				}
 				resp, _ := json.Marshal(wsResponse)
 				zlog.Sugar().Debugf("[websocket] job-completed to websocket")
-				conn.WriteMessage(websocket.TextMessage, resp)
+				err := conn.WriteMessage(websocket.TextMessage, resp)
+				if err != nil {
+					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+				}
+
 			} else {
 				zlog.Info("Channel closed!")
 			}
+			zlog.Sugar().Infof("Job completed. - ok: %v - Returning", ok)
+			return
 		case msg, ok := <-libp2p.JobFailedQueue:
 			if ok {
 				zlog.Sugar().Debugf("[websocket] job-failed to websocket")
@@ -347,10 +344,15 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 				if err != nil {
 					zlog.Error("error in job-failed websocket response")
 				}
-				conn.WriteMessage(websocket.TextMessage, resp)
+				err = conn.WriteMessage(websocket.TextMessage, resp)
+				if err != nil {
+					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+				}
 			} else {
 				zlog.Info("Channel closed!")
 			}
+			zlog.Sugar().Infof("Job failed. - ok: %v - Returning", ok)
+			return
 		}
 	}
 }
