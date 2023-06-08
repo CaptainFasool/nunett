@@ -46,7 +46,7 @@ func Create() {
 	}
 
 	indexName := "apm-nunet-dms-heartbeat"
-	documentID := "3"
+	documentID := libp2p.GetP2P().Host.ID().String()
 	documentData := `{
 		"cpu": 90,
 		"ram": 120,
