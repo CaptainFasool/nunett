@@ -3,11 +3,14 @@ package heartbeat
 import (
 	"context"
 	"encoding/json"
-	"github.com/elastic/go-elasticsearch/esapi"
-	"github.com/elastic/go-elasticsearch/v8"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/elastic/go-elasticsearch/esapi"
+	"github.com/elastic/go-elasticsearch/v8"
+	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
 func Heartbeat() {
@@ -34,20 +37,20 @@ func Heartbeat() {
 func Create() {
 	cfg := elasticsearch.Config{
 		Addresses: []string{"http://dev.nunet.io:21001"},
-		Username:  "",
-		Password:  "",
+		Username:  "admin",
+		Password:  "changeme",
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("Error creating the Elasticsearch client: %s", err)
 	}
 
-	indexName := "nunet-dms-heartbeat"
-	documentID := "2"
+	indexName := "apm-nunet-dms-heartbeat"
+	documentID := "3"
 	documentData := `{
-		"cpu": "90",
-		"ram": "120",
-		"network": "180",
+		"cpu": 90,
+		"ram": 120,
+		"network": 180,
 		"time": "240",
 		"ID": "unique-id",
 		"timestamp":""
@@ -58,6 +61,10 @@ func Create() {
 
 	// Modify the timestamp field with the current timestamp
 	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
+	docMap["cpu"] = onboarding.GetTotalProvisioned().CPU
+	docMap["ram"] = onboarding.GetTotalProvisioned().Memory
+	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
+
 	updatedDocBytes, _ := json.Marshal(docMap)
 
 	updatedDocString := string(updatedDocBytes)
