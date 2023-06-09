@@ -20,7 +20,23 @@ var (
 	conn       *grpc.ClientConn
 )
 
+func UseSnapshotsIPFS(jobID string, scheduleSec int) {
+	// TODO 1: Go routine to store data
+	// TODO 2: Go routine to receive CIDs and distribute CIDs
+	return
+}
+
 func StoreSnapshotsIPFS(jobID string, scheduleSec int) {
+	ticker := time.NewTicker(time.Second * time.Duration(scheduleSec))
+	for range ticker.C {
+		go func() {
+			_, err := store(jobID)
+			if err != nil {
+				// Handle error
+				fmt.Println("Error in store:", err)
+			}
+		}()
+	}
 	// TODO: Call this from DMS when the job wants it
 	return
 }
@@ -30,7 +46,7 @@ func StoreOutputIPFS(jobID string) {
 	return
 }
 
-func store() (pb.StoreResponse, error) {
+func store(jobID string) (pb.StoreResponse, error) {
 	zlog.Sugar().Infof("Sending gRPC /store call to IPFS-Plugin")
 	client, err := newgRPCClient()
 	if err != nil {
@@ -42,7 +58,7 @@ func store() (pb.StoreResponse, error) {
 	defer cancel()
 
 	storeReq := pb.StoreRequest{
-		ContainerId: "test321",
+		ContainerId: jobID,
 	}
 
 	res, err := client.Store(ctx, &storeReq)
