@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"gitlab.com/nunet/device-management-service/internal/config"
-	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
+	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	pb "gitlab.com/nunet/device-management-service/statsdb/event_listener_spec"
@@ -144,7 +144,7 @@ func ServiceCall(inputData models.ServiceCall) {
 		Timestamp:     inputData.Timestamp,
 	})
 
-	kLogger.Used(int(inputData.CallID), int(inputData.CPUUsed), int(inputData.MemoryUsed), int(inputData.NetworkBwUsed), int(inputData.TimeTaken))
+	elk.ProcessUsage(int(inputData.CallID), int(inputData.CPUUsed), int(inputData.MemoryUsed), int(inputData.NetworkBwUsed), int(inputData.TimeTaken), int(inputData.AmountOfNtx))
 
 	if err != nil {
 		zlog.Sugar().Errorf("connection failed: %v", err)
@@ -313,7 +313,6 @@ func NtxPayment(inputData models.NtxPayment) {
 		zlog.Sugar().Errorf("connection failed: %v", err)
 		return
 	}
-	kLogger.NtxPaid(int(inputData.CallID), int(inputData.AmountOfNtx))
 
 	zlog.Sugar().Infof("NtxPayment is Responding: %s", res.Response)
 }
