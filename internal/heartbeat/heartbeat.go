@@ -10,7 +10,8 @@ import (
 	"github.com/elastic/go-elasticsearch/esapi"
 	"github.com/elastic/go-elasticsearch/v8"
 	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/onboarding"
+	"gitlab.com/nunet/device-management-service/models"
+
 	"math/rand"
 	"strconv"
 )
@@ -60,11 +61,13 @@ func Create() {
 
 	var docMap map[string]interface{}
 	json.Unmarshal([]byte(documentData), &docMap)
+	// get capacity user want to rent to NuNet
+	capacityForNunet := models.CapacityForNunet{ServerMode: true}
 
 	// Modify the timestamp field with the current timestamp
 	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
-	docMap["cpu"] = onboarding.GetTotalProvisioned().CPU
-	docMap["ram"] = onboarding.GetTotalProvisioned().Memory
+	docMap["cpu"] = capacityForNunet.CPU
+	docMap["ram"] = capacityForNunet.Memory
 	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
 
 	updatedDocBytes, _ := json.Marshal(docMap)
