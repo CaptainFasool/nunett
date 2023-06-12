@@ -222,6 +222,8 @@ func Onboard(c *gin.Context) {
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
+	metadata.Plugins = capacityForNunet.Plugins
+
 	file, _ := json.MarshalIndent(metadata, "", " ")
 	err = AFS.WriteFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath), file, 0644)
 	if err != nil {
