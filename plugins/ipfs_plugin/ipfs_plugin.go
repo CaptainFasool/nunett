@@ -1,7 +1,8 @@
 package ipfs_plugin
 
 import (
-	dockerDMS "gitlab.com/nunet/device-management-service/docker"
+	"io"
+	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -20,7 +21,7 @@ func (p *IPFSPlugin) OnboardedName() string {
 }
 
 func (p *IPFSPlugin) Start(errCh chan error) {
-	err := dockerDMS.PullImage(ipfsPluginImg)
+	err := PullImage(ipfsPluginImg)
 	if err != nil {
 		zlog.Sugar().Errorf("Couldn't pull ipfs-plugin docker image: %v", err)
 		errCh <- err
@@ -64,4 +65,20 @@ func (p *IPFSPlugin) Start(errCh chan error) {
 	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	errCh <- nil
 	return
+}
+
+// PullImage is a wrapper around Docker SDK's function with same name.
+// This function is copied from the docker package.
+func PullImage(imageName string) error {
+	// TODO: We should rename the docker package to deployment package
+	// and create a new docker package.
+	// OR put this image in utils/utils.go
+	out, err := dc.ImagePull(ctx, imageName, types.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+
+	defer out.Close()
+	io.Copy(os.Stdout, out)
+	return nil
 }

@@ -26,7 +26,7 @@ func UseSnapshotsIPFS(jobID string, scheduleSec int) {
 	return
 }
 
-func StoreSnapshotsIPFS(jobID string, scheduleSec int) {
+func storeSnapshotsIPFS(jobID string, scheduleSec int) {
 	ticker := time.NewTicker(time.Second * time.Duration(scheduleSec))
 	for range ticker.C {
 		go func() {
@@ -41,7 +41,7 @@ func StoreSnapshotsIPFS(jobID string, scheduleSec int) {
 	return
 }
 
-func StoreOutputIPFS(jobID string) {
+func storeOutputIPFS(jobID string) {
 	// TODO: Call this from DMS when the job wants it
 	return
 }
