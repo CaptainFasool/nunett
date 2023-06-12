@@ -31,7 +31,7 @@ func StartPlugins() {
 
 	enabledPlugins, err := solveEnabledPlugins()
 	if err != nil {
-		zlog.Sugar().Errorf("Couldn't get enabled plugins: %v", err)
+		zlog.Sugar().Errorf("Couldn't get enabled plugins: ", err)
 	}
 
 	if enabledPlugins == nil {
@@ -74,7 +74,7 @@ func solveEnabledPlugins() ([]plugin, error) {
 func getMetadataPlugins() ([]string, error) {
 	metadata, err := utils.ReadMetadataFile()
 	if err != nil {
-		zlog.Sugar().Info("Couldn't read from metadata file: %v", err)
+		zlog.Sugar().Errorf("Couldn't read from metadata file (you probably hadn't onboarded your machine yet): %v", err)
 		return []string{}, err
 	}
 	enabledPlugins := metadata.Plugins
