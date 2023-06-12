@@ -151,6 +151,8 @@ func Onboard(c *gin.Context) {
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
+	metadata.Plugins = capacityForNunet.Plugins
+
 	if fileExists(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath)) {
 		content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 		if err != nil {
