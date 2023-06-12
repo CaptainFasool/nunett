@@ -126,3 +126,12 @@ func ReadMetadataFile() (models.MetadataV2, error) {
 	}
 	return metadata, nil
 }
+
+func StringInSlice(str string, list []string) bool {
+	for _, v := range list {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
