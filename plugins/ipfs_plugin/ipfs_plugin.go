@@ -12,7 +12,12 @@ type IPFSPlugin struct{}
 
 const (
 	ipfsPluginImg = "registry.gitlab.com/nunet/data-persistence/ipfs-plugin:0.0.1"
+	pluginName    = "ipfs-plugin"
 )
+
+func (p *IPFSPlugin) OnboardedName() string {
+	return pluginName
+}
 
 func (p *IPFSPlugin) Start(errCh chan error) {
 	err := dockerDMS.PullImage(ipfsPluginImg)
@@ -22,7 +27,7 @@ func (p *IPFSPlugin) Start(errCh chan error) {
 		return
 	}
 
-	zlog.Info("Entering plugin container")
+	zlog.Info("Entering IPFS-Plugin container")
 
 	containerConfig := &container.Config{
 		Image: ipfsPluginImg,
@@ -49,6 +54,7 @@ func (p *IPFSPlugin) Start(errCh chan error) {
 		return
 	}
 
+	zlog.Info("Starting IPFS-Plugin container")
 	if err := dc.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		zlog.Sugar().Errorf("Unable to start plugin container: %v", err)
 		errCh <- err

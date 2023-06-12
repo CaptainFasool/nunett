@@ -4,10 +4,12 @@ import (
 	"fmt"
 
 	"gitlab.com/nunet/device-management-service/plugins/ipfs_plugin"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 type plugin interface {
 	Start(chan error) // TODO: pass also as a param the model.peerInfo
+	OnboardedName() string
 }
 
 // TODOs:
@@ -27,7 +29,7 @@ type plugin interface {
 func StartPlugins() {
 	zlog.Info("Starting plugins")
 
-	enabledPlugins, err := getEnablePlugins()
+	enabledPlugins, err := solveEnabledPlugins()
 	if err != nil {
 		zlog.Sugar().Errorf("Couldn't get enabled plugins: %v", err)
 	}
@@ -40,25 +42,43 @@ func StartPlugins() {
 	errCh := make(chan error)
 	go pluginsManager(errCh)
 
-	var currentPlugin plugin
-
-	for _, pluginName := range enabledPlugins {
-		currentPlugin, err = getPluginType(pluginName)
-		if err != nil {
-			zlog.Sugar().Errorf(err.Error())
-			continue
-		}
+	for _, currentPlugin := range enabledPlugins {
 		go currentPlugin.Start(errCh)
 	}
+
 	zlog.Info("Exiting StartPlugins")
 	return
 }
 
-// getEnablePlugins retrieves from the DB the plugins enabled by the user.
-func getEnablePlugins() ([]string, error) {
-	// TODO (get plugins from user local DB)
-	// enablePlugins := []string{"ipfs-plugin"}
-	return nil, nil
+// solveEnabledPlugins gets enabled plugins within metadata and solve their types
+func solveEnabledPlugins() ([]plugin, error) {
+	strPlugins, err := getMetadataPlugins()
+	if err != nil {
+		return []plugin{}, err
+	}
+
+	var enabledPlugins []plugin
+	for _, pluginName := range strPlugins {
+		pluginType, err := getPluginType(pluginName)
+		if err != nil {
+			zlog.Sugar().Errorf(err.Error())
+			continue
+		}
+		zlog.Sugar().Info("Plugin Enabled: ", pluginName)
+		enabledPlugins = append(enabledPlugins, pluginType)
+	}
+	return enabledPlugins, nil
+}
+
+// getMetadataPlugins retrieves from metadataV2.json the plugins enabled by the user.
+func getMetadataPlugins() ([]string, error) {
+	metadata, err := utils.ReadMetadataFile()
+	if err != nil {
+		zlog.Sugar().Info("Couldn't read from metadata file: %v", err)
+		return []string{}, err
+	}
+	enabledPlugins := metadata.Plugins
+	return enabledPlugins, nil
 }
 
 // getPluginType returns, based on the plugin name, the specific plugin type struct
