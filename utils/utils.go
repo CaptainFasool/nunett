@@ -176,7 +176,7 @@ func RegisterLogbin(uuid string, peer_id string) (string, error) {
 func GetLogbinToken() (string, error) {
 	var logbinAuth models.LogBinAuth
 	result := db.DB.Find(&logbinAuth)
-	if result.Error != nil{
+	if result.Error != nil {
 		zlog.Sugar().Errorf("unable to find logbin auth record in DB: %v", result.Error)
 		return "", result.Error
 	}
@@ -214,5 +214,14 @@ func IsOnboarded() (bool, error) {
 func ReadyForElastic() bool {
 	elasticToken := models.ElasticToken{}
 	db.DB.Find(&elasticToken)
-	return elasticToken.NodeId != "" && elasticToken.ChannelName != "" 
+	return elasticToken.NodeId != "" && elasticToken.ChannelName != ""
+}
+
+func StringInSlice(str string, list []string) bool {
+	for _, v := range list {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }

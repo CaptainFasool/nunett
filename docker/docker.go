@@ -26,6 +26,8 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
+	"gitlab.com/nunet/device-management-service/plugins/ipfs_plugin"
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.uber.org/zap"
 )
 
@@ -92,6 +94,7 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		Cmd:   []string{modelURL, packages},
 		// Tty:          true,
 	}
+
 	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
 	VCPU, err := mhzToVCPU(depReq.Constraints.CPU)
 	if err != nil {
@@ -289,7 +292,14 @@ outerLoop:
 				int(averageNetBw), int(timeTaken), requestTracker.MaxTokens)
 			elk.ProcessStatus(int(requestTracker.CallID), depReq.Params.LocalNodeID, "", status, 0)
 			db.DB.Save(requestTracker)
+
+			if utils.StringInSlice("outputIPFS", depReq.Params.AdditionalFeatures) {
+				zlog.Sugar().Info("SP chose to store output on IPFS, calling plugin")
+				go ipfs_plugin.UseOutputFeatIPFS(resp.ID)
+			}
+
 			freeUsedResources()
+
 			break outerLoop
 		case <-tick.C:
 			zlog.Info("[container running] entering third case; time ticker")
