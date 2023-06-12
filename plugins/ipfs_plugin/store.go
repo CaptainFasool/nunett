@@ -20,30 +20,36 @@ var (
 	conn       *grpc.ClientConn
 )
 
-func UseSnapshotsIPFS(jobID string, scheduleSec int) {
+func UseSnapshotsFeatIPFS(jobID string, scheduleSec int) {
 	// TODO 1: Go routine to store data
 	// TODO 2: Go routine to receive CIDs and distribute CIDs
 	return
 }
 
-func storeSnapshotsIPFS(jobID string, scheduleSec int) {
-	ticker := time.NewTicker(time.Second * time.Duration(scheduleSec))
-	for range ticker.C {
-		go func() {
-			_, err := store(jobID)
-			if err != nil {
-				// Handle error
-				fmt.Println("Error in store:", err)
-			}
-		}()
+func UseOutputFeatIPFS(jobID string) {
+	// TODO 1: Store Data
+	err := storeOutputIPFS(jobID)
+	if err != nil {
+		zlog.Sugar().Error(err)
 	}
-	// TODO: Call this from DMS when the job wants it
+
+	// TODO 2: Distribute CID
+}
+
+func storeSnapshotsIPFS(jobID string, scheduleSec int) {
 	return
 }
 
-func storeOutputIPFS(jobID string) {
-	// TODO: Call this from DMS when the job wants it
-	return
+func storeOutputIPFS(jobID string) error {
+	storeResponse, err := store(jobID)
+	if err != nil {
+		return err
+	}
+
+	zlog.Sugar().Info("Returned CID for output stored on IPFS: %v ", storeResponse.CID)
+	// TODO: distribute CID
+
+	return nil
 }
 
 func store(jobID string) (pb.StoreResponse, error) {
