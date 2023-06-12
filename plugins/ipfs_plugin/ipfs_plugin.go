@@ -63,6 +63,7 @@ func (p *IPFSPlugin) Start(errCh chan error) {
 	}
 
 	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	// TODO: update DHT of usage of resources
 	errCh <- nil
 	return
 }
