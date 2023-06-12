@@ -66,12 +66,13 @@ type MetadataV2 struct {
 		CPU    int64 `json:"cpu,omitempty"`
 		Memory int64 `json:"memory,omitempty"`
 	} `json:"reserved,omitempty"`
-	Network      string `json:"network,omitempty"`
-	PublicKey    string `json:"public_key,omitempty"`
-	NodeID       string `json:"node_id,omitempty"`
-	AllowCardano bool   `json:"allow_cardano,omitempty"`
-	GpuInfo      []Gpu  `json:"gpu_info,omitempty"`
-	Dashboard    string `json:"name,omitempty"`
+	Network      string   `json:"network,omitempty"`
+	PublicKey    string   `json:"public_key,omitempty"`
+	NodeID       string   `json:"node_id,omitempty"`
+	AllowCardano bool     `json:"allow_cardano,omitempty"`
+	GpuInfo      []Gpu    `json:"gpu_info,omitempty"`
+	Dashboard    string   `json:"name,omitempty"`
+	Plugins      []string `json:"plugins,omitempty,"`
 }
 
 type OnboardingStatus struct {
