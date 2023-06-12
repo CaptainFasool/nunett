@@ -140,3 +140,12 @@ func IsOnboarded() (bool, error) {
 		return false, err
 	}
 }
+
+func StringInSlice(str string, list []string) bool {
+	for _, v := range list {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
