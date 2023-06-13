@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.88](#178)
+
+### Added
+- Instrument libp2p communication with ELK
+- Heartbeat every minute
 # [0.4.87](#162, !160)
 
 ### Changed
