@@ -92,6 +92,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
+	p2p.peers, _ = p2p.getPeers(ctx, utils.GetChannelName())
 
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
@@ -121,6 +122,8 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	// Start the DHT Update
 	go UpdateDHT()
+	go UpdateKadDHT()
+	go GetDHTUpdates()
 	// Broadcast DHT updates every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
 	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
@@ -156,6 +159,24 @@ func RunNode(priv crypto.PrivKey, server bool) {
 				UpdateConnections(host.Network().Conns())
 			case <-quit2:
 				ticker2.Stop()
+				return
+			}
+		}
+	}()
+
+	ticker3 := time.NewTicker(10 * time.Minute)
+	quit3 := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker3.C:
+				if _, debug := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debug {
+					zlog.Sugar().Info("Updating Kad DHT")
+				}
+				UpdateKadDHT()
+				GetDHTUpdates()
+			case <-quit3:
+				ticker3.Stop()
 				return
 			}
 		}
@@ -297,14 +318,18 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 		}
 		filter.AddFilter(*f, multiaddr.ActionDeny)
 	}
-
 	var libp2pOpts []libp2p.Option
+	baseOpts := []dht.Option{
+		kadPrefix,
+		dht.NamespacedValidator("nunet-dht", blankValidator{}),
+		dht.Mode(dht.ModeServer),
+	}
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(
 		config.GetConfig().P2P.ListenAddress...,
 	),
 		libp2p.Identity(priv),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			idht, err = dht.New(ctx, h)
+			idht, err = dht.New(ctx, h, baseOpts...)
 			return idht, err
 		}),
 		libp2p.DefaultPeerstore,
