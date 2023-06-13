@@ -15,6 +15,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
@@ -35,6 +36,7 @@ func ListPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("List peers", span)
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
@@ -65,6 +67,7 @@ func ListDHTPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/dht"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("List DHT peers", span)
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
@@ -182,6 +185,7 @@ func SelfPeerInfo(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/self"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Self peer info", span)
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
@@ -212,6 +216,7 @@ func ListChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("List chat handler", span)
 
 	chatRequests, err := incomingChatRequests()
 	if err != nil {
@@ -234,6 +239,7 @@ func ClearChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat/clear"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Clear chat handler", span)
 
 	if err := clearIncomingChatRequests(); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -255,6 +261,7 @@ func StartChatHandler(c *gin.Context) {
 	span.SetAttributes(attribute.String("URL", "/peers/chat/start"))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Start chat handler", span)
 
 	peerID := c.Query("peerID")
 
@@ -315,6 +322,7 @@ func JoinChatHandler(c *gin.Context) {
 	span.SetAttributes(attribute.String("URL", "/peers/chat/join"))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Join chat handler", span)
 
 	streamReqID := c.Query("streamID")
 	if streamReqID == "" {
@@ -372,6 +380,7 @@ func DumpDHT(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/dht"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Dump dht", span)
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})

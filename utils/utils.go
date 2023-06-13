@@ -76,6 +76,14 @@ func GetChannelName() string {
 	return metadata.Network
 }
 
+func GetDashboard() string {
+	metadata, err := ReadMetadataFile()
+	if err != nil || metadata.Dashboard == "" {
+		return ""
+	}
+	return metadata.Dashboard
+}
+
 func GenerateMachineUUID() (string, error) {
 	var machine models.MachineUUID
 
