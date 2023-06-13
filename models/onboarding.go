@@ -70,4 +70,5 @@ type MetadataV2 struct {
 	NodeID       string `json:"node_id,omitempty"`
 	AllowCardano bool   `json:"allow_cardano,omitempty"`
 	GpuInfo      []Gpu  `json:"gpu_info,omitempty"`
+	Dashboard    string `json:"name,omitempty"`
 }
