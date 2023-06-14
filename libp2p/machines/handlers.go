@@ -16,6 +16,7 @@ import (
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
@@ -41,6 +42,7 @@ type BlockchainTxStatus struct {
 func HandleRequestService(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/request-service"))
+	kLogger.Info("Handle request service", span)
 
 	// receive deployment request
 	var depReq models.DeploymentRequest
@@ -200,6 +202,7 @@ func HandleRequestService(c *gin.Context) {
 func HandleDeploymentRequest(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
+	kLogger.Info("Handle deployment request", span)
 
 	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -385,6 +388,8 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection)
 	span := trace.SpanFromContext(ctx.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
 	span.SetAttributes(attribute.String("TransactionStatus", "success"))
+	kLogger.Info("send deployment request", span)
+
 	defer span.End()
 
 	// load depReq from the database

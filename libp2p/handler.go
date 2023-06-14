@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -14,6 +15,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
@@ -34,6 +36,7 @@ func ListPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("List peers", span)
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
@@ -64,6 +67,7 @@ func ListDHTPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/dht"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("List DHT peers", span)
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
@@ -100,6 +104,76 @@ func ListDHTPeers(c *gin.Context) {
 	c.JSON(200, dhtPeers)
 }
 
+// ListKadDHTPeers  godoc
+// @Summary      Return list of peers which have sent a dht update
+// @Description  Gets a list of peers the libp2p node has received a dht update from
+// @Tags         p2p
+// @Produce      json
+// @Success      200  {string}	string
+// @Router       /peers/kad-dht [get]
+func ListKadDHTPeers(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/dht"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+
+	var dhtPeers []string
+	peers, err := p2p.getPeers(c, utils.GetChannelName())
+	if err != nil {
+		zlog.ErrorContext(c.Request.Context(), "failed to get peers: %v", zap.Error(err))
+		c.JSON(500, gin.H{"error": "failed to get peers"})
+		return
+	}
+	for _, peer := range peers {
+		var updates update
+		var peerInfo models.PeerData
+
+		// Add custom namespace to the key
+		namespacedKey := customNamespace + peer.ID.String()
+		bytes, err := p2p.DHT.GetValue(c, namespacedKey)
+		if err != nil {
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.String()))
+			}
+			continue
+		}
+		err = json.Unmarshal(bytes, &updates)
+		if err != nil {
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+			}
+			continue
+		}
+		err = json.Unmarshal(updates.Data, &peerInfo)
+		if err != nil {
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+			}
+			continue
+		}
+
+		dhtPeers = append(dhtPeers, peerInfo.PeerID)
+	}
+
+	if len(dhtPeers) == 0 {
+		c.JSON(200, gin.H{"message": "No peers found"})
+		return
+	}
+
+	dhtPeersJ, err := json.Marshal(dhtPeers)
+	if err != nil {
+		zlog.ErrorContext(c.Request.Context(), "failed to json marshal dhtPeers: %v", zap.Error(err))
+	}
+
+	span.SetAttributes(attribute.String("Response", string(dhtPeersJ)))
+	c.JSON(200, dhtPeers)
+}
+
 // SelfPeerInfo  godoc
 // @Summary      Return self peer info
 // @Description  Gets self peer info of libp2p node
@@ -111,6 +185,7 @@ func SelfPeerInfo(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/self"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Self peer info", span)
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
@@ -141,6 +216,7 @@ func ListChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("List chat handler", span)
 
 	chatRequests, err := incomingChatRequests()
 	if err != nil {
@@ -163,6 +239,7 @@ func ClearChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat/clear"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Clear chat handler", span)
 
 	if err := clearIncomingChatRequests(); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -184,6 +261,7 @@ func StartChatHandler(c *gin.Context) {
 	span.SetAttributes(attribute.String("URL", "/peers/chat/start"))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Start chat handler", span)
 
 	peerID := c.Query("peerID")
 
@@ -244,6 +322,7 @@ func JoinChatHandler(c *gin.Context) {
 	span.SetAttributes(attribute.String("URL", "/peers/chat/join"))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Join chat handler", span)
 
 	streamReqID := c.Query("streamID")
 	if streamReqID == "" {
@@ -301,6 +380,7 @@ func DumpDHT(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/dht"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Dump dht", span)
 
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
@@ -338,13 +418,104 @@ func DumpDHT(c *gin.Context) {
 	c.JSON(200, dhtContent)
 }
 
+// DumpKademliaDHT  godoc
+// @Summary      Return a dump of the Kademlia dht
+// @Description  Returns entire Kademlia DHT content
+// @Tags         p2p
+// @Produce      json
+// @Success      200  {string}	string
+// @Router       /kad-dht [get]
+func DumpKademliaDHT(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/kad-dht"))
+	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+
+	peers, err := p2p.getPeers(c, utils.GetChannelName())
+	if err != nil {
+		zlog.ErrorContext(c.Request.Context(), "failed to get peers: %v", zap.Error(err))
+		c.JSON(500, gin.H{"error": "failed to get peers"})
+		return
+	}
+	dhtContentChan := make(chan models.PeerData, len(peers))
+
+	tasks := make(chan peer.AddrInfo, len(peers))
+
+	var wg sync.WaitGroup
+
+	workerCount := 5
+
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for peer := range tasks {
+				var peerInfo models.PeerData
+				var updates update
+
+				// Add custom namespace to the key
+				namespacedKey := customNamespace + peer.ID.String()
+				bytes, err := p2p.DHT.GetValue(c.Request.Context(), namespacedKey)
+				if err != nil {
+					zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.String()))
+					continue
+				}
+				err = json.Unmarshal(bytes, &updates)
+				if err != nil {
+					zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+				}
+				err = json.Unmarshal(updates.Data, &peerInfo)
+				if err != nil {
+					zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+					continue
+				}
+
+				dhtContentChan <- peerInfo
+			}
+		}()
+	}
+
+	// Send tasks to the workers
+	for _, peer := range peers {
+		tasks <- peer
+	}
+	close(tasks)
+
+	wg.Wait()
+	close(dhtContentChan)
+
+	var dhtContent []models.PeerData
+	for peerData := range dhtContentChan {
+		dhtContent = append(dhtContent, peerData)
+	}
+
+	if len(dhtContent) == 0 {
+		c.JSON(200, gin.H{"message": "No Content in DHT"})
+		return
+	}
+
+	dhtContentJ, err := json.Marshal(dhtContent)
+	if err != nil {
+		zlog.ErrorContext(c.Request.Context(), "failed to json marshal dhtContent: %v", zap.Error(err))
+	}
+
+	span.SetAttributes(attribute.String("Response", string(dhtContentJ)))
+	c.JSON(200, dhtContent)
+}
+
 func ManualDHTUpdateHandler(c *gin.Context) {
 	UpdateDHT()
 }
 
 // DefaultDepReqPeer  godoc
 // @Summary      Manage default deplyment request receiver peer
-// @Description  Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request. 
+// @Description  Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request.
 // @Description  Show peer set as default deployment request receiver by sending a GET request without any parameters.
 // @Description  Remove default deployment request receiver by sending a GET request with peerID parameter set to '0'.
 // @Tags         peers

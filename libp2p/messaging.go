@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal"
+	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -59,6 +60,7 @@ func depReqStreamHandler(stream network.Stream) {
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("MsgType", MsgDepReq))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+	kLogger.Info("Deployment request stream handler", span)
 
 	zlog.InfoContext(ctx, "Got a new depReq stream!")
 
@@ -265,6 +267,7 @@ func DeploymentUpdate(msgType, msg string, close bool) error {
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("MsgType", MsgDepResp))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+	kLogger.Info("Deployment update", span)
 
 	zlog.Sugar().DebugfContext(ctx, "DeploymentUpdate -- msgType: %s -- closeStream: %t -- msg: %s", msgType, close, msg)
 

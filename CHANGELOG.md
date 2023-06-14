@@ -20,6 +20,22 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.89](#213)
+
+### Changed
+- Get available resources from metadata file
+
+# [0.4.88](#178)
+
+### Added
+- Instrument libp2p communication with ELK
+- Heartbeat every minute
+# [0.4.87](#162, !160)
+
+### Changed
+- Stored peerInfo of nodes in Kad-DHT
+- Added a new endpoint to list Kad-DHT contents
+- Fixed a bug with free resource calculation after job deployment
 # [0.4.86](#182)
 
 ### Changed
