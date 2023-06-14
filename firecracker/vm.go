@@ -162,6 +162,7 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 	}
 	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
+	libp2p.UpdateKadDHT()
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "VM started successfully.",
@@ -188,4 +189,5 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 	}
 	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateDHT()
+	libp2p.UpdateKadDHT()
 }
