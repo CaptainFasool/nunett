@@ -20,6 +20,16 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.90](!159)
+
+### Changed
+- Improved and optimized GPU onboarding for mining operating systems
+- Improvement on `nunet onboard-ml` with revamp of the entire functionality
+
+### Added
+- Support for AMD GPU
+- Detection of AMD ROCm and HIP with `nunet capacity --rocm-hip`
+
 # [0.4.89](#213)
 
 ### Changed
