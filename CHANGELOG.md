@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.89](#213)
+
+### Changed
+- Get available resources from metadata file
+
 # [0.4.88](#178)
 
 ### Added

@@ -56,8 +56,7 @@ func getAddress() string {
 		} else {
 			addr = sigNozlocalAddr
 		}
-	}
-	if dashboard != "signoz" {
+	} else {
 		if channelName == "nunet-staging" {
 			addr = elknunetStagingAddr
 		} else if channelName == "nunet-test" {
@@ -66,7 +65,7 @@ func getAddress() string {
 			addr = elknunetEdgeAddr
 		} else if channelName == "nunet-team" {
 			addr = elknunetTeamAddr
-		} else if channelName == "" { // XXX -- setting empty(not yet onboarded) to test endpoint - not a good idea
+		} else if channelName == "" {  // XXX -- setting empty(not yet onboarded) to test endpoint - not a good idea
 			addr = elknunetTestAddr
 		} else {
 			addr = elklocalAddr
