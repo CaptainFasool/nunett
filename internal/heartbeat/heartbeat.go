@@ -10,23 +10,24 @@ import (
 	"github.com/elastic/go-elasticsearch/esapi"
 	"github.com/elastic/go-elasticsearch/v8"
 	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/models"
 
 	"math/rand"
 	"strconv"
+
+	"gitlab.com/nunet/device-management-service/utils"
 )
+
+var Done chan bool
 
 func Heartbeat() {
 	// Create a ticker that ticks every 2 minutes
 	ticker := time.NewTicker(1 * time.Minute)
 
-	// Create a channel to receive ticks from the ticker
-	done := make(chan bool)
 	// Start a goroutine to perform the repeated function calls
 	go func() {
 		for {
 			select {
-			case <-done:
+			case <-Done:
 				// Stop the goroutine when the channel receives a signal
 				return
 			case <-ticker.C:
@@ -62,12 +63,13 @@ func Create() {
 	var docMap map[string]interface{}
 	json.Unmarshal([]byte(documentData), &docMap)
 	// get capacity user want to rent to NuNet
-	capacityForNunet := models.CapacityForNunet{ServerMode: true}
+
+	metadata, _ := utils.ReadMetadataFile()
 
 	// Modify the timestamp field with the current timestamp
 	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
-	docMap["cpu"] = capacityForNunet.CPU
-	docMap["ram"] = capacityForNunet.Memory
+	docMap["cpu"] = metadata.Reserved.CPU
+	docMap["ram"] = metadata.Reserved.Memory
 	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
 
 	updatedDocBytes, _ := json.Marshal(docMap)
