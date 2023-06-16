@@ -90,6 +90,7 @@ type Gpu struct {
 	Name     string `json:"name"`
 	TotVram  uint64 `json:"tot_vram"`
 	FreeVram uint64 `json:"free_vram"`
+>>>>>>> 939ddab (Resolve "Update GPU information for both NVIDIA and/or AMD GPUs in metadata with Name, Free and Total VRAM")
 }
 
 type resources struct {

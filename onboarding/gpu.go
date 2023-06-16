@@ -2,6 +2,7 @@ package onboarding
 
 import (
 	"fmt"
+        "strconv"
 
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding/gpudetect"
