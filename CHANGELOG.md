@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.91](#216)
+
+### Changed
+- ImRecovery on unforeseen errors in heartbeat module
+- No heartbeat when machine not onboarded / no libp2p host
+- Use internal logger for heartbeat module
 # [0.4.90](!159)
 
 ### Changed

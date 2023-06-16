@@ -3,7 +3,6 @@ package heartbeat
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"strings"
 	"time"
 
@@ -20,7 +19,7 @@ import (
 var Done chan bool
 
 func Heartbeat() {
-	// Create a ticker that ticks every 2 minutes
+	// Create a ticker that ticks every 1 minutes
 	ticker := time.NewTicker(1 * time.Minute)
 
 	// Start a goroutine to perform the repeated function calls
@@ -31,7 +30,11 @@ func Heartbeat() {
 				// Stop the goroutine when the channel receives a signal
 				return
 			case <-ticker.C:
-				// Call your function here
+				defer func() {
+					if r := recover(); r != nil {
+						zlog.Sugar().Errorf("Recovered from error: %v", r)
+					}
+				}()
 				Create()
 			}
 		}
@@ -39,6 +42,9 @@ func Heartbeat() {
 }
 
 func Create() {
+	if libp2p.GetP2P().Host == nil {
+		return
+	}
 	cfg := elasticsearch.Config{
 		Addresses: []string{"http://dev.nunet.io:21001"},
 		Username:  "admin",
@@ -46,10 +52,11 @@ func Create() {
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
-		log.Fatalf("Error creating the Elasticsearch client: %s", err)
+		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
 	}
 
 	indexName := "apm-nunet-dms-heartbeat"
+
 	documentID := libp2p.GetP2P().Host.ID().String()
 	documentData := `{
 		"cpu": 0,
@@ -87,13 +94,13 @@ func Create() {
 	// Perform the request
 	res, err := req.Do(context.Background(), es)
 	if err != nil {
-		log.Fatalf("Error indexing document: %s", err)
+		zlog.Sugar().Errorf("Error indexing document: %v", err)
 	}
 	defer res.Body.Close()
 
 	// Check the response status
 	if res.IsError() {
-		log.Fatalf("Error response received: %s", res.Status())
+		zlog.Sugar().Errorf("Error response received: %s", res.Status())
 	}
 
 }
@@ -106,7 +113,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
-		log.Fatalf("Error creating the Elasticsearch client: %s", err)
+		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
 	}
 
 	indexName := "apm-nunet-dms-heartbeat"
@@ -156,13 +163,13 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	// Perform the request
 	res, err := req.Do(context.Background(), es)
 	if err != nil {
-		log.Fatalf("Error indexing document: %s", err)
+		zlog.Sugar().Errorf("Error indexing document: %v", err)
 	}
 	defer res.Body.Close()
 
 	// Check the response status
 	if res.IsError() {
-		log.Fatalf("Error response received: %s", res.Status())
+		zlog.Sugar().Errorf("Error response received: %s", res.Status())
 	}
 
 }
