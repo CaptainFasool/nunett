@@ -566,7 +566,6 @@ gpu_info() {
            printf "${GOOD_C}\nNVIDIA GPU(s) detected.${NORMAL_C}\n"
            # Print the GPU names
            printf "${INFO_C}Available GPU(s):\n$nvidia_gpu_names${NORMAL_C}\n"
-           ml_info
         fi
         
         # Check if rocm-smi is installed
@@ -583,8 +582,8 @@ gpu_info() {
            printf "${GOOD_C}\nAMD GPU(s) detected.${NORMAL_C}\n"
            # Print the GPU names
            printf "${INFO_C}Available GPU(s):\n$amd_gpu_names${NORMAL_C}\n"
-           ml_info
         fi
+        ml_info
     fi
 
 }

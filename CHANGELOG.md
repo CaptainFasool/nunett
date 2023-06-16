@@ -20,12 +20,17 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.93](#202)
+
+### Changed
+- Detect the GPU with the highest free VRAM, to decide whether to deploy an NVIDIA or AMD GPU container
+- Separate images for AMD and Nvidia GPUs
 # [0.4.92](#210)
 
 ### Changed
 - GPU detection and info for both NVIDIA and AMD GPUs
 - GPU model fields all strings
-- Use NVIDIA/go-nvml instead of jaypipes/ghw for GPU detection
+- Use NVIDIA/go-nvml for gpu info and jaypipes/ghw detection
 # [0.4.91](#216)
 
 ### Changed
