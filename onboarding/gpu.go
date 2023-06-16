@@ -2,37 +2,55 @@ package onboarding
 
 import (
 	"fmt"
+        "strconv"
 
-	"github.com/jaypipes/ghw"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/onboarding/gpudetect"
+	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
 )
 
 func Check_gpu() ([]models.Gpu, error) {
-	var gpu_info []models.Gpu
-	gpu, err := ghw.GPU()
-	if err != nil {
-		return nil, fmt.Errorf("unable to detect GPU info")
-	}
-
-	if len(gpu.GraphicsCards) == 0 {
-		var gpu models.Gpu
-		gpu.Name = ""
-		gpu.FreeVram = 0
-		gpu.TotVram = 0
-		return gpu_info, nil
-	}
-
-	for _, v := range gpu.GraphicsCards {
-		if v.DeviceInfo != nil && v.DeviceInfo.Driver == "nvidia" {
-			var gpu models.Gpu
-			gpu.Name = v.DeviceInfo.Product.Name
-			gpu.FreeVram = 0
-			gpu.TotVram = 0
-			gpu_info = append(gpu_info, gpu)
-
-		}
-
-	}
-	return gpu_info, nil
-
+        var gpu_info []models.Gpu
+        vendors, err := gpudetect.DetectGPUVendors()
+        if err != nil {
+                return nil, fmt.Errorf("Unable to detect GPU Vendor: %v", err)
+        }
+        foundNVIDIA, foundAMD := false, false
+        for _, vendor := range vendors {
+                switch vendor {
+                case gpudetect.NVIDIA:
+                        if !foundNVIDIA {
+                                var gpu models.Gpu
+                                info, err := gpuinfo.GetNVIDIAGPUInfo()
+                                if err != nil {
+                                        return nil, fmt.Errorf("Error getting NVIDIA GPU info: %v", err)
+                                }
+                                for _, i := range info {
+                                        gpu.Name = i.GPUName
+                                        gpu.FreeVram = strconv.FormatUint(i.FreeMemory, 10) + " MiB"
+                                        gpu.TotVram = strconv.FormatUint(i.TotalMemory, 10) + " MiB"
+                                        gpu_info = append(gpu_info, gpu)
+                                }
+                                foundNVIDIA = true
+                        }
+                case gpudetect.AMD:
+                        if !foundAMD {
+                                var gpu models.Gpu
+                                info, err := gpuinfo.GetAMDGPUInfo()
+                                if err != nil {
+                                        return nil, fmt.Errorf("Error getting AMD GPU info: %v", err)
+                                }
+                                for _, i := range info {
+                                        gpu.Name = i.GPUName
+                                        gpu.FreeVram = strconv.FormatUint(i.FreeMemory, 10) + " MiB"
+                                        gpu.TotVram = strconv.FormatUint(i.TotalMemory, 10) + " MiB"
+                                        gpu_info = append(gpu_info, gpu)
+                                }
+                                foundAMD = true
+                        }
+                case gpudetect.Unknown:
+                        fmt.Println("Unknown GPU(s) detected")
+                }
+        }
+        return gpu_info, nil
 }
