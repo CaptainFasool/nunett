@@ -14,14 +14,14 @@ import (
 	"os"
 )
 
-var swaggerUrl = "http://localhost:7777/swagger/doc.json"
+var swaggerURL = "http://localhost:7777/swagger/doc.json"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show DMS version",
 	Long:  "Prints to the user the current DMS version",
 	Run: func(cmd *cobra.Command, args []string) {
-		req, err := http.NewRequest("GET", swaggerUrl, nil)
+		req, err := http.NewRequest("GET", swaggerURL, nil)
 		if err != nil {
 			log.Fatal(err)
 		} // Create request
