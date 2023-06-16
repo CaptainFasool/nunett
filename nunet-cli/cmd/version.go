@@ -1,17 +1,17 @@
 /*
-Copyright © 2023 Gustavo Silva <gustavo.silva@nunet.io> 
+Copyright © 2023 Gustavo Silva <gustavo.silva@nunet.io>
 */
 
 package cmd
 
 import (
 	"fmt"
+	"github.com/buger/jsonparser"
+	"github.com/spf13/cobra"
+	"io"
 	"log"
 	"net/http"
-	"io"
 	"os"
-	"github.com/spf13/cobra"
-	"github.com/buger/jsonparser"
 )
 
 var swaggerUrl = "http://localhost:7777/swagger/doc.json"
@@ -19,7 +19,7 @@ var swaggerUrl = "http://localhost:7777/swagger/doc.json"
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show DMS version",
-	Long: "Prints to the user the current DMS version",
+	Long:  "Prints to the user the current DMS version",
 	Run: func(cmd *cobra.Command, args []string) {
 		req, err := http.NewRequest("GET", swaggerUrl, nil)
 		if err != nil {
