@@ -25,6 +25,40 @@ func (p2p DMSp2p) BootstrapNode(ctx context.Context) error {
 	return nil
 }
 
+func (p2p P2P) AddToPeerstore(peerID peer.ID, data interface{}) {
+	p2p.Host.Peerstore().Put(p2p.Host.ID(), "peer_info", data)
+}
+
+func (p2p P2P) AddToKadDHT(data []byte, nameSpace string) {
+	signature, err := signData(p2p.Host.Peerstore().PrivKey(p2p.Host.ID()), data)
+	if err != nil {
+		zlog.Sugar().Infof("Unable to sign DHT update: %s", err.Error())
+	}
+	payload := struct {
+		Data      []byte `json:"data"`
+		Signature []byte `json:"signature"`
+	}{
+		Data:      data,
+		Signature: signature,
+	}
+
+	bytes, err := json.Marshal(payload)
+	if err != nil {
+		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
+	}
+
+	// Store updated data in DHT
+	peerID := p2p.Host.ID().String()
+
+	// Add custom namespace to the key
+	namespacedKey := nameSpace + peerID
+
+	err = p2p.DHT.PutValue(context.Background(), namespacedKey, bytes)
+	if err != nil {
+		zlog.Sugar().Infof("UpdateDHT error: %s", err.Error())
+	}
+}
+
 func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 	if err := idht.Bootstrap(ctx); err != nil {
 		return err

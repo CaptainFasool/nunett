@@ -17,6 +17,10 @@ func (p2p DMSp2p) StartDiscovery(ctx context.Context, rendezvous string) {
 	Discover(ctx, p2p.Host, p2p.DHT, rendezvous)
 }
 
+func (p2p P2P) StartDiscovery(ctx context.Context, rendezvous string) {
+	Discover(ctx, p2p.Host, p2p.DHT, rendezvous)
+}
+
 func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous string) {
 
 	var routingDiscovery = drouting.NewRoutingDiscovery(idht)
@@ -59,6 +63,19 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 }
 
 func (p2p DMSp2p) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrInfo, error) {
+
+	routingDiscovery := drouting.NewRoutingDiscovery(p2p.DHT)
+	dutil.Advertise(ctx, routingDiscovery, rendezvous)
+	peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
+	if err != nil {
+		zlog.Sugar().Errorf("Error Finding Peers: %s\n", err.Error())
+	}
+	peers = filterAddrs(peers)
+
+	return peers, nil
+}
+
+func (p2p P2P) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrInfo, error) {
 
 	routingDiscovery := drouting.NewRoutingDiscovery(p2p.DHT)
 	dutil.Advertise(ctx, routingDiscovery, rendezvous)
