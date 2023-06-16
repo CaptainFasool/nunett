@@ -88,8 +88,8 @@ type MachineUUID struct {
 
 type Gpu struct {
 	Name     string `json:"name"`
-	TotVram  string `json:"tot_vram"`
-	FreeVram string `json:"free_vram"`
+	TotVram  uint64 `json:"tot_vram"`
+	FreeVram uint64 `json:"free_vram"`
 }
 
 type resources struct {

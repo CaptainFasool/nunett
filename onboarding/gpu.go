@@ -2,7 +2,6 @@ package onboarding
 
 import (
 	"fmt"
-        "strconv"
 
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding/gpudetect"
@@ -13,7 +12,7 @@ func Check_gpu() ([]models.Gpu, error) {
         var gpu_info []models.Gpu
         vendors, err := gpudetect.DetectGPUVendors()
         if err != nil {
-                return nil, fmt.Errorf("Unable to detect GPU Vendor: %v", err)
+                return nil, fmt.Errorf("unable to detect GPU Vendor: %v", err)
         }
         foundNVIDIA, foundAMD := false, false
         for _, vendor := range vendors {
@@ -23,12 +22,12 @@ func Check_gpu() ([]models.Gpu, error) {
                                 var gpu models.Gpu
                                 info, err := gpuinfo.GetNVIDIAGPUInfo()
                                 if err != nil {
-                                        return nil, fmt.Errorf("Error getting NVIDIA GPU info: %v", err)
+                                        return nil, fmt.Errorf("error getting NVIDIA GPU info: %v", err)
                                 }
                                 for _, i := range info {
                                         gpu.Name = i.GPUName
-                                        gpu.FreeVram = strconv.FormatUint(i.FreeMemory, 10) + " MiB"
-                                        gpu.TotVram = strconv.FormatUint(i.TotalMemory, 10) + " MiB"
+                                        gpu.FreeVram = i.FreeMemory
+                                        gpu.TotVram = i.TotalMemory
                                         gpu_info = append(gpu_info, gpu)
                                 }
                                 foundNVIDIA = true
@@ -38,12 +37,12 @@ func Check_gpu() ([]models.Gpu, error) {
                                 var gpu models.Gpu
                                 info, err := gpuinfo.GetAMDGPUInfo()
                                 if err != nil {
-                                        return nil, fmt.Errorf("Error getting AMD GPU info: %v", err)
+                                        return nil, fmt.Errorf("error getting AMD GPU info: %v", err)
                                 }
                                 for _, i := range info {
                                         gpu.Name = i.GPUName
-                                        gpu.FreeVram = strconv.FormatUint(i.FreeMemory, 10) + " MiB"
-                                        gpu.TotVram = strconv.FormatUint(i.TotalMemory, 10) + " MiB"
+                                        gpu.FreeVram = 0
+                                        gpu.TotVram = 0
                                         gpu_info = append(gpu_info, gpu)
                                 }
                                 foundAMD = true
