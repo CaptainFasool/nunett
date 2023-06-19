@@ -20,6 +20,13 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.94](#218)
+
+### Changed
+- Websocket connection handling to global
+- Remove depreciated DHT update after container start
+- Deployment update/response on jobstatus=running to webapp
+
 # [0.4.93](#202)
 
 ### Changed
