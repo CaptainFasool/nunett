@@ -33,7 +33,7 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 	for _, nb := range NuNetBootstrapPeers {
 		p, _ := peer.AddrInfoFromP2pAddr(nb)
 		if err := node.Connect(ctx, *p); err != nil {
-			zlog.Sugar().Errorf("failed to connect to bootstrap node %v\n", p.ID)
+			zlog.Sugar().Errorf("failed to connect to bootstrap node %v - %v", p.ID, err)
 		} else {
 			zlog.Sugar().Infof("Connected to Bootstrap Node %v\n", p.ID)
 		}
