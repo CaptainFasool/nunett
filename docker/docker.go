@@ -228,7 +228,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		statsdb.DeviceResourceChange(freeResource)
 	}
 
-	libp2p.UpdateDHT()
 	libp2p.UpdateKadDHT()
 
 	depRes := models.DeploymentResponse{Success: true}

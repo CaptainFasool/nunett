@@ -207,6 +207,12 @@ func DeploymentUpdateListener(stream network.Stream) {
 					zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
 				}
 				return
+			} else if strings.EqualFold(string(service.JobStatus), "running") {
+				depRespMessage := models.DeploymentResponse{}
+				depRespMessage.Content = service.LogURL
+				depRespMessage.Success = true
+				zlog.Sugar().Debugf("deployment update (jobstatus=running): %v", depRespMessage)
+				DepResQueue <- depRespMessage
 			}
 
 			// update deplreqflat.jobstatus
