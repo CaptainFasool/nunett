@@ -41,8 +41,8 @@ func Check_gpu() ([]models.Gpu, error) {
                                 }
                                 for _, i := range info {
                                         gpu.Name = i.GPUName
-                                        gpu.FreeVram = 0
-                                        gpu.TotVram = 0
+                                        gpu.FreeVram = i.FreeMemory
+                                        gpu.TotVram = i.TotalMemory
                                         gpu_info = append(gpu_info, gpu)
                                 }
                                 foundAMD = true

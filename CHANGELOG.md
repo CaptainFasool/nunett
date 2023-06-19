@@ -20,6 +20,13 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.95](!179)
+
+### Changed
+- Print error message when bootstrap node couldn't connect
+
+### Fixed
+- Set total and free vram values for AMD gpus
 # [0.4.94](#218)
 
 ### Changed
