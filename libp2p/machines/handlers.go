@@ -34,6 +34,8 @@ type BlockchainTxStatus struct {
 	TransactionStatus string `json:"transaction_status"`
 }
 
+var depreqWsConn *internal.WebSocketConnection
+
 // HandleRequestService  godoc
 // @Summary      Informs parameters related to blockchain to request to run a service on NuNet
 // @Description  HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
@@ -192,6 +194,7 @@ func HandleRequestService(c *gin.Context) {
 		OracleMessage:       fcr.OracleMessage,
 	}
 	c.JSON(200, fundingRespToWebapp)
+	go outgoingDepReqWebsock()
 }
 
 // HandleDeploymentRequest  godoc
@@ -215,39 +218,55 @@ func HandleDeploymentRequest(c *gin.Context) {
 		zlog.Error(err.Error())
 	}
 
-	conn := internal.WebSocketConnection{Conn: ws}
+	depreqWsConn = &internal.WebSocketConnection{Conn: ws}
 
-	go listenToOutgoingMessage(c, &conn)
-	go listenForIncomingMessage(c, &conn)
+	go incomingDepReqWebsock(c)
+
 }
 
-// listenToOutgoingMessage is for sending message to websocket server.
-// If you want to add a new message to receive, see listenForDeploymentResponse.
-func listenToOutgoingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
+// incomingDepReqWebsock listens for messages from websocket client
+func incomingDepReqWebsock(ctx *gin.Context) {
+	zlog.Info("Started listening for messages from websocket client")
+	listen := true
 	defer func() {
 		if r := recover(); r != nil {
 			zlog.Sugar().Warnf("closing sock after panic - %v", r)
-			if conn != nil {
-				conn.Close()
+			if depreqWsConn != nil {
+				depreqWsConn.Close()
 			}
+			listen = false
 		}
 	}()
 
-	for {
-		_, p, err := conn.ReadMessage()
-		if err != nil {
-			zlog.Sugar().Warnf("unable to read from websocket  - panicking: %v", err.Error())
-			panic(err)
+	for listen {
+		zlog.Info("Listening for messages from websocket client")
+		select {
+		case <-ctx.Done():
+			zlog.Sugar().Infof("Context done - stopping listen")
+			if depreqWsConn != nil {
+				depreqWsConn.Close()
+				depreqWsConn = nil
+			}
+			listen = false
+		default:
+			_, p, err := depreqWsConn.ReadMessage()
+			if err != nil {
+				zlog.Sugar().Warnf("unable to read from websocket - stopping listen: %v", err.Error())
+				listen = false
+			}
+			zlog.Sugar().Debugf("Received message from websocket client: %v", string(p))
+			handleWebsocketAction(ctx, p, depreqWsConn)
 		}
-		zlog.Sugar().Debugf("Received message from websocket client: %v", string(p))
-		handleWebsocketAction(ctx, p, conn)
 	}
+	zlog.Info("Exiting incomingDepReqWebsock")
 }
 
-// listenForDeploymentStatus is for receiving message to websocket client.
-// If you want to add a new message to send to server, see listenForDeploymentStatus.
-func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnection) {
-	for {
+// outgoingDepReqWebsock is for sending messages to websocket client.
+// it listens on several queues that receive updates from CP DMS
+func outgoingDepReqWebsock() {
+	zlog.Info("Started listening for incoming messages from depreq stream to pass to websocket client")
+	listen := true
+	for listen {
 		// 1. check if DepResQueue has anything
 		select {
 		case rawMsg, ok := <-libp2p.DepResQueue:
@@ -267,13 +286,14 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 
 				resp, _ := json.Marshal(wsResponse)
 				zlog.Sugar().Debugf("[websocket] deployment response to websocket: %s", string(resp))
-				err := conn.WriteMessage(websocket.TextMessage, resp)
+				err := depreqWsConn.WriteMessage(websocket.TextMessage, resp)
 				if err != nil {
 					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
 				}
 
 			} else {
 				zlog.Info("Channel closed!")
+				listen = false
 			}
 		case msg, ok := <-libp2p.JobLogStdoutQueue:
 			if ok {
@@ -287,12 +307,13 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 
 				resp, _ := json.Marshal(stdoutLog)
 				zlog.Sugar().Debugf("[websocket] stdout update to websocket")
-				err := conn.WriteMessage(websocket.TextMessage, resp)
+				err := depreqWsConn.WriteMessage(websocket.TextMessage, resp)
 				if err != nil {
 					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
 				}
 			} else {
 				zlog.Info("Channel closed!")
+				listen = false
 			}
 		case msg, ok := <-libp2p.JobLogStderrQueue:
 			if ok {
@@ -306,12 +327,13 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 
 				resp, _ := json.Marshal(stderrLog)
 				zlog.Sugar().Debugf("[websocket] stderr update to websocket")
-				err := conn.WriteMessage(websocket.TextMessage, resp)
+				err := depreqWsConn.WriteMessage(websocket.TextMessage, resp)
 				if err != nil {
 					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
 				}
 			} else {
 				zlog.Info("Channel closed!")
+				listen = false
 			}
 		case _, ok := <-libp2p.JobCompletedQueue:
 			if ok {
@@ -320,16 +342,17 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 				}
 				resp, _ := json.Marshal(wsResponse)
 				zlog.Sugar().Debugf("[websocket] job-completed to websocket")
-				err := conn.WriteMessage(websocket.TextMessage, resp)
+				err := depreqWsConn.WriteMessage(websocket.TextMessage, resp)
 				if err != nil {
 					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
 				}
 
 			} else {
 				zlog.Info("Channel closed!")
+				listen = false
 			}
 			zlog.Sugar().Infof("Job completed. - ok: %v - Returning", ok)
-			return
+			listen = false
 		case msg, ok := <-libp2p.JobFailedQueue:
 			if ok {
 				zlog.Sugar().Debugf("[websocket] job-failed to websocket")
@@ -344,17 +367,19 @@ func listenForIncomingMessage(ctx *gin.Context, conn *internal.WebSocketConnecti
 				if err != nil {
 					zlog.Error("error in job-failed websocket response")
 				}
-				err = conn.WriteMessage(websocket.TextMessage, resp)
+				err = depreqWsConn.WriteMessage(websocket.TextMessage, resp)
 				if err != nil {
 					zlog.Sugar().Errorf("unable to write to websocket: %v", err)
 				}
 			} else {
 				zlog.Info("Channel closed!")
+				listen = false
 			}
 			zlog.Sugar().Infof("Job failed. - ok: %v - Returning", ok)
-			return
+			listen = false
 		}
 	}
+	zlog.Info("Exiting outgoingDepReqWebsock")
 }
 
 func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebSocketConnection) {

@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"runtime"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
 	"gitlab.com/nunet/device-management-service/statsdb"
 	"go.uber.org/zap"
 )
@@ -74,7 +76,7 @@ func mhzToVCPU(cpuInMhz int) (float64, error) {
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
 // log update every gistUpdateDuration.
-func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse, servicePK uint) {
+func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse, servicePK uint, chosenGPUVendor gpuinfo.GPUVendor) {
 	zlog.Info("Entering RunContainer")
 	machine_type := depReq.Params.MachineType
 	gpuOpts := opts.GpuOpts{}
@@ -96,12 +98,43 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		resCh <- depRes
 		return
 	}
+
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
 			Memory:         memoryMbToBytes,
 			CPUQuota:       int64(VCPU * vcpuToMicroseconds),
 		},
+	}
+
+	hostConfigAMDGPU := container.HostConfig{}
+
+	if chosenGPUVendor == gpuinfo.AMD {
+		hostConfigAMDGPU = container.HostConfig{
+			Resources: container.Resources{
+				Memory:   memoryMbToBytes,
+				CPUQuota: int64(VCPU * vcpuToMicroseconds),
+				Devices: []container.DeviceMapping{
+					{
+						PathOnHost:        "/dev/kfd",
+						PathInContainer:   "/dev/kfd",
+						CgroupPermissions: "rwm",
+					},
+					{
+						PathOnHost:        "/dev/dri",
+						PathInContainer:   "/dev/dri",
+						CgroupPermissions: "rwm",
+					},
+				},
+			},
+			GroupAdd: []string{"video"},
+		}
+
+		if runtime.GOOS != "ubuntu18.04" {
+			hostConfigAMDGPU.GroupAdd = append(hostConfigAMDGPU.GroupAdd, "render")
+		}
+
+		hostConfig = &hostConfigAMDGPU
 	}
 
 	var freeRes models.FreeResources
@@ -195,7 +228,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 		statsdb.DeviceResourceChange(freeResource)
 	}
 
-	libp2p.UpdateDHT()
 	libp2p.UpdateKadDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
@@ -228,7 +260,7 @@ outerLoop:
 
 			// Add a response for log update
 			if r := db.DB.Where("container_id = ?", resp.ID).First(&service); r.Error != nil {
-				zlog.Sugar().Errorf("problemn updating services: %v", r.Error)
+				zlog.Sugar().Errorf("problem updating services: %v", r.Error)
 				service.JobStatus = "finished with errors"
 			}
 			sendLogsToSPD(resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
@@ -400,8 +432,58 @@ func calculateResourceUsage(input string) float64 {
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, delete container, send log to the requester
 func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse {
+	var chosenGPUVendor gpuinfo.GPUVendor
+	if depReq.Params.MachineType == "gpu" {
+		// Finding the GPU with the highest free VRAM regardless of vendor type
+		// Get AMD GPU info
+		amdGPUs, err := gpuinfo.GetAMDGPUInfo()
+		if err != nil {
+			fmt.Println("Failed to get AMD GPU info:", err)
+		}
+
+		// Get NVIDIA GPU info
+		nvidiaGPUs, err := gpuinfo.GetNVIDIAGPUInfo()
+		if err != nil {
+			fmt.Println("Failed to get NVIDIA GPU info:", err)
+			// return here and not above for AMD because we need to have at least one GPU
+			return models.DeploymentResponse{Success: false, Content: "Unable to get GPU info."}
+		}
+
+		// Combine AMD and NVIDIA GPU info
+		allGPUs := append(amdGPUs, nvidiaGPUs...)
+
+		// Find the GPU with the highest free VRAM
+		var maxFreeVRAMGPU gpuinfo.GPUInfo
+		maxFreeVRAM := uint64(0)
+		for _, gpu := range allGPUs {
+			if gpu.FreeMemory > maxFreeVRAM {
+				maxFreeVRAMGPU = gpu
+				maxFreeVRAM = gpu.FreeMemory
+			}
+		}
+
+		if maxFreeVRAMGPU.Vendor == gpuinfo.NVIDIA {
+			chosenGPUVendor = gpuinfo.NVIDIA
+		} else if maxFreeVRAMGPU.Vendor == gpuinfo.AMD {
+			chosenGPUVendor = gpuinfo.AMD
+		} else {
+			fmt.Println("Unknown GPU vendor")
+			// return here because we need to have at least one GPU
+			return models.DeploymentResponse{Success: false, Content: "Unknown GPU vendor."}
+		}
+
+		zlog.Sugar().Infoln("GPU with the highest free VRAM on this machine:")
+		zlog.Sugar().Infof("Name: %s\n", maxFreeVRAMGPU.GPUName)
+		zlog.Sugar().Infof("Total Memory: %d MiB\n", maxFreeVRAMGPU.TotalMemory)
+		zlog.Sugar().Infof("Used Memory: %d MiB\n", maxFreeVRAMGPU.UsedMemory)
+		zlog.Sugar().Infof("Free Memory: %d MiB\n", maxFreeVRAMGPU.FreeMemory)
+		zlog.Sugar().Infof("Chosen GPU Vendor: %v\n", chosenGPUVendor)
+	}
 	// Pull the image
 	imageName := depReq.Params.ImageID
+	if chosenGPUVendor == gpuinfo.AMD {
+		imageName += "-amd"
+	}
 	err := PullImage(imageName)
 	if err != nil {
 		zlog.Sugar().Errorf("couldn't pull image: %v", err)
@@ -437,7 +519,7 @@ func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse
 	resCh := make(chan models.DeploymentResponse)
 
 	// Run the container.
-	go RunContainer(depReq, createdGist, resCh, service.ID)
+	go RunContainer(depReq, createdGist, resCh, service.ID, chosenGPUVendor)
 
 	res := <-resCh
 

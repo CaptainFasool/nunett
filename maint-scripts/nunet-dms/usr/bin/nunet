@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 ## @file        nunet
-## @author      Dagim Sisay <dagim@nunet.io>
+## @authors     Dagim Sisay <dagim@nunet.io>, Avimanyu Bandyopadhyay <avimanyu.bandyopadhyay@nunet.io>
 ## @licence     AGPL
 
 # NuNet CLI - Device Management Service
@@ -27,7 +27,7 @@ usage() {
     echo "  wallet              Get Current Wallet Address"
     echo "  onboard             Onboard the device to NuNet"
     echo "  info                Get info about currently onboarded machine"
-    echo "  onboard-gpu         Install NVIDIA GPU driver and Container Runtime"
+    echo "  onboard-gpu         Install NVIDIA/AMD GPU driver and Container Runtime"
     echo "  onboard-ml          Prepare the system for Machine Learning with GPU"
     echo "  resource-config     Change the configuration of onboarded device"
     echo "  shell               Send commands and receive answers to a vm instance via DMS"
@@ -50,6 +50,7 @@ capacity_usage() {
     echo "    -p, --pretty            Prettified JSON output"
     echo "    -gpu, --gpu-status      Check GPU Status in real time"
     echo "    -ct, --cuda-tensor      Check availability of CUDA and Tensor Cores"
+    echo "    -rh, --rocm-hip         Check availability of ROCm and HIP"
     echo -e "    -h, --help              This Menu\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
@@ -145,8 +146,8 @@ resource_config_usage() {
 }
 
 gpu_status() {
-    if ! command -v nvidia-smi > /dev/null; then
-        printf "${BAD_C}Unable to find 'nvidia-smi'.\nNo GPU or driver not installed. ${NORMAL_C}\n"
+    if ! command -v nvidia-smi > /dev/null || ! command -v rocm-smi > /dev/null; then
+        printf "${BAD_C}Unable to find 'nvidia-smi' or 'rocm-smi'.\nNo NVIDIA or AMD GPU, or driver not installed. ${NORMAL_C}\n"
         exit
     fi
 
@@ -156,25 +157,79 @@ gpu_status() {
         printf "${INFO_C}========== NuNet GPU Status ==========\n\n${NORMAL_C}"
 
         printf "${GOOD_C}GPU Utilization:${INFO_C}\n"
-        nvidia-smi --query-gpu=index,name,utilization.gpu --format=csv,noheader
+
+        if command -v nvidia-smi > /dev/null; then
+            nvidia-smi --query-gpu=index,name,utilization.gpu --format=csv,noheader
+        fi
+
+        if command -v rocm-smi > /dev/null; then
+            rocm-smi --showid --showproductname | grep "GPU ID" | awk -F'[][]' '{printf $2 ", "}'
+            rocm-smi --showid --showproductname | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 ", "}'
+            rocm-smi --showuse | awk -F': ' '/GPU use/{print $3 " %"}'
+        fi
 
         printf "${GOOD_C}\nMemory Utilization:${INFO_C}\n"
-        nvidia-smi --query-gpu=index,name,utilization.memory --format=csv,noheader
+
+        if command -v nvidia-smi > /dev/null; then
+            nvidia-smi --query-gpu=index,name,memory.used --format=csv,noheader
+        fi
+
+        if command -v rocm-smi > /dev/null; then
+            rocm-smi --showid --showproductname | grep "GPU ID" | awk -F'[][]' '{printf $2 ", "}'
+            rocm-smi --showid --showproductname | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 ", "}'
+            rocm-smi --showmeminfo vis_vram | grep 'Total Used Memory' | awk -F': ' '{printf "%.2d MiB\n", $3/1048576}'
+        fi
 
         printf "${GOOD_C}\nMemory Free:${INFO_C}\n"
-        nvidia-smi --query-gpu=index,name,memory.free --format=csv,noheader
+
+        if command -v nvidia-smi > /dev/null; then
+            nvidia-smi --query-gpu=index,name,memory.free --format=csv,noheader
+        fi
+
+        if command -v rocm-smi > /dev/null; then
+            rocm-smi --showid --showproductname | grep "GPU ID" | awk -F'[][]' '{printf $2 ", "}'
+            rocm-smi --showid --showproductname | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 ", "}'
+            rocm-smi --showmeminfo vis_vram | awk -F': ' '/Total Memory \(B\)/{total=$3} /Total Used Memory \(B\)/{used=$3} END{printf "%d MiB\n", (total-used)/1048576}'
+        fi
 
         printf "${GOOD_C}\nMemory Capacity:${INFO_C}\n"
-        nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader
+
+        if command -v nvidia-smi > /dev/null; then
+            nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader
+        fi
+ 
+        if command -v rocm-smi > /dev/null; then
+            rocm-smi --showid --showproductname | grep "GPU ID" | awk -F'[][]' '{printf $2 ", "}'
+            rocm-smi --showid --showproductname | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 ", "}'
+            rocm-smi --showmeminfo vis_vram | grep 'Total Memory' | awk -F': ' '{printf "%.2d MiB\n", $3/1048576}'
+        fi
 
         printf "${GOOD_C}\nTemperature:${INFO_C}\n"
-        nvidia-smi --query-gpu=index,temperature.gpu --format=csv,noheader | awk '{printf "GPU %d: %d°C\n", $1, $2}'
+
+        if command -v nvidia-smi > /dev/null; then
+            nvidia-smi --query-gpu=index,temperature.gpu --format=csv,noheader | awk '{printf "GPU %d: %d°C\n", $1, $2}'
+        fi
+
+        if command -v rocm-smi > /dev/null; then
+            rocm-smi --showid --showproductname | grep "GPU ID" | awk -F'[][]' '{printf "GPU " $2 ": "}'
+            rocm-smi --showtemp | awk -F': ' '/Sensor junction/{printf "%.2d°C\n", $3}'
+        fi
 
         printf "${GOOD_C}\nPower Draw:${INFO_C}\n"
-        nvidia-smi --query-gpu=index,name,power.draw --format=csv,noheader
+
+        if command -v nvidia-smi > /dev/null; then
+            nvidia-smi --query-gpu=index,name,power.draw --format=csv,noheader
+        fi
+
+        if command -v rocm-smi > /dev/null; then
+            rocm-smi --showid --showproductname | grep "GPU ID" | awk -F'[][]' '{printf $2 ", "}'
+            rocm-smi --showid --showproductname | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 ", "}'
+            rocm-smi --showpower | awk -F': ' '/Average Graphics Package Power/{printf "%.2f W\n", $3}'
+        fi
 
         printf "${NORMAL_C}\nPress [CTRL+C] to exit..\n"
-        sleep 5
+        printf "Refreshing status in a few seconds..."
+        sleep 10
     done
 }
 
@@ -182,7 +237,7 @@ check_cuda_tensor() {
     image_exist=$(docker images | grep "registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch")
     if [ ! -n "$image_exist" ] ; then
         while true; do
-            read -p "Are you sure you want to proceed?? (yes/no) " check_cuda_resp
+            read -p "This command is meant only for supported NVIDIA GPUs. Are you sure you want to proceed?? (yes/no) " check_cuda_resp
             case $check_cuda_resp in
                 yes )  printf "${INFO_C}Proceeding...\n${NORMAL_C}";
                     # XXX: it's better we implement this through the DMS in future;;
@@ -198,6 +253,25 @@ check_cuda_tensor() {
     docker run -ti --rm --entrypoint "" --gpus all registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch python check-cuda-and-tensor-cores-availability.py
 }
 
+check_rocm_hip() {
+    image_exist=$(docker images | grep "registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch-amd")
+    if [ ! -n "$image_exist" ] ; then
+        while true; do
+            read -p "This command is meant only for supported AMD GPUs. Are you sure you want to proceed?? (yes/no) " check_rocm_resp
+            case $check_rocm_resp in
+                yes )  printf "${INFO_C}Proceeding...\n${NORMAL_C}";
+                    # XXX: it's better we implement this through the DMS in future;;
+                    docker run -ti --rm --entrypoint "" --device=/dev/kfd --device=/dev/dri --group-add video --group-add render registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch-amd python check-rocm-and-hip-availability.py
+                    exit
+                    ;;
+                no) echo "Exiting...";
+                    exit;;
+                *) echo "Only 'yes' or 'no' please";;
+            esac
+        done
+    fi
+    docker run -ti --rm --entrypoint "" --device=/dev/kfd --device=/dev/dri --group-add video --group-add render registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch-amd python check-rocm-and-hip-availability.py
+}
 
 capacity() {
     if [[ ${#@} -lt 1 ]] ; then
@@ -228,12 +302,17 @@ capacity() {
                 "-gpu" | "--gpu-status")
                     gpu_status
                     printf "${NORMAL_C}"
-                    ;;
+                    ;;                    
                 "-ct" | "--cuda-tensor")
                     check_cuda_tensor
                     printf "${NORMAL_C}"
                     exit
                     ;;
+                "-rh" | "--rocm-hip")
+                    check_rocm_hip
+                    printf "${NORMAL_C}"
+                    exit
+                    ;;                    
                 *)
                     printf "${BAD_C}Bad argument \"$avarg\" for 'capacity' Command. ${NORMAL_C}\n"
                     exit
@@ -469,8 +548,8 @@ gpu_info() {
 
     # Use grep to search for the string "microsoft" in the system information
     if echo "$system_info" | grep -qi "microsoft"; then
-    # The string "microsoft" was found, so this is a WSL console
-        printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have an NVIDIA GPU and have installed the latest Windows Driver for your NVIDIA GPU before proceeding.${NORMAL_C}\n"
+        # The string "microsoft" was found, so this is a WSL console
+        printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have an NVIDIA GPU and have installed the latest Windows Driver for your NVIDIA GPU before proceeding. AMD GPUs on WSL is not supported.${NORMAL_C}\n"
         sleep 5 # adding some time to read the message
     else
         # Check if nvidia-smi is installed
@@ -487,27 +566,65 @@ gpu_info() {
            printf "${GOOD_C}\nNVIDIA GPU(s) detected.${NORMAL_C}\n"
            # Print the GPU names
            printf "${INFO_C}Available GPU(s):\n$nvidia_gpu_names${NORMAL_C}\n"
-           ml_info
         fi
+        
+        # Check if rocm-smi is installed
+        if ! command -v rocm-smi > /dev/null; then
+          exit
+        fi
+
+        # Use rocm-smi and save all AMD GPU names on the machine
+        amd_gpu_names=$(rocm-smi --showid --showproductname 2>/dev/null | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 "\n"}')
+        if [[ $amd_smi_output =~ "No devices were found" ]]; then
+           printf "${BAD_C}Error: No AMD GPUs were detected.${NORMAL_C}"
+           exit
+        else
+           printf "${GOOD_C}\nAMD GPU(s) detected.${NORMAL_C}\n"
+           # Print the GPU names
+           printf "${INFO_C}Available GPU(s):\n$amd_gpu_names${NORMAL_C}\n"
+        fi
+        ml_info
     fi
 
 }
 
 ml_info() {
+    nvidia_tensorflow_image="registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow"
+    amd_tensorflow_image="registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow-amd"
+    nvidia_pytorch_image="registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch"
+    amd_pytorch_image="registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch-amd"
 
-    tensorflow_image="registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow"
-    pytorch_image="registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch"
+    nvidia_detected=0
+    amd_detected=0
 
-    if docker images | grep -q "$tensorflow_image"; then
-        printf "${GOOD_C}This machine is prepared to run TensorFlow ML jobs on NuNet.${NORMAL_C}\n"
-    else
-        printf "${BAD_C}NuNet TensorFlow ML image not detected. Please run 'nunet onboard-ml' command to prepare the machine for TensorFlow ML jobs.${NORMAL_C}\n"
+    if docker images | grep -q "$nvidia_tensorflow_image"; then
+        printf "${GOOD_C}This machine is prepared to run NVIDIA TensorFlow ML jobs on NuNet.${NORMAL_C}\n"
+        nvidia_detected=1
     fi
 
-    if docker images | grep -q "$pytorch_image"; then
-        printf "${GOOD_C}This machine is prepared to run PyTorch ML jobs on NuNet.${NORMAL_C}\n"
+    if docker images | grep -q "$amd_tensorflow_image"; then
+        printf "${GOOD_C}This machine is prepared to run AMD ROCm TensorFlow ML jobs on NuNet.${NORMAL_C}\n"
+        amd_detected=1
+    fi
+
+    if docker images | grep -q "$nvidia_pytorch_image"; then
+        printf "${GOOD_C}This machine is prepared to run NVIDIA PyTorch ML jobs on NuNet.${NORMAL_C}\n"
+        nvidia_detected=1
+    fi
+
+    if docker images | grep -q "$amd_pytorch_image"; then
+        printf "${GOOD_C}This machine is prepared to run AMD ROCm PyTorch ML jobs on NuNet.${NORMAL_C}\n"
+        amd_detected=1
+    fi
+
+    if [[ $nvidia_detected -eq 0 && $amd_detected -eq 0 ]]; then
+        printf "${BAD_C}NuNet ML images not detected. Please run 'nunet onboard-ml' command to prepare the machine for ML jobs.${NORMAL_C}\n"
+    elif [[ $nvidia_detected -eq 1 && $amd_detected -eq 0 ]]; then
+        printf "${INFO_C}Please note that only NVIDIA GPU ML jobs can be executed on this machine.${NORMAL_C}\n"
+    elif [[ $nvidia_detected -eq 0 && $amd_detected -eq 1 ]]; then
+        printf "${INFO_C}Please note that only AMD GPU ML jobs can be executed on this machine.${NORMAL_C}\n"
     else
-        printf "${BAD_C}NuNet PyTorch ML image not detected. Please run 'nunet onboard-ml' command to prepare the machine for PyTorch ML jobs.${NORMAL_C}\n"
+        printf "${INFO_C}Both NVIDIA and AMD GPU ML jobs can be executed on this machine.${NORMAL_C}\n"
     fi
 }
 
@@ -755,7 +872,7 @@ onboard-gpu() {
     # Use grep to search for the string "microsoft" in the system information
     if echo "$system_info" | grep -qi "microsoft"; then
     # The string "microsoft" was found, so this is a WSL console
-        printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have installed the latest Windows Driver for your NVIDIA GPU before proceeding.${NORMAL_C}\n"
+        printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have installed the latest Windows Driver for your NVIDIA GPU before proceeding. AMD GPUs on WSL is not supported.${NORMAL_C}\n"
         sleep 5 # adding some time to read the message
 
         # Check if nvidia-smi is available on WSL
@@ -781,7 +898,7 @@ onboard-gpu() {
                echo $ID$VERSION_ID
            )
            curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
-           sudo apt-get update
+           sudo apt update
            sudo apt -y install nvidia-container-runtime
            sudo systemctl restart docker
            printf "${INFO_C}Note: For best performance without sharing resources, a dedicated Linux machine is highly recommended for running ML jobs on NuNet.${NORMAL_C}\n"
@@ -793,7 +910,16 @@ onboard-gpu() {
 
     #Linux code block
 
+    # Get Linux OS information to look for mining operating systems
+    OS_INFO=$(cat /etc/*-release)
+
+    # Check for a mining OS
+    if echo "$OS_INFO" | grep -Eiq "Hive|Rave|PiMP|Minerstat|SimpleMining|NH|Miner|SM|MMP"; then
+        mining_os=true
+    fi
+    
     nvidia_gpu_exists="$(lshw -c display 2>/dev/null | grep -i nvidia)"
+    amd_gpu_exists="$(lshw -c display 2>/dev/null | grep -i 'amd/ati')"
 
     # CHECK IF THERE IS NVIDIA GPU
     if [ -n "$nvidia_gpu_exists" ]; then
@@ -806,14 +932,18 @@ onboard-gpu() {
             gpu_driver_version="$(nvidia-smi 2>/dev/null | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')" # the gpu driver version
             gpu_driver_var="$(nvidia-smi 2>/dev/null | grep Driver | awk '{print $4}')" # a variable with value "Driver"
             
-            # IF gpu_driver_var IS not EMPTY WE WILL SKIP DRIVER AND Install container runtime
-            if [ -n "$gpu_driver_var" ]; then #IF $gpu_driver_var is not empty
-                printf "${INFO_C}$gpu_driver_version is already installed. Skipping installation of driver.${NORMAL_C}\n"
+            # First check whether the Linux OS is a mining distro with preinstalled GPU drivers
+            # if machine is running a mining OS, we skip NVIDIA GPU driver installation and only install NVIDIA container runtime
+            if [ "$mining_os" = true ]; then
+                printf "${INFO_C}Mining operating system detected. Skipping installation of NVIDIA GPU Driver.${NORMAL_C}\n"
+            # if gpu_driver_var is not empty we skip GPU driver installation AND only install NVIDIA container runtime
+            elif [ -n "$gpu_driver_var" ]; then #IF $gpu_driver_var contains the word "Driver"
+                printf "${INFO_C}$gpu_driver_version is already installed. Skipping installation of NVIDIA GPU Driver.${NORMAL_C}\n"
             else
-                install_gpu_driver
+                install_nvidiagpu_driver
             fi
         else
-            install_gpu_driver
+            install_nvidiagpu_driver
         fi
         printf "${INFO_C}-----Starting NVIDIA Container Runtime Installation-----${NORMAL_C}\n"
         curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | sudo apt-key add -
@@ -826,13 +956,37 @@ onboard-gpu() {
         sudo apt install -y nvidia-container-runtime
         sudo systemctl restart docker
         printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
+
+    # CHECK IF THERE IS AMD GPU
+    elif [ -n "$amd_gpu_exists" ]; then
+        printf "${GOOD_C}GPU device found! ${NORMAL_C}\n"
+        all_gpus=$(rocm-smi --showid --showproductname 2>/dev/null | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 "\n"}')
+        if [ $? -eq 0 ]; then
+            printf "${INFO_C}All available GPU(s):\n$all_gpus ${NORMAL_C}\n"
+            sleep 3 #adding some time for the onboarder to see all GPUs on the machine
+
+            gpu_driver_version="$(rocm-smi --showdriverversion 2>/dev/null | grep 'Driver version' | awk '{print $3}')"
+
+            # First check whether the Linux OS is a mining distro with preinstalled GPU drivers
+            # if machine is running a mining operating system, we skip AMD GPU driver installation and no container runtime installation is necessary
+            if [ "$mining_os" = true ]; then
+                printf "${INFO_C}Mining operating system detected. Skipping installation of AMD GPU ROCm Kernel Driver.${NORMAL_C}\n"
+            # if gpu_driver_var is not empty we skip GPU driver installation and no container runtime installation is necessary
+            elif [ -n "$gpu_driver_version" ]; then #IF $gpu_driver_version is not empty
+                printf "${INFO_C}AMD ROCm Kernel Driver Version: $gpu_driver_version is already installed. Skipping installation of AMD GPU ROCm Kernel Driver.${NORMAL_C}\n"
+            else
+                install_amdgpu_driver
+            fi
+        else
+            install_amdgpu_driver
+        fi    
     else
-        # IF THERE IS NO NVIDIA GPU THE nvidia VARIABLE WILL BE EMPTY SO WE REPORT MISSING GPU
-        printf "${INFO_C}This machine does not have an NVIDIA GPU. Skipping GPU Driver and Container Runtime Installation.${NORMAL_C}\n"
+        # IF THERE IS NO NVIDIA or AMD GPU THE nvidia_gpu_exists AND amd_gpu_exists VARIABLE WILL BE EMPTY SO WE REPORT MISSING GPU
+        printf "${INFO_C}This machine does not have an NVIDIA or AMD GPU. Skipping GPU Driver Installation.${NORMAL_C}\n"
     fi
 }
 
-install_gpu_driver()
+install_nvidiagpu_driver()
 {
     linux_distro=$(grep -Po "(?<=^ID=).+" /etc/os-release | sed 's/"//g') # we add support for specific linux distributions through this variable.
 
@@ -844,14 +998,17 @@ install_gpu_driver()
         ubuntu_version=$(lsb_release -sr)
         # Install the correct NVIDIA driver based on the Ubuntu version
         if [ "$ubuntu_version" == "18.04" ]; then
-            printf "${INFO_C}Detected Ubuntu 18.04. Installing NVIDIA Driver 470...${NORMAL_C}"
-            sudo apt install nvidia-driver-470
+            sleep 1 # without this, text from the "apt update" output may get overlapped with the below line when printing
+            printf "${INFO_C}Detected Ubuntu 18.04. Installing NVIDIA Driver Series 520...${NORMAL_C}"
+            sudo apt install nvidia-driver-525 # may change later based on ML performance
         elif [ "$ubuntu_version" == "20.04" ]; then
-            printf "${INFO_C}Detected Ubuntu 20.04. Installing NVIDIA Driver 470...${NORMAL_C}"
-            sudo apt install nvidia-driver-470
+            sleep 1 # without this, text from the "apt update" output may get overlapped with the below line when printing
+            printf "${INFO_C}Detected Ubuntu 20.04. Installing NVIDIA Driver Series 520...${NORMAL_C}"
+            sudo apt install nvidia-driver-525 # may change later based on ML performance
         elif [ "$ubuntu_version" == "22.04" ]; then
-            printf "${INFO_C}Detected Ubuntu 22.04. Installing NVIDIA driver 520...${NORMAL_C}"
-            sudo apt install nvidia-driver-520
+            sleep 1 # without this, text from the "apt update" output may get overlapped with the below line when printing
+            printf "${INFO_C}Detected Ubuntu 22.04. Installing NVIDIA Driver Series 520...${NORMAL_C}"
+            sudo apt install nvidia-driver-525 # may change later based on ML performance
         else
             printf "${BAD_C}Unsupported Ubuntu version: $ubuntu_version${NORMAL_C}"
         fi
@@ -861,7 +1018,7 @@ install_gpu_driver()
         if [[ $gpu_driver_var = "Driver" ]]; then
             printf "${GOOD_C}-----NVIDIA GPU Driver $gpu_driver_version Installed-----${NORMAL_C}\n"
         else
-            printf "${BAD_C}-----NVIDIA GPU Driver Still Not Found. Please Retry-----${NORMAL_C}\n"
+            printf "${BAD_C}-----NVIDIA GPU Driver Still Not Found. Please Reboot and Retry-----${NORMAL_C}\n"
         fi
 
     elif [[ $linux_distro = "kali" ]]; then
@@ -872,20 +1029,96 @@ install_gpu_driver()
         if [[ $gpu_driver_var = "Driver" ]]; then
             printf "${GOOD_C}-----NVIDIA GPU Driver $gpu_driver_version Installed-----${NORMAL_C}\n"
         else
-            printf "${BAD_C}-----NVIDIA GPU Driver Still Not Found. Please Retry-----${NORMAL_C}\n"
+            printf "${BAD_C}-----NVIDIA GPU Driver Still Not Found. Please Reboot and Retry-----${NORMAL_C}\n"
         fi
     else
         printf "${INFO_C}Currently, only Ubuntu and Kali Linux Distributions are supported. But we will definitely add support for more distros in future.${NORMAL_C}\n"
     fi
 }
 
+install_amdgpu_driver()
+{
+    linux_distro=$(grep -Po "(?<=^ID=).+" /etc/os-release | sed 's/"//g') # we add support for specific linux distributions through this variable.
+
+    secure_boot_check
+    printf "${INFO_C}-----Starting AMD GPU Driver Installation-----${NORMAL_C}\n"
+    if [[ $linux_distro = "ubuntu" ]]; then
+        sudo apt update
+        # Detect the Ubuntu version
+        ubuntu_version=$(lsb_release -sr)
+        # Install the correct AMD GPU driver based on the Ubuntu version
+
+        if [ "$ubuntu_version" == "20.04" ]; then
+            sleep 1 # without this, text from the "apt update" output may get overlapped with the below line when printing
+            printf "${INFO_C}Detected Ubuntu 20.04. Installing AMDGPU ROCm Driver 5.5...${NORMAL_C}"
+            wget https://repo.radeon.com/amdgpu-install/5.5/ubuntu/focal/amdgpu-install_5.5.50500-1_all.deb 
+            sudo apt install ./amdgpu-install_5.5.50500-1_all.deb
+            sudo amdgpu-install --usecase=rocm            
+            rm -rf amdgpu-install_5.5.50500-1_all.deb
+            sudo usermod -a -G video $LOGNAME
+            sudo usermod -a -G render $LOGNAME
+        elif [ "$ubuntu_version" == "22.04" ]; then
+            sleep 1 # without this, text from the "apt update" output may get overlapped with the below line when printing
+            printf "${INFO_C}Detected Ubuntu 22.04. Installing AMDGPU ROCm Driver 5.5...${NORMAL_C}"
+            wget https://repo.radeon.com/amdgpu-install/5.5/ubuntu/jammy/amdgpu-install_5.5.50500-1_all.deb 
+            sudo apt install ./amdgpu-install_5.5.50500-1_all.deb
+            sudo amdgpu-install --usecase=rocm            
+            rm -rf amdgpu-install_5.5.50500-1_all.deb
+            sudo usermod -a -G video $LOGNAME
+            sudo usermod -a -G render $LOGNAME
+        else
+            printf "${BAD_C}Unsupported Ubuntu version: $ubuntu_version${NORMAL_C}"
+        fi
+
+        gpu_driver_version="$(rocm-smi --showdriverversion 2>/dev/null | grep 'Driver version' | awk '{print $3}')"
+
+        if [[ -n $gpu_driver_version ]]; then
+            printf "${GOOD_C}-----AMDGPU driver version: $gpu_driver_version Installed-----${NORMAL_C}\n"
+        else
+            printf "${BAD_C}-----AMDGPU Driver Not Found. Please Reboot and Retry-----${NORMAL_C}\n"
+        fi
+
+    else
+        printf "${INFO_C}Currently, only Ubuntu Distributions are supported. But we will definitely try to add support for more distros in future.${NORMAL_C}\n"
+    fi
+}
+
+
+
 # Onboarding for ML jobs
 onboard-ml()
 {
-    sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
-    sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
-    sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu
-    ml_info
+    # Check if both NVIDIA and AMD GPUs are detected
+    if [[ $(lshw -c display 2>/dev/null | grep -i nvidia) && $(lshw -c display 2>/dev/null | grep -i 'amd/ati') ]]; then
+        printf "${GOOD_C}Both NVIDIA and AMD GPUs detected.${NORMAL_C}\n"
+        printf "${INFO_C}Pulling CUDA and ROCm based PyTorch and TensorFlow images.${NORMAL_C}\n"
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow-amd
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch-amd
+        ml_info
+    
+    # Check if NVIDIA GPUs are detected
+    elif [[ $(lshw -c display 2>/dev/null | grep -i nvidia) ]]; then
+        printf "${GOOD_C}NVIDIA GPUs detected.${NORMAL_C}\n"
+        printf "${INFO_C}Pulling CUDA based PyTorch and TensorFlow images.${NORMAL_C}\n"
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
+        ml_info
+    
+    # Check if AMD GPUs are detected
+    elif [[ $(lshw -c display 2>/dev/null | grep -i 'amd/ati') ]]; then
+        printf "${GOOD_C}AMD GPUs detected.${NORMAL_C}\n"
+        printf "${INFO_C}Pulling ROCm based PyTorch and TensorFlow images.${NORMAL_C}\n"
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow-amd
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch-amd
+        ml_info
+
+    # If no GPUs are detected
+    else
+        printf "${BAD_C}No NVIDIA or AMD GPUs detected.${NORMAL_C}\n"
+        printf "${INFO_C}Ensure your machine has compatible GPU(s) and has been onboarded with the 'nunet onboard-gpu' command.${NORMAL_C}\n"
+    fi
 }
 
 ## shell websocket connection  
