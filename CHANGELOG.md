@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+# [0.4.96](#204)
+
+### Added
+- New service package as replacement for docker package (wip: refactoring)
 # [0.4.95](!179)
 
 ### Changed
