@@ -20,12 +20,36 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+# [0.4.96](#204)
+
+### Added
+- New service package as replacement for docker package (wip: refactoring)
+# [0.4.95](!179)
+
+### Changed
+- Print error message when bootstrap node couldn't connect
+
+### Fixed
+- Set total and free vram values for AMD gpus
+# [0.4.94](#218)
+
+### Changed
+- Websocket connection handling to global
+- Remove depreciated DHT update after container start
+- Deployment update/response on jobstatus=running to webapp
+
+# [0.4.93](#202)
+
+### Changed
+- Detect the GPU with the highest free VRAM, to decide whether to deploy an NVIDIA or AMD GPU container
+- Separate images for AMD and Nvidia GPUs
 # [0.4.92](#210)
 
 ### Changed
 - GPU detection and info for both NVIDIA and AMD GPUs
 - GPU model fields all strings
-- Use NVIDIA/go-nvml instead of jaypipes/ghw for GPU detection
+- Use NVIDIA/go-nvml for gpu info and jaypipes/ghw detection
 # [0.4.91](#216)
 
 ### Changed
