@@ -15,7 +15,7 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 	req, err := http.NewRequest(
 		methodType,
 		fmt.Sprintf(
-			"http://localhost:%d/api/v1",
+			"http://localhost:%d",
 			config.GetConfig().Rest.Port)+internalEndpoint,
 		bytes.NewBuffer(body))
 	if err != nil {
