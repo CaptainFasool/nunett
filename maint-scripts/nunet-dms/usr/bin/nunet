@@ -861,6 +861,31 @@ secure_boot_check() {
     fi
 }
 
+## Let the DMS systemd service see the path variable in mining operating systems(based on Ubuntu 18.04) to enable cross vendor GPU support
+add-mining-os-path() {
+
+    # Full path to the nunet-dms systemd service file
+    nunet_dms_systemd_file="/etc/systemd/system/nunet-dms.service"
+
+    # Get the current PATH
+    mining_os_path=$(echo $PATH)
+
+    # Check if the PATH already exists in the file(avoid adding multiple entries if GPU onboarding is required more than once)
+    if ! grep -q "Environment=\"PATH=${mining_os_path}\"" ${nunet_dms_systemd_file}; then
+
+        # Use sed to append the new Environment line after the existing one
+        sudo sed -i "/Environment=/a Environment=\"PATH=${mining_os_path}\"" ${nunet_dms_systemd_file}
+
+        # Reload the systemd daemon
+        sudo systemctl daemon-reload
+
+        # Restart the service
+        sudo systemctl restart nunet-dms
+    fi
+}
+
+
+
 ## Install NVIDIA GPU Drivers and Container Runtime
 onboard-gpu() {
 
@@ -917,7 +942,11 @@ onboard-gpu() {
     if echo "$OS_INFO" | grep -Eiq "Hive|Rave|PiMP|Minerstat|SimpleMining|NH|Miner|SM|MMP"; then
         mining_os=true
     fi
-    
+
+    if [ "$mining_os" = true ]; then
+        add-mining-os-path
+    fi
+
     nvidia_gpu_exists="$(lshw -c display 2>/dev/null | grep -i nvidia)"
     amd_gpu_exists="$(lshw -c display 2>/dev/null | grep -i 'amd/ati')"
 
@@ -926,7 +955,7 @@ onboard-gpu() {
         printf "${GOOD_C}GPU device found! ${NORMAL_C}\n"
         all_gpus=$(nvidia-smi -L 2>/dev/null)
         if [ $? -eq 0 ]; then
-            printf "${INFO_C}All available GPU(s):\n$all_gpus ${NORMAL_C}\n"
+            printf "${INFO_C}All available NVIDIA GPU(s):\n$all_gpus ${NORMAL_C}\n"
             sleep 3 #adding some time for the onboarder to see all GPUs on the machine
 
             gpu_driver_version="$(nvidia-smi 2>/dev/null | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')" # the gpu driver version
@@ -956,13 +985,14 @@ onboard-gpu() {
         sudo apt install -y nvidia-container-runtime
         sudo systemctl restart docker
         printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
+    fi
 
     # CHECK IF THERE IS AMD GPU
-    elif [ -n "$amd_gpu_exists" ]; then
+    if [ -n "$amd_gpu_exists" ]; then
         printf "${GOOD_C}GPU device found! ${NORMAL_C}\n"
         all_gpus=$(rocm-smi --showid --showproductname 2>/dev/null | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 "\n"}')
         if [ $? -eq 0 ]; then
-            printf "${INFO_C}All available GPU(s):\n$all_gpus ${NORMAL_C}\n"
+            printf "${INFO_C}All available AMD GPU(s):\n$all_gpus ${NORMAL_C}\n"
             sleep 3 #adding some time for the onboarder to see all GPUs on the machine
 
             gpu_driver_version="$(rocm-smi --showdriverversion 2>/dev/null | grep 'Driver version' | awk '{print $3}')"
