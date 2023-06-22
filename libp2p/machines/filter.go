@@ -4,6 +4,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 // FilterPeers searches for available compute providers given specific parameters in depReq.
@@ -29,5 +30,45 @@ func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerD
 		peers = libp2p.PeersWithCardanoAllowed(peers)
 	}
 
+	peers = filterByNeededPlugins(peers, depReq)
+
 	return peers
+}
+
+// filterByNeededPlugins filters the peers by the necessary plugins that a compute provider
+// must be running based on the deployment request params
+func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequest) []models.PeerData {
+	var neededPlugins []string
+	var peersWithNeededPlugins []models.PeerData
+
+	// Check of needed plugins
+	if isIPFSPLuginNeeded(depReq) {
+		neededPlugins = append(neededPlugins, "ipfs-plugin")
+	}
+
+	if len(neededPlugins) == 0 {
+		return peers
+	}
+
+	// TODO: improve performance of this slice iteration
+	for _, peer := range peers {
+		for _, neededPlugin := range neededPlugins {
+			if utils.StringInSlice(neededPlugin, peer.EnabledPlugins) {
+				peersWithNeededPlugins = append(peersWithNeededPlugins, peer)
+			}
+		}
+	}
+	zlog.Sugar().Debugf("Needed plugins that compute provider must be running: %v", neededPlugins)
+	return peersWithNeededPlugins
+}
+
+// peersWithPlugin returns peers with a determined plugin enabled
+func isIPFSPLuginNeeded(depReq models.DeploymentRequest) bool {
+	pluginIPFSFunctionalities := [...]string{"outputIPFS"}
+	for _, functionality := range pluginIPFSFunctionalities {
+		if utils.StringInSlice(functionality, depReq.Params.AdditionalFeatures) {
+			return true
+		}
+	}
+	return false
 }
