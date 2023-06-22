@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+# [0.4.97](#221)
+
+### Added
+- Fixed a scenario where machines with AMD GPUs wouldn't be detected if NVIDIA GPUs were already present
+- Modify systemd PATH if mining os detected on onboard-gpu
 # [0.4.96](#204)
 
 ### Added
