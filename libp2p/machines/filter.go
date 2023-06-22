@@ -32,6 +32,8 @@ func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerD
 
 	peers = filterByNeededPlugins(peers, depReq)
 
+	zlog.Sugar().Debugf("Number of peers with matched requirements: %v", len(peers))
+
 	return peers
 }
 
