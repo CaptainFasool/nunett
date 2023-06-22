@@ -9,8 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/internal/config"
 )
+
 // GetInternalBaseURL is a helper method to allow calls to any resources
-func GetInternalBaseURL(internalEndpoint string) (string, error){
+func GetInternalBaseURL(internalEndpoint string) (string, error) {
 	if internalEndpoint == "" {
 		return "", fmt.Errorf("internalEndpoint cannot be empty")
 	}
@@ -22,13 +23,18 @@ func GetInternalBaseURL(internalEndpoint string) (string, error){
 	)
 
 	return endpoint, nil
-}	
+}
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
 func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) http.Response {
+	endpoint, err := GetInternalBaseURL(internalEndpoint)
+	if err != nil {
+		panic(err)
+	}
+
 	req, err := http.NewRequest(
 		methodType,
-		GetInternalBaseURL(internalEndpoint),
+		endpoint,
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
