@@ -54,6 +54,7 @@ func GetP2P() DMSp2p {
 	return p2p
 }
 
+// To be elevated to DMS package
 func CheckOnboarding() {
 	// Checks for saved metadata and create a new host
 	var libp2pInfo models.Libp2pInfo
@@ -71,6 +72,7 @@ func CheckOnboarding() {
 	}
 }
 
+// To be elevated to DMS package
 func RunNode(priv crypto.PrivKey, server bool) {
 	ctx := context.Background()
 

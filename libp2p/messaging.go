@@ -140,6 +140,7 @@ func depReqStreamHandler(stream network.Stream) {
 	}
 }
 
+// TODO: Needs to be elevated to DMS package
 // DeploymentUpdateListener listens for deployment response and service running status.
 func DeploymentUpdateListener(stream network.Stream) {
 	defer func() {
