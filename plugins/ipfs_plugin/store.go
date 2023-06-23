@@ -3,6 +3,7 @@ package ipfs_plugin
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	pb "gitlab.com/nunet/device-management-service/plugins/ipfs_plugin/grpc/ipfs_plugin"
@@ -18,6 +19,7 @@ const (
 var (
 	gRPCClient pb.IPFSPluginClient
 	conn       *grpc.ClientConn
+	mu         sync.Mutex
 )
 
 func UseSnapshotsFeatIPFS(jobID string, scheduleSec int) {
@@ -56,6 +58,7 @@ func store(jobID string) (pb.StoreResponse, error) {
 	zlog.Sugar().Infof("Sending gRPC /store call to IPFS-Plugin")
 	client, err := newgRPCClient()
 	if err != nil {
+		zlog.Sugar().Errorf("Fail creating gRPC instance to IPFS-Plugin server: %v", err)
 		return pb.StoreResponse{}, err
 	}
 	defer conn.Close()
@@ -69,7 +72,7 @@ func store(jobID string) (pb.StoreResponse, error) {
 
 	res, err := client.Store(ctx, &storeReq)
 	if err != nil {
-		zlog.Sugar().Infof("Failed when gRPC calling /store to IPFS-Plugin %v", err)
+		zlog.Sugar().Errorf("Failed when gRPC calling /store to IPFS-Plugin %v", err)
 		return pb.StoreResponse{}, err
 	}
 
@@ -82,16 +85,18 @@ func store(jobID string) (pb.StoreResponse, error) {
 }
 
 func newgRPCClient() (pb.IPFSPluginClient, error) {
-	var err error
+	mu.Lock()
+	defer mu.Unlock()
+
 	if gRPCClient != nil {
 		return gRPCClient, nil
 	}
 
+	var err error
 	conn, err = grpc.Dial(fmt.Sprintf("localhost:%s", port), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, err
+	if err == nil {
+		gRPCClient = pb.NewIPFSPluginClient(conn)
 	}
 
-	gRPCClient = pb.NewIPFSPluginClient(conn)
-	return gRPCClient, nil
+	return gRPCClient, err
 }
