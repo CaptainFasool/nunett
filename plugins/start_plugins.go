@@ -3,6 +3,7 @@ package plugins
 import (
 	"fmt"
 
+	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/plugins/ipfs_plugin"
 	"gitlab.com/nunet/device-management-service/utils"
 )
@@ -12,20 +13,8 @@ type plugin interface {
 	OnboardedName() string
 }
 
-// TODOs:
+type ReadMetadataFileFunc func() (models.MetadataV2, error)
 
-// 1. Check plugins enabled by CP
-// 2. Init plugins enabled
-
-// 1. Pull Container Image
-// 2. Run Container Image
-// 3. Calculate resources usage by plugin
-// 4. Update DB with those resources and updated DHT with decreased free/available resources
-// 4. (Optional) Do things while container is running
-// 5. When job is finished, remove stored IPFS data for the specific job (send /delete call)
-// 6. Free resources (delete container image when stopping DMS)
-
-// StartPlugins initiate all plugins enabled by user, creating a new go routine for each plugin.
 func StartPlugins() {
 	zlog.Info("Starting plugins")
 
@@ -52,7 +41,7 @@ func StartPlugins() {
 
 // solveEnabledPlugins gets enabled plugins within metadata and solve their types
 func solveEnabledPlugins() ([]plugin, error) {
-	strPlugins, err := getMetadataPlugins()
+	strPlugins, err := getMetadataPlugins(utils.ReadMetadataFile)
 	if err != nil {
 		return []plugin{}, err
 	}
@@ -71,8 +60,8 @@ func solveEnabledPlugins() ([]plugin, error) {
 }
 
 // getMetadataPlugins retrieves from metadataV2.json the plugins enabled by the user.
-func getMetadataPlugins() ([]string, error) {
-	metadata, err := utils.ReadMetadataFile()
+func getMetadataPlugins(readMetadataFile ReadMetadataFileFunc) ([]string, error) {
+	metadata, err := readMetadataFile()
 	if err != nil {
 		zlog.Sugar().Errorf("Couldn't read from metadata file (you probably hadn't onboarded your machine yet): %v", err)
 		return []string{}, err
