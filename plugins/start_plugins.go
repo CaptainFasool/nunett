@@ -18,7 +18,7 @@ type ReadMetadataFileFunc func() (models.MetadataV2, error)
 func StartPlugins() {
 	zlog.Info("Starting plugins")
 
-	enabledPlugins, err := solveEnabledPlugins()
+	enabledPlugins, err := solveEnabledPlugins(utils.ReadMetadataFile)
 	if err != nil {
 		zlog.Sugar().Errorf("Couldn't get enabled plugins: ", err)
 	}
@@ -40,8 +40,8 @@ func StartPlugins() {
 }
 
 // solveEnabledPlugins gets enabled plugins within metadata and solve their types
-func solveEnabledPlugins() ([]plugin, error) {
-	strPlugins, err := getMetadataPlugins(utils.ReadMetadataFile)
+func solveEnabledPlugins(readMetadataFile ReadMetadataFileFunc) ([]plugin, error) {
+	strPlugins, err := getMetadataPlugins(readMetadataFile)
 	if err != nil {
 		return []plugin{}, err
 	}
@@ -50,10 +50,10 @@ func solveEnabledPlugins() ([]plugin, error) {
 	for _, pluginName := range strPlugins {
 		pluginType, err := getPluginType(pluginName)
 		if err != nil {
-			zlog.Sugar().Errorf(err.Error())
+			zlog.Sugar().Warn(err.Error())
 			continue
 		}
-		zlog.Sugar().Info("Plugin Enabled: ", pluginName)
+		zlog.Sugar().Info("Plugins Enabled: ", pluginName)
 		enabledPlugins = append(enabledPlugins, pluginType)
 	}
 	return enabledPlugins, nil
