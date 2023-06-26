@@ -26,10 +26,10 @@ func GetInternalBaseURL(internalEndpoint string) (string, error) {
 }
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
-func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) http.Response {
+func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) (*http.Response, error) {
 	endpoint, err := GetInternalBaseURL(internalEndpoint)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	req, err := http.NewRequest(
@@ -38,7 +38,7 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	client := http.Client{}
@@ -47,7 +47,7 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 	req.Header.Set("Accept", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return nil, err
 		// c.JSON(400, gin.H{
 		// 	"message":   fmt.Sprintf("Error making %s request to %s", methodType, internalEndpoint),
 		// 	"timestamp": time.Now(),
@@ -55,7 +55,7 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 		// return
 	}
 
-	return *resp
+	return resp, nil
 }
 
 func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, errMsg string) {

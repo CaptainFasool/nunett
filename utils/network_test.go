@@ -36,11 +36,15 @@ func TestMakeInternalRequest(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 
-	resp := MakeInternalRequest(c, "GET", "/swagger/doc.json", body)
+	resp, err := MakeInternalRequest(c, "GET", "/swagger/doc.json", body)
+	if err != nil {
+		t.Errorf("Expected no error, but got %v", err)
+	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
 	}
-
 	// Test with an invalid internal endpoint
 	body = []byte(`{"version": "0.4.97"}`)
 	req = httptest.NewRequest("GET", "/swagger/doc.json", bytes.NewBuffer(body))
@@ -48,7 +52,12 @@ func TestMakeInternalRequest(t *testing.T) {
 	c, _ = gin.CreateTestContext(w)
 	c.Request = req
 
-	resp = MakeInternalRequest(c, "GET", "", body)
+	resp, err = MakeInternalRequest(c, "GET", "", body)
+	if err == nil {
+		t.Errorf("Expected an error, but got none")
+	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Expected status code %d, but got %d", http.StatusBadRequest, resp.StatusCode)
 	}
