@@ -302,7 +302,7 @@ outerLoop:
 			elk.ProcessStatus(int(requestTracker.CallID), depReq.Params.LocalNodeID, "", status, 0)
 			db.DB.Save(requestTracker)
 
-			if utils.StringInSlice("outputIPFS", depReq.Params.AdditionalFeatures) {
+			if utils.SliceContainsValue("outputIPFS", depReq.Params.AdditionalFeatures) {
 				zlog.Sugar().Info("SP chose to store output on IPFS, calling plugin")
 				go ipfs_plugin.UseOutputFeatIPFS(resp.ID)
 			}

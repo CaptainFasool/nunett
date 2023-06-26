@@ -217,10 +217,10 @@ func ReadyForElastic() bool {
 	return elasticToken.NodeId != "" && elasticToken.ChannelName != ""
 }
 
-// StringInSlice check if a slice contains a certain string
-func StringInSlice(str string, list []string) bool {
-	for _, v := range list {
-		if v == str {
+// SliceContainsValue check if a slice contains a certain string
+func SliceContainsValue[T comparable](value T, slice []T) bool {
+	for _, v := range slice {
+		if v == value {
 			return true
 		}
 	}

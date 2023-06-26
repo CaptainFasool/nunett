@@ -55,7 +55,7 @@ func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequ
 	// TODO: improve performance of this slice iteration
 	for _, peer := range peers {
 		for _, neededPlugin := range neededPlugins {
-			if utils.StringInSlice(neededPlugin, peer.EnabledPlugins) {
+			if utils.SliceContainsValue(neededPlugin, peer.EnabledPlugins) {
 				peersWithNeededPlugins = append(peersWithNeededPlugins, peer)
 			}
 		}
@@ -68,7 +68,7 @@ func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequ
 func isIPFSPLuginNeeded(depReq models.DeploymentRequest) bool {
 	pluginIPFSFunctionalities := [...]string{"outputIPFS"}
 	for _, functionality := range pluginIPFSFunctionalities {
-		if utils.StringInSlice(functionality, depReq.Params.AdditionalFeatures) {
+		if utils.SliceContainsValue(functionality, depReq.Params.AdditionalFeatures) {
 			return true
 		}
 	}
