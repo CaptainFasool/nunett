@@ -226,3 +226,23 @@ func StringInSlice(str string, list []string) bool {
 	}
 	return false
 }
+
+// AreSlicesEqual check if two, potentially unordered, slices are equal
+func AreSlicesEqual[T comparable](slice1, slice2 []T) bool {
+	if len(slice1) != len(slice2) {
+		return false
+	}
+
+	exists := make(map[T]bool)
+	for _, value := range slice2 {
+		exists[value] = true
+	}
+
+	for _, value := range slice1 {
+		if !exists[value] {
+			return false
+		}
+	}
+
+	return true
+}
