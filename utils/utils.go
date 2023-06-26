@@ -217,6 +217,7 @@ func ReadyForElastic() bool {
 	return elasticToken.NodeId != "" && elasticToken.ChannelName != ""
 }
 
+// StringInSlice check if a slice contains a certain string
 func StringInSlice(str string, list []string) bool {
 	for _, v := range list {
 		if v == str {
