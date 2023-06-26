@@ -18,7 +18,7 @@ func TestIsIPFSPluginNeeded(t *testing.T) {
 			output:         true,
 		},
 		{
-			requestedFuncs: []string{"foor", "bar"},
+			requestedFuncs: []string{"foo", "bar"},
 			output:         false,
 		},
 		{
@@ -29,10 +29,9 @@ func TestIsIPFSPluginNeeded(t *testing.T) {
 
 	for _, tt := range tableTest {
 		depReq := getMockDepReq(tt.requestedFuncs)
-		t.Log(depReq)
 		out := isIPFSPLuginNeeded(depReq)
 		if out != tt.output {
-			t.Errorf("wanted %v, got %v", tt.output, out)
+			t.Errorf("for requested plugins %v | wanted %v, got %v", tt.requestedFuncs, tt.output, out)
 		}
 	}
 
