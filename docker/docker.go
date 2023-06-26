@@ -288,7 +288,7 @@ outerLoop:
 				return
 			}
 
-			if utils.StringInSlice("outputIPFS", depReq.Params.AdditionalFeatures) {
+			if utils.SliceContainsValue("outputIPFS", depReq.Params.AdditionalFeatures) {
 				zlog.Sugar().Info("SP chose to store output on IPFS, calling plugin")
 				go ipfs_plugin.UseOutputFeatIPFS(resp.ID)
 			}
