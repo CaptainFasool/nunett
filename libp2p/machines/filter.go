@@ -46,7 +46,7 @@ func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequ
 	var neededPlugins []string
 	var peersWithNeededPlugins []models.PeerData
 
-	// Check of needed plugins
+	// Check of needed plugins (Improve this to be dinamically for several plugins)
 	if isIPFSPLuginNeeded(depReq) {
 		neededPlugins = append(neededPlugins, "ipfs-plugin")
 	}
