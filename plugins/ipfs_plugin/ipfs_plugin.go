@@ -14,6 +14,8 @@ type IPFSPlugin struct{}
 const (
 	ipfsPluginImg = "registry.gitlab.com/nunet/data-persistence/ipfs-plugin:0.0.1"
 	pluginName    = "ipfs-plugin"
+	addrDc        = "127.0.0.1"
+	portDc        = "31001"
 )
 
 func (p *IPFSPlugin) OnboardedName() string {
@@ -30,22 +32,11 @@ func (p *IPFSPlugin) Start(errCh chan error) {
 
 	zlog.Info("Entering IPFS-Plugin container")
 
-	containerConfig := &container.Config{
-		Image: ipfsPluginImg,
-		ExposedPorts: nat.PortSet{
-			"31001/tcp": struct{}{},
-		},
-	}
-
-	hostConfig := &container.HostConfig{
-		PortBindings: nat.PortMap{
-			"31001/tcp": []nat.PortBinding{
-				{
-					HostIP:   "127.0.0.1",
-					HostPort: "31001",
-				},
-			},
-		},
+	containerConfig, hostConfig, err := configureContainer(ipfsPluginImg, portDc, addrDc, port)
+	if err != nil {
+		zlog.Sugar().Errorf("Error occured when configuring container: %v", err)
+		errCh <- err
+		return
 	}
 
 	resp, err := dc.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
@@ -66,6 +57,32 @@ func (p *IPFSPlugin) Start(errCh chan error) {
 	// TODO: update DHT of usage of resources
 	errCh <- nil
 	return
+}
+
+func configureContainer(img string, exposedPort, hostIP, hostPort string) (*container.Config, *container.HostConfig, error) {
+	port, err := nat.NewPort("tcp", exposedPort)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	containerConfig := &container.Config{
+		Image: img,
+		ExposedPorts: nat.PortSet{
+			port: struct{}{},
+		},
+	}
+
+	hostConfig := &container.HostConfig{
+		PortBindings: nat.PortMap{
+			port: []nat.PortBinding{
+				{
+					HostIP:   hostIP,
+					HostPort: hostPort,
+				},
+			},
+		},
+	}
+	return containerConfig, hostConfig, nil
 }
 
 // PullImage is a wrapper around Docker SDK's function with same name.
