@@ -76,7 +76,7 @@ func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequ
 	return peersWithNeededPlugins
 }
 
-// peersWithPlugin returns peers with a determined plugin enabled
+// isIPFSPLuginNeeded returns peers with IPFS-Plugin enabled
 func isIPFSPLuginNeeded(depReq models.DeploymentRequest) bool {
 	pluginIPFSFunctionalities := [...]string{"outputIPFS"}
 	for _, functionality := range pluginIPFSFunctionalities {
