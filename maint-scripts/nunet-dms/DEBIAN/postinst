@@ -5,7 +5,7 @@ echo Running postinst script.
 USER=nunet
 
 # if there is no such user, create it
-adduser --system --no-create-home --quiet $USER
+adduser --system --quiet $USER
 addgroup --system $USER
 adduser $USER $USER
 adduser $USER docker
@@ -20,6 +20,9 @@ systemctl enable --now nunet-dms.service  # enable --now == enable and start
 # Add SUID on nunet-tap-config which is currently owned by root
 # so that nunet user can run it without requiring password
 chmod 4755 /usr/bin/nunet-tap-config
+
+runuser -l $USER -c 'dockerd-rootless-setuptool.sh install --force'
+docker context use default
 
 if command -v mandb > /dev/null; then
     echo Adding man page.
