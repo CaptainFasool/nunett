@@ -51,9 +51,11 @@ Though it is possible to run ML jobs on Windows machines with WSL, using Ubuntu 
 
 If you are using a dual boot machine, make sure you use the `wsl --shutdown` command before shutting down Windows and running Linux for ML jobs. Also, ensure your Windows machine is not in a hibernated state when you reboot into Linux.
 
-## CPU-only machines
+## System Requirements
 
-### Minimum System requirements
+### CPU-only machines
+
+#### Minimum System requirements
 
 We only require for you to specify CPU (MHz x no. of cores) and RAM but your system must meet at least the following set of requirements before you decide to onboard it:
 
@@ -64,16 +66,16 @@ We only require for you to specify CPU (MHz x no. of cores) and RAM but your sys
 
 If the above CPU has 4 cores, your available CPU would be around 8000 MHz. So if you want to onboard half your CPU and RAM on NuNet, you can specify 4000 MHz CPU and 2000 MB RAM.
 
-### Recommended System requirements
+#### Recommended System requirements
 
 - CPU - 3.5 GHz
 - RAM - 8-16 GB
 - Free Disk Space - 20 GB
 - Internet Download/Upload Speed - 10 Mbps / 1.25 MBps
 
-## GPU Machines
+### GPU Machines
 
-### Minimum System Requirements
+#### Minimum System Requirements
 
 - CPU - 3 GHz
 - RAM - 8 GB
@@ -81,7 +83,7 @@ If the above CPU has 4 cores, your available CPU would be around 8000 MHz. So if
 - Free Disk Space - 50 GB
 - Internet Download/Upload Speed - 50 Mbps
 
-### Recommended System requirements
+#### Recommended System requirements
 
 - CPU - 4 GHz
 - RAM - 16-32 GB
@@ -89,7 +91,19 @@ If the above CPU has 4 cores, your available CPU would be around 8000 MHz. So if
 - Free Disk Space - 100 GB
 - Internet Download/Upload Speed - 100 Mbps
 
+## Steps to Install
+
 Here's a step by step process to install the device management service (DMS) on a compute provider machine:
+
+0. **Enabling Docker Container Jobs**:
+
+Some jobs on NuNet requires compute providers to have Docker available on the machine for it to run Docker enabled jobs. These jobs won't work on compute provider unless they have Docker installed.
+
+Following is the NuNet's official method to install Docker on CP machine: [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+
+Installing `docker.io` package instead of `docker-ce` have shown to cause problem with NuNet. Please consider above official method to install Docker.
+
+Don't forget to add `nunet` user in the `docker` group.
 
 1. **Download the DMS package**:
 
