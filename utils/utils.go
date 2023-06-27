@@ -141,7 +141,7 @@ func IsOnboarded() (bool, error) {
 	}
 }
 
-// SliceContainsValue check if a slice contains a certain string
+// SliceContainsValue check if a slice contains a certain element
 func SliceContainsValue[T comparable](value T, slice []T) bool {
 	for _, v := range slice {
 		if v == value {
@@ -164,6 +164,22 @@ func AreSlicesEqual[T comparable](slice1, slice2 []T) bool {
 
 	for _, value := range slice1 {
 		if !exists[value] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// SliceContainsSlice checks if a slice is contained in another given slice
+func SliceContainsSlice[T comparable](containedSlice, sliceToContain []T) bool {
+	values := make(map[T]bool)
+	for _, i := range sliceToContain {
+		values[i] = true
+	}
+
+	for _, i := range containedSlice {
+		if _, ok := values[i]; !ok {
 			return false
 		}
 	}

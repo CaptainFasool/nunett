@@ -64,3 +64,36 @@ func TestAreSlicesEqual(t *testing.T) {
 		}
 	}
 }
+
+func TestSliceContainsSlice(t *testing.T) {
+	type sliceExamples[T comparable] struct {
+		containedSlice []T
+		toContainSlice []T
+		output         bool
+	}
+
+	tableTestString := []sliceExamples[string]{
+		{
+			containedSlice: []string{"bar", "foo"},
+			toContainSlice: []string{"foo", "bar", "dog"},
+			output:         true,
+		},
+		{
+			containedSlice: []string{"dog", "bar", "foo"},
+			toContainSlice: []string{"foo", "bar"},
+			output:         false,
+		},
+		{
+			containedSlice: []string{"dog", "bar", "foo"},
+			toContainSlice: []string{"foo", "bar", "dog"},
+			output:         true,
+		},
+	}
+
+	for _, tt := range tableTestString {
+		output := SliceContainsSlice(tt.containedSlice, tt.toContainSlice)
+		if output != tt.output {
+			t.Errorf("Does slice %v contains slice %v | got %v, want %v", tt.toContainSlice, tt.containedSlice, output, tt.output)
+		}
+	}
+}
