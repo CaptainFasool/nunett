@@ -43,7 +43,7 @@ func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerD
 
 	peers = filterByNeededPlugins(peers, depReq)
 
-	zlog.Sugar().Debugf("Number of peers with matched requirements: %v", len(peers))
+	zlog.Sugar().Infof("Number of peers with matched requirements: %v", len(peers))
 
 	return peers
 }
@@ -53,7 +53,7 @@ func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerD
 func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequest) []models.PeerData {
 	// TODO: Some plugins will run along with DMS when starting DMS,
 	// other plugins will start accordingly to the initiation of jobs.
-	// Therefore, we need to do some further and improved filtering here.
+	// This implementation only consider plugins which run along DMS.
 	var neededPlugins []string
 	var peersWithNeededPlugins []models.PeerData
 
@@ -66,17 +66,13 @@ func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequ
 		return peers
 	}
 
-	// TODO: improve performance of this slice iteration
-	// TODO: just having one plugin is being sufficient to be accepted in the filter.
-	// this is wrong because user might need CP running all requested plugins.
 	for _, peer := range peers {
-		for _, neededPlugin := range neededPlugins {
-			if utils.SliceContainsValue(neededPlugin, peer.EnabledPlugins) {
-				peersWithNeededPlugins = append(peersWithNeededPlugins, peer)
-			}
+		if utils.SliceContainsSlice(neededPlugins, peer.EnabledPlugins) {
+			peersWithNeededPlugins = append(peersWithNeededPlugins, peer)
 		}
 	}
-	zlog.Sugar().Debugf("Needed plugins that compute provider must be running: %v", neededPlugins)
+
+	zlog.Sugar().Infof("Needed plugins that compute provider must be running: %v", neededPlugins)
 	return peersWithNeededPlugins
 }
 
