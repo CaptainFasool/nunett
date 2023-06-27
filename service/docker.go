@@ -34,11 +34,17 @@ type DockerJob struct {
 }
 
 // NewJob creates a new job, let it be docker conatiner or something else.
-func NewDockerJob(depReq *models.DeploymentRequest) *DockerJob {
+func NewDockerJob(depReq *models.DeploymentRequest) (*DockerJob, error) {
+	dkr, err := createDockerClient()
+	if err != nil {
+		return nil, err
+	}
+
 	return &DockerJob{
 		depReq:       depReq,
 		tickInterval: time.Duration(config.GetConfig().Job.GistUpdateInterval) * time.Minute,
-	}
+		dc:           dkr,
+	}, nil
 
 }
 
