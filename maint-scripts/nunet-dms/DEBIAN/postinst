@@ -21,7 +21,9 @@ systemctl enable --now nunet-dms.service  # enable --now == enable and start
 # so that nunet user can run it without requiring password
 chmod 4755 /usr/bin/nunet-tap-config
 
+systemctl stop docker.service docker.socket
 runuser -l $USER -c 'dockerd-rootless-setuptool.sh install --force'
+systemctl start docker.service docker.socket
 docker context use default
 
 if command -v mandb > /dev/null; then
