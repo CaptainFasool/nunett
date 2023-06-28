@@ -189,3 +189,9 @@ Check if both can discover each other.
 **Step 5**:
 
 Change DMS backend URL from the SPD/CPD side and start with the testing.
+
+
+## License
+
+Device Management Service (DMS) is licensed under the [GNU AFFERO GENERAL PUBLIC LICENSE](https://www.gnu.org/licenses/agpl-3.0.txt).
+
