@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.96](#238)
+
+### Changed
+- Temporary patch for job deployment problem from kad-dht fetch taking too long
 # [0.4.95](!179)
 
 ### Changed
