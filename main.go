@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/mitchellh/cli"
 	"gitlab.com/nunet/device-management-service/db"
 	_ "gitlab.com/nunet/device-management-service/docs"
 	"gitlab.com/nunet/device-management-service/firecracker"
@@ -34,7 +36,14 @@ import (
 
 // @host      localhost:9999
 // @BasePath  /api/v1
-func main() {
+
+type daemonCommand struct{}
+
+func (c *daemonCommand) Help() string {
+	return "Launch DMS"
+}
+
+func (c *daemonCommand) Run(args []string) int {
 	config.LoadConfig()
 
 	wg := new(sync.WaitGroup)
@@ -60,6 +69,27 @@ func main() {
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
 	wg.Wait()
+	return 0
+}
+
+func (c *daemonCommand) Synopsis() string {
+	return "Launch DMS daemon as background process"
+}
+
+func main() {
+	c := cli.NewCLI("nunet", "1.0.0")
+	c.Args = os.Args[1:]
+	c.Commands = map[string]cli.CommandFactory{
+		"daemon": func() (cli.Command, error) {
+			return &daemonCommand{}, nil
+		},
+	}
+	exitStatus, err := c.Run()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	os.Exit(exitStatus)
 }
 
 func startServer(wg *sync.WaitGroup) {
