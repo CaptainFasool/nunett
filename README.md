@@ -159,3 +159,8 @@ To update the DMS to the latest version, follow these steps in the given sequenc
 ​	b. Download the latest DMS package (Step 1) 
 ​	c. Install the new DMS package (Step 2)
 
+
+# License
+
+Device Management Service (DMS) is licensed under the [GNU AFFERO GENERAL PUBLIC LICENSE](https://www.gnu.org/licenses/agpl-3.0.txt).
+
