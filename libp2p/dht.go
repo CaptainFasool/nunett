@@ -162,7 +162,7 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 func fetchKadDhtContents(context context.Context) ([]models.PeerData, error) {
 	var dhtContent []models.PeerData
 	for _, peer := range p2p.peers {
-		var updates update
+		var updates models.KadDHTMachineUpdate
 		var peerInfo models.PeerData
 
 		// Add custom namespace to the key
@@ -263,6 +263,11 @@ func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequ
 
 // Fetches peer info of peers from Kad-DHT and updates Peerstore.
 func GetDHTUpdates(context context.Context) {
+	if gettingDHTUpdate {
+		zlog.Debug("-----Already Getting DHT Updates")
+		return
+	}
+	gettingDHTUpdate = true
 	zlog.Debug("-----Getting DHT Updates")
 	machines, err := fetchKadDhtContents(context)
 	if err != nil {
@@ -287,6 +292,7 @@ func GetDHTUpdates(context context.Context) {
 			}
 		}
 	}
+	gettingDHTUpdate = false
 	zlog.Debug("-----Done Getting DHT Updates")
 }
 

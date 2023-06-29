@@ -126,3 +126,9 @@ type PingResult struct {
 }
 
 type Machines map[string]PeerData
+
+// machine info for KAD-DHT
+type KadDHTMachineUpdate struct {
+	Data      []byte `json:"data"`
+	Signature []byte `json:"signature"`
+}

@@ -233,10 +233,7 @@ func (ps *PubSub) Unsubscribe() {
 
 
 type blankValidator struct{}
-type update struct {
-	Data      []byte `json:"data"`
-	Signature []byte `json:"signature"`
-}
+
 
 func (blankValidator) Validate(key string, value []byte) error {
 	// Check if the key has the correct namespace
@@ -246,7 +243,7 @@ func (blankValidator) Validate(key string, value []byte) error {
 
 	components := strings.Split(key, "/")
 	key = components[len(components)-1]
-	var dhtUpdate update
+	var dhtUpdate models.KadDHTMachineUpdate
 
 	err := json.Unmarshal(value, &dhtUpdate)
 	if err != nil {

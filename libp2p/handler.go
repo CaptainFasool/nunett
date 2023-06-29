@@ -130,7 +130,7 @@ func ListKadDHTPeers(c *gin.Context) {
 		return
 	}
 	for _, peer := range peers {
-		var updates update
+		var updates models.KadDHTMachineUpdate
 		var peerInfo models.PeerData
 
 		// Add custom namespace to the key
@@ -457,7 +457,7 @@ func DumpKademliaDHT(c *gin.Context) {
 
 			for peer := range tasks {
 				var peerInfo models.PeerData
-				var updates update
+				var updates models.KadDHTMachineUpdate
 
 				// Add custom namespace to the key
 				namespacedKey := customNamespace + peer.ID.String()

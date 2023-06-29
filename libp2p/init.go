@@ -66,6 +66,7 @@ var (
 )
 
 var relayPeer = make(chan peer.AddrInfo)
+var gettingDHTUpdate bool
 
 // bootstrap peers provided by NuNet
 var NuNetBootstrapPeers []multiaddr.Multiaddr

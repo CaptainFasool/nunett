@@ -119,6 +119,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	// Start the DHT Update
+	gettingDHTUpdate = false
 	go UpdateKadDHT()
 	go GetDHTUpdates(ctx)
 
