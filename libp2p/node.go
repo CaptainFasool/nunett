@@ -207,3 +207,7 @@ func (p2p *P2P) NewHost(ctx context.Context, priv crypto.PrivKey, server bool) e
 
 	return nil
 }
+
+func (p2p *P2P) SetStreamHandler(protocol protocol.ID, handler network.StreamHandler) {
+	p2p.Host.SetStreamHandler(protocol, handler)
+}

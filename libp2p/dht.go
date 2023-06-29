@@ -20,7 +20,10 @@ import (
 )
 
 func (p2p DMSp2p) BootstrapNode(ctx context.Context) error {
-	Bootstrap(ctx, p2p.Host, p2p.DHT)
+	err := Bootstrap(ctx, p2p.Host, p2p.DHT)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
