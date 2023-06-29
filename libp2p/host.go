@@ -120,7 +120,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	// Start the DHT Update
 	go UpdateKadDHT()
-	go GetDHTUpdates()
+	go GetDHTUpdates(ctx)
 
 	// Clean up the DHT every 5 minutes
 	dhtHousekeepingTicker := time.NewTicker(5 * time.Minute)
@@ -148,7 +148,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 					zlog.Sugar().Info("Updating Kad DHT")
 				}
 				UpdateKadDHT()
-				GetDHTUpdates()
+				GetDHTUpdates(ctx)
 			case <-quit3:
 				dhtUpdateTicker.Stop()
 				return

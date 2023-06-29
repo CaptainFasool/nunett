@@ -511,7 +511,7 @@ func DumpKademliaDHT(c *gin.Context) {
 
 func ManualDHTUpdateHandler(c *gin.Context) {
 	go UpdateKadDHT()
-	GetDHTUpdates()
+	GetDHTUpdates(c)
 }
 
 // DefaultDepReqPeer  godoc

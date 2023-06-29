@@ -159,9 +159,8 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 	return dhtContent
 }
 
-func fetchKadDhtContents() ([]models.PeerData, error) {
+func fetchKadDhtContents(context context.Context) ([]models.PeerData, error) {
 	var dhtContent []models.PeerData
-	context := context.Background()
 	for _, peer := range p2p.peers {
 		var updates update
 		var peerInfo models.PeerData
@@ -263,20 +262,20 @@ func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequ
 }
 
 // Fetches peer info of peers from Kad-DHT and updates Peerstore.
-func GetDHTUpdates() {
-	machines, err := fetchKadDhtContents()
+func GetDHTUpdates(context context.Context) {
+	zlog.Debug("-----Getting DHT Updates")
+	machines, err := fetchKadDhtContents(context)
 	if err != nil {
 		zlog.Sugar().Errorf("GetDHTUpdates error: %s", err.Error())
 	}
-	ctx := context.Background()
-	defer ctx.Done()
+
 	for _, machine := range machines {
 		targetPeer, err := peer.Decode(machine.PeerID)
 		if err != nil {
 			zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
 			return
 		}
-		res := PingPeer(ctx, p2p.Host, targetPeer)
+		res := PingPeer(context, p2p.Host, targetPeer)
 		if res.Success {
 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 				zlog.Sugar().Info("Peer is reachable.", "PeerID", machine.PeerID)
@@ -288,6 +287,7 @@ func GetDHTUpdates() {
 			}
 		}
 	}
+	zlog.Debug("-----Done Getting DHT Updates")
 }
 
 func signData(hostPrivateKey crypto.PrivKey, data []byte) ([]byte, error) {
