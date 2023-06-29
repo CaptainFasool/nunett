@@ -195,10 +195,9 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 // }
 func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
 	zlog.Sugar().Debugf("Fetching DHT content for all peers")
-	resultChan := make(chan models.PeerData)
 
 	go func() {
-		defer close(resultChan) // Close the result channel when the goroutine exits
+		// defer close(resultChan) // Close the result channel when the goroutine exits
 
 		// Create a wait group to ensure all workers have finished
 		var wg sync.WaitGroup

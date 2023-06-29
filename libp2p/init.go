@@ -66,6 +66,7 @@ var (
 )
 
 var relayPeer = make(chan peer.AddrInfo)
+var resultChan = make(chan models.PeerData)
 var gettingDHTUpdate bool
 
 // bootstrap peers provided by NuNet
