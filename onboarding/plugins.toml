@@ -1,0 +1,6 @@
+[[ipfs-plugin]]
+Name = "ipfs-plugin"
+LifeCycle = "sidecar"
+IntegrationLevel = "integrated"
+Executor = "docker"
+AverageResourcesUsage = { CPU = 1000, RAM = 1024 }
