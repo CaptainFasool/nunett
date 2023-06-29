@@ -226,6 +226,7 @@ require (
 require (
 	github.com/KyleBanks/dockerstats v0.0.0-20180213183355-b5fec062e953
 	github.com/NVIDIA/go-nvml v0.12.0-1
+	github.com/buger/jsonparser v1.1.1
 	github.com/elastic/go-elasticsearch v0.0.0
 	github.com/elastic/go-elasticsearch/v8 v8.8.0
 	github.com/google/uuid v1.3.0

@@ -17,6 +17,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
+	"gitlab.com/nunet/device-management-service/utils"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -69,6 +70,7 @@ func (c *daemonCommand) Run(args []string) int {
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
 	wg.Wait()
+
 	return 0
 }
 
@@ -77,7 +79,7 @@ func (c *daemonCommand) Synopsis() string {
 }
 
 func main() {
-	c := cli.NewCLI("nunet", "1.0.0")
+	c := cli.NewCLI("nunet", utils.GetDMSVersion()) 
 	c.Args = os.Args[1:]
 	c.Commands = map[string]cli.CommandFactory{
 		"daemon": func() (cli.Command, error) {
@@ -101,5 +103,4 @@ func startServer(wg *sync.WaitGroup) {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.Run(fmt.Sprintf(":%d", config.GetConfig().Rest.Port))
-
 }
