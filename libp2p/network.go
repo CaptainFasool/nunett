@@ -231,7 +231,6 @@ func (ps *PubSub) Unsubscribe() {
 	ps.Sub.Cancel()
 }
 
-const customNamespace = "/nunet-dht/"
 
 type blankValidator struct{}
 type update struct {

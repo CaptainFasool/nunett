@@ -25,9 +25,6 @@ func init() {
 }
 
 const (
-	// Stream Protocol for DHT
-	DHTProtocolID = "/nunet/dms/dht/0.0.2"
-
 	// Stream Protocol for Deployment Requests
 	DepReqProtocolID = "/nunet/dms/depreq/0.0.2"
 
@@ -39,6 +36,8 @@ const (
 )
 
 var kadPrefix = dht.ProtocolPrefix("/nunet")
+
+const customNamespace = "/nunet-dht/"
 
 const (
 	// Team Rendezvous

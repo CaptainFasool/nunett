@@ -113,7 +113,7 @@ func ListDHTPeers(c *gin.Context) {
 // @Router       /peers/kad-dht [get]
 func ListKadDHTPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/dht"))
+	span.SetAttributes(attribute.String("URL", "/peers/kad-dht"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	if p2p.Host == nil {
@@ -510,7 +510,8 @@ func DumpKademliaDHT(c *gin.Context) {
 }
 
 func ManualDHTUpdateHandler(c *gin.Context) {
-	UpdateDHT()
+	go UpdateKadDHT()
+	GetDHTUpdates()
 }
 
 // DefaultDepReqPeer  godoc
