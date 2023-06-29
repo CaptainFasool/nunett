@@ -14,6 +14,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/plugins"
 	"gitlab.com/nunet/device-management-service/routes"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -51,6 +52,10 @@ func main() {
 
 	heartbeat.Done = make(chan bool)
 	go heartbeat.Heartbeat()
+
+	// Iniate plugins if any enabled
+	plugins.StartPlugins()
+
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
 
@@ -59,6 +64,7 @@ func main() {
 
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
+
 	wg.Wait()
 }
 

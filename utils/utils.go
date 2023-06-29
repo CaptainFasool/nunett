@@ -126,3 +126,49 @@ func ReadMetadataFile() (models.MetadataV2, error) {
 	}
 	return metadata, nil
 }
+
+// SliceContainsValue check if a slice contains a certain element
+func SliceContainsValue[T comparable](value T, slice []T) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
+// AreSlicesEqual check if two, potentially unordered, slices are equal
+func AreSlicesEqual[T comparable](slice1, slice2 []T) bool {
+	if len(slice1) != len(slice2) {
+		return false
+	}
+
+	exists := make(map[T]bool)
+	for _, value := range slice2 {
+		exists[value] = true
+	}
+
+	for _, value := range slice1 {
+		if !exists[value] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// SliceContainsSlice checks if a slice is contained in another given slice
+func SliceContainsSlice[T comparable](containedSlice, sliceToContain []T) bool {
+	values := make(map[T]bool)
+	for _, i := range sliceToContain {
+		values[i] = true
+	}
+
+	for _, i := range containedSlice {
+		if _, ok := values[i]; !ok {
+			return false
+		}
+	}
+
+	return true
+}

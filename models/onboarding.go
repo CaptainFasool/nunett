@@ -10,12 +10,13 @@ type BlockchainAddressPrivKey struct {
 
 // CapacityForNunet is a struct required in request body for the onboarding
 type CapacityForNunet struct {
-	Memory         int64  `json:"memory,omitempty"`
-	CPU            int64  `json:"cpu,omitempty"`
-	Channel        string `json:"channel,omitempty"`
-	PaymentAddress string `json:"payment_addr,omitempty"`
-	Cardano        bool   `json:"cardano,omitempty"`
-	ServerMode     bool   `json:"server_mode,omitempty,"`
+	Memory         int64    `json:"memory,omitempty"`
+	CPU            int64    `json:"cpu,omitempty"`
+	Channel        string   `json:"channel,omitempty"`
+	PaymentAddress string   `json:"payment_addr,omitempty"`
+	Cardano        bool     `json:"cardano,omitempty"`
+	ServerMode     bool     `json:"server_mode,omitempty,"`
+	Plugins        []string `json:"plugins,omitempty,"`
 }
 
 // Provisioned struct holds data about how much total resource
@@ -65,10 +66,11 @@ type MetadataV2 struct {
 		CPU    int64 `json:"cpu,omitempty"`
 		Memory int64 `json:"memory,omitempty"`
 	} `json:"reserved,omitempty"`
-	Network      string `json:"network,omitempty"`
-	PublicKey    string `json:"public_key,omitempty"`
-	NodeID       string `json:"node_id,omitempty"`
-	AllowCardano bool   `json:"allow_cardano,omitempty"`
-	GpuInfo      []Gpu  `json:"gpu_info,omitempty"`
-	Dashboard    string `json:"name,omitempty"`
+	Network      string   `json:"network,omitempty"`
+	PublicKey    string   `json:"public_key,omitempty"`
+	NodeID       string   `json:"node_id,omitempty"`
+	AllowCardano bool     `json:"allow_cardano,omitempty"`
+	GpuInfo      []Gpu    `json:"gpu_info,omitempty"`
+	Dashboard    string   `json:"name,omitempty"`
+	Plugins      []string `json:"plugins,omitempty,"`
 }

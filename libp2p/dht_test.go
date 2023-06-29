@@ -353,7 +353,7 @@ func TestFetchAvailableResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Bootstrap returned error: %v", err)
 	}
-	host2, idht2, err := NewHost(ctx,  priv2, true)
+	host2, idht2, err := NewHost(ctx, priv2, true)
 	if err != nil {
 		t.Fatalf("NewHost returned error: %v", err)
 	}
