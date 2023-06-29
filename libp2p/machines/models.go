@@ -50,8 +50,3 @@ type Machines map[string]Peer
 // TODO: 2. Available Resources Index
 // TODO: 3. Services Index
 
-// machine info for KAD-DHT
-type update struct {
-	Data      []byte `json:"data"`
-	Signature []byte `json:"signature"`
-}

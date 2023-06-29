@@ -10,21 +10,8 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-var zlog otelzap.Logger
-
-func init() {
-	zlog = logger.OtelZapLogger("libp2p")
-
-	for _, s := range config.GetConfig().P2P.BootstrapPeers {
-		ma, err := multiaddr.NewMultiaddr(s)
-		if err != nil {
-			panic(err)
-		}
-		NuNetBootstrapPeers = append(NuNetBootstrapPeers, ma)
-	}
-}
-
 const (
+	// Stream Protocols
 	// Stream Protocol for Deployment Requests
 	DepReqProtocolID = "/nunet/dms/depreq/0.0.2"
 
@@ -33,13 +20,12 @@ const (
 
 	// Stream Protocol for Ping
 	PingProtocolID = "/nunet/dms/ping/0.0.1"
-)
 
-var kadPrefix = dht.ProtocolPrefix("/nunet")
+	// namespaces
+	// Custom namespace for DHT protocol
+	customNamespace = "/nunet-dht/"
 
-const customNamespace = "/nunet-dht/"
-
-const (
+	// Rendezvous Points
 	// Team Rendezvous
 	TeamRendezvous = "nunet-team"
 
@@ -57,17 +43,33 @@ const (
 )
 
 var (
+	zlog             otelzap.Logger
+	kadPrefix        = dht.ProtocolPrefix("/nunet")
+	gettingDHTUpdate bool
+
+	// bootstrap peers provided by NuNet
+	NuNetBootstrapPeers []multiaddr.Multiaddr
+)
+
+var (
 	DepReqQueue       = make(chan models.DeploymentRequest)
 	DepResQueue       = make(chan models.DeploymentResponse)
+	relayPeer         = make(chan peer.AddrInfo)
+	resultChan        = make(chan models.PeerData)
 	JobLogStderrQueue = make(chan string)
 	JobLogStdoutQueue = make(chan string)
 	JobFailedQueue    = make(chan string)
 	JobCompletedQueue = make(chan string)
 )
 
-var relayPeer = make(chan peer.AddrInfo)
-var resultChan = make(chan models.PeerData)
-var gettingDHTUpdate bool
+func init() {
+	zlog = logger.OtelZapLogger("libp2p")
 
-// bootstrap peers provided by NuNet
-var NuNetBootstrapPeers []multiaddr.Multiaddr
+	for _, s := range config.GetConfig().P2P.BootstrapPeers {
+		ma, err := multiaddr.NewMultiaddr(s)
+		if err != nil {
+			panic(err)
+		}
+		NuNetBootstrapPeers = append(NuNetBootstrapPeers, ma)
+	}
+}
