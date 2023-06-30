@@ -20,6 +20,13 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+# [0.4.97](#221)
+
+### Added
+- Fixed a scenario where machines with AMD GPUs wouldn't be detected if NVIDIA GPUs were already present
+- Modify systemd PATH if mining os detected on onboard-gpu
+- New service package as replacement for docker package (wip: refactoring #204)
 # [0.4.96](#238)
 
 ### Changed
