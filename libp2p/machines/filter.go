@@ -38,18 +38,14 @@ func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerD
 }
 
 // filterByNeededPlugins filters the peers by the necessary plugins that a compute provider
-// must be running based on the deployment request params
+// must be running based on the deployment requested params and features
 func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequest) []models.PeerData {
 	// TODO: Some plugins will run along with DMS when starting DMS,
 	// other plugins will start accordingly to the initiation of jobs.
 	// This implementation only consider plugins which run along DMS.
-	var neededPlugins []string
 	var peersWithNeededPlugins []models.PeerData
 
-	// Check of needed plugins (Improve this to be dinamically for several plugins)
-	if isIPFSPLuginNeeded(depReq) {
-		neededPlugins = append(neededPlugins, "ipfs-plugin")
-	}
+	neededPlugins := solvePluginsNeeded(depReq)
 
 	if len(neededPlugins) == 0 {
 		return peers
@@ -65,13 +61,33 @@ func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequ
 	return peersWithNeededPlugins
 }
 
-// isIPFSPLuginNeeded returns peers with IPFS-Plugin enabled
-func isIPFSPLuginNeeded(depReq models.DeploymentRequest) bool {
-	pluginIPFSFunctionalities := [...]string{"outputIPFS"}
-	for _, functionality := range pluginIPFSFunctionalities {
-		if utils.SliceContainsValue(functionality, depReq.Params.AdditionalFeatures) {
-			return true
+// solvePluginsNeeded returns related plugins based on requested functionalities
+func solvePluginsNeeded(depReq models.DeploymentRequest) []string {
+	// TODO: some AdditionalFeatures may not be necessarily plugins,
+	// so we might not rely on relating AdditionalFeatures to plugins.
+	// This might return 0 peers when in reality the AdditionalFeature was
+	// not a plugin at all, just a normal AdditionalFeature
+	// TLDR: change this on webapp side probably (UI or parsing within the react code)
+	var neededPlugins []string
+	pluginsAdded := make(map[string]bool)
+
+	relationFuncsPlugins := getRelationFuncsPlugins()
+	for _, functionality := range depReq.Params.AdditionalFeatures {
+		plugin, ok := relationFuncsPlugins[functionality]
+		if _, added := pluginsAdded[plugin]; !added && ok {
+			neededPlugins = append(neededPlugins, plugin)
+			pluginsAdded[plugin] = true
 		}
 	}
-	return false
+
+	return neededPlugins
+}
+
+func getRelationFuncsPlugins() map[string]string {
+	relation := map[string]string{
+		"outputIPFS":      "ipfs-plugin",
+		"jobResumingIPFS": "ipfs-plugin",
+	}
+
+	return relation
 }
