@@ -4,33 +4,38 @@ import (
 	"testing"
 
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func TestIsIPFSPluginNeeded(t *testing.T) {
+func TestSolvePluginsNeeded(t *testing.T) {
 	type testExample struct {
 		requestedFuncs []string
-		output         bool
+		output         []string
 	}
 
 	tableTest := []testExample{
 		{
-			requestedFuncs: []string{"outputIPFS", "foo"},
-			output:         true,
+			requestedFuncs: []string{"outputIPFS", "jobResumingIPFS", "foo"},
+			output:         []string{"ipfs-plugin"},
+		},
+		{
+			requestedFuncs: []string{"jobResumingIPFS", "foo"},
+			output:         []string{"ipfs-plugin"},
 		},
 		{
 			requestedFuncs: []string{"foo", "bar"},
-			output:         false,
+			output:         []string{},
 		},
 		{
 			requestedFuncs: []string{},
-			output:         false,
+			output:         []string{},
 		},
 	}
 
 	for _, tt := range tableTest {
 		depReq := getMockDepReq(tt.requestedFuncs)
-		out := isIPFSPLuginNeeded(depReq)
-		if out != tt.output {
+		out := solvePluginsNeeded(depReq)
+		if !utils.AreSlicesEqual(tt.output, out) {
 			t.Errorf("for requested plugins %v | wanted %v, got %v", tt.requestedFuncs, tt.output, out)
 		}
 	}
@@ -52,7 +57,7 @@ func TestFilterByNeededPlugins(t *testing.T) {
 	}
 
 	peerTwo := models.PeerData{
-		EnabledPlugins: []string{"ipfs-plugin"},
+		EnabledPlugins: []string{"ipfs-plugin", "jobResumingIPFS"},
 		PeerID:         "peerTwo",
 	}
 
@@ -74,6 +79,18 @@ func TestFilterByNeededPlugins(t *testing.T) {
 			expectedResult: []models.PeerData{peerOne, peerTwo},
 		},
 		{
+			name:           "Test with one plugin needed (but two functionalities for the same plugin)",
+			peers:          []models.PeerData{peerOne, peerTwo, peerThree},
+			depReqAddFeats: []string{"outputIPFS", "jobResumingIPFS"},
+			expectedResult: []models.PeerData{peerOne, peerTwo},
+		},
+		{
+			name:           "Test with functionality not related to any plugin",
+			peers:          []models.PeerData{peerOne, peerTwo, peerThree},
+			depReqAddFeats: []string{"non-valid-functionality"},
+			expectedResult: []models.PeerData{peerOne, peerTwo, peerThree},
+		},
+		{
 			name:           "Test with no plugin needed",
 			peers:          []models.PeerData{peerOne, peerTwo, peerThree},
 			depReqAddFeats: []string{},
@@ -87,7 +104,7 @@ func TestFilterByNeededPlugins(t *testing.T) {
 			result := filterByNeededPlugins(tt.peers, depReq)
 
 			if len(result) != len(tt.expectedResult) {
-				t.Errorf("wanted %d peers, got %d peers", len(result), len(tt.expectedResult))
+				t.Errorf("wanted %d peers, got %d peers", len(tt.expectedResult), len(result))
 			}
 
 			matchedPeers := 0
