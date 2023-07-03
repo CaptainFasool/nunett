@@ -83,6 +83,8 @@ func solvePluginsNeeded(depReq models.DeploymentRequest) []string {
 	return neededPlugins
 }
 
+// getRelationFuncsPlugins returns a map which relating each functionality requested (by the SP) to a
+// given plugin. Being a key:value pair, this is the structure <functionality>:<Plugin>
 func getRelationFuncsPlugins() map[string]string {
 	relation := map[string]string{
 		"outputIPFS":      "ipfs-plugin",
