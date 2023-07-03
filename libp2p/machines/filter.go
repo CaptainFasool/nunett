@@ -63,7 +63,7 @@ func filterByNeededPlugins(peers []models.PeerData, depReq models.DeploymentRequ
 
 // solvePluginsNeeded returns related plugins based on requested functionalities
 func solvePluginsNeeded(depReq models.DeploymentRequest) []string {
-	// TODO: some AdditionalFeatures may not be necessarily plugins,
+	// Some AdditionalFeatures may not be necessarily plugins,
 	// so we might not rely on relating AdditionalFeatures to plugins.
 	// This might return 0 peers when in reality the AdditionalFeature was
 	// not a plugin at all, just a normal AdditionalFeature
