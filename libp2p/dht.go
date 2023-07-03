@@ -158,41 +158,6 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 	return dhtContent
 }
 
-// func fetchKadDhtContents(context context.Context) ([]models.PeerData, error) {
-// 	var dhtContent []models.PeerData
-// 	for _, peer := range p2p.peers {
-// 		var updates models.KadDHTMachineUpdate
-// 		var peerInfo models.PeerData
-
-// 		// Add custom namespace to the key
-// 		namespacedKey := customNamespace + peer.ID.String()
-// 		bytes, err := p2p.DHT.GetValue(context, namespacedKey)
-// 		if err != nil {
-// 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-// 				zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.String()))
-// 			}
-// 			continue
-// 		}
-// 		err = json.Unmarshal(bytes, &updates)
-// 		if err != nil {
-// 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-// 				zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
-// 			}
-// 			continue
-// 		}
-// 		err = json.Unmarshal(updates.Data, &peerInfo)
-// 		if err != nil {
-// 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-// 				zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
-// 			}
-// 			continue
-// 		}
-
-// 		dhtContent = append(dhtContent, peerInfo)
-// 	}
-// 	return dhtContent, nil
-
-// }
 func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
 	zlog.Sugar().Debugf("Fetching DHT content for all peers")
 

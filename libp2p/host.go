@@ -90,7 +90,13 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
-	p2p.peers, _ = p2p.getPeers(ctx, utils.GetChannelName())
+
+	// zlog.Debug("Getting bootstrap peers")
+	// p2p.peers, err = p2p.getPeers(ctx, utils.GetChannelName())
+	// if err != nil {
+	// 	zlog.Sugar().Errorf("Error getting peers: %s\n", err)
+	// }
+	// zlog.Debug("Done getting bootstrap peers")
 
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
@@ -119,7 +125,6 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	// Start the DHT Update
-	gettingDHTUpdate = false
 	go UpdateKadDHT()
 	go GetDHTUpdates(ctx)
 

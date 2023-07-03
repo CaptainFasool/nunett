@@ -45,7 +45,7 @@ const (
 var (
 	zlog             otelzap.Logger
 	kadPrefix        = dht.ProtocolPrefix("/nunet")
-	gettingDHTUpdate bool
+	gettingDHTUpdate = false
 
 	// bootstrap peers provided by NuNet
 	NuNetBootstrapPeers []multiaddr.Multiaddr

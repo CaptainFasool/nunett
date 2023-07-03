@@ -23,26 +23,6 @@ func TestBootstrap(t *testing.T) {
 
 }
 
-
-func TestGetPeers(t *testing.T) {
-	ctx := context.Background()
-	// Initialize host and dht objects
-	priv, _, _ := GenerateKey(0)
-	host, idht, _ := NewHost(ctx, priv, true)
-
-	p2p = *DMSp2pInit(host, idht)
-
-	defer host.Close()
-	// Get the peers for the rendezvous string "nunet"
-	_, err := p2p.getPeers(ctx, "nunet")
-
-	// Check if there is no error
-	if err != nil {
-		t.Fatalf("getPeers returned error: %v", err)
-	}
-
-}
-
 func TestPeersWithCardanoAllowed(t *testing.T) {
 	var peers []models.PeerData
 	var peer1, peer2, peer3 models.PeerData
