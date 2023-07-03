@@ -161,7 +161,6 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
 	statsdb.DeviceResourceChange(freeResource)
-	libp2p.UpdateDHT()
 	libp2p.UpdateKadDHT()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -188,6 +187,5 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
 	statsdb.DeviceResourceChange(freeResource)
-	libp2p.UpdateDHT()
 	libp2p.UpdateKadDHT()
 }

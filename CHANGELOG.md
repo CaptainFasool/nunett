@@ -26,10 +26,11 @@ Types of changes
 ### Added
 - Fixed a scenario where machines with AMD GPUs wouldn't be detected if NVIDIA GPUs were already present
 - Modify systemd PATH if mining os detected on onboard-gpu
-# [0.4.96](#204)
+- New service package as replacement for docker package (wip: refactoring #204)
+# [0.4.96](#238)
 
-### Added
-- New service package as replacement for docker package (wip: refactoring)
+### Changed
+- Temporary patch for job deployment problem from kad-dht fetch taking too long
 # [0.4.95](!179)
 
 ### Changed

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -34,13 +35,21 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-
-			peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
+			zlog.Debug("=====> discover - searching for peers")
+			peers, err := dutil.FindPeers(
+				ctx,
+				routingDiscovery,
+				rendezvous,
+				discovery.Limit(30),
+			)
 			if err != nil {
 				zlog.Sugar().Errorf("failed to discover peers: %v", err)
 			}
 			peers = filterAddrs(peers)
+			zlog.Sugar().Debugf("Discover - found peers: %v", peers)
+			p2p.peers = peers
 			for _, p := range peers {
+				newPeer <- p
 				if p.ID == node.ID() {
 					continue
 				}
@@ -62,18 +71,6 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 	}
 }
 
-func (p2p DMSp2p) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrInfo, error) {
-
-	routingDiscovery := drouting.NewRoutingDiscovery(p2p.DHT)
-	dutil.Advertise(ctx, routingDiscovery, rendezvous)
-	peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
-	if err != nil {
-		zlog.Sugar().Errorf("Error Finding Peers: %s\n", err.Error())
-	}
-	peers = filterAddrs(peers)
-
-	return peers, nil
-}
 
 func (p2p P2P) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrInfo, error) {
 
