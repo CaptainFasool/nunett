@@ -37,6 +37,21 @@ import (
 
 // @host      localhost:9999
 // @BasePath  /api/v1
+func main() {
+	c := cli.NewCLI("nunet", utils.GetDMSVersion()) 
+	c.Args = os.Args[1:]
+	c.Commands = map[string]cli.CommandFactory{
+		"daemon": func() (cli.Command, error) {
+			return &daemonCommand{}, nil
+		},
+	}
+	exitStatus, err := c.Run()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	os.Exit(exitStatus)
+}
 
 type daemonCommand struct{}
 
@@ -76,22 +91,6 @@ func (c *daemonCommand) Run(args []string) int {
 
 func (c *daemonCommand) Synopsis() string {
 	return "Launch DMS daemon as background process"
-}
-
-func main() {
-	c := cli.NewCLI("nunet", utils.GetDMSVersion()) 
-	c.Args = os.Args[1:]
-	c.Commands = map[string]cli.CommandFactory{
-		"daemon": func() (cli.Command, error) {
-			return &daemonCommand{}, nil
-		},
-	}
-	exitStatus, err := c.Run()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	os.Exit(exitStatus)
 }
 
 func startServer(wg *sync.WaitGroup) {
