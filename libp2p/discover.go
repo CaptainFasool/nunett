@@ -42,9 +42,10 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 				zlog.Sugar().Errorf("failed to discover peers: %v", err)
 			}
 			peers = filterAddrs(peers)
+			zlog.Sugar().Debugf("Discover - found peers: %v", peers)
 			p2p.peers = peers
 			for _, p := range peers {
-				relayPeer <- p
+				newPeer <- p
 				if p.ID == node.ID() {
 					continue
 				}

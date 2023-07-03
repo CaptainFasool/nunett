@@ -162,8 +162,6 @@ func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
 	zlog.Sugar().Debugf("Fetching DHT content for all peers")
 
 	go func() {
-		// defer close(resultChan) // Close the result channel when the goroutine exits
-
 		// Create a wait group to ensure all workers have finished
 		var wg sync.WaitGroup
 
@@ -171,7 +169,10 @@ func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
 		poolSize := 10 // Adjust the pool size as per your requirements
 		workerPool := make(chan struct{}, poolSize)
 
-		for _, p := range p2p.peers {
+		select {
+		case <-context.Done():
+			return
+		case p := <-newPeer:
 			workerPool <- struct{}{} // Acquire a worker slot from the pool
 			wg.Add(1)                // Increment the wait group counter
 
@@ -292,11 +293,11 @@ func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequ
 // Fetches peer info of peers from Kad-DHT and updates Peerstore.
 func GetDHTUpdates(context context.Context) {
 	if gettingDHTUpdate {
-		zlog.Debug("-----Already Getting DHT Updates")
+		zlog.Debug("Already Getting DHT Updates")
 		return
 	}
 	gettingDHTUpdate = true
-	zlog.Debug("-----Getting DHT Updates")
+	zlog.Debug("Getting DHT Updates")
 	machines := fetchKadDhtContents(context)
 	for machine := range machines {
 		// machine := <-machines
@@ -320,7 +321,7 @@ func GetDHTUpdates(context context.Context) {
 	}
 
 	gettingDHTUpdate = false
-	zlog.Debug("-----Done Getting DHT Updates")
+	zlog.Debug("Done Getting DHT Updates")
 }
 
 func signData(hostPrivateKey crypto.PrivKey, data []byte) ([]byte, error) {

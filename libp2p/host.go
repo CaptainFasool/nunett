@@ -343,7 +343,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 					defer close(r)
 					for i := 0; i < num; i++ {
 						select {
-						case p := <-relayPeer:
+						case p := <-newPeer:
 							select {
 							case r <- p:
 							case <-ctx.Done():
