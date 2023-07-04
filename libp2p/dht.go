@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -158,9 +159,9 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 	return dhtContent
 }
 
-func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
+func fetchKadDhtContents(ctxt context.Context) <-chan models.PeerData {
 	zlog.Sugar().Debugf("Fetching DHT content for all peers")
-
+	fetchCtx, _ := context.WithTimeout(ctxt, time.Minute)
 	go func() {
 		// Create a wait group to ensure all workers have finished
 		var wg sync.WaitGroup
@@ -170,51 +171,52 @@ func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
 		workerPool := make(chan struct{}, poolSize)
 
 		select {
-		case <-context.Done():
+		case <-fetchCtx.Done():
 			return
-		case p := <-newPeer:
-			workerPool <- struct{}{} // Acquire a worker slot from the pool
-			wg.Add(1)                // Increment the wait group counter
+		default:
+			for _, p := range p2p.peers {
+				workerPool <- struct{}{} // Acquire a worker slot from the pool
+				wg.Add(1)                // Increment the wait group counter
 
-			zlog.Sugar().Debugf("Fetching DHT content for peer: %s ", p.String())
-			go func(peer peer.AddrInfo) {
-				defer func() {
-					<-workerPool // Release the worker slot
-					wg.Done()    // Signal the wait group that the worker is done
-				}()
+				zlog.Sugar().Debugf("Fetching DHT content for peer: %s ", p.String())
+				go func(peer peer.AddrInfo) {
+					defer func() {
+						<-workerPool // Release the worker slot
+						wg.Done()    // Signal the wait group that the worker is done
+					}()
 
-				var updates models.KadDHTMachineUpdate
-				var peerInfo models.PeerData
+					var updates models.KadDHTMachineUpdate
+					var peerInfo models.PeerData
 
-				// Add custom namespace to the key
-				namespacedKey := customNamespace + peer.ID.String()
-				bytes, err := p2p.DHT.GetValue(context, namespacedKey)
-				if err != nil {
-					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-						zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.String()))
+					// Add custom namespace to the key
+					namespacedKey := customNamespace + peer.ID.String()
+					bytes, err := p2p.DHT.GetValue(fetchCtx, namespacedKey)
+					if err != nil {
+						if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+							zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.String()))
+						}
+						return
 					}
-					return
-				}
-				err = json.Unmarshal(bytes, &updates)
-				if err != nil {
-					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-						zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+					err = json.Unmarshal(bytes, &updates)
+					if err != nil {
+						if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+							zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+						}
+						return
 					}
-					return
-				}
-				err = json.Unmarshal(updates.Data, &peerInfo)
-				if err != nil {
-					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-						zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+					err = json.Unmarshal(updates.Data, &peerInfo)
+					if err != nil {
+						if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+							zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+						}
+						return
 					}
-					return
-				}
 
-				// Send the fetched value through the result channel
-				resultChan <- peerInfo
-			}(p)
+					// Send the fetched value through the result channel
+					resultChan <- peerInfo
+				}(p)
+			}
 		}
-
 		// Start a goroutine to wait for all workers to finish
 		go func() {
 			wg.Wait() // Wait until all workers have finished
