@@ -172,17 +172,17 @@ func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) 
 		workerPool := make(chan struct{}, poolSize)
 
 		for _, p := range <-newPeers {
-			zlog.Sugar().Debugf("FetchKadDHTContents: Waiting for worker slot for peer: %s", p.String())
+			zlog.Sugar().Debugf("FetchKadDHTContents: Waiting for worker slot for peer: %s", p.ID.String())
 			workerPool <- struct{}{} // Acquire a worker slot from the pool
-			zlog.Sugar().Debugf("FetchKadDHTContents: Acquired worker slot for peer: %s", p.String())
+			zlog.Sugar().Debugf("FetchKadDHTContents: Acquired worker slot for peer: %s", p.ID.String())
 			wg.Add(1) // Increment the wait group counter
 
-			zlog.Sugar().Debugf("FetchKadDHTContents: Fetching DHT content for peer: %s ", p.String())
+			zlog.Sugar().Debugf("FetchKadDHTContents: Fetching DHT content for peer: %s ", p.ID.String())
 			go func(peer peer.AddrInfo) {
 				defer func() {
 					<-workerPool // Release the worker slot
 					wg.Done()    // Signal the wait group that the worker is done
-					zlog.Sugar().Debugf("Worker for %v done", peer)
+					zlog.Sugar().Debugf("FetchKadDHTContents: Worker for %s finished", peer.ID.String())
 				}()
 
 				var updates models.KadDHTMachineUpdate
@@ -193,7 +193,7 @@ func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) 
 				bytes, err := p2p.DHT.GetValue(fetchCtx, namespacedKey)
 				if err != nil {
 					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-						zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.String()))
+						zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.ID.String()))
 					}
 					return
 				}
