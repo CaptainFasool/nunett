@@ -5,18 +5,19 @@ import (
 
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/plugins/ipfs_plugin"
+	"gitlab.com/nunet/device-management-service/plugins/plugins_management"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
 type plugin interface {
-	Start(chan error) // TODO: pass also as a param the model.peerInfo
+	Start(*plugins_management.PluginsInfoChannels)
 	OnboardedName() string
 }
 
 type ReadMetadataFileFunc func() (models.MetadataV2, error)
 
 func StartPlugins() {
-	zlog.Info("Starting plugins")
+	zlog.Sugar().Debug("Starting plugins")
 
 	enabledPlugins, err := solveEnabledPlugins(utils.ReadMetadataFile)
 	if err != nil {
@@ -28,14 +29,17 @@ func StartPlugins() {
 		return
 	}
 
-	errCh := make(chan error)
-	go pluginsManager(errCh)
+	pluginsCentralChannels := &plugins_management.PluginsInfoChannels{
+		ResourcesCh: make(chan models.FreeResources),
+		ErrCh:       make(chan error),
+	}
+	go plugins_management.ManagePlugins(pluginsCentralChannels)
 
 	for _, currentPlugin := range enabledPlugins {
-		go currentPlugin.Start(errCh)
+		go currentPlugin.Start(pluginsCentralChannels)
 	}
 
-	zlog.Info("Exiting StartPlugins")
+	zlog.Sugar().Debug("Exiting StartPlugins")
 	return
 }
 
