@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -267,20 +266,15 @@ func (bv blankValidator) Validate(key string, value []byte) error {
 		zlog.Sugar().Errorf("Error decoding peerID: %v", err)
 		return errors.New("error decoding peerID")
 	}
-	fmt.Println("Remote peer ID: ", remotePeerID)
-	fmt.Println("Getting public key of remote peer")
-	fmt.Println("Host ID: ", bv.P2p.Host.ID().String())
 	// Get the public key of the remote peer from the peerstore
 	// remotePeerPublicKey :=
 	// blankValidator.p2p.Host.Peerstore().PubKey(remotePeerID)
 	remotePeerPublicKey := bv.P2p.Host.Peerstore().PubKey(remotePeerID)
-	fmt.Println("Remote peer public key: ", remotePeerPublicKey)
 
 	if remotePeerPublicKey == nil {
 
 		return errors.New("public key for remote peer not found in peerstore")
 	}
-	fmt.Println("Verifying signature")
 	verify, err := remotePeerPublicKey.Verify(data, signature)
 	if err != nil {
 		zlog.Sugar().Errorf("Error verifying signature: %v", err)

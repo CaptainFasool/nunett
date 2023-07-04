@@ -95,6 +95,8 @@ func TestFetchDhtContents(t *testing.T) {
 	}
 	go host1.StartDiscovery(ctx, CIRendevousPoint)
 	go host2.StartDiscovery(ctx, CIRendevousPoint)
+	host1.SetStreamHandler(PingProtocolID, PingHandler)
+	host2.SetStreamHandler(PingProtocolID, PingHandler)
 
 	host1.Host.Peerstore().AddAddrs(host2.Host.ID(), host2.Host.Addrs(), peerstore.PermanentAddrTTL)
 	host1.Host.Peerstore().AddPubKey(host2.Host.ID(), host2.Host.Peerstore().PubKey(host2.Host.ID()))
