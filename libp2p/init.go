@@ -54,8 +54,8 @@ var (
 var (
 	DepReqQueue       = make(chan models.DeploymentRequest)
 	DepResQueue       = make(chan models.DeploymentResponse)
-	newPeer         = make(chan peer.AddrInfo)
-	resultChan        = make(chan models.PeerData)
+	newPeer           = make(chan peer.AddrInfo)
+	newPeers          = make(chan []peer.AddrInfo)
 	JobLogStderrQueue = make(chan string)
 	JobLogStdoutQueue = make(chan string)
 	JobFailedQueue    = make(chan string)

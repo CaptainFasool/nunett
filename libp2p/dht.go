@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -161,29 +162,30 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 	return dhtContent
 }
 
-func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
+func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) {
 	zlog.Sugar().Debugf("Fetching DHT content for all peers")
+	fetchCtx, _ := context.WithTimeout(ctxt, time.Minute)
 
 	go func() {
 		// Create a wait group to ensure all workers have finished
 		var wg sync.WaitGroup
 
 		// Create a buffered channel for the worker pool
-		poolSize := 10 // Adjust the pool size as per your requirements
+		poolSize := 5 // Adjust the pool size as per your requirements
 		workerPool := make(chan struct{}, poolSize)
 
-		select {
-		case <-context.Done():
-			return
-		case p := <-newPeer:
+		for _, p := range <-newPeers {
+			zlog.Sugar().Debugf("FetchKadDHTContents: Waiting for worker slot for peer: %s", p.String())
 			workerPool <- struct{}{} // Acquire a worker slot from the pool
-			wg.Add(1)                // Increment the wait group counter
+			zlog.Sugar().Debugf("FetchKadDHTContents: Acquired worker slot for peer: %s", p.String())
+			wg.Add(1) // Increment the wait group counter
 
-			zlog.Sugar().Debugf("Fetching DHT content for peer: %s ", p.String())
+			zlog.Sugar().Debugf("FetchKadDHTContents: Fetching DHT content for peer: %s ", p.String())
 			go func(peer peer.AddrInfo) {
 				defer func() {
 					<-workerPool // Release the worker slot
 					wg.Done()    // Signal the wait group that the worker is done
+					zlog.Sugar().Debugf("Worker for %v done", peer)
 				}()
 
 				var updates models.KadDHTMachineUpdate
@@ -191,7 +193,7 @@ func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
 
 				// Add custom namespace to the key
 				namespacedKey := customNamespace + peer.ID.String()
-				bytes, err := p2p.DHT.GetValue(context, namespacedKey)
+				bytes, err := p2p.DHT.GetValue(fetchCtx, namespacedKey)
 				if err != nil {
 					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 						zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.String()))
@@ -218,13 +220,11 @@ func fetchKadDhtContents(context context.Context) <-chan models.PeerData {
 			}(p)
 		}
 
-		// Start a goroutine to wait for all workers to finish
-		go func() {
-			wg.Wait() // Wait until all workers have finished
-		}()
+		zlog.Debug("FetchKadDHTContents: Waiting for workers to finish")
+		wg.Wait()
+		zlog.Debug("FetchKadDHTContents: All workers Done. Closing channel")
+		close(resultChan)
 	}()
-
-	return resultChan
 }
 
 // FetchMachines returns Machines on DHT.
@@ -296,33 +296,35 @@ func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequ
 // Fetches peer info of peers from Kad-DHT and updates Peerstore.
 func GetDHTUpdates(context context.Context) {
 	if gettingDHTUpdate {
-		zlog.Debug("Already Getting DHT Updates")
+		zlog.Debug("GetDHTUpdates: Already Getting DHT Updates")
 		return
 	}
 	gettingDHTUpdate = true
-	zlog.Debug("Getting DHT Updates")
-	machines := fetchKadDhtContents(context)
+	zlog.Debug("GetDHTUpdates: Start Getting DHT Updates")
+
+	machines := make(chan models.PeerData)
+	fetchKadDhtContents(context, machines)
+
 	for machine := range machines {
-		// machine := <-machines
+		zlog.Sugar().Debugf("GetDHTUpdates: Got machine: %v", machine.PeerID)
 		targetPeer, err := peer.Decode(machine.PeerID)
 		if err != nil {
 			zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
+			gettingDHTUpdate = false
 			return
 		}
 		res := PingPeer(context, p2p.Host, targetPeer)
 		if res.Success {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			if _, verboseDebugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); verboseDebugMode {
 				zlog.Sugar().Info("Peer is reachable.", "PeerID", machine.PeerID)
 			}
 			p2p.Host.Peerstore().Put(targetPeer, "peer_info", machine)
 		} else {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			if _, verboseDebugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); verboseDebugMode {
 				zlog.Sugar().Info("Peer -  ", machine.PeerID, " is unreachable.")
 			}
 		}
-
 	}
-
 	gettingDHTUpdate = false
 	zlog.Debug("Done Getting DHT Updates")
 }
