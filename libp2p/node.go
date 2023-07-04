@@ -126,7 +126,9 @@ func (p2p *P2P) NewHost(ctx context.Context, priv crypto.PrivKey, server bool) e
 	var libp2pOpts []libp2p.Option
 	baseOpts := []dht.Option{
 		kadPrefix,
-		dht.NamespacedValidator("nunet-dht", blankValidator{}),
+		dht.NamespacedValidator("nunet-dht", blankValidator{
+			P2p1: p2p,
+		}),
 		dht.Mode(dht.ModeServer),
 	}
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(
@@ -168,7 +170,7 @@ func (p2p *P2P) NewHost(ctx context.Context, priv crypto.PrivKey, server bool) e
 					defer close(r)
 					for i := 0; i < num; i++ {
 						select {
-						case p := <-relayPeer:
+						case p := <-newPeer:
 							select {
 							case r <- p:
 							case <-ctx.Done():

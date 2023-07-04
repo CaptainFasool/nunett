@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -231,11 +232,12 @@ func (ps *PubSub) Unsubscribe() {
 	ps.Sub.Cancel()
 }
 
-
-type blankValidator struct{}
-
+type blankValidator struct {
+	P2p1 *P2P
+}
 
 func (blankValidator) Validate(key string, value []byte) error {
+	myp2p := blankValidator.P2p1
 	// Check if the key has the correct namespace
 	if !strings.HasPrefix(key, customNamespace) {
 		return errors.New("invalid key namespace")
@@ -266,12 +268,20 @@ func (blankValidator) Validate(key string, value []byte) error {
 		zlog.Sugar().Errorf("Error decoding peerID: %v", err)
 		return errors.New("error decoding peerID")
 	}
-
+	fmt.Println("Remote peer ID: ", remotePeerID)
+	fmt.Println("Getting public key of remote peer")
+	fmt.Println("Host ID: ", blankValidator.p2p.Host.ID().String())
 	// Get the public key of the remote peer from the peerstore
-	remotePeerPublicKey := p2p.Host.Peerstore().PubKey(remotePeerID)
+	// remotePeerPublicKey :=
+	// blankValidator.p2p.Host.Peerstore().PubKey(remotePeerID)
+	remotePeerPublicKey := blankValidator.p2p.Host.Peerstore().PubKey(remotePeerID)
+	fmt.Println("Remote peer public key: ", remotePeerPublicKey)
+
 	if remotePeerPublicKey == nil {
+
 		return errors.New("public key for remote peer not found in peerstore")
 	}
+	fmt.Println("Verifying signature")
 	verify, err := remotePeerPublicKey.Verify(data, signature)
 	if err != nil {
 		zlog.Sugar().Errorf("Error verifying signature: %v", err)

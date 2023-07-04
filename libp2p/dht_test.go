@@ -2,8 +2,11 @@ package libp2p
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
+	"time"
 
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/models"
 )
@@ -13,14 +16,13 @@ const CIRendevousPoint string = "testing-nunet"
 func TestBootstrap(t *testing.T) {
 	ctx := context.Background()
 	priv, _, _ := GenerateKey(0)
-	host, idht, _ := NewHost(ctx, priv, true)
-	defer host.Close()
-	// Test successful Bootstrap
-	err := Bootstrap(ctx, host, idht)
+	var p2p P2P
+	p2p.NewHost(ctx, priv, true)
+	defer p2p.Host.Close()
+	err := p2p.BootstrapNode(ctx)
 	if err != nil {
 		t.Errorf("Expected Bootstrap to succeed but got error: %v", err)
 	}
-
 }
 
 func TestPeersWithCardanoAllowed(t *testing.T) {
@@ -67,4 +69,72 @@ func TestPeersWithMatchingSpec(t *testing.T) {
 
 	res := PeersWithMatchingSpec(peers, depReq)
 	assert.Equal(t, 1, len(res))
+}
+
+func TestFetchDhtContents(t *testing.T) {
+
+	ctx := context.Background()
+
+	priv1, _, _ := GenerateKey(0)
+	priv2, _, _ := GenerateKey(0)
+
+	var host1, host2 P2P
+
+	host1.NewHost(ctx, priv1, true)
+	defer host1.Host.Close()
+
+	err := host1.BootstrapNode(ctx)
+	if err != nil {
+		t.Fatalf("Bootstrap returned error: %v", err)
+	}
+	host2.NewHost(ctx, priv2, true)
+	defer host2.Host.Close()
+	err = host2.BootstrapNode(ctx)
+	if err != nil {
+		t.Fatalf("Bootstrap returned error: %v", err)
+	}
+	go host1.StartDiscovery(ctx, CIRendevousPoint)
+	go host2.StartDiscovery(ctx, CIRendevousPoint)
+
+	host1.Host.Peerstore().AddAddrs(host2.Host.ID(), host2.Host.Addrs(), peerstore.PermanentAddrTTL)
+	host1.Host.Peerstore().AddPubKey(host2.Host.ID(), host2.Host.Peerstore().PubKey(host2.Host.ID()))
+
+	host2.Host.Peerstore().AddAddrs(host1.Host.ID(), host1.Host.Addrs(), peerstore.PermanentAddrTTL)
+	host2.Host.Peerstore().AddPubKey(host1.Host.ID(), host1.Host.Peerstore().PubKey(host1.Host.ID()))
+
+	t.Log("Host1 ID: ", host1.Host.ID().String())
+	peerInfo2 := models.PeerData{}
+	peerInfo2.PeerID = host2.Host.ID().String()
+	peerInfo2.HasGpu = false
+	bytes, err := json.Marshal(peerInfo2)
+	if err != nil {
+		t.Fatalf("Marshal returned error: %v", err)
+	}
+	t.Log("Host2 ID: ", host2.Host.ID().String())
+	err = host2.AddToKadDHT(bytes, customNamespace)
+	if err != nil {
+		t.Fatalf("AddToKadDHT returned error: %v", err)
+	}
+	time.Sleep(3 * time.Second)
+	host1.GetDHTUpdates(ctx)
+	time.Sleep(3 * time.Second)
+	contents := host1.fetchPeerStoreContents()
+	t.Log(contents)
+	assert.Equal(t, peerInfo2, contents[0])
+}
+
+func TestGetPeers(t *testing.T) {
+	ctx := context.Background()
+	// Initialize host and dht objects
+	priv, _, _ := GenerateKey(0)
+	var p2p P2P
+	p2p.NewHost(ctx, priv, true)
+
+	_, err := p2p.getPeers(ctx, "nunet")
+
+	// Check if there is no error
+	if err != nil {
+		t.Fatalf("getPeers returned error: %v", err)
+	}
+
 }
