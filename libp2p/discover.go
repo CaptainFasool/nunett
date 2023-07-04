@@ -44,6 +44,7 @@ func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous
 			peers = filterAddrs(peers)
 			zlog.Sugar().Debugf("Discover - found peers: %v", peers)
 			p2p.peers = peers
+			newPeers <- peers
 			for _, p := range peers {
 				newPeer <- p
 				if p.ID == node.ID() {
