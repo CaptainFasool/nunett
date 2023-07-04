@@ -54,8 +54,14 @@ func TestChat(t *testing.T) {
 		t.Fatalf("Bootstrap returned error: %v", err)
 	}
 
-	go Discover(context.Background(), host1, idht1, CIRendevousPoint)
-	go Discover(ctx, host2, idht2, CIRendevousPoint)
+	go Discover(context.Background(), P2P{
+		Host: host1,
+		DHT:  idht1,
+	}, CIRendevousPoint)
+	go Discover(ctx, P2P{
+		Host: host2,
+		DHT:  idht2,
+	}, CIRendevousPoint)
 
 	host2.Peerstore().AddAddrs(host1.ID(), host1.Addrs(), peerstore.PermanentAddrTTL)
 	host2.Peerstore().AddPubKey(host1.ID(), host1.Peerstore().PubKey(host1.ID()))
@@ -138,8 +144,14 @@ func TestWrongFormatDepReq(t *testing.T) {
 
 	testRendezvous := utils.RandomString(20)
 
-	go Discover(ctx, host1, idht1, testRendezvous)
-	go Discover(ctx, host2, idht2, testRendezvous)
+	go Discover(ctx, P2P{
+		Host: host1,
+		DHT:  idht1,
+	}, testRendezvous)
+	go Discover(ctx, P2P{
+		Host: host2,
+		DHT:  idht2,
+	}, testRendezvous)
 
 	host2.Peerstore().AddAddrs(host1.ID(), host1.Addrs(), peerstore.PermanentAddrTTL)
 	host2.Peerstore().AddPubKey(host1.ID(), host1.Peerstore().PubKey(host1.ID()))

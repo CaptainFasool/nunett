@@ -233,11 +233,10 @@ func (ps *PubSub) Unsubscribe() {
 }
 
 type blankValidator struct {
-	P2p1 *P2P
+	P2p *P2P
 }
 
-func (blankValidator) Validate(key string, value []byte) error {
-	myp2p := blankValidator.P2p1
+func (bv blankValidator) Validate(key string, value []byte) error {
 	// Check if the key has the correct namespace
 	if !strings.HasPrefix(key, customNamespace) {
 		return errors.New("invalid key namespace")
@@ -270,11 +269,11 @@ func (blankValidator) Validate(key string, value []byte) error {
 	}
 	fmt.Println("Remote peer ID: ", remotePeerID)
 	fmt.Println("Getting public key of remote peer")
-	fmt.Println("Host ID: ", blankValidator.p2p.Host.ID().String())
+	fmt.Println("Host ID: ", bv.P2p.Host.ID().String())
 	// Get the public key of the remote peer from the peerstore
 	// remotePeerPublicKey :=
 	// blankValidator.p2p.Host.Peerstore().PubKey(remotePeerID)
-	remotePeerPublicKey := blankValidator.p2p.Host.Peerstore().PubKey(remotePeerID)
+	remotePeerPublicKey := bv.P2p.Host.Peerstore().PubKey(remotePeerID)
 	fmt.Println("Remote peer public key: ", remotePeerPublicKey)
 
 	if remotePeerPublicKey == nil {

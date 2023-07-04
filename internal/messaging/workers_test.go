@@ -57,8 +57,14 @@ func TestDepReq(t *testing.T) {
 
 	testRendezvous := utils.RandomString(10)
 
-	go libp2p.Discover(context.Background(), p2p.Host, p2p.DHT, testRendezvous)
-	go libp2p.Discover(ctx, host2, idht2, testRendezvous)
+	go libp2p.Discover(context.Background(), libp2p.P2P{
+		Host: p2p.Host,
+		DHT:  p2p.DHT,
+	}, testRendezvous)
+	go libp2p.Discover(ctx, libp2p.P2P{
+		Host: host2,
+		DHT:  idht2,
+	}, testRendezvous)
 
 	host2.Peerstore().AddAddrs(p2p.Host.ID(), p2p.Host.Addrs(), peerstore.PermanentAddrTTL)
 	host2.Peerstore().AddPubKey(p2p.Host.ID(), p2p.Host.Peerstore().PubKey(p2p.Host.ID()))

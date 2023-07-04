@@ -127,7 +127,7 @@ func (p2p *P2P) NewHost(ctx context.Context, priv crypto.PrivKey, server bool) e
 	baseOpts := []dht.Option{
 		kadPrefix,
 		dht.NamespacedValidator("nunet-dht", blankValidator{
-			P2p1: p2p,
+			P2p: p2p,
 		}),
 		dht.Mode(dht.ModeServer),
 	}
