@@ -22,6 +22,11 @@ Types of changes
 -->
 
 
+# [0.4.100](#227)
+
+### Fixed
+
+- Error handling on heartbeat module
 # [0.4.99](!183)
 
 ### Fixed
