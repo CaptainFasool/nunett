@@ -21,7 +21,7 @@ import (
 )
 
 // @title           Device Management Service
-// @version         0.4.104
+// @version         0.4.105
 // @description     A dashboard application for computing providers.
 // @termsOfService  https://nunet.io/tos
 

@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.105](#196)
+### Fixed
+- Add verification query when onboarding an already onboarded machine (fix for #196)
+
 # [0.4.104](#195)
 ### Fixed
 - Ignore decimal values for resource amount on onboard and resource-config (fix for #195)

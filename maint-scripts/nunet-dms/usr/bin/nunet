@@ -499,6 +499,20 @@ onboard() {
             esac
     done
 
+    # check if already onboarded
+    N_INFO=$(info)
+    if [[ ! $N_INFO == *"Error:"* ]] ; then
+        while true; do
+            read -p "You are already onboarded. Do you want to onboard again with new settings? (yes/no) " new_onboard_resp
+            case $new_onboard_resp in
+                yes ) echo "Proceeding with new onboarding...";
+                    break;;
+                no) echo "Exiting...";
+                    exit;;
+                *) echo "Only 'yes' or 'no' please";;
+            esac
+        done
+    fi
 
     # validation
     [[ -z $N_ONBOARD_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && onboard_usage
