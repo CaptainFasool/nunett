@@ -1,4 +1,4 @@
-package plugins
+package plugins_management
 
 import (
 	"context"
@@ -12,6 +12,6 @@ var (
 )
 
 func init() {
-	zlog = logger.New("plugins")
+	zlog = logger.New("plugins_management")
 	ctx = context.Background()
 }
