@@ -92,8 +92,8 @@ type Gpu struct {
 	FreeVram uint64 `json:"free_vram"`
 }
 
-type resources struct {
-	TotCpuHz  float64
+type Resources struct {
+	TotCpuHz  int
 	PriceCpu  float64
 	Ram       int
 	PriceRam  float64
