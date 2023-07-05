@@ -20,7 +20,9 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
-
+# [0.4.104](#195)
+### Fixed
+- Ignore decimal values for resource amount on onboard and resource-config (fix for #195)
 
 # [0.4.103](!191)
 ### Changed
