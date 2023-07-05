@@ -65,5 +65,6 @@ do
     # The remaining part of this script used to upload artifact from build.sh to GitLab Package Registry.
     if [[ -v GITLAB_CI ]] ; then
         curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file ${projectRoot}/dist/nunet-dms_${version}_${arch}.deb ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb
+        curl -X POST -H "Content-Type: application/json" -H "$HOOK_TOKEN_HEADER_NAME: $HOOK_TOKEN_HEADER_VALUE" -d "{\"project\" : \"DMS\", \"version\" : \"$version\", \"commit\" : \"$CI_COMMIT_SHORT_SHA\", \"commit_msg\" : \"$CI_COMMIT_MESSAGE\", \"package_url\" : \"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb\"}" $NUNETBOT_DMS_BUILD_ENDPOINT
     fi 
 done
