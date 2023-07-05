@@ -1,4 +1,4 @@
-package plugins
+package plugins_startup
 
 import (
 	"fmt"
@@ -8,11 +8,6 @@ import (
 	"gitlab.com/nunet/device-management-service/plugins/plugins_management"
 	"gitlab.com/nunet/device-management-service/utils"
 )
-
-type plugin interface {
-	Start(*plugins_management.PluginsInfoChannels)
-	OnboardedName() string
-}
 
 type ReadMetadataFileFunc func() (models.MetadataV2, error)
 
@@ -30,13 +25,17 @@ func StartPlugins() {
 	}
 
 	pluginsCentralChannels := &plugins_management.PluginsInfoChannels{
-		ResourcesCh: make(chan models.FreeResources),
+		ResourcesCh: make(chan models.Resources),
 		ErrCh:       make(chan error),
 	}
 	go plugins_management.ManagePlugins(pluginsCentralChannels)
 
 	for _, currentPlugin := range enabledPlugins {
-		go currentPlugin.Start(pluginsCentralChannels)
+		// Currently killing plugin if already running to update possible new configs
+		if isRunning, _ := currentPlugin.IsRunning(pluginsCentralChannels); isRunning {
+			currentPlugin.Stop(pluginsCentralChannels)
+		}
+		go currentPlugin.Run(pluginsCentralChannels)
 	}
 
 	zlog.Sugar().Debug("Exiting StartPlugins")
@@ -44,13 +43,13 @@ func StartPlugins() {
 }
 
 // solveEnabledPlugins gets enabled plugins within metadata and solve their types
-func solveEnabledPlugins(readMetadataFile ReadMetadataFileFunc) ([]plugin, error) {
+func solveEnabledPlugins(readMetadataFile ReadMetadataFileFunc) ([]plugins_management.Plugin, error) {
 	strPlugins, err := getMetadataPlugins(readMetadataFile)
 	if err != nil {
-		return []plugin{}, err
+		return []plugins_management.Plugin{}, err
 	}
 
-	var enabledPlugins []plugin
+	var enabledPlugins []plugins_management.Plugin
 	for _, pluginName := range strPlugins {
 		pluginType, err := getPluginType(pluginName)
 		if err != nil {
@@ -76,7 +75,7 @@ func getMetadataPlugins(readMetadataFile ReadMetadataFileFunc) ([]string, error)
 
 // getPluginType returns, based on the plugin name, the specific plugin type struct
 // which can implement different interface methods
-func getPluginType(pluginName string) (plugin, error) {
+func getPluginType(pluginName string) (plugins_management.Plugin, error) {
 	switch pluginName {
 	case "ipfs-plugin":
 		return &ipfs_plugin.IPFSPlugin{}, nil
