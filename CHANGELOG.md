@@ -22,11 +22,16 @@ Types of changes
 -->
 
 
-# [0.4.100](#227)
-
+# [0.4.101](#230)
 ### Fixed
+- ML Onboarding on Windows Subsystem for Linux (WSL)
+- Handle missing NVIDIA/AMD GPU(s) separately on Linux
+- Reboot recommendation after GPU onboarding
 
+# [0.4.100](#227)
+### Fixed
 - Error handling on heartbeat module
+
 # [0.4.99](!183)
 
 ### Fixed
