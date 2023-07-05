@@ -22,6 +22,10 @@ Types of changes
 -->
 
 
+# [0.4.102](!186)
+### Changed
+- Improve GPU related logs
+
 # [0.4.101](#230)
 ### Fixed
 - ML Onboarding on Windows Subsystem for Linux (WSL)
