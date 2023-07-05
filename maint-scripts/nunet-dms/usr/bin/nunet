@@ -485,14 +485,14 @@ onboard() {
     while :
         do
             case "$1" in
-                -m | --memory)        N_ONBOARD_MEM="$2"         ; shift 2 ;;
-                -c | --cpu)           N_ONBOARD_CPU="$2"         ; shift 2 ;;
-                -n | --nunet-channel) N_ONBOARD_CHAN="$2"        ; shift 2 ;;
-                -a | --address)       N_ONBOARD_ADD="$2"         ; shift 2 ;;
-                -C | --cardano)       N_ONBOARD_CARDANO=true     ; shift ;;
-                -l | --local-enable)        N_ONBOARD_SERVER_MODE=false ; shift ;;
-                -v | --verbose)       N_ONBOARD_VERBOSE=1        ; shift ;;
-                -p | --pretty)        N_ONBOARD_PRETTY=1         ; shift ;;
+                -m | --memory)        N_ONBOARD_MEM="${2%.*}"         ; shift 2 ;;
+                -c | --cpu)           N_ONBOARD_CPU="${2%.*}"         ; shift 2 ;;
+                -n | --nunet-channel) N_ONBOARD_CHAN="$2"             ; shift 2 ;;
+                -a | --address)       N_ONBOARD_ADD="$2"              ; shift 2 ;;
+                -C | --cardano)       N_ONBOARD_CARDANO=true          ; shift ;;
+                -l | --local-enable)  N_ONBOARD_SERVER_MODE=false     ; shift ;;
+                -v | --verbose)       N_ONBOARD_VERBOSE=1             ; shift ;;
+                -p | --pretty)        N_ONBOARD_PRETTY=1              ; shift ;;
                 --) shift; break ;;
                 *) echo "Unexpected option: $1."
                     onboard_usage ;;
@@ -730,10 +730,10 @@ resource-config() {
     while :
         do
             case "$1" in
-                -m | --memory)        N_CONFIG_MEM="$2"         ; shift 2 ;;
-                -c | --cpu)           N_CONFIG_CPU="$2"         ; shift 2 ;;
-                -v | --verbose)       N_CONFIG_VERBOSE=1        ; shift ;;
-                -p | --pretty)        N_CONFIG_PRETTY=1         ; shift ;;
+                -m | --memory)        N_CONFIG_MEM="${2%.*}"         ; shift 2 ;;
+                -c | --cpu)           N_CONFIG_CPU="${2%.*}"         ; shift 2 ;;
+                -v | --verbose)       N_CONFIG_VERBOSE=1             ; shift ;;
+                -p | --pretty)        N_CONFIG_PRETTY=1              ; shift ;;
                 --) shift; break ;;
                 *) echo "Unexpected option: $1."
                     config_usage ;;
