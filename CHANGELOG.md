@@ -22,6 +22,10 @@ Types of changes
 -->
 
 
+# [0.4.103](!191)
+### Changed
+- Added Binds in AMD GPU Host Config to autocreate device file
+
 # [0.4.102](!186)
 ### Changed
 - Improve GPU related logs

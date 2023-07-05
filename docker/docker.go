@@ -110,6 +110,10 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 
 	if chosenGPUVendor == gpuinfo.AMD {
 		hostConfigAMDGPU = container.HostConfig{
+			Binds: []string{
+				"/dev/kfd:/dev/kfd",
+				"/dev/dri:/dev/dri",
+			},
 			Resources: container.Resources{
 				Memory:   memoryMbToBytes,
 				CPUQuota: int64(VCPU * vcpuToMicroseconds),
