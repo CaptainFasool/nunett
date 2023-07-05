@@ -27,7 +27,7 @@ func (p *IPFSPlugin) OnboardedName() string {
 // Start implements the plugin interface and deals with the startup of IPFS-Plugin,
 // downloading the image, configuring and starting the container
 func (p *IPFSPlugin) Start(pluginsManager *plugins_management.PluginsInfoChannels) {
-	err := PullImage(ipfsPluginImg)
+	err := pullImage(ipfsPluginImg)
 	if err != nil {
 		zlog.Sugar().Errorf("Couldn't pull ipfs-plugin docker image: %v", err)
 		pluginsManager.ErrCh <- err
@@ -59,6 +59,9 @@ func (p *IPFSPlugin) Start(pluginsManager *plugins_management.PluginsInfoChannel
 
 	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 }
+
+// TODO: The following functions should be moved to docker package whenever we move the deployment
+// of jobs to service package
 
 // configureContainer return configuration structs to start a Docker container. Here is where
 // ports, imageURL and other Docker container configs are defined.
@@ -98,7 +101,7 @@ func configureContainer(img, exposedPort, hostIP, hostPort, plugin string) (*con
 
 // PullImage is a wrapper around Docker SDK's function with same name.
 // This function is copied from the docker package.
-func PullImage(imageName string) error {
+func pullImage(imageName string) error {
 	// TODO: We should rename the docker package to deployment package
 	// and create a new docker package.
 	// OR put this image in utils/utils.go

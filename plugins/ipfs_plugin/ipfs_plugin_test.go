@@ -1,10 +1,11 @@
 package ipfs_plugin
 
 import (
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"reflect"
 	"testing"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 )
 
 func TestConfigureContainer(t *testing.T) {
@@ -14,6 +15,7 @@ func TestConfigureContainer(t *testing.T) {
 		exposedPort    string
 		hostIP         string
 		hostPort       string
+		plugin         string
 		expectedConfig *container.Config
 		expectedHost   *container.HostConfig
 		expectErr      bool
@@ -24,10 +26,15 @@ func TestConfigureContainer(t *testing.T) {
 			exposedPort: "8080",
 			hostIP:      "127.0.0.1",
 			hostPort:    "8080",
+			plugin:      "ipfs-plugin",
 			expectedConfig: &container.Config{
 				Image: "test-image",
 				ExposedPorts: nat.PortSet{
 					"8080/tcp": struct{}{},
+				},
+				Labels: map[string]string{
+					"dms-related": "true",
+					"dms-plugin":  "ipfs-plugin",
 				},
 			},
 			expectedHost: &container.HostConfig{
@@ -54,7 +61,7 @@ func TestConfigureContainer(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			config, host, err := configureContainer(tc.img, tc.exposedPort, tc.hostIP, tc.hostPort)
+			config, host, err := configureContainer(tc.img, tc.exposedPort, tc.hostIP, tc.hostPort, tc.plugin)
 			if (err != nil) != tc.expectErr {
 				t.Errorf("Expected error: %v, got: %v", tc.expectErr, err)
 			}
