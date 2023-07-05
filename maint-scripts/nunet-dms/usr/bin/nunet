@@ -146,8 +146,8 @@ resource_config_usage() {
 }
 
 gpu_status() {
-    if ! command -v nvidia-smi > /dev/null || ! command -v rocm-smi > /dev/null; then
-        printf "${BAD_C}Unable to find 'nvidia-smi' or 'rocm-smi'.\nNo NVIDIA or AMD GPU, or driver not installed. ${NORMAL_C}\n"
+    if ! command -v nvidia-smi > /dev/null && ! command -v rocm-smi > /dev/null; then
+        printf "${BAD_C}Unable to find 'nvidia-smi' or 'rocm-smi'.\nNeither NVIDIA nor AMD GPU driver is installed.${NORMAL_C}\n"
         exit
     fi
 
