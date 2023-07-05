@@ -42,7 +42,6 @@ func freeUsedResources(contID string) {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
 	statsdb.DeviceResourceChange(freeResource)
-	libp2p.UpdateDHT()
 	libp2p.UpdateKadDHT()
 }
 

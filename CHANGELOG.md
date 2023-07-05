@@ -21,6 +21,14 @@ Types of changes
 
 -->
 
+
+# [0.4.98](#239)
+
+### Removed
+- Old DHT update implementation
+
+### Changed
+- Better DHT fetching efficiency
 # [0.4.97](#221)
 
 ### Added
@@ -31,7 +39,6 @@ Types of changes
 
 ### Changed
 - Temporary patch for job deployment problem from kad-dht fetch taking too long
-
 # [0.4.95](!179)
 
 ### Changed

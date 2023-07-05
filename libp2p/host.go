@@ -8,7 +8,6 @@ import (
 	"io"
 	mrand "math/rand"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -87,12 +86,17 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler)
-	host.SetStreamHandler(protocol.ID(DHTProtocolID), DhtUpdateHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
-	p2p.peers, _ = p2p.getPeers(ctx, utils.GetChannelName())
+
+	// zlog.Debug("Getting bootstrap peers")
+	// p2p.peers, err = p2p.getPeers(ctx, utils.GetChannelName())
+	// if err != nil {
+	// 	zlog.Sugar().Errorf("Error getting peers: %s\n", err)
+	// }
+	// zlog.Debug("Done getting bootstrap peers")
 
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
@@ -121,62 +125,38 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	// Start the DHT Update
-	go UpdateDHT()
 	go UpdateKadDHT()
-	go GetDHTUpdates()
-	// Broadcast DHT updates every 30 seconds
-	ticker := time.NewTicker(30 * time.Second)
-	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
-		interval, err := strconv.Atoi(val)
-		if err != nil {
-			zlog.Sugar().DPanicf("invalid value for $NUNET_DHT_UPDATE_INTERVAL - %v", val)
-		}
-		ticker = time.NewTicker(time.Duration(interval) * time.Second)
-		zlog.Sugar().Infof("setting DHT update interval to %v seconds", interval)
-	}
-	quit := make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				UpdateDHT()
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	go GetDHTUpdates(ctx)
 
 	// Clean up the DHT every 5 minutes
-	ticker2 := time.NewTicker(5 * time.Minute)
+	dhtHousekeepingTicker := time.NewTicker(5 * time.Minute)
 	quit2 := make(chan struct{})
 	go func() {
 		for {
 			select {
-			case <-ticker2.C:
+			case <-dhtHousekeepingTicker.C:
 				CleanupOldPeers()
 				UpdateConnections(host.Network().Conns())
 			case <-quit2:
-				ticker2.Stop()
+				dhtHousekeepingTicker.Stop()
 				return
 			}
 		}
 	}()
 
-	ticker3 := time.NewTicker(10 * time.Minute)
+	dhtUpdateTicker := time.NewTicker(10 * time.Minute)
 	quit3 := make(chan struct{})
 	go func() {
 		for {
 			select {
-			case <-ticker3.C:
+			case <-dhtUpdateTicker.C:
 				if _, debug := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debug {
 					zlog.Sugar().Info("Updating Kad DHT")
 				}
 				UpdateKadDHT()
-				GetDHTUpdates()
+				GetDHTUpdates(ctx)
 			case <-quit3:
-				ticker3.Stop()
+				dhtUpdateTicker.Stop()
 				return
 			}
 		}
@@ -363,7 +343,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 					defer close(r)
 					for i := 0; i < num; i++ {
 						select {
-						case p := <-relayPeer:
+						case p := <-newPeer:
 							select {
 							case r <- p:
 							case <-ctx.Done():
