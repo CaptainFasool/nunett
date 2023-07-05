@@ -24,6 +24,8 @@ func (p *IPFSPlugin) OnboardedName() string {
 	return pluginName
 }
 
+// Start implements the plugin interface and deals with the startup of IPFS-Plugin,
+// downloading the image, configuring and starting the container
 func (p *IPFSPlugin) Start(pluginsManager *plugins_management.PluginsInfoChannels) {
 	err := PullImage(ipfsPluginImg)
 	if err != nil {
@@ -34,7 +36,7 @@ func (p *IPFSPlugin) Start(pluginsManager *plugins_management.PluginsInfoChannel
 
 	zlog.Sugar().Debug("Entering IPFS-Plugin container")
 
-	containerConfig, hostConfig, err := configureContainer(ipfsPluginImg, portDc, addrDc, port)
+	containerConfig, hostConfig, err := configureContainer(ipfsPluginImg, portDc, addrDc, port, pluginName)
 	if err != nil {
 		zlog.Sugar().Errorf("Error occured when configuring container: %v", err)
 		pluginsManager.ErrCh <- err
@@ -55,18 +57,22 @@ func (p *IPFSPlugin) Start(pluginsManager *plugins_management.PluginsInfoChannel
 		return
 	}
 
-    make(models.FreeResources)
-
 	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	// TODO: update DHT of usage of resources
 }
 
 // configureContainer return configuration structs to start a Docker container. Here is where
 // ports, imageURL and other Docker container configs are defined.
-func configureContainer(img string, exposedPort, hostIP, hostPort string) (*container.Config, *container.HostConfig, error) {
+func configureContainer(img, exposedPort, hostIP, hostPort, plugin string) (*container.Config, *container.HostConfig, error) {
 	port, err := nat.NewPort("tcp", exposedPort)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	labels := map[string]string{
+		"dms-related": "true",
+	}
+	if plugin != "" {
+		labels["dms-plugin"] = plugin
 	}
 
 	containerConfig := &container.Config{
@@ -74,6 +80,7 @@ func configureContainer(img string, exposedPort, hostIP, hostPort string) (*cont
 		ExposedPorts: nat.PortSet{
 			port: struct{}{},
 		},
+		Labels: labels,
 	}
 
 	hostConfig := &container.HostConfig{
