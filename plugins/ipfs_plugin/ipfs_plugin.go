@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/go-connections/nat"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/plugins/plugins_management"
@@ -25,8 +26,8 @@ func (p *IPFSPlugin) OnboardedName() string {
 }
 
 // Start implements the plugin interface and deals with the startup of IPFS-Plugin,
-// downloading the image, configuring and starting the container
-func (p *IPFSPlugin) Start(pluginsManager *plugins_management.PluginsInfoChannels) {
+// downloading the image, configuring and starting the Docker container
+func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels) {
 	err := pullImage(ipfsPluginImg)
 	if err != nil {
 		zlog.Sugar().Errorf("Couldn't pull ipfs-plugin docker image: %v", err)
@@ -57,11 +58,84 @@ func (p *IPFSPlugin) Start(pluginsManager *plugins_management.PluginsInfoChannel
 		return
 	}
 
+	var pluginResourcesUsage models.Resources
+	pluginResourcesUsage.TotCpuHz = 1000
+	pluginResourcesUsage.Ram = 4000
+
+	pluginsManager.ResourcesCh <- pluginResourcesUsage
+
 	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 }
 
+// Stop stops the IPFS-Plugin Docker container and return an error if any.
+func (p *IPFSPlugin) Stop(pluginsManager *plugins_management.PluginsInfoChannels) error {
+	err := stopPluginDcContainer(pluginName)
+	if err != nil {
+		pluginsManager.ErrCh <- err
+		return err
+	}
+	return nil
+}
+
+// IsRunning checks if a IPFS-Plugin Docker container is running
+func (p *IPFSPlugin) IsRunning(pluginsManager *plugins_management.PluginsInfoChannels) (bool, error) {
+	isRunning, err := isPluginDcContainerRunning(pluginName)
+	if err != nil {
+		pluginsManager.ErrCh <- err
+		return false, err
+	}
+
+	if isRunning {
+		return true, nil
+	}
+	return false, nil
+}
+
+// ------------------------------------------------------------------------------------------
+
 // TODO: The following functions should be moved to docker package whenever we move the deployment
 // of jobs to service package
+
+// stopPluginContainer stops a plugin container based on the plugin name.
+func stopPluginDcContainer(pluginName string) error {
+	// Get the list of running containers
+	containers, err := dc.ContainerList(ctx, types.ContainerListOptions{
+		Filters: filters.NewArgs(filters.Arg("label", "dms-plugin="+pluginName)),
+	})
+	if err != nil {
+		zlog.Sugar().Errorf("Unable to get list of containers to stop plugin: %v", pluginName)
+		return err
+	}
+
+	for _, container := range containers {
+		if err := dc.ContainerStop(ctx, container.ID, nil); err != nil {
+			zlog.Sugar().Errorf("Unable to stop plugin container: %v", pluginName)
+			return err
+		}
+	}
+	zlog.Sugar().Debugf("Stopping container: %v", pluginName)
+
+	return nil
+}
+
+// isPluginDcContainerRunning checks if a Plugin Docker container is running based on its name
+func isPluginDcContainerRunning(pluginName string) (bool, error) {
+	// Get the list of running containers
+	containers, err := dc.ContainerList(ctx, types.ContainerListOptions{
+		Filters: filters.NewArgs(filters.Arg("label", "dms-plugin="+pluginName)),
+	})
+	if err != nil {
+		zlog.Sugar().Errorf("Unable to check if plugin is running: %v", pluginName)
+		return false, err
+	}
+
+	zlog.Sugar().Debugf("Checking if container %v is still running", pluginName)
+	if len(containers) > 0 {
+		zlog.Sugar().Debugf("Plugin Docker container %v is still running", pluginName)
+		return true, nil
+	}
+	return false, nil
+}
 
 // configureContainer return configuration structs to start a Docker container. Here is where
 // ports, imageURL and other Docker container configs are defined.

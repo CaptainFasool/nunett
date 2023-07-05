@@ -1,25 +1,32 @@
 package plugins_management
 
 import (
-	"fmt"
-
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry"
 )
 
 type PluginsInfoChannels struct {
-	ResourcesCh chan models.FreeResources
+	ResourcesCh chan models.Resources
 	ErrCh       chan error
 }
 
-// pluginsManager manages all the plugins which include DHT updates for resources
+type Plugin interface {
+	Run(*PluginsInfoChannels)
+	Stop(*PluginsInfoChannels) error
+	IsRunning(*PluginsInfoChannels) (bool, error)
+	OnboardedName() string
+}
+
+// ManagePlugins manages all the plugins which include DHT updates for resources
 // usage for every one of them that started successfully
 func ManagePlugins(pluginsCentralChannels *PluginsInfoChannels) {
 	for {
 		select {
 		case resourcesUsage := <-pluginsCentralChannels.ResourcesCh:
-			fmt.Print(resourcesUsage.ID)
+			zlog.Sugar().Debug("Updating FreeResources as startup of plugin")
+			telemetry.UpdateIncreaseFreeRes(&resourcesUsage)
 		case err := <-pluginsCentralChannels.ErrCh:
-			fmt.Print(err)
+			zlog.Sugar().Error(err)
 		}
 	}
 }
