@@ -437,13 +437,13 @@ func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse
 		// Get AMD GPU info
 		amdGPUs, err := gpuinfo.GetAMDGPUInfo()
 		if err != nil {
-			fmt.Println("Failed to get AMD GPU info:", err)
+			zlog.Sugar().Errorf("AMD GPU/Driver not found: %v", err)
 		}
 
 		// Get NVIDIA GPU info
 		nvidiaGPUs, err := gpuinfo.GetNVIDIAGPUInfo()
 		if err != nil {
-			fmt.Println("Failed to get NVIDIA GPU info:", err)
+			zlog.Sugar().Errorf("NVIDIA GPU/Driver not found: %v", err)
 			// return here and not above for AMD because we need to have at least one GPU
 			return models.DeploymentResponse{Success: false, Content: "Unable to get GPU info."}
 		}
