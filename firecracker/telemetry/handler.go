@@ -13,14 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetFreeResources() (models.FreeResources, error) {
-	var freeResource models.FreeResources
-	if res := db.DB.Find(&freeResource); res.RowsAffected == 0 {
-		return freeResource, res.Error
-	}
-	return freeResource, nil
-}
-
 func QueryRunningVMs(DB *gorm.DB) ([]models.VirtualMachine, error) {
 	var vm []models.VirtualMachine
 	result := DB.Where("state = ?", "running").Find(&vm)
@@ -54,7 +46,6 @@ func CalcUsedResourcesVMs(vms []models.VirtualMachine) (int, int) {
 	totalCPUMhz = tot_VCPU * int(cores[0].Mhz)
 	return totalCPUMhz, totalMemSizeMib
 }
-
 func CalcUsedResourcesConts(services []models.Services) (int, int, error) {
 	if len(services) == 0 {
 		return 0, 0, nil
@@ -137,6 +128,7 @@ func DeleteCalcFreeResources() error {
 }
 
 // CalcFreeResources godoc
+//
 //	@Summary		Returns the amount of free resources available
 //	@Description	Checks and returns the amount of free resources available
 //	@Tags			telemetry
@@ -160,5 +152,4 @@ func GetFreeResource(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, freeResource)
-
 }
