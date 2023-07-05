@@ -22,6 +22,10 @@ Types of changes
 -->
 
 
+# [0.4.99](!183)
+
+### Fixed
+- A scenario where machines without AMD GPUs wouldn't allow NVIDIA GPUs to be monitored
 # [0.4.98](#239)
 
 ### Removed
