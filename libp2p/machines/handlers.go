@@ -149,14 +149,11 @@ func HandleRequestService(c *gin.Context) {
 		zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
 		return
 	}
-	computeProviderPubKey, err := computeProviderPeerID.ExtractPublicKey()
-	if err != nil {
-		zlog.Sugar().Errorf("unable to extract public key from peer id: %v", err)
-		depReq.Params.RemotePublicKey = ""
-	} else {
-		depReq.Params.RemotePublicKey = computeProviderPubKey.Type().String()
-		zlog.Sugar().Debugf("compute provider public key: ", computeProviderPubKey.Type().String())
-	}
+	computeProviderPubKey := libp2p.GetP2P().Host.Peerstore().PubKey(computeProviderPeerID)
+
+	depReq.Params.RemotePublicKey = computeProviderPubKey.Type().String()
+	zlog.Sugar().Debugf("compute provider public key: ", computeProviderPubKey.Type().String())
+
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Sugar().Infof("sending fund contract request to oracle")
 	fcr, err := oracle.FundContractRequest()

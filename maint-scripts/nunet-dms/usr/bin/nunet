@@ -649,9 +649,6 @@ peer() {
                 "list")
                     N_LIST_PEERS=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers)
                     N_LIST_PEERS_DHT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/dht)
-                    if [[ "$NUNET_DEBUG" == "true" ]]; then
-                        N_LIST_PEERS_KAD_DHT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/kad-dht)
-                    fi
                     ;;
                 "self")
                     N_SELF_PEER=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/self)
@@ -695,21 +692,7 @@ peer() {
             printf "\n${UNDERLINE}DHT peers${NORMAL}\n"
             echo "$N_LIST_PEERS_DHT" | jq --raw-output '(.[])'
         fi
-    fi
-    if [[ "$NUNET_DEBUG" == "true" ]]; then
-        if [[ -v N_LIST_PEERS_KAD_DHT ]] ; then
-            N_LIST_PEERS_KAD_DHT_ERR_MSG=$(echo $N_LIST_PEERS_KAD_DHT | jq '. | select(.error != null) | .error' 2>/dev/null)
-            if [[ ! -z "$N_LIST_PEERS_KAD_DHT_ERR_MSG" ]] ; then
-                printf "${BAD_C}Error: $N_LIST_PEERS_KAD_DHT_ERR_MSG ${NORMAL_C}\n"
-            elif [[ N_LIST_PEERS_KAD_DHT == "" ]] ; then
-                printf "${BAD_C}No peers available in DHT. Please try again in a few minutes.${NORMAL_C}\n"
-            else
-                printf "\n${UNDERLINE}KAD DHT peers${NORMAL}\n"
-                echo "$N_LIST_PEERS_KAD_DHT" | jq --raw-output '(.[])'
-            fi
-        fi
-    fi
-    
+    fi    
 }
 
 default-depreq-peer() {

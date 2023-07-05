@@ -113,7 +113,7 @@ func ListDHTPeers(c *gin.Context) {
 // @Router       /peers/kad-dht [get]
 func ListKadDHTPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/dht"))
+	span.SetAttributes(attribute.String("URL", "/peers/kad-dht"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
 	if p2p.Host == nil {
@@ -123,14 +123,9 @@ func ListKadDHTPeers(c *gin.Context) {
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 
 	var dhtPeers []string
-	peers, err := p2p.getPeers(c, utils.GetChannelName())
-	if err != nil {
-		zlog.ErrorContext(c.Request.Context(), "failed to get peers: %v", zap.Error(err))
-		c.JSON(500, gin.H{"error": "failed to get peers"})
-		return
-	}
-	for _, peer := range peers {
-		var updates update
+
+	for _, peer := range p2p.peers {
+		var updates models.KadDHTMachineUpdate
 		var peerInfo models.PeerData
 
 		// Add custom namespace to the key
@@ -436,15 +431,9 @@ func DumpKademliaDHT(c *gin.Context) {
 		return
 	}
 
-	peers, err := p2p.getPeers(c, utils.GetChannelName())
-	if err != nil {
-		zlog.ErrorContext(c.Request.Context(), "failed to get peers: %v", zap.Error(err))
-		c.JSON(500, gin.H{"error": "failed to get peers"})
-		return
-	}
-	dhtContentChan := make(chan models.PeerData, len(peers))
+	dhtContentChan := make(chan models.PeerData, len(p2p.peers))
 
-	tasks := make(chan peer.AddrInfo, len(peers))
+	tasks := make(chan peer.AddrInfo, len(p2p.peers))
 
 	var wg sync.WaitGroup
 
@@ -457,7 +446,7 @@ func DumpKademliaDHT(c *gin.Context) {
 
 			for peer := range tasks {
 				var peerInfo models.PeerData
-				var updates update
+				var updates models.KadDHTMachineUpdate
 
 				// Add custom namespace to the key
 				namespacedKey := customNamespace + peer.ID.String()
@@ -482,7 +471,7 @@ func DumpKademliaDHT(c *gin.Context) {
 	}
 
 	// Send tasks to the workers
-	for _, peer := range peers {
+	for _, peer := range p2p.peers {
 		tasks <- peer
 	}
 	close(tasks)
@@ -510,7 +499,8 @@ func DumpKademliaDHT(c *gin.Context) {
 }
 
 func ManualDHTUpdateHandler(c *gin.Context) {
-	UpdateDHT()
+	go UpdateKadDHT()
+	GetDHTUpdates(c)
 }
 
 // DefaultDepReqPeer  godoc
