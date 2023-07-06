@@ -6,7 +6,10 @@ import (
 	"gitlab.com/nunet/device-management-service/plugins/plugins_management"
 )
 
-type IPFSPlugin struct{}
+type IPFSPlugin struct {
+	resources  models.Resources
+	pluginName string
+}
 
 const (
 	ipfsPluginImg = "registry.gitlab.com/nunet/data-persistence/ipfs-plugin:0.0.1"
@@ -15,8 +18,13 @@ const (
 	portDc        = "31001"
 )
 
-func (p *IPFSPlugin) OnboardedName() string {
-	return pluginName
+func NewIPFSPlugin() *IPFSPlugin {
+	var p *IPFSPlugin
+	p.pluginName = pluginName
+	p.resources.TotCpuHz = 1000
+	p.resources.Ram = 4000
+
+	return p
 }
 
 // Run implements the plugin interface and deals with the startup of IPFS-Plugin,
@@ -31,7 +39,8 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 
 	zlog.Sugar().Debug("Entering IPFS-Plugin container")
 
-	containerConfig, hostConfig, err := plugins_management.ConfigureContainer(ipfsPluginImg, portDc, addrDc, port, pluginName, dc)
+	containerConfig, hostConfig, err := plugins_management.ConfigureContainer(
+		ipfsPluginImg, portDc, addrDc, port, p.pluginName, dc)
 	if err != nil {
 		zlog.Sugar().Errorf("Error occured when configuring container: %v", err)
 		pluginsManager.ErrCh <- err
@@ -52,18 +61,14 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 		return
 	}
 
-	var pluginResourcesUsage models.Resources
-	pluginResourcesUsage.TotCpuHz = 1000
-	pluginResourcesUsage.Ram = 4000
-
-	pluginsManager.ResourcesCh <- pluginResourcesUsage
+	pluginsManager.ResourcesCh <- p.resources
 
 	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 }
 
 // Stop stops the IPFS-Plugin Docker container and return an error if any.
 func (p *IPFSPlugin) Stop(pluginsManager *plugins_management.PluginsInfoChannels) error {
-	err := plugins_management.StopPluginDcContainer(pluginName, dc)
+	err := plugins_management.StopPluginDcContainer(p.pluginName, dc)
 	if err != nil {
 		pluginsManager.ErrCh <- err
 		return err
@@ -73,7 +78,7 @@ func (p *IPFSPlugin) Stop(pluginsManager *plugins_management.PluginsInfoChannels
 
 // IsRunning checks if a IPFS-Plugin Docker container is running
 func (p *IPFSPlugin) IsRunning(pluginsManager *plugins_management.PluginsInfoChannels) (bool, error) {
-	isRunning, err := plugins_management.IsPluginDcContainerRunning(pluginName, dc)
+	isRunning, err := plugins_management.IsPluginDcContainerRunning(p.pluginName, dc)
 	if err != nil {
 		pluginsManager.ErrCh <- err
 		return false, err
