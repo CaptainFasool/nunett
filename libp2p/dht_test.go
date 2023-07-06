@@ -95,6 +95,7 @@ func TestFetchDhtContents(t *testing.T) {
 	}
 	go host1.StartDiscovery(ctx, CIRendevousPoint)
 	go host2.StartDiscovery(ctx, CIRendevousPoint)
+	time.Sleep(30 * time.Second)
 	host1.SetStreamHandler(PingProtocolID, PingHandler)
 	host2.SetStreamHandler(PingProtocolID, PingHandler)
 
@@ -118,8 +119,8 @@ func TestFetchDhtContents(t *testing.T) {
 		t.Fatalf("AddToKadDHT returned error: %v", err)
 	}
 	time.Sleep(3 * time.Second)
-	host1.GetDHTUpdates(ctx)
-	time.Sleep(3 * time.Second)
+	go host1.GetDHTUpdates(ctx)
+	time.Sleep(30 * time.Second)
 	contents := host1.fetchPeerStoreContents()
 	t.Log(contents)
 	assert.Equal(t, peerInfo2, contents[0])

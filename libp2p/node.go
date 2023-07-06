@@ -25,9 +25,11 @@ import (
 )
 
 type P2P struct {
-	Host  host.Host
-	DHT   *dht.IpfsDHT
-	peers []peer.AddrInfo
+	Host     host.Host
+	DHT      *dht.IpfsDHT
+	peers    []peer.AddrInfo
+	newPeer  chan peer.AddrInfo
+	newPeers chan []peer.AddrInfo
 }
 
 func NewP2P(node host.Host, dht *dht.IpfsDHT) *P2P {

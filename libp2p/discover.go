@@ -2,6 +2,7 @@ package libp2p
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -98,8 +99,10 @@ func Discover(ctx context.Context, p2p P2P, rendezvous string) {
 			peers = p2p.filterAddrs(peers)
 			zlog.Sugar().Debugf("Discover - found peers: %v", peers)
 			p2p.peers = peers
+			p2p.newPeers <- peers
 			for _, p := range peers {
-				newPeer <- p
+				fmt.Println("=====> discover - found peer: ", p.ID.String())
+				p2p.newPeer <- p
 				if p.ID == p2p.Host.ID() {
 					continue
 				}
