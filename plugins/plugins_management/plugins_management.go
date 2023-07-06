@@ -14,7 +14,6 @@ type Plugin interface {
 	Run(*PluginsInfoChannels)
 	Stop(*PluginsInfoChannels) error
 	IsRunning(*PluginsInfoChannels) (bool, error)
-	OnboardedName() string
 }
 
 // ManagePlugins manages all the plugins which include DHT updates for resources
