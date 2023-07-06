@@ -139,12 +139,6 @@ func GetFreeResource(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/telemetry/free"))
 
-	err := CalcFreeResources()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
 	var freeResource models.FreeResources
 	if res := db.DB.WithContext(c.Request.Context()).Find(&freeResource); res.RowsAffected == 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": res.Error})
