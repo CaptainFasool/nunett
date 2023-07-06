@@ -24,7 +24,14 @@ func ManagePlugins(pluginsCentralChannels *PluginsInfoChannels) {
 		select {
 		case resourcesUsage := <-pluginsCentralChannels.ResourcesCh:
 			zlog.Sugar().Debug("Updating FreeResources as startup of plugin")
-			telemetry.UpdateIncreaseFreeRes(&resourcesUsage)
+
+			hardwareResources, err := telemetry.NewHardwareResources()
+			if err != nil {
+				zlog.Sugar().Error(err)
+			}
+
+			hardwareResources.IncreaseFreeResources(resourcesUsage)
+			hardwareResources.UpdateDBFreeResources()
 		case err := <-pluginsCentralChannels.ErrCh:
 			zlog.Sugar().Error(err)
 		}
