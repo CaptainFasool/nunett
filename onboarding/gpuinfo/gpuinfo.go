@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
+
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
@@ -17,11 +18,11 @@ const (
 )
 
 type GPUInfo struct {
-	GPUName      string
-	TotalMemory  uint64
-	UsedMemory   uint64
-	FreeMemory   uint64
-	Vendor       GPUVendor
+	GPUName     string
+	TotalMemory uint64
+	UsedMemory  uint64
+	FreeMemory  uint64
+	Vendor      GPUVendor
 }
 
 func GetAMDGPUInfo() ([]GPUInfo, error) {
@@ -29,7 +30,7 @@ func GetAMDGPUInfo() ([]GPUInfo, error) {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute command: %s", err)
+		return nil, fmt.Errorf("AMD ROCm not installed, initialized, or configured (reboot recommended for newly installed AMD GPU Drivers): %s", err)
 	}
 
 	outputStr := string(output)
@@ -48,12 +49,12 @@ func GetAMDGPUInfo() ([]GPUInfo, error) {
 			gpuName := gpuNameMatches[i][1]
 			totalMemoryBytes, err := strconv.ParseInt(totalMatches[i][1], 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse total memory: %s", err)
+				return nil, fmt.Errorf("failed to parse total amdgpu vram: %s", err)
 			}
 
 			usedMemoryBytes, err := strconv.ParseInt(usedMatches[i][1], 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse used memory: %s", err)
+				return nil, fmt.Errorf("failed to parse used amdgpu vram: %s", err)
 			}
 
 			totalMemoryMiB := totalMemoryBytes / 1024 / 1024
@@ -74,14 +75,14 @@ func GetAMDGPUInfo() ([]GPUInfo, error) {
 		return gpuInfos, nil
 	}
 
-	return nil, fmt.Errorf("failed to find GPU information or memory information in the output")
+	return nil, fmt.Errorf("failed to find AMD GPU information or vram information in the output")
 }
 
 func GetNVIDIAGPUInfo() ([]GPUInfo, error) {
 	// Initialize NVML
 	ret := nvml.Init()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("failed to initialize NVML: %s", nvml.ErrorString(ret))
+		return nil, fmt.Errorf("NVIDIA Management Library not installed, initialized or configured (reboot recommended for newly installed NVIDIA GPU drivers): %s", nvml.ErrorString(ret))
 	}
 	defer nvml.Shutdown()
 
@@ -110,7 +111,7 @@ func GetNVIDIAGPUInfo() ([]GPUInfo, error) {
 		// Get the memory info
 		memory, ret := nvml.DeviceGetMemoryInfo(device)
 		if ret != nvml.SUCCESS {
-			return nil, fmt.Errorf("failed to get memory info for device %d: %s", i, nvml.ErrorString(ret))
+			return nil, fmt.Errorf("failed to get nvidiagpu vram info for device %d: %s", i, nvml.ErrorString(ret))
 		}
 
 		gpuInfo := GPUInfo{

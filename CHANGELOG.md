@@ -20,7 +20,43 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.105](#196)
+### Fixed
+- Add verification query when onboarding an already onboarded machine (fix for #196)
 
+# [0.4.104](#195)
+### Fixed
+- Ignore decimal values for resource amount on onboard and resource-config (fix for #195)
+
+# [0.4.103](!191)
+### Changed
+- Added Binds in AMD GPU Host Config to autocreate device file
+
+# [0.4.102](!186)
+### Changed
+- Improve GPU related logs
+
+# [0.4.101](#230)
+### Fixed
+- ML Onboarding on Windows Subsystem for Linux (WSL)
+- Handle missing NVIDIA/AMD GPU(s) separately on Linux
+- Reboot recommendation after GPU onboarding
+
+# [0.4.100](#227)
+### Fixed
+- Error handling on heartbeat module
+
+# [0.4.99](!183)
+
+### Fixed
+- A scenario where machines without AMD GPUs wouldn't allow NVIDIA GPUs to be monitored
+# [0.4.98](#239)
+
+### Removed
+- Old DHT update implementation
+
+### Changed
+- Better DHT fetching efficiency
 # [0.4.97](#221)
 
 ### Added

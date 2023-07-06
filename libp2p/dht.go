@@ -164,8 +164,7 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 
 func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) {
 	zlog.Sugar().Debugf("Fetching DHT content for all peers")
-	fetchCtx, cancel := context.WithTimeout(ctxt, time.Minute)
-	defer cancel()
+	fetchCtx, _ := context.WithTimeout(ctxt, time.Minute)
 
 	go func() {
 		// Create a wait group to ensure all workers have finished
@@ -174,7 +173,6 @@ func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) 
 		// Create a buffered channel for the worker pool
 		poolSize := 5 // Adjust the pool size as per your requirements
 		workerPool := make(chan struct{}, poolSize)
-		fmt.Println("Peers ---- ", len(newPeers))
 
 		for _, p := range <-newPeers {
 			zlog.Sugar().Debugf("FetchKadDHTContents: Waiting for worker slot for peer: %s", p.ID.String())
