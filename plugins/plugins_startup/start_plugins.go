@@ -78,7 +78,7 @@ func getMetadataPlugins(readMetadataFile ReadMetadataFileFunc) ([]string, error)
 func getPluginType(pluginName string) (plugins_management.Plugin, error) {
 	switch pluginName {
 	case "ipfs-plugin":
-		return &ipfs_plugin.IPFSPlugin{}, nil
+		return ipfs_plugin.NewIPFSPlugin(), nil
 	default:
 		return nil, fmt.Errorf("Plugin name wrong or not implemented on DMS side: %v", pluginName)
 	}
