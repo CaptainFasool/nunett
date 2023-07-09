@@ -17,6 +17,7 @@ import (
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	plugins "gitlab.com/nunet/device-management-service/plugins/plugins_startup"
 	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -248,6 +249,17 @@ func Onboard(c *gin.Context) {
 
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
+
+	// Check if onboarded plugins are integrated into DMS.
+	// We only accept integraded plugins for now
+	for _, p := range capacityForNunet.Plugins {
+		_, err = plugins.GetPluginType(p)
+		if err != nil {
+			c.JSON(http.StatusBadRequest,
+				gin.H{"error": fmt.Sprintf("Invalid plugin (not integrated or wrong name): %v", err)})
+			return
+		}
+	}
 
 	metadata.Plugins = capacityForNunet.Plugins
 
