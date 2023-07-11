@@ -51,7 +51,7 @@ func solveEnabledPlugins(readMetadataFile ReadMetadataFileFunc) ([]plugins_manag
 
 	var enabledPlugins []plugins_management.Plugin
 	for _, pluginName := range strPlugins {
-		pluginType, err := getPluginType(pluginName)
+		pluginType, err := GetPluginType(pluginName)
 		if err != nil {
 			zlog.Sugar().Warn(err.Error())
 			continue
@@ -59,6 +59,7 @@ func solveEnabledPlugins(readMetadataFile ReadMetadataFileFunc) ([]plugins_manag
 		zlog.Sugar().Info("Plugins Enabled: ", pluginName)
 		enabledPlugins = append(enabledPlugins, pluginType)
 	}
+
 	return enabledPlugins, nil
 }
 
@@ -75,7 +76,7 @@ func getMetadataPlugins(readMetadataFile ReadMetadataFileFunc) ([]string, error)
 
 // getPluginType returns, based on the plugin name, the specific plugin type struct
 // which can implement different interface methods
-func getPluginType(pluginName string) (plugins_management.Plugin, error) {
+func GetPluginType(pluginName string) (plugins_management.Plugin, error) {
 	switch pluginName {
 	case "ipfs-plugin":
 		return ipfs_plugin.NewIPFSPlugin(), nil
