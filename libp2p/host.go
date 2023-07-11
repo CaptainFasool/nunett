@@ -32,6 +32,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -120,6 +121,11 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		}
 
 		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
+	}
+
+	err = telemetry.CalcFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Couldn't calculate the current free resources: %v", err)
 	}
 
 	// Start the DHT Update
