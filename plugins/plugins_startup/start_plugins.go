@@ -25,8 +25,8 @@ func StartPlugins() {
 	}
 
 	pluginsCentralChannels := &plugins_management.PluginsInfoChannels{
-		ResourcesCh: make(chan models.Resources),
-		ErrCh:       make(chan error),
+		SucceedStartup: make(chan *models.PluginInfo),
+		ErrCh:          make(chan error),
 	}
 	go plugins_management.ManagePlugins(pluginsCentralChannels)
 

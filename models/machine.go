@@ -64,7 +64,12 @@ type Services struct {
 	LogURL               string
 	LastLogFetch         time.Time
 	// TODO: Add ContainerType field
+}
 
+type PluginInfo struct {
+	gorm.Model
+	Name           string    `gorm:"unique"`
+	ResourcesUsage Resources `gorm:"embedded"`
 }
 
 type ServiceResourceRequirements struct {

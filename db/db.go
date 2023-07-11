@@ -25,6 +25,7 @@ func ConnectDatabase() {
 	database.AutoMigrate(&models.FreeResources{})
 	database.AutoMigrate(&models.PeerInfo{})
 	database.AutoMigrate(&models.Services{})
+	database.AutoMigrate(&models.PluginInfo{})
 	database.AutoMigrate(&models.ServiceResourceRequirements{})
 	database.AutoMigrate(&models.RequestTracker{})
 	database.AutoMigrate(&models.Libp2pInfo{})
