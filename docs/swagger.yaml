@@ -66,7 +66,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.86
+  version: 0.4.105
 paths:
   /dht:
     get:
@@ -79,6 +79,19 @@ paths:
           schema:
             type: string
       summary: Return a dump of the dht
+      tags:
+      - p2p
+  /kad-dht:
+    get:
+      description: Returns entire Kademlia DHT content
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Return a dump of the Kademlia dht
       tags:
       - p2p
   /onboarding/address/new:
@@ -220,6 +233,20 @@ paths:
       tags:
       - peers
   /peers/dht:
+    get:
+      description: Gets a list of peers the libp2p node has received a dht update
+        from
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Return list of peers which have sent a dht update
+      tags:
+      - p2p
+  /peers/kad-dht:
     get:
       description: Gets a list of peers the libp2p node has received a dht update
         from

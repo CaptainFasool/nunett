@@ -12,6 +12,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/statsdb"
@@ -181,6 +182,8 @@ func Onboard(c *gin.Context) {
 		Disk:      0,
 		PriceDisk: 0,
 	}
+
+	kLogger.Resource(int(capacityForNunet.CPU), int(capacityForNunet.Memory), 0, 0, span)
 
 	var availableRes models.AvailableResources
 	if res := db.DB.WithContext(c.Request.Context()).Find(&availableRes); res.RowsAffected == 0 {

@@ -9,6 +9,7 @@ import (
 // FilterPeers searches for available compute providers given specific parameters in depReq.
 func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerData {
 	machines := libp2p.FetchMachines(node)
+	zlog.Sugar().Debugf("DHT machines: %v", machines)
 
 	var peers []models.PeerData
 

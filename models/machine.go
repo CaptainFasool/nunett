@@ -88,8 +88,8 @@ type MachineUUID struct {
 
 type Gpu struct {
 	Name     string `json:"name"`
-	TotVram  int    `json:"tot_vram"`
-	FreeVram int    `json:"free_vram"`
+	TotVram  uint64 `json:"tot_vram"`
+	FreeVram uint64 `json:"free_vram"`
 }
 
 type resources struct {
@@ -126,3 +126,9 @@ type PingResult struct {
 }
 
 type Machines map[string]PeerData
+
+// machine info for KAD-DHT
+type KadDHTMachineUpdate struct {
+	Data      []byte `json:"data"`
+	Signature []byte `json:"signature"`
+}

@@ -20,6 +20,110 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.105](#196)
+### Fixed
+- Add verification query when onboarding an already onboarded machine (fix for #196)
+
+# [0.4.104](#195)
+### Fixed
+- Ignore decimal values for resource amount on onboard and resource-config (fix for #195)
+
+# [0.4.103](!191)
+### Changed
+- Added Binds in AMD GPU Host Config to autocreate device file
+
+# [0.4.102](!186)
+### Changed
+- Improve GPU related logs
+
+# [0.4.101](#230)
+### Fixed
+- ML Onboarding on Windows Subsystem for Linux (WSL)
+- Handle missing NVIDIA/AMD GPU(s) separately on Linux
+- Reboot recommendation after GPU onboarding
+
+# [0.4.100](#227)
+### Fixed
+- Error handling on heartbeat module
+
+# [0.4.99](!183)
+
+### Fixed
+- A scenario where machines without AMD GPUs wouldn't allow NVIDIA GPUs to be monitored
+# [0.4.98](#239)
+
+### Removed
+- Old DHT update implementation
+
+### Changed
+- Better DHT fetching efficiency
+# [0.4.97](#221)
+
+### Added
+- Fixed a scenario where machines with AMD GPUs wouldn't be detected if NVIDIA GPUs were already present
+- Modify systemd PATH if mining os detected on onboard-gpu
+- New service package as replacement for docker package (wip: refactoring #204)
+# [0.4.96](#238)
+
+### Changed
+- Temporary patch for job deployment problem from kad-dht fetch taking too long
+# [0.4.95](!179)
+
+### Changed
+- Print error message when bootstrap node couldn't connect
+
+### Fixed
+- Set total and free vram values for AMD gpus
+# [0.4.94](#218)
+
+### Changed
+- Websocket connection handling to global
+- Remove depreciated DHT update after container start
+- Deployment update/response on jobstatus=running to webapp
+
+# [0.4.93](#202)
+
+### Changed
+- Detect the GPU with the highest free VRAM, to decide whether to deploy an NVIDIA or AMD GPU container
+- Separate images for AMD and Nvidia GPUs
+# [0.4.92](#210)
+
+### Changed
+- GPU detection and info for both NVIDIA and AMD GPUs
+- GPU model fields all strings
+- Use NVIDIA/go-nvml for gpu info and jaypipes/ghw detection
+# [0.4.91](#216)
+
+### Changed
+- Recovery on unforeseen errors in heartbeat module
+- No heartbeat when machine not onboarded / no libp2p host
+- Use internal logger for heartbeat module
+# [0.4.90](!159)
+
+### Changed
+- Improved and optimized GPU onboarding for mining operating systems
+- Improvement on `nunet onboard-ml` with revamp of the entire functionality
+
+### Added
+- Support for AMD GPU
+- Detection of AMD ROCm and HIP with `nunet capacity --rocm-hip`
+
+# [0.4.89](#213)
+
+### Changed
+- Get available resources from metadata file
+
+# [0.4.88](#178)
+
+### Added
+- Instrument libp2p communication with ELK
+- Heartbeat every minute
+# [0.4.87](#162, !160)
+
+### Changed
+- Stored peerInfo of nodes in Kad-DHT
+- Added a new endpoint to list Kad-DHT contents
+- Fixed a bug with free resource calculation after job deployment
 # [0.4.86](#182)
 
 ### Changed
