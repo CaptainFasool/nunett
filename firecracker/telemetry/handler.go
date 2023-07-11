@@ -46,6 +46,7 @@ func CalcUsedResourcesVMs(vms []models.VirtualMachine) (int, int) {
 	totalCPUMhz = tot_VCPU * int(cores[0].Mhz)
 	return totalCPUMhz, totalMemSizeMib
 }
+
 func CalcUsedResourcesConts(services []models.Services) (int, int, error) {
 	if len(services) == 0 {
 		return 0, 0, nil
@@ -65,6 +66,28 @@ func CalcUsedResourcesConts(services []models.Services) (int, int, error) {
 	return tot_cpu, tot_mem, nil
 }
 
+// queryRunningPlugins query for running plugins on DB
+func queryRunningPlugins(DB *gorm.DB) ([]models.PluginInfo, error) {
+	var plugins []models.PluginInfo
+	if err := DB.Find(&plugins).Error; err != nil {
+		return nil, err
+	}
+	return plugins, nil
+}
+
+// calcUsedResourcesPlugins iterate through Plugins and adds the resources usage for each
+func calcUsedResourcesPlugins(plugins []models.PluginInfo) (int, int, float64) {
+	usageCPU := 0
+	usageRAM := 0
+	usageDisk := 0.0
+	for _, p := range plugins {
+		usageCPU += p.ResourcesUsage.TotCpuHz
+		usageRAM += p.ResourcesUsage.Ram
+		usageDisk += p.ResourcesUsage.Disk
+	}
+	return usageCPU, usageRAM, usageDisk
+}
+
 func CalcFreeResources() error {
 	vms, err := QueryRunningVMs(db.DB)
 	if err != nil {
@@ -75,14 +98,20 @@ func CalcFreeResources() error {
 		return err
 	}
 
+	plugins, err := queryRunningPlugins(db.DB)
+	if err != nil {
+		return err
+	}
+
+	usagePluginsCPU, usagePluginsRAM, _ := calcUsedResourcesPlugins(plugins)
 	tot_cpu_vm, tot_mem_vm := CalcUsedResourcesVMs(vms)
 	tot_cpu_cont, tot_mem_cont, err := CalcUsedResourcesConts(conts)
 	if err != nil {
 		return err
 	}
 
-	tot_cpu_used := tot_cpu_cont + tot_cpu_vm
-	tot_mem := tot_mem_cont + tot_mem_vm
+	tot_cpu_used := tot_cpu_cont + tot_cpu_vm + usagePluginsCPU
+	tot_mem := tot_mem_cont + tot_mem_vm + usagePluginsRAM
 
 	var availableRes models.AvailableResources
 	if res := db.DB.Find(&availableRes); res.RowsAffected == 0 {

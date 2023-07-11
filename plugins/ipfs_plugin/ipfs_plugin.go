@@ -7,8 +7,7 @@ import (
 )
 
 type IPFSPlugin struct {
-	resources  models.Resources
-	pluginName string
+	info models.PluginInfo
 }
 
 const (
@@ -19,11 +18,13 @@ const (
 )
 
 func NewIPFSPlugin() *IPFSPlugin {
-	var p *IPFSPlugin
-	p.pluginName = pluginName
-	p.resources.TotCpuHz = 1000
-	p.resources.Ram = 4000
+	p := &IPFSPlugin{}
+	i := models.PluginInfo{}
+	i.Name = pluginName
+	i.ResourcesUsage.TotCpuHz = 1000
+	i.ResourcesUsage.Ram = 4000
 
+	p.info = i
 	return p
 }
 
@@ -40,7 +41,7 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 	zlog.Sugar().Debug("Entering IPFS-Plugin container")
 
 	containerConfig, hostConfig, err := plugins_management.ConfigureContainer(
-		ipfsPluginImg, portDc, addrDc, port, p.pluginName, dc)
+		ipfsPluginImg, portDc, addrDc, port, p.info.Name, dc)
 	if err != nil {
 		zlog.Sugar().Errorf("Error occured when configuring container: %v", err)
 		pluginsManager.ErrCh <- err
@@ -61,14 +62,14 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 		return
 	}
 
-	pluginsManager.ResourcesCh <- p.resources
+	pluginsManager.SucceedStartup <- &p.info
 
 	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 }
 
 // Stop stops the IPFS-Plugin Docker container and return an error if any.
 func (p *IPFSPlugin) Stop(pluginsManager *plugins_management.PluginsInfoChannels) error {
-	err := plugins_management.StopPluginDcContainer(p.pluginName, dc)
+	err := plugins_management.StopPluginDcContainer(p.info.Name, dc)
 	if err != nil {
 		pluginsManager.ErrCh <- err
 		return err
@@ -78,7 +79,7 @@ func (p *IPFSPlugin) Stop(pluginsManager *plugins_management.PluginsInfoChannels
 
 // IsRunning checks if a IPFS-Plugin Docker container is running
 func (p *IPFSPlugin) IsRunning(pluginsManager *plugins_management.PluginsInfoChannels) (bool, error) {
-	isRunning, err := plugins_management.IsPluginDcContainerRunning(p.pluginName, dc)
+	isRunning, err := plugins_management.IsPluginDcContainerRunning(p.info.Name, dc)
 	if err != nil {
 		pluginsManager.ErrCh <- err
 		return false, err
