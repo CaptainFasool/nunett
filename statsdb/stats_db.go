@@ -174,6 +174,8 @@ func ServiceStatus(inputData models.ServiceStatus) {
 		Timestamp:           inputData.Timestamp,
 	})
 
+	elk.ProcessStatus(int(inputData.CallID), inputData.PeerIDOfServiceHost, inputData.ServiceID, inputData.Status, int(inputData.Timestamp))
+
 	if err != nil {
 		zlog.Sugar().Errorf("connection failed: %v", err)
 		return
@@ -279,6 +281,7 @@ func DeviceResourceConfig(inputData models.MetadataV2) {
 		ChangedAttributeAndValue: &DeviceResourceParams,
 		Timestamp:                float32(GetTimestamp()),
 	})
+	elk.DeviceResourceChange(int(inputData.Reserved.CPU), int(inputData.Reserved.Memory))
 
 	if err != nil {
 		zlog.Sugar().Errorf("connection failed: %v", err)
@@ -308,6 +311,8 @@ func NtxPayment(inputData models.NtxPayment) {
 		SuccessFailStatus: inputData.SuccessFailStatus,
 		Timestamp:         inputData.Timestamp,
 	})
+
+	elk.NtxPayment(int(inputData.CallID), inputData.ServiceID, inputData.SuccessFailStatus, inputData.PeerID, int(inputData.AmountOfNtx), int(inputData.Timestamp))
 
 	if err != nil {
 		zlog.Sugar().Errorf("connection failed: %v", err)
