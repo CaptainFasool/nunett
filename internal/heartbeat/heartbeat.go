@@ -3,14 +3,14 @@ package heartbeat
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"strings"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/esapi"
 	"github.com/elastic/go-elasticsearch/v8"
 	"gitlab.com/nunet/device-management-service/libp2p"
 
-	"math/rand"
 	"strconv"
 
 	"gitlab.com/nunet/device-management-service/utils"
@@ -117,7 +117,9 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 		"ID": "",
 		"callid":0,
 		"ntx":0,
-		"timestamp":""
+		"timestamp":"",
+		"serviceID":""
+
 		}`
 
 	var docMap map[string]interface{}
@@ -133,10 +135,34 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 
 	// Set a seed value based on the current time
 
-	// Generate a random integer between 1 and 100
-	randomNumber := rand.Intn(100000) + 1
 	docMap["callid"] = callid
-	documentID := strconv.Itoa(randomNumber)
+	documentID := strconv.Itoa(callid)
+
+	exists, err := documentExists(context.Background(), es, indexName, documentID)
+
+	if err != nil {
+		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
+		return
+	}
+
+	if exists {
+
+		fields := map[string]interface{}{
+			"callid":      callid,
+			"usedcpu":     usedcpu,
+			"usedram":     usedram,
+			"usednetwork": networkused,
+			"timetaken":   timetaken,
+			"ntx":         ntx,
+		}
+		//err = UpdateDocumentField(context.Background(), es, indexName, documentID, "usedcpu", "50")
+		err = updateDocumentFields(context.Background(), es, indexName, documentID, fields)
+
+		if err != nil {
+			zlog.Sugar().Errorf("Error retrieving the document : %v", err)
+		}
+		return
+	}
 
 	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
 
@@ -175,51 +201,30 @@ func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, sta
 	}
 
 	indexName := "apm-nunet-dms-heartbeat"
-	documentData := `{
-		"peerIDOfServiceHost": 0,
-		"serviceID": 0,
-		"status": 0,
-		"timestampCall": 0
-		}`
 
-	var docMap map[string]interface{}
-	json.Unmarshal([]byte(documentData), &docMap)
+	documentID := strconv.Itoa(callid)
 
-	// Modify the timestamp field with the current timestamp
-	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
-	docMap["peerIDOfServiceHost"] = peerIDOfServiceHost
-	docMap["serviceID"] = serviceID
-	docMap["status"] = status
-	docMap["timestampCall"] = timestamp
-	docMap["callid"] = callid
+	exists, err := documentExists(context.Background(), es, indexName, documentID)
 
-	// Extract the document ID from the response
-	documentID, _ := getDocumentID("callid", callid)
-	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
-
-	updatedDocBytes, _ := json.Marshal(docMap)
-
-	updatedDocString := string(updatedDocBytes)
-
-	// Create the request
-	req := esapi.IndexRequest{
-		Index:      indexName,
-		DocumentID: documentID,
-		Body:       strings.NewReader(updatedDocString),
-		Refresh:    "true",
-	}
-
-	// Perform the request
-	res, err := req.Do(context.Background(), es)
 	if err != nil {
-		zlog.Sugar().Errorf("Error indexing document: %v", err)
+		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
 		return
 	}
-	defer res.Body.Close()
 
-	// Check the response status
-	if res.IsError() {
-		zlog.Sugar().Errorf("Error response received: %s", res.Status())
+	if exists {
+
+		fields := map[string]interface{}{
+			"timestamp": time.Now().Format("2006-01-02T15:04:05.999Z07:00"),
+			"callid":    callid,
+			"status":    status,
+			"serviceID": serviceID,
+		}
+		err = updateDocumentFields(context.Background(), es, indexName, documentID, fields)
+
+		if err != nil {
+			zlog.Sugar().Errorf("Error updating the document : %v", err)
+		}
+		return
 	}
 
 }
@@ -232,57 +237,30 @@ func NtxPayment(callid int, serviceID string, successFailStatus string, peerID s
 	}
 
 	indexName := "apm-nunet-dms-heartbeat"
-	documentData := `{
-		"callid": 0,
-		"serviceID": "",
-		"successFailStatus": "",
-		"peerID": "",
-		"amountOfNtx":0,
-		"timestampCall":""
-		}`
 
-	var docMap map[string]interface{}
-	json.Unmarshal([]byte(documentData), &docMap)
+	documentID := strconv.Itoa(callid)
 
-	// Modify the timestamp field with the current timestamp
-	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
-	docMap["peerID"] = peerID
-	docMap["serviceID"] = serviceID
-	docMap["successFailStatus"] = successFailStatus
-	docMap["timestampCall"] = timestamp
-	docMap["amountOfNtx"] = amountOfNtx
-	docMap["callid"] = callid
+	exists, err := documentExists(context.Background(), es, indexName, documentID)
 
-	// Set a seed value based on the current time
-
-	// Generate a random integer between 1 and 100
-	documentID, _ := getDocumentID("callid", callid)
-
-	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
-
-	updatedDocBytes, _ := json.Marshal(docMap)
-
-	updatedDocString := string(updatedDocBytes)
-
-	// Create the request
-	req := esapi.IndexRequest{
-		Index:      indexName,
-		DocumentID: documentID,
-		Body:       strings.NewReader(updatedDocString),
-		Refresh:    "true",
-	}
-
-	// Perform the request
-	res, err := req.Do(context.Background(), es)
 	if err != nil {
-		zlog.Sugar().Errorf("Error indexing document: %v", err)
+		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
 		return
 	}
-	defer res.Body.Close()
 
-	// Check the response status
-	if res.IsError() {
-		zlog.Sugar().Errorf("Error response received: %s", res.Status())
+	if exists {
+
+		fields := map[string]interface{}{
+			"callid":    callid,
+			"serviceID": serviceID,
+			"status":    successFailStatus,
+			"ntx":       amountOfNtx,
+		}
+		err = updateDocumentFields(context.Background(), es, indexName, documentID, fields)
+
+		if err != nil {
+			zlog.Sugar().Errorf("Error updating the document : %v", err)
+		}
+		return
 	}
 
 }
@@ -297,47 +275,26 @@ func DeviceResourceChange(cpu int, ram int) {
 	indexName := "apm-nunet-dms-heartbeat"
 
 	documentID := libp2p.GetP2P().Host.ID().String()
-	documentData := `{
-		"cpu": 0,
-		"ram": 0,
-		"network": 0,
-		"time": 0,
-		"ID": "",
-		"timestamp":""
-		}`
 
-	var docMap map[string]interface{}
-	json.Unmarshal([]byte(documentData), &docMap)
-	// get capacity user want to rent to NuNet
+	exists, err := documentExists(context.Background(), es, indexName, documentID)
 
-	// Modify the timestamp field with the current timestamp
-	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
-	docMap["cpu"] = cpu
-	docMap["ram"] = ram
-	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
-
-	updatedDocBytes, _ := json.Marshal(docMap)
-
-	updatedDocString := string(updatedDocBytes)
-
-	// Create the request
-	req := esapi.IndexRequest{
-		Index:      indexName,
-		DocumentID: documentID,
-		Body:       strings.NewReader(updatedDocString),
-		Refresh:    "true",
-	}
-
-	// Perform the request
-	res, err := req.Do(context.Background(), es)
 	if err != nil {
-		zlog.Sugar().Errorf("Error indexing document: %v", err)
+		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
+		return
 	}
-	defer res.Body.Close()
 
-	// Check the response status
-	if res.IsError() {
-		zlog.Sugar().Errorf("Error response received: %s", res.Status())
+	if exists {
+
+		fields := map[string]interface{}{
+			"cpu": cpu,
+			"ram": ram,
+		}
+		err = updateDocumentFields(context.Background(), es, indexName, documentID, fields)
+
+		if err != nil {
+			zlog.Sugar().Errorf("Error updating the document : %v", err)
+		}
+		return
 	}
 
 }
@@ -345,6 +302,8 @@ func DeviceResourceChange(cpu int, ram int) {
 func getElasticsearchClient() (*elasticsearch.Client, error) {
 	cfg := elasticsearch.Config{
 		Addresses: []string{"http://dev.nunet.io:21001"}, // Elasticsearch server addresses
+		Username:  "admin",
+		Password:  "changeme",
 	}
 
 	client, err := elasticsearch.NewClient(cfg)
@@ -355,53 +314,64 @@ func getElasticsearchClient() (*elasticsearch.Client, error) {
 	return client, nil
 }
 
-func getDocumentID(fieldName string, fieldValue int) (string, error) {
-	// Connect to Elasticsearch
-	es, err := getElasticsearchClient()
-	if err != nil {
-		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
-		return "", err
+// DocumentExists checks if a document ID exists in Elasticsearch
+func documentExists(ctx context.Context, es *elasticsearch.Client, index, docID string) (bool, error) {
+	req := esapi.ExistsRequest{
+		Index:      index,
+		DocumentID: docID,
 	}
 
-	// Create a SearchRequest
-	var body strings.Builder
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"term": map[string]interface{}{
-				fieldName: fieldValue,
-			},
-		},
-	}
-	if err := json.NewEncoder(&body).Encode(query); err != nil {
-		return "", err
-	}
-
-	// Perform the search request
-	res, err := esapi.SearchRequest{
-		Index: []string{"your_index_name"},
-		Body:  strings.NewReader(body.String()),
-	}.Do(context.Background(), es)
+	res, err := req.Do(ctx, es)
 	if err != nil {
-		return "", err
+		return false, err
 	}
 	defer res.Body.Close()
 
-	// Check if any documents matched the query
 	if res.IsError() {
-		return "", nil
+		return false, nil
+	}
+	return res.StatusCode == 200, nil
+}
+
+func toRequestBody(script string, params map[string]interface{}) *strings.Reader {
+	body := map[string]interface{}{
+		"script": map[string]interface{}{
+			"source": script,
+			"params": params,
+		},
 	}
 
-	// Extract the document ID
-	var response map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-		return "", err
+	jsonBody, _ := json.Marshal(body)
+	return strings.NewReader(string(jsonBody))
+}
+
+func updateDocumentFields(ctx context.Context, es *elasticsearch.Client, index, docID string, fields map[string]interface{}) error {
+	// Prepare the update script
+	script := ""
+	params := make(map[string]interface{})
+	for field, value := range fields {
+		script += fmt.Sprintf("ctx._source.%s = params.%s;", field, field)
+		params[field] = value
 	}
 
-	hits := response["hits"].(map[string]interface{})["hits"].([]interface{})
-	if len(hits) > 0 {
-		documentID := hits[0].(map[string]interface{})["_id"].(string)
-		return documentID, nil
+	// Build the update request
+	req := esapi.UpdateRequest{
+		Index:      index,
+		DocumentID: docID,
+		Body:       toRequestBody(script, params),
 	}
 
-	return "", nil // Document not found
+	// Perform the update request
+	res, err := req.Do(ctx, es)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	// Check the response
+	if res.IsError() {
+		return nil
+	}
+
+	return nil
 }
