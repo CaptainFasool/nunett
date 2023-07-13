@@ -11,6 +11,8 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"gitlab.com/nunet/device-management-service/libp2p"
 
+	"github.com/joho/godotenv"
+	"os"
 	"strconv"
 
 	"gitlab.com/nunet/device-management-service/utils"
@@ -300,10 +302,21 @@ func DeviceResourceChange(cpu int, ram int) {
 }
 
 func getElasticsearchClient() (*elasticsearch.Client, error) {
+
+	err := godotenv.Load("internal/heartbeat/.env")
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting credential : %v", err)
+	}
+
+	// Retrieve variables from the environment
+	Username := os.Getenv("Username")
+	Password := os.Getenv("Password")
+	Address := os.Getenv("Address")
+
 	cfg := elasticsearch.Config{
-		Addresses: []string{"http://dev.nunet.io:21001"}, // Elasticsearch server addresses
-		Username:  "admin",
-		Password:  "changeme",
+		Addresses: []string{Address}, // Elasticsearch server addresses
+		Username:  Username,
+		Password:  Password,
 	}
 
 	client, err := elasticsearch.NewClient(cfg)
