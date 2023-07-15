@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"strings"
 	"time"
+
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"gitlab.com/nunet/device-management-service/libp2p"
 
-	"github.com/joho/godotenv"
-	"os"
 	"strconv"
+
+	"gitlab.com/nunet/device-management-service/internal/config"
 
 	"gitlab.com/nunet/device-management-service/utils"
 )
@@ -186,6 +187,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 		zlog.Sugar().Errorf("Error indexing document: %v", err)
 		return
 	}
+	zlog.Sugar().Errorf("Error retrieving the document : %v", res)
 	defer res.Body.Close()
 
 	// Check the response status
@@ -302,16 +304,12 @@ func DeviceResourceChange(cpu int, ram int) {
 }
 
 func getElasticsearchClient() (*elasticsearch.Client, error) {
-
-	err := godotenv.Load("internal/heartbeat/.env")
-	if err != nil {
-		zlog.Sugar().Errorf("Error getting credential : %v", err)
-	}
+	credential := config.GetCredential()
 
 	// Retrieve variables from the environment
-	Username := os.Getenv("Username")
-	Password := os.Getenv("Password")
-	Address := os.Getenv("Address")
+	Username := credential.Username
+	Password := credential.Password
+	Address := credential.Address
 
 	cfg := elasticsearch.Config{
 		Addresses: []string{Address}, // Elasticsearch server addresses
