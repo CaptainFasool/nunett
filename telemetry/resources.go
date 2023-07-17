@@ -27,25 +27,24 @@ func (r *HardwareResources) DecreaseFreeResources(resourcesToModify models.Resou
 }
 
 func (r *HardwareResources) modifyFreeResources(resourcesToModify models.Resources, increaseOrDecrease int) {
-	cpuHz := r.AvailableResources.CpuHz
-
-	if resourcesToModify.TotCpuHz != 0 {
-		r.NewFreeRes.TotCpuHz = r.NewFreeRes.TotCpuHz + resourcesToModify.TotCpuHz*increaseOrDecrease
+	if resourcesToModify.TotCPU != 0 {
+		r.NewFreeRes.TotCPU = r.NewFreeRes.TotCPU + resourcesToModify.TotCPU*models.MHz(increaseOrDecrease)
 		// TODO: not sure if doing the right math for Vcpu here
-		r.NewFreeRes.Vcpu = r.NewFreeRes.TotCpuHz / int(cpuHz)
+		r.NewFreeRes.VCPU = r.NewFreeRes.TotCPU / r.AvailableResources.CoreCPU
 	}
 
-	if resourcesToModify.Ram != 0 {
-		r.NewFreeRes.Ram = r.NewFreeRes.Ram + resourcesToModify.Ram*increaseOrDecrease
+	if resourcesToModify.RAM != 0 {
+		r.NewFreeRes.RAM = r.NewFreeRes.RAM + resourcesToModify.RAM*models.MB(increaseOrDecrease)
 	}
 
 	if resourcesToModify.Disk != 0 {
-		r.NewFreeRes.Disk = r.NewFreeRes.Disk + resourcesToModify.Disk*float64(increaseOrDecrease)
+		r.NewFreeRes.Disk = r.NewFreeRes.Disk + resourcesToModify.Disk*models.MB(increaseOrDecrease)
 	}
 }
 
 func (r *HardwareResources) UpdateDBFreeResources() error {
 	// Check if we have a previous entry in the table
+	r.NewFreeRes.ID = 1
 	var freeRes models.FreeResources
 	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
 		result := db.DB.Create(&r.NewFreeRes)

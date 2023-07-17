@@ -10,15 +10,19 @@ import (
 func getMockHardwareResources() *HardwareResources {
 	h := &HardwareResources{
 		DBFreeResources: models.FreeResources{
-			TotCpuHz: 5000,
-			Ram:      4000,
-			Disk:     500,
+			Resources: models.Resources{
+				TotCPU: 5000,
+				RAM:    4000,
+				Disk:   500,
+			},
 		},
 		AvailableResources: models.AvailableResources{
-			TotCpuHz: 10000,
-			Ram:      9000,
-			Disk:     1000,
-			CpuHz:    1000,
+			Resources: models.Resources{
+				TotCPU:  10000,
+				RAM:     9000,
+				Disk:    1000,
+				CoreCPU: 1000,
+			},
 		},
 	}
 	h.NewFreeRes = h.DBFreeResources
@@ -27,9 +31,9 @@ func getMockHardwareResources() *HardwareResources {
 
 func mockResourcesToModify() models.Resources {
 	return models.Resources{
-		TotCpuHz: 1000,
-		Ram:      1000,
-		Disk:     100,
+		TotCPU: 1000,
+		RAM:    1000,
+		Disk:   100,
 	}
 }
 
@@ -49,10 +53,12 @@ func TestModifyFreeResources(t *testing.T) {
 			expected: &HardwareResources{
 				DBFreeResources: initialResources.DBFreeResources,
 				NewFreeRes: models.FreeResources{
-					TotCpuHz: 6000,
-					Ram:      5000,
-					Disk:     600,
-					Vcpu:     6,
+					Resources: models.Resources{
+						TotCPU: 6000,
+						RAM:    5000,
+						Disk:   600,
+						VCPU:   6,
+					},
 				},
 				AvailableResources: initialResources.AvailableResources,
 			},
@@ -64,10 +70,12 @@ func TestModifyFreeResources(t *testing.T) {
 			expected: &HardwareResources{
 				DBFreeResources: initialResources.DBFreeResources,
 				NewFreeRes: models.FreeResources{
-					TotCpuHz: 4000,
-					Ram:      3000,
-					Disk:     400,
-					Vcpu:     4,
+					Resources: models.Resources{
+						TotCPU: 4000,
+						RAM:    3000,
+						Disk:   400,
+						VCPU:   4,
+					},
 				},
 				AvailableResources: initialResources.AvailableResources,
 			},
@@ -101,5 +109,83 @@ func TestModifyFreeResources(t *testing.T) {
 			}
 
 		})
+
+	}
+}
+
+func TestModifyFreeResourcesMultipleTimes(t *testing.T) {
+	initialResources := getMockHardwareResources()
+	resourcesToChange := mockResourcesToModify()
+	tests := []struct {
+		name               string
+		resourcesToMod     models.Resources
+		increaseOrDecrease int // 1 for increasing, -1 for decreasing
+		expected           *HardwareResources
+	}{
+		{
+			name:               "Test Increasing two times",
+			resourcesToMod:     resourcesToChange,
+			increaseOrDecrease: 1,
+			expected: &HardwareResources{
+				DBFreeResources: initialResources.DBFreeResources,
+				NewFreeRes: models.FreeResources{
+					Resources: models.Resources{
+						TotCPU: 7000,
+						RAM:    6000,
+						Disk:   700,
+						VCPU:   7,
+					},
+				},
+				AvailableResources: initialResources.AvailableResources,
+			},
+		},
+		{
+			name:               "Test Decreasing two times",
+			resourcesToMod:     resourcesToChange,
+			increaseOrDecrease: -1,
+			expected: &HardwareResources{
+				DBFreeResources: initialResources.DBFreeResources,
+				NewFreeRes: models.FreeResources{
+					Resources: models.Resources{
+						TotCPU: 3000,
+						RAM:    2000,
+						Disk:   300,
+						VCPU:   3,
+					},
+				},
+				AvailableResources: initialResources.AvailableResources,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hardwareResources := getMockHardwareResources()
+			hardwareResources.modifyFreeResources(tt.resourcesToMod, tt.increaseOrDecrease)
+			hardwareResources.modifyFreeResources(tt.resourcesToMod, tt.increaseOrDecrease)
+
+			if !reflect.DeepEqual(hardwareResources.NewFreeRes, tt.expected.NewFreeRes) {
+				t.Errorf(
+					"Expected NewFreeRes to be %+v, but got %+v",
+					tt.expected.NewFreeRes, hardwareResources.NewFreeRes,
+				)
+			}
+
+			if !reflect.DeepEqual(hardwareResources.DBFreeResources, tt.expected.DBFreeResources) {
+				t.Errorf(
+					"Expected DBFreeResources to remain unchanged. Want: %+v, Got %+v",
+					tt.expected.DBFreeResources, hardwareResources.DBFreeResources,
+				)
+			}
+
+			if !reflect.DeepEqual(hardwareResources.AvailableResources, tt.expected.AvailableResources) {
+				t.Errorf(
+					"Expected AvailableResources to remain unchanged. Want: %+v, Got %+v",
+					tt.expected.AvailableResources, hardwareResources.AvailableResources,
+				)
+			}
+
+		})
+
 	}
 }
