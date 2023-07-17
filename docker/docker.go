@@ -20,12 +20,12 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
 	"gitlab.com/nunet/device-management-service/statsdb"
+	"gitlab.com/nunet/device-management-service/telemetry"
 	"go.uber.org/zap"
 )
 

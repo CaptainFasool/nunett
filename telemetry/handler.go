@@ -13,14 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetFreeResources() (models.FreeResources, error) {
-	var freeResource models.FreeResources
-	if res := db.DB.Find(&freeResource); res.RowsAffected == 0 {
-		return freeResource, res.Error
-	}
-	return freeResource, nil
-}
-
 func QueryRunningVMs(DB *gorm.DB) ([]models.VirtualMachine, error) {
 	var vm []models.VirtualMachine
 	result := DB.Where("state = ?", "running").Find(&vm)
