@@ -20,6 +20,9 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.107](#252)
+### Fixed
+- Remove wrong context implementation on FetchKadDHTContents
 # [0.4.106](#243)
 ### Fixed
 - Refactor discovery and DHT update routines

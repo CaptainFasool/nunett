@@ -194,10 +194,7 @@ func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) 
 				// Add custom namespace to the key
 				namespacedKey := customNamespace + peer.ID.String()
 				bytes, err := p2p.DHT.GetValue(fetchCtx, namespacedKey)
-				if <-fetchCtx.Done(); err != nil {
-					zlog.Debug("FetchKadDHTContents: Context Done - Timeout")
-					return
-				}
+
 				if err != nil {
 					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 						zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.ID.String()))
