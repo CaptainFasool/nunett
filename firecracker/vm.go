@@ -139,8 +139,8 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 	}
 
 	// Check if we have enough free resources before running VM
-	if (vm.MemSizeMib > freeRes.Ram) ||
-		(vm.VCPUCount > freeRes.Vcpu) {
+	if (vm.MemSizeMib > int(freeRes.RAM)) ||
+		(vm.VCPUCount > int(freeRes.VCPU)) {
 		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "not enough resources available to deploy vm"})
 		return

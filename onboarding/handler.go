@@ -172,15 +172,14 @@ func Onboard(c *gin.Context) {
 	// Add available resources to database.
 
 	available_resources := models.AvailableResources{
-		TotCpuHz:  int(capacityForNunet.CPU),
-		CpuNo:     int(numCores),
-		CpuHz:     hz_per_cpu(),
-		PriceCpu:  0, // TODO: Get price of CPU
-		Ram:       int(capacityForNunet.Memory),
-		PriceRam:  0, // TODO: Get price of RAM
-		Vcpu:      int(math.Floor((float64(capacityForNunet.CPU)) / hz_per_cpu())),
-		Disk:      0,
-		PriceDisk: 0,
+		Resources: models.Resources{
+			TotCPU:  models.MHz(capacityForNunet.CPU),
+			CPUNo:   int(numCores),
+			CoreCPU: models.MHz(hz_per_cpu()),
+			RAM:     models.MB(capacityForNunet.Memory),
+			VCPU:    models.MHz(math.Floor((float64(capacityForNunet.CPU)) / hz_per_cpu())),
+			Disk:    0,
+		},
 	}
 
 	kLogger.Resource(int(capacityForNunet.CPU), int(capacityForNunet.Memory), 0, 0, span)
@@ -327,8 +326,8 @@ func ResourceConfig(c *gin.Context) {
 	if res := db.DB.WithContext(c.Request.Context()).First(&availableRes); res.RowsAffected == 0 {
 		zlog.Sugar().Errorf("availableRes table does not exist: %v", err)
 	}
-	availableRes.TotCpuHz = int(capacityForNunet.CPU)
-	availableRes.Ram = int(capacityForNunet.Memory)
+	availableRes.TotCPU = models.MHz(capacityForNunet.CPU)
+	availableRes.RAM = models.MB(capacityForNunet.Memory)
 	db.DB.Save(&availableRes)
 
 	statsdb.DeviceResourceConfig(metadata)

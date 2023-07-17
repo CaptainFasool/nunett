@@ -59,8 +59,8 @@ func CalcUsedResourcesConts(services []models.Services) (int, int, error) {
 		if result.Error != nil {
 			return 0, 0, fmt.Errorf("unable to query resource requirements - %v", result.Error)
 		}
-		tot_cpu += resourceReq.CPU
-		tot_mem += resourceReq.RAM
+		tot_cpu += int(resourceReq.TotCPU)
+		tot_mem += int(resourceReq.RAM)
 	}
 
 	return tot_cpu, tot_mem, nil
@@ -89,17 +89,13 @@ func CalcFreeResources() error {
 	if res := db.DB.Find(&availableRes); res.RowsAffected == 0 {
 		return res.Error
 	}
-	cpuProvisioned, memProvisioned, cpuHz := availableRes.TotCpuHz, availableRes.Ram, availableRes.CpuHz
+	cpuProvisioned, memProvisioned, cpuHz := availableRes.TotCPU, availableRes.RAM, availableRes.CoreCPU
 
 	var freeResource models.FreeResources
 	freeResource.ID = 1
-	freeResource.TotCpuHz = cpuProvisioned - tot_cpu_used
-	freeResource.Ram = memProvisioned - tot_mem
-	freeResource.Vcpu = int((cpuProvisioned - int(tot_cpu_used)) / int(cpuHz))
-	freeResource.PriceCpu = availableRes.PriceCpu
-	freeResource.PriceRam = availableRes.PriceRam
-	freeResource.PriceDisk = availableRes.PriceDisk
-	// TODO: Calculate remaining disk space
+	freeResource.TotCPU = models.MHz(int(cpuProvisioned) - tot_cpu_used)
+	freeResource.RAM = models.MB(int(memProvisioned) - tot_mem)
+	freeResource.VCPU = models.MHz((int(cpuProvisioned) - tot_cpu_used) / int(cpuHz))
 
 	// Check if we have a previous entry in the table
 	var freeresource models.FreeResources

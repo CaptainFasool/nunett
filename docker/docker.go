@@ -150,8 +150,8 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 
 	// Check if we have enough free resources before running Container
-	if (depReq.Constraints.RAM > freeRes.Ram) ||
-		(depReq.Constraints.CPU > freeRes.TotCpuHz) {
+	if (depReq.Constraints.RAM > int(freeRes.RAM)) ||
+		(depReq.Constraints.CPU > int(freeRes.TotCPU)) {
 		zlog.Sugar().Errorf("Not enough resources available to deploy container")
 		depRes := models.DeploymentResponse{Success: false, Content: "Problem with resources for deployment. Unable to process request."}
 		resCh <- depRes
@@ -201,8 +201,8 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 
 	var resourceRequirements models.ServiceResourceRequirements
-	resourceRequirements.CPU = depReq.Constraints.CPU
-	resourceRequirements.RAM = depReq.Constraints.RAM
+	resourceRequirements.TotCPU = models.MHz(depReq.Constraints.CPU)
+	resourceRequirements.RAM = models.MB(depReq.Constraints.RAM)
 
 	result := db.DB.Create(&resourceRequirements)
 	if result.Error != nil {

@@ -283,7 +283,7 @@ func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequ
 
 	for _, peer := range peers {
 		prAvRes := peer.AvailableResources
-		if prAvRes.TotCpuHz > constraints.CPU && prAvRes.Ram > constraints.RAM {
+		if int(prAvRes.TotCPU) > constraints.CPU && int(prAvRes.RAM) > constraints.RAM {
 			peerWithMachingSpec = append(peerWithMachingSpec, peer)
 		}
 	}

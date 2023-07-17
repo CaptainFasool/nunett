@@ -90,7 +90,7 @@ func (dj *DockerJob) Run(
 	// TODO 2 start
 	// Check if we have enough free resources before running Container
 	// if (depReq.Constraints.RAM > freeRes.Ram) ||
-	// 	(depReq.Constraints.CPU > freeRes.TotCpuHz) {
+	// 	(depReq.Constraints.CPU > freeRes.TotCPU) {
 	// 	dj.log.Sugar().Errorf("Not enough resources available to deploy container")
 	// 	depRes := models.DeploymentResponse{Success: false, Content: "Problem with resources for deployment. Unable to process request."}
 	// 	resCh <- depRes

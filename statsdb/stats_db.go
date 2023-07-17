@@ -220,8 +220,8 @@ func DeviceResourceChange(inputData models.FreeResources) {
 		return
 	}
 	DeviceResourceParams := pb.DeviceResource{
-		Cpu:           float32(inputData.TotCpuHz),
-		Ram:           float32(inputData.Ram),
+		Cpu:           float32(inputData.TotCPU),
+		Ram:           float32(inputData.RAM),
 		Network:       0.0,
 		DedicatedTime: 0.0,
 	}

@@ -56,11 +56,11 @@ func TestPeersWithMatchingSpec(t *testing.T) {
 
 	var peers []models.PeerData
 	var peer1, peer2, peer3 models.PeerData
-	peer1.AvailableResources.TotCpuHz = 5000
+	peer1.AvailableResources.TotCPU = 5000
 	peer1.AvailableResources.Ram = 4000
-	peer2.AvailableResources.TotCpuHz = 8000
+	peer2.AvailableResources.TotCPU = 8000
 	peer2.AvailableResources.Ram = 1500
-	peer3.AvailableResources.TotCpuHz = 2000
+	peer3.AvailableResources.TotCPU = 2000
 	peer3.AvailableResources.Ram = 3000
 
 	peers = append(peers, peer1, peer2, peer3)
