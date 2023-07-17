@@ -108,20 +108,29 @@ func PingHandler(s network.Stream) {
 }
 
 func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResult {
+	zlog.Sugar().Debugf("Pinging peer --> %s", target.String())
 	var pingResult models.PingResult
 	start := time.Now()
 
+	pingCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
 	// Create a new stream to the target peer using the ping protocol
-	stream, err := h.NewStream(ctx, target, PingProtocolID)
+	stream, err := h.NewStream(pingCtx, target, PingProtocolID)
+
 	if err != nil {
 		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 			zlog.Sugar().Errorf("failed to create stream to peer %s: %w", target, err)
 		}
 		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = err
 		return pingResult
 	}
+	stream.SetDeadline(time.Now().Add(10 * time.Second)) // 10 second timeout
+
 	r := bufio.NewReader(stream)
 	w := bufio.NewWriter(stream)
+
 	_, err = w.WriteString("ping" + "\n")
 	if err != nil {
 		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
@@ -129,6 +138,8 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 		}
 
 		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = err
 		return pingResult
 	}
 	err = w.Flush()
@@ -137,6 +148,8 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 			zlog.Sugar().Errorf("failed to flush ping message: %w", err)
 		}
 		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = err
 		return pingResult
 	}
 
@@ -148,8 +161,12 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 			zlog.Sugar().Errorf("failed to read pong message: %w", err)
 		}
 		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = err
 		return pingResult
 	}
+
+	zlog.Sugar().Debugf("Got pong message: %q from peer: %s", pongMsg, target.String())
 
 	// Check if the pong message is the same as the ping message
 	if pongMsg != "ping"+"\n" {
@@ -157,12 +174,15 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 			zlog.Sugar().Errorf("unexpected pong message: %s", string(pongMsg))
 		}
 		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = errors.New("unexpected pong message")
 		return pingResult
 	}
 
 	duration := time.Since(start)
 	pingResult.Success = true
 	pingResult.RTT = duration
+	pingResult.Error = nil
 	stream.Close()
 
 	return pingResult
@@ -231,9 +251,7 @@ func (ps *PubSub) Unsubscribe() {
 	ps.Sub.Cancel()
 }
 
-
 type blankValidator struct{}
-
 
 func (blankValidator) Validate(key string, value []byte) error {
 	// Check if the key has the correct namespace

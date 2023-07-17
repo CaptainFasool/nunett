@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.106](#243)
+### Fixed
+- Refactor discovery and DHT update routines
+- Set deadlines for fetching DHT data and pinging a peer
+
 # [0.4.105](#196)
 ### Fixed
 - Add verification query when onboarding an already onboarded machine (fix for #196)

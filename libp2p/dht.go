@@ -161,6 +161,7 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 
 func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) {
 	zlog.Sugar().Debugf("Fetching DHT content for all peers")
+
 	fetchCtx, _ := context.WithTimeout(ctxt, time.Minute)
 
 	go func() {
@@ -171,7 +172,9 @@ func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) 
 		poolSize := 5 // Adjust the pool size as per your requirements
 		workerPool := make(chan struct{}, poolSize)
 
-		for _, p := range <-newPeers {
+		zlog.Sugar().Debugf("FetchKadDHTContents: Starting workers - number of p2p.peers: %d", len(p2p.peers))
+
+		for _, p := range p2p.peers {
 			zlog.Sugar().Debugf("FetchKadDHTContents: Waiting for worker slot for peer: %s", p.ID.String())
 			workerPool <- struct{}{} // Acquire a worker slot from the pool
 			zlog.Sugar().Debugf("FetchKadDHTContents: Acquired worker slot for peer: %s", p.ID.String())
@@ -191,6 +194,10 @@ func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) 
 				// Add custom namespace to the key
 				namespacedKey := customNamespace + peer.ID.String()
 				bytes, err := p2p.DHT.GetValue(fetchCtx, namespacedKey)
+				if <-fetchCtx.Done(); err != nil {
+					zlog.Debug("FetchKadDHTContents: Context Done - Timeout")
+					return
+				}
 				if err != nil {
 					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 						zlog.Sugar().Errorf(fmt.Sprintf("Couldn't retrieve dht content for peer: %s", peer.ID.String()))
