@@ -215,7 +215,7 @@ func TestStartChatCorrect(t *testing.T) {
 
 	rand.Seed(time.Now().UnixNano())
 
-	go Discover(ctx, host2, idht2, "nunet")
+	discoverPeers(ctx, host2, idht2, "nunet")
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
 	var metadata models.MetadataV2

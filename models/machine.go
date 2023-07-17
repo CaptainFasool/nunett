@@ -123,6 +123,7 @@ type Connection struct {
 type PingResult struct {
 	RTT     time.Duration
 	Success bool
+	Error error
 }
 
 type Machines map[string]PeerData
