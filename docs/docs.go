@@ -44,26 +44,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/kad-dht": {
-            "get": {
-                "description": "Returns entire Kademlia DHT content",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "p2p"
-                ],
-                "summary": "Return a dump of the Kademlia dht",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/onboarding/address/new": {
             "get": {
                 "description": "Create a payment address from public key. Return payment address and private key.",
@@ -533,7 +513,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.105",
+	Version:          "0.4.106",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
