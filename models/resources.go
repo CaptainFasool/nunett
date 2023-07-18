@@ -1,7 +1,6 @@
 package models
 
 type MB int
-type GB int
 type MHz int
 
 // Resources is the base struct used by other resources usage
@@ -9,7 +8,7 @@ type MHz int
 type Resources struct {
 	TotCPU  MHz `json:"tot_cpu_mhz"`
 	RAM     MB  `json:"ram_mb"`
-	VCPU    MHz `json:"vcpu_mb"`
+	VCPU    MHz `json:"vcpu_mhz"`
 	Disk    MB  `json:"disk_mb"`
 	CoreCPU MHz `json:"cpu_mhz"`
 	CPUNo   int `json:"cpu_no"`
