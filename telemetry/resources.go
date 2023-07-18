@@ -12,20 +12,28 @@ var (
 	mu                sync.Mutex
 )
 
+// HardwareResources is a struct with methods to simplify the hardware resources
+// management. It has methods to change the resources and save on the DB.
 type HardwareResources struct {
 	DBFreeResources    models.FreeResources
 	NewFreeRes         models.FreeResources
 	AvailableResources models.AvailableResources
 }
 
+// IncreaseFreeResources calls modifyFreeResources to increase the FreeResources
+// based on a models.Resource params
 func (r *HardwareResources) IncreaseFreeResources(resourcesToModify models.Resources) {
 	r.modifyFreeResources(resourcesToModify, 1)
 }
 
+// DecreaseFreeResources calls modifyFreeResources to decrease the FreeResources
+// based on a models.Resource params
 func (r *HardwareResources) DecreaseFreeResources(resourcesToModify models.Resources) {
 	r.modifyFreeResources(resourcesToModify, -1)
 }
 
+// modifyFreeResources modifies the NewFreeRes struct, increasing/decreasing based on param received.
+// This struct is the one which will be used to do a write operation on DB when calling the UpdateDBFreeResources.
 func (r *HardwareResources) modifyFreeResources(resourcesToModify models.Resources, increaseOrDecrease int) {
 	if resourcesToModify.TotCPU != 0 {
 		r.NewFreeRes.TotCPU = r.NewFreeRes.TotCPU + resourcesToModify.TotCPU*models.MHz(increaseOrDecrease)
@@ -42,6 +50,8 @@ func (r *HardwareResources) modifyFreeResources(resourcesToModify models.Resourc
 	}
 }
 
+// UpdateDBFreeResources updates/creates the FreeResources table
+// based on HardwareResources.NewFreeRes struct
 func (r *HardwareResources) UpdateDBFreeResources() error {
 	// Check if we have a previous entry in the table
 	r.NewFreeRes.ID = 1
