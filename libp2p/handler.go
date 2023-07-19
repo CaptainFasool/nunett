@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -512,6 +513,45 @@ func PingPeerHandler(c *gin.Context) {
 		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT})
 	} else {
 		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, res.Error), "peer_in_dht": peerInDHT})
+		return
+	}
+}
+
+// DEBUG ONLY
+func NativePingPeerHandler(c *gin.Context) {
+	peerID := c.Query("peerID")
+
+	if peerID == "" {
+		c.JSON(400, gin.H{"error": "peerID not provided"})
+		return
+	}
+	if peerID == p2p.Host.ID().String() {
+		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
+		return
+	}
+
+	targetPeer, err := peer.Decode(peerID)
+	if err != nil {
+		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
+		c.JSON(400, gin.H{"error": "Could not decode string ID to peerID"})
+		return
+	}
+
+	var peerInDHT bool
+	_, err = p2p.Host.Peerstore().Get(targetPeer, "peer_info")
+	if err != nil {
+		peerInDHT = false
+	} else {
+		peerInDHT = true
+	}
+
+	res := ping.Ping(c.Request.Context(), p2p.Host, targetPeer)
+	result  := <- res
+	zlog.Sugar().Infof("------------------RTT: %s ++++++ ERROR: %v", result.RTT, result.Error)
+	if result.Error == nil {
+		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
+	} else {
+		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, result.Error), "peer_in_dht": peerInDHT, "RTT": result.RTT})
 		return
 	}
 }

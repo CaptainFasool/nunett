@@ -127,6 +127,12 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 		return pingResult
 	}
 	stream.SetDeadline(time.Now().Add(10 * time.Second)) // 10 second timeout
+	defer func() {
+		zlog.Sugar().Infof("Closing ping stream: %s", stream.ID())
+		stream.Close()
+	}()
+
+	zlog.Sugar().Infof("Created stream: %s", stream.ID())
 
 	r := bufio.NewReader(stream)
 	w := bufio.NewWriter(stream)
@@ -183,7 +189,6 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 	pingResult.Success = true
 	pingResult.RTT = duration
 	pingResult.Error = nil
-	stream.Close()
 
 	return pingResult
 }
