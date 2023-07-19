@@ -33,15 +33,12 @@ type ElasticsearchCredential struct {
 }
 
 func GetCredential() ElasticsearchCredential {
-	// Simulating fetching credentials from a source
 	username := "admin"
 	password := "changeme"
-	address := "http://dev.nunet.io:21001"
 
 	// Creating and returning a Credential struct
 	return ElasticsearchCredential{
 		Username: username,
 		Password: password,
-		Address:  address,
 	}
 }

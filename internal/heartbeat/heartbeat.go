@@ -309,10 +309,17 @@ func getElasticsearchClient() (*elasticsearch.Client, error) {
 	// Retrieve variables from the environment
 	Username := credential.Username
 	Password := credential.Password
-	Address := credential.Address
+
+	channelName := utils.GetChannelName()
+	address := ""
+	if channelName == "nunet-test" {
+		address = "http://test.nunet.io:9200"
+	} else {
+		address = "http://dev.nunet.io:21001"
+	}
 
 	cfg := elasticsearch.Config{
-		Addresses: []string{Address}, // Elasticsearch server addresses
+		Addresses: []string{address}, // Elasticsearch server addresses
 		Username:  Username,
 		Password:  Password,
 	}

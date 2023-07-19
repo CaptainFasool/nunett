@@ -37,7 +37,7 @@ func getAddress() string {
 
 		//elk address
 		elknunetStagingAddr string = "dev.nunet.io:21002"
-		elknunetTestAddr    string = "dev.nunet.io:21002"
+		elknunetTestAddr    string = "test.nunet.io:8200"
 		elknunetEdgeAddr    string = "dev.nunet.io:21002"
 		elknunetTeamAddr    string = "dev.nunet.io:21002"
 		elklocalAddr        string = "dev.nunet.io:21002"
@@ -65,11 +65,12 @@ func getAddress() string {
 			addr = elknunetEdgeAddr
 		} else if channelName == "nunet-team" {
 			addr = elknunetTeamAddr
-		} else if channelName == "" {  // XXX -- setting empty(not yet onboarded) to test endpoint - not a good idea
+		} else if channelName == "" { // XXX -- setting empty(not yet onboarded) to test endpoint - not a good idea
 			addr = elknunetTestAddr
 		} else {
 			addr = elklocalAddr
 		}
+
 	}
 
 	return addr
