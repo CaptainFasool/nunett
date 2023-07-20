@@ -25,7 +25,7 @@ func ConnectDatabase() {
 
 	database.AutoMigrate(&models.VirtualMachine{})
 	database.AutoMigrate(&models.Machine{})
-	database.AutoMigrate(&models.AvailableResources{})
+	// database.AutoMigrate(&models.OnboardedResources{})
 	// database.AutoMigrate(&models.FreeResources{})
 	database.AutoMigrate(&models.PeerInfo{})
 	database.AutoMigrate(&models.Services{})
@@ -47,7 +47,7 @@ func ConnectDatabase() {
 		panic(err)
 	}
 
-	tables := []string{"free_resources"}
+	tables := []string{"free_resources", "onboarded_resources"}
 	for _, table := range tables {
 		err = applySQLTableMigrations(sqlDB, table)
 		if err != nil {
