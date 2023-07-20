@@ -69,7 +69,7 @@ func applySQLTableMigrations(sqlDB *sql.DB, table string) error {
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
-		fmt.Sprintf("file://db/migrations/%s", table),
+		fmt.Sprintf("file://db/migrations/%s/", table),
 		"sqlite3", driver)
 	if err != nil {
 		zlog.Sugar().Errorf("Failed to prepare migration: %v", err)
