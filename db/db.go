@@ -29,7 +29,7 @@ func ConnectDatabase() {
 	// database.AutoMigrate(&models.FreeResources{})
 	database.AutoMigrate(&models.PeerInfo{})
 	database.AutoMigrate(&models.Services{})
-	database.AutoMigrate(&models.ServiceResourceRequirements{})
+	// database.AutoMigrate(&models.ServiceResourceRequirements{})
 	database.AutoMigrate(&models.RequestTracker{})
 	database.AutoMigrate(&models.Libp2pInfo{})
 	database.AutoMigrate(&models.DeploymentRequestFlat{})
@@ -47,7 +47,12 @@ func ConnectDatabase() {
 		panic(err)
 	}
 
-	tables := []string{"free_resources", "onboarded_resources"}
+	// Migrating some tables with *.up.sql migrations
+	tables := []string{
+		"free_resources",
+		"onboarded_resources",
+		"service_resource_requirements",
+	}
 	for _, table := range tables {
 		err = applySQLTableMigrations(sqlDB, table)
 		if err != nil {
