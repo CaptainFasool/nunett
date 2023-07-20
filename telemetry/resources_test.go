@@ -16,7 +16,7 @@ func getMockHardwareResources() *HardwareResources {
 				Disk:   500,
 			},
 		},
-		AvailableResources: models.AvailableResources{
+		OnboardedResources: models.OnboardedResources{
 			Resources: models.Resources{
 				TotCPU:  10000,
 				RAM:     9000,
@@ -60,7 +60,7 @@ func TestModifyFreeResources(t *testing.T) {
 						VCPU:   6,
 					},
 				},
-				AvailableResources: initialResources.AvailableResources,
+				OnboardedResources: initialResources.OnboardedResources,
 			},
 		},
 		{
@@ -77,7 +77,7 @@ func TestModifyFreeResources(t *testing.T) {
 						VCPU:   4,
 					},
 				},
-				AvailableResources: initialResources.AvailableResources,
+				OnboardedResources: initialResources.OnboardedResources,
 			},
 		},
 	}
@@ -101,10 +101,10 @@ func TestModifyFreeResources(t *testing.T) {
 				)
 			}
 
-			if !reflect.DeepEqual(hardwareResources.AvailableResources, tt.expected.AvailableResources) {
+			if !reflect.DeepEqual(hardwareResources.OnboardedResources, tt.expected.OnboardedResources) {
 				t.Errorf(
-					"Expected AvailableResources to remain unchanged. Want: %+v, Got %+v",
-					tt.expected.AvailableResources, hardwareResources.AvailableResources,
+					"Expected OnboardedResources to remain unchanged. Want: %+v, Got %+v",
+					tt.expected.OnboardedResources, hardwareResources.OnboardedResources,
 				)
 			}
 
@@ -136,7 +136,7 @@ func TestModifyFreeResourcesMultipleTimes(t *testing.T) {
 						VCPU:   7,
 					},
 				},
-				AvailableResources: initialResources.AvailableResources,
+				OnboardedResources: initialResources.OnboardedResources,
 			},
 		},
 		{
@@ -153,7 +153,7 @@ func TestModifyFreeResourcesMultipleTimes(t *testing.T) {
 						VCPU:   3,
 					},
 				},
-				AvailableResources: initialResources.AvailableResources,
+				OnboardedResources: initialResources.OnboardedResources,
 			},
 		},
 	}
@@ -178,10 +178,10 @@ func TestModifyFreeResourcesMultipleTimes(t *testing.T) {
 				)
 			}
 
-			if !reflect.DeepEqual(hardwareResources.AvailableResources, tt.expected.AvailableResources) {
+			if !reflect.DeepEqual(hardwareResources.OnboardedResources, tt.expected.OnboardedResources) {
 				t.Errorf(
-					"Expected AvailableResources to remain unchanged. Want: %+v, Got %+v",
-					tt.expected.AvailableResources, hardwareResources.AvailableResources,
+					"Expected OnboardedResources to remain unchanged. Want: %+v, Got %+v",
+					tt.expected.OnboardedResources, hardwareResources.OnboardedResources,
 				)
 			}
 

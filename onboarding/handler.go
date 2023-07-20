@@ -171,7 +171,7 @@ func Onboard(c *gin.Context) {
 
 	// Add available resources to database.
 
-	available_resources := models.AvailableResources{
+	onboardedResources := models.OnboardedResources{
 		Resources: models.Resources{
 			TotCPU:  models.MHz(capacityForNunet.CPU),
 			CPUNo:   int(numCores),
@@ -184,14 +184,14 @@ func Onboard(c *gin.Context) {
 
 	kLogger.Resource(int(capacityForNunet.CPU), int(capacityForNunet.Memory), 0, 0, span)
 
-	var availableRes models.AvailableResources
-	if res := db.DB.WithContext(c.Request.Context()).Find(&availableRes); res.RowsAffected == 0 {
-		result := db.DB.WithContext(c.Request.Context()).Create(&available_resources)
+	var onboardedRes models.OnboardedResources
+	if res := db.DB.WithContext(c.Request.Context()).Find(&onboardedRes); res.RowsAffected == 0 {
+		result := db.DB.WithContext(c.Request.Context()).Create(&onboardedResources)
 		if result.Error != nil {
 			zlog.Panic(result.Error.Error())
 		}
 	} else {
-		result := db.DB.WithContext(c.Request.Context()).Model(&models.AvailableResources{}).Where("id = ?", 1).Updates(available_resources)
+		result := db.DB.WithContext(c.Request.Context()).Model(&models.OnboardedResources{}).Where("id = ?", 1).Updates(onboardedResources)
 		if result.Error != nil {
 			zlog.Panic(result.Error.Error())
 		}
@@ -322,13 +322,13 @@ func ResourceConfig(c *gin.Context) {
 	metadata.Reserved.Memory = capacityForNunet.Memory
 
 	// read the existing data and update it with new resources
-	var availableRes models.AvailableResources
-	if res := db.DB.WithContext(c.Request.Context()).First(&availableRes); res.RowsAffected == 0 {
-		zlog.Sugar().Errorf("availableRes table does not exist: %v", err)
+	var onboardedRes models.OnboardedResources
+	if res := db.DB.WithContext(c.Request.Context()).First(&onboardedRes); res.RowsAffected == 0 {
+		zlog.Sugar().Errorf("onboardedRes table does not exist: %v", err)
 	}
-	availableRes.TotCPU = models.MHz(capacityForNunet.CPU)
-	availableRes.RAM = models.MB(capacityForNunet.Memory)
-	db.DB.Save(&availableRes)
+	onboardedRes.TotCPU = models.MHz(capacityForNunet.CPU)
+	onboardedRes.RAM = models.MB(capacityForNunet.Memory)
+	db.DB.Save(&onboardedRes)
 
 	statsdb.DeviceResourceConfig(metadata)
 

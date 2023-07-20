@@ -85,11 +85,11 @@ func CalcFreeResources() error {
 	tot_cpu_used := tot_cpu_cont + tot_cpu_vm
 	tot_mem := tot_mem_cont + tot_mem_vm
 
-	var availableRes models.AvailableResources
-	if res := db.DB.Find(&availableRes); res.RowsAffected == 0 {
+	var onboardedRes models.OnboardedResources
+	if res := db.DB.Find(&onboardedRes); res.RowsAffected == 0 {
 		return res.Error
 	}
-	cpuProvisioned, memProvisioned, cpuHz := availableRes.TotCPU, availableRes.RAM, availableRes.CoreCPU
+	cpuProvisioned, memProvisioned, cpuHz := onboardedRes.TotCPU, onboardedRes.RAM, onboardedRes.CoreCPU
 
 	var freeResource models.FreeResources
 	freeResource.ID = 1

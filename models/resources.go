@@ -22,9 +22,9 @@ type FreeResources struct {
 	Resources
 }
 
-// AvailableResources describes the machine host's hardware
+// OnboardedResources describes the machine host's hardware
 // resources onboarded to be used on NuNet
-type AvailableResources struct {
+type OnboardedResources struct {
 	ID uint `json:"id"`
 	Resources
 }

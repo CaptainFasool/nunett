@@ -17,7 +17,7 @@ var (
 type HardwareResources struct {
 	DBFreeResources    models.FreeResources
 	NewFreeRes         models.FreeResources
-	AvailableResources models.AvailableResources
+	OnboardedResources models.OnboardedResources
 }
 
 // IncreaseFreeResources calls modifyFreeResources to increase the FreeResources
@@ -38,7 +38,7 @@ func (r *HardwareResources) modifyFreeResources(resourcesToModify models.Resourc
 	if resourcesToModify.TotCPU != 0 {
 		r.NewFreeRes.TotCPU = r.NewFreeRes.TotCPU + resourcesToModify.TotCPU*models.MHz(increaseOrDecrease)
 		// TODO: not sure if doing the right math for Vcpu here
-		r.NewFreeRes.VCPU = r.NewFreeRes.TotCPU / r.AvailableResources.CoreCPU
+		r.NewFreeRes.VCPU = r.NewFreeRes.TotCPU / r.OnboardedResources.CoreCPU
 	}
 
 	if resourcesToModify.RAM != 0 {
@@ -85,15 +85,15 @@ func NewHardwareResources() (*HardwareResources, error) {
 		return nil, err
 	}
 
-	var availableRes models.AvailableResources
-	if res := db.DB.Find(&availableRes); res.RowsAffected == 0 {
+	var onboardedRes models.OnboardedResources
+	if res := db.DB.Find(&onboardedRes); res.RowsAffected == 0 {
 		return nil, res.Error
 	}
 
 	hardwareResources = &HardwareResources{
 		DBFreeResources:    freeRes,
 		NewFreeRes:         freeRes,
-		AvailableResources: availableRes,
+		OnboardedResources: onboardedRes,
 	}
 
 	return hardwareResources, err
