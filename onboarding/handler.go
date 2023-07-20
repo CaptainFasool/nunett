@@ -225,12 +225,14 @@ func Onboard(c *gin.Context) {
 
 	// Check if onboarded plugins are integrated into DMS.
 	// We only accept integraded plugins for now
-	for _, p := range capacityForNunet.Plugins {
-		_, err = plugins.GetPluginType(p)
-		if err != nil {
-			c.JSON(http.StatusBadRequest,
-				gin.H{"error": fmt.Sprintf("Invalid plugin (not integrated or wrong name): %v", err)})
-			return
+	if len(capacityForNunet.Plugins) != 0 {
+		for _, p := range capacityForNunet.Plugins {
+			_, err = plugins.GetPluginType(p)
+			if err != nil {
+				c.JSON(http.StatusBadRequest,
+					gin.H{"error": fmt.Sprintf("Invalid plugin (not integrated or wrong name): %v", err)})
+				return
+			}
 		}
 	}
 
