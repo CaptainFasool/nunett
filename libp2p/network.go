@@ -1,11 +1,13 @@
 package libp2p
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"os"
 	"strings"
+	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -74,18 +76,130 @@ func GetConnections() []models.Connection {
 }
 
 func PingHandler(s network.Stream) {
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-		zlog.Sugar().Info("Received Ping message")
+	// old protocol will be deprecated soon
+	if s.Protocol() == PingProtocolID { // old protocol
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Info("Received Old Protocol Ping")
+		}
+		reader := bufio.NewReader(s)
+		writer := bufio.NewWriter(s)
+		data, err := reader.ReadString('\n')
+
+		if err != nil {
+			zlog.Sugar().Errorf("failed to read string from stream: %v\n", err)
+			return
+		}
+
+		// refuse replying to ping if already running a job
+		if IsDepRespStreamOpen() {
+			zlog.Sugar().Info("Refusing to reply to a ping because already running a job")
+			s.Reset()
+			return
+		}
+
+		// Echo the string back over the stream.
+		_, err = writer.WriteString(data)
+		if err != nil {
+			zlog.Sugar().Errorf("failed to echo string back over stream: %v\n", err)
+			return
+		}
+		err = writer.Flush()
+		if err != nil {
+			zlog.Sugar().Errorf("failed to flush writer: %v\n", err)
+			return
+		}
+	} else {
+		// refuse replying to ping if already running a job
+		if IsDepRespStreamOpen() {
+			zlog.Sugar().Info("Refusing to reply to a ping because already running a job")
+			s.Reset()
+			return
+		}
+
+		pingSrv := ping.PingService{}
+		pingSrv.PingHandler(s)
 	}
-	// refuse replying to ping if already running a job
-	if IsDepRespStreamOpen() {
-		zlog.Sugar().Info("Refusing to reply to a ping because already running a job")
-		s.Reset()
-		return
+}
+
+func OldPingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResult {
+	zlog.Sugar().Debugf("Pinging peer --> %s", target.String())
+	var pingResult models.PingResult
+	start := time.Now()
+
+	pingCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	// Create a new stream to the target peer using the ping protocol
+	stream, err := h.NewStream(pingCtx, target, PingProtocolID)
+
+	if err != nil {
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("failed to create stream to peer %s: %w", target, err)
+		}
+		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = err
+		return pingResult
+	}
+	stream.SetDeadline(time.Now().Add(10 * time.Second)) // 10 second timeout
+
+	r := bufio.NewReader(stream)
+	w := bufio.NewWriter(stream)
+
+	_, err = w.WriteString("ping" + "\n")
+	if err != nil {
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("failed to write ping message: %w", err)
+		}
+
+		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = err
+		return pingResult
+	}
+	err = w.Flush()
+	if err != nil {
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("failed to flush ping message: %w", err)
+		}
+		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = err
+		return pingResult
 	}
 
-	pingSrv := ping.PingService{}
-	pingSrv.PingHandler(s)
+	time.Sleep(1 * time.Second)
+
+	pongMsg, err := r.ReadString('\n')
+	if err != nil {
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("failed to read pong message: %w", err)
+		}
+		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = err
+		return pingResult
+	}
+
+	zlog.Sugar().Debugf("Got pong message: %q from peer: %s", pongMsg, target.String())
+
+	// Check if the pong message is the same as the ping message
+	if pongMsg != "ping"+"\n" {
+		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			zlog.Sugar().Errorf("unexpected pong message: %s", string(pongMsg))
+		}
+		pingResult.Success = false
+		pingResult.RTT = 0
+		pingResult.Error = errors.New("unexpected pong message")
+		return pingResult
+	}
+
+	duration := time.Since(start)
+	pingResult.Success = true
+	pingResult.RTT = duration
+	pingResult.Error = nil
+	stream.Close()
+
+	return pingResult
 }
 
 type PubSub struct {

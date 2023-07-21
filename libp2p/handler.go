@@ -479,7 +479,7 @@ func ManualDHTUpdateHandler(c *gin.Context) {
 }
 
 // DEBUG ONLY
-func PingPeer(c *gin.Context) {
+func PingPeerHandler(c *gin.Context) {
 	peerID := c.Query("peerID")
 
 	if peerID == "" {
@@ -509,6 +509,44 @@ func PingPeer(c *gin.Context) {
 	result := <-ping.Ping(c.Request.Context(), p2p.Host, targetPeer)
 	zlog.Sugar().Infof("Pinged %s --> RTT: %s", targetPeer.String(), result.RTT)
 	if result.Error == nil {
+		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
+	} else {
+		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, result.Error), "peer_in_dht": peerInDHT, "RTT": result.RTT})
+		return
+	}
+}
+
+// DEBUG ONLY
+func OldPingPeerHandler(c *gin.Context) {
+	peerID := c.Query("peerID")
+
+	if peerID == "" {
+		c.JSON(400, gin.H{"error": "peerID not provided"})
+		return
+	}
+	if peerID == p2p.Host.ID().String() {
+		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
+		return
+	}
+
+	targetPeer, err := peer.Decode(peerID)
+	if err != nil {
+		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
+		c.JSON(400, gin.H{"error": "Could not decode string ID to peerID"})
+		return
+	}
+
+	var peerInDHT bool
+	_, err = p2p.Host.Peerstore().Get(targetPeer, "peer_info")
+	if err != nil {
+		peerInDHT = false
+	} else {
+		peerInDHT = true
+	}
+
+	result := OldPingPeer(c.Request.Context(), p2p.Host, targetPeer)
+	zlog.Sugar().Infof("Pinged %s --> RTT: %s", targetPeer.String(), result.RTT)
+	if result.Success {
 		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
 	} else {
 		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, result.Error), "peer_in_dht": peerInDHT, "RTT": result.RTT})
