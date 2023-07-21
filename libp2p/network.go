@@ -87,6 +87,7 @@ func PingHandler(s network.Stream) {
 
 		if err != nil {
 			zlog.Sugar().Errorf("failed to read string from stream: %v\n", err)
+			s.Reset()
 			return
 		}
 
@@ -101,11 +102,13 @@ func PingHandler(s network.Stream) {
 		_, err = writer.WriteString(data)
 		if err != nil {
 			zlog.Sugar().Errorf("failed to echo string back over stream: %v\n", err)
+			s.Reset()
 			return
 		}
 		err = writer.Flush()
 		if err != nil {
 			zlog.Sugar().Errorf("failed to flush writer: %v\n", err)
+			s.Reset()
 			return
 		}
 	} else {
@@ -141,6 +144,7 @@ func OldPingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingRe
 		return pingResult
 	}
 	stream.SetDeadline(time.Now().Add(10 * time.Second)) // 10 second timeout
+	defer stream.Close()
 
 	r := bufio.NewReader(stream)
 	w := bufio.NewWriter(stream)
@@ -197,7 +201,6 @@ func OldPingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingRe
 	pingResult.Success = true
 	pingResult.RTT = duration
 	pingResult.Error = nil
-	stream.Close()
 
 	return pingResult
 }
