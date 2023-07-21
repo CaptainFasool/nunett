@@ -86,19 +86,13 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler)
+	host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), PingHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 
 	p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
 	zlog.Sugar().Debugf("number of p2p.peers: %d", len(p2p.peers))
-
-	// zlog.Debug("Getting bootstrap peers")
-	// p2p.peers, err = p2p.getPeers(ctx, utils.GetChannelName())
-	// if err != nil {
-	// 	zlog.Sugar().Errorf("Error getting peers: %s\n", err)
-	// }
-	// zlog.Debug("Done getting bootstrap peers")
 
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {

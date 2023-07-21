@@ -414,8 +414,6 @@ func DumpDHT(c *gin.Context) {
 	c.JSON(200, dhtContent)
 }
 
-
-
 // DefaultDepReqPeer  godoc
 // @Summary      Manage default deplyment request receiver peer
 // @Description  Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request.
@@ -463,12 +461,12 @@ func DefaultDepReqPeer(c *gin.Context) {
 		return
 	}
 
-	res := PingPeer(c, GetP2P().Host, targetPeer)
-	if res.Success {
+	result := <-ping.Ping(c.Request.Context(), p2p.Host, targetPeer)
+	if result.Error == nil {
 		config.SetConfig("job.target_peer", peerID)
 		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully set %s as default deployment request receiver.", peerID)})
 	} else {
-		zlog.Sugar().Errorf("Could not ping peer: %v", res.Error)
+		zlog.Sugar().Errorf("Could not ping peer: %v", result.Error)
 		c.JSON(400, gin.H{"error": "Peer not online."})
 		return
 	}
@@ -481,7 +479,7 @@ func ManualDHTUpdateHandler(c *gin.Context) {
 }
 
 // DEBUG ONLY
-func PingPeerHandler(c *gin.Context) {
+func PingPeer(c *gin.Context) {
 	peerID := c.Query("peerID")
 
 	if peerID == "" {
@@ -508,46 +506,8 @@ func PingPeerHandler(c *gin.Context) {
 		peerInDHT = true
 	}
 
-	res := PingPeer(c, GetP2P().Host, targetPeer)
-	if res.Success {
-		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT})
-	} else {
-		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, res.Error), "peer_in_dht": peerInDHT})
-		return
-	}
-}
-
-// DEBUG ONLY
-func NativePingPeerHandler(c *gin.Context) {
-	peerID := c.Query("peerID")
-
-	if peerID == "" {
-		c.JSON(400, gin.H{"error": "peerID not provided"})
-		return
-	}
-	if peerID == p2p.Host.ID().String() {
-		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
-		return
-	}
-
-	targetPeer, err := peer.Decode(peerID)
-	if err != nil {
-		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
-		c.JSON(400, gin.H{"error": "Could not decode string ID to peerID"})
-		return
-	}
-
-	var peerInDHT bool
-	_, err = p2p.Host.Peerstore().Get(targetPeer, "peer_info")
-	if err != nil {
-		peerInDHT = false
-	} else {
-		peerInDHT = true
-	}
-
-	res := ping.Ping(c.Request.Context(), p2p.Host, targetPeer)
-	result  := <- res
-	zlog.Sugar().Infof("------------------RTT: %s ++++++ ERROR: %v", result.RTT, result.Error)
+	result := <-ping.Ping(c.Request.Context(), p2p.Host, targetPeer)
+	zlog.Sugar().Infof("Pinged %s --> RTT: %s", targetPeer.String(), result.RTT)
 	if result.Error == nil {
 		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
 	} else {

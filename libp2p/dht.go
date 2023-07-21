@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
 )
@@ -42,7 +43,8 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 
 // Cleans up old peers from DHT
 func CleanupOldPeers() {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
 	for _, node := range p2p.Host.Peerstore().Peers() {
 		peerData, err := p2p.Host.Peerstore().Get(node, "peer_info")
 		if err != nil {
@@ -57,8 +59,8 @@ func CleanupOldPeers() {
 				zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
 				return
 			}
-			res := PingPeer(ctx, p2p.Host, targetPeer)
-			if res.Success {
+			result := <-ping.Ping(ctx, p2p.Host, targetPeer)
+			if result.Error == nil {
 				if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 					zlog.Sugar().Info("Peer is reachable.", "PeerID", Data.PeerID)
 					continue
@@ -295,7 +297,7 @@ func PeersWithMatchingSpec(peers []models.PeerData, depReq models.DeploymentRequ
 }
 
 // Fetches peer info of peers from Kad-DHT and updates Peerstore.
-func GetDHTUpdates(context context.Context) {
+func GetDHTUpdates(ctx context.Context) {
 	if gettingDHTUpdate {
 		zlog.Debug("GetDHTUpdates: Already Getting DHT Updates")
 		return
@@ -304,7 +306,7 @@ func GetDHTUpdates(context context.Context) {
 	zlog.Debug("GetDHTUpdates: Start Getting DHT Updates")
 
 	machines := make(chan models.PeerData)
-	fetchKadDhtContents(context, machines)
+	fetchKadDhtContents(ctx, machines)
 
 	for machine := range machines {
 		zlog.Sugar().Debugf("GetDHTUpdates: Got machine: %v", machine.PeerID)
@@ -314,8 +316,8 @@ func GetDHTUpdates(context context.Context) {
 			gettingDHTUpdate = false
 			return
 		}
-		res := PingPeer(context, p2p.Host, targetPeer)
-		if res.Success {
+		res := <- ping.Ping(ctx, p2p.Host, targetPeer)
+		if res.Error == nil {
 			if _, verboseDebugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); verboseDebugMode {
 				zlog.Sugar().Info("Peer is reachable.", "PeerID", machine.PeerID)
 			}

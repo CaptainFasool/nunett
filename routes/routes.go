@@ -62,8 +62,7 @@ func SetupRouter() *gin.Engine {
 		{
 			kadDht.GET("", libp2p.DumpKademliaDHT)
 		}
-		v1.GET("/ping", libp2p.PingPeerHandler)
-		v1.GET("/nativeping", libp2p.NativePingPeerHandler)
+		v1.GET("/ping", libp2p.PingPeer)
 	}
 
 	p2p := v1.Group("/peers")

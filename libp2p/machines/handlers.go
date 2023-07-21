@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal"
@@ -120,18 +121,18 @@ func HandleRequestService(c *gin.Context) {
 			zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
 			return
 		}
-		res := libp2p.PingPeer(ctx, libp2p.GetP2P().Host, targetPeer)
-		if res.Success {
+		result := <-ping.Ping(c.Request.Context(), libp2p.GetP2P().Host, targetPeer)
+		if result.Error == nil {
 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.Sugar().Info("Peer is online.", "RTT", res.RTT, "PeerID", node.PeerID)
+				zlog.Sugar().Info("Peer is online.", "RTT", result.RTT, "PeerID", node.PeerID)
 			}
-			if res.RTT < rtt {
-				rtt = res.RTT
+			if result.RTT < rtt {
+				rtt = result.RTT
 				onlinePeer = node
 			}
 		} else {
 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.Sugar().Infof("Peer - %s is offline. Error: %v", node.PeerID, res.Error)
+				zlog.Sugar().Infof("Peer - %s is offline. Error: %v", node.PeerID, result.Error)
 			}
 		}
 	}
