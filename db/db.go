@@ -26,6 +26,32 @@ type DMSGormDB struct {
 	db *gorm.DB
 }
 
+func (db *DMSGormDB) ConnectDatabase(path string) {
+	database, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+
+	if err != nil {
+		panic("Failed to connect to database!")
+	}
+
+	database.AutoMigrate(&models.VirtualMachine{})
+	database.AutoMigrate(&models.Machine{})
+	database.AutoMigrate(&models.AvailableResources{})
+	database.AutoMigrate(&models.FreeResources{})
+	database.AutoMigrate(&models.PeerInfo{})
+	database.AutoMigrate(&models.Services{})
+	database.AutoMigrate(&models.ServiceResourceRequirements{})
+	database.AutoMigrate(&models.RequestTracker{})
+	database.AutoMigrate(&models.Libp2pInfo{})
+	database.AutoMigrate(&models.DeploymentRequestFlat{})
+	database.AutoMigrate(&models.MachineUUID{})
+	database.AutoMigrate(&models.Connection{})
+
+	db.db = database
+	if err := DB.Use(otelgorm.NewPlugin()); err != nil {
+		panic(err)
+	}
+}
+
 func (g *DMSGormDB) Create(value interface{}) error {
 	result := g.db.Create(&value)
 	if result.Error != nil {
