@@ -29,7 +29,7 @@ func TestChat(t *testing.T) {
 	}
 	defer host1.Close()
 
-	host1.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
+	host1.SetStreamHandler(protocol.ID(ChatProtocolID), ChatStreamHandler)
 
 	err = Bootstrap(ctx, host1, idht1)
 	if err != nil {
@@ -120,7 +120,7 @@ func TestWrongFormatDepReq(t *testing.T) {
 	}
 	defer host1.Close()
 
-	host1.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
+	host1.SetStreamHandler(protocol.ID(DepReqProtocolID), DepReqStreamHandler)
 
 	err = Bootstrap(ctx, host1, idht1)
 	if err != nil {

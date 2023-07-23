@@ -88,8 +88,8 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler)
-	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
-	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
+	host.SetStreamHandler(protocol.ID(DepReqProtocolID), DepReqStreamHandler)
+	host.SetStreamHandler(protocol.ID(ChatProtocolID), ChatStreamHandler)
 
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
 

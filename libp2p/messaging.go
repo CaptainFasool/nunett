@@ -54,7 +54,7 @@ type openStream struct {
 	TimeOpened string
 }
 
-func depReqStreamHandler(stream network.Stream) {
+func DepReqStreamHandler(stream network.Stream) {
 	ctx := context.Background()
 	defer ctx.Done()
 	span := trace.SpanFromContext(ctx)
@@ -357,7 +357,7 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 	return outboundDepReqStream, nil
 }
 
-func chatStreamHandler(stream network.Stream) {
+func ChatStreamHandler(stream network.Stream) {
 	zlog.Info("Got a new chat stream!")
 
 	// limit to 3 streams
