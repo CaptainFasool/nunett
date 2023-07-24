@@ -131,7 +131,7 @@ func HandleRequestService(c *gin.Context) {
 			}
 		} else {
 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.Sugar().Info("Peer -  ", node.PeerID, " is offline.")
+				zlog.Sugar().Infof("Peer - %s is offline. Error: %v", node.PeerID, res.Error)
 			}
 		}
 	}

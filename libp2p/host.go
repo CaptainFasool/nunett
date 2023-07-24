@@ -91,7 +91,9 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), DepReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), ChatStreamHandler)
 
+	p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
+	zlog.Sugar().Debugf("number of p2p.peers: %d", len(p2p.peers))
 
 	// zlog.Debug("Getting bootstrap peers")
 	// p2p.peers, err = p2p.getPeers(ctx, utils.GetChannelName())
@@ -126,20 +128,22 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
 	}
 
+	zlog.Sugar().Debugf("number of p2p.peers: %d", len(p2p.peers))
 	// Start the DHT Update
 	go UpdateKadDHT()
 	go GetDHTUpdates(ctx)
 
 	// Clean up the DHT every 5 minutes
 	dhtHousekeepingTicker := time.NewTicker(5 * time.Minute)
-	quit2 := make(chan struct{})
 	go func() {
 		for {
 			select {
 			case <-dhtHousekeepingTicker.C:
+				zlog.Debug("Cleaning up DHT")
 				CleanupOldPeers()
 				UpdateConnections(host.Network().Conns())
-			case <-quit2:
+			case <-stopDHTCleanup:
+				zlog.Debug("Stopping DHT Cleanup")
 				dhtHousekeepingTicker.Stop()
 				return
 			}
@@ -147,17 +151,22 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}()
 
 	dhtUpdateTicker := time.NewTicker(10 * time.Minute)
-	quit3 := make(chan struct{})
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				zlog.Debug("Context is done in DHT Update")
+				return
 			case <-dhtUpdateTicker.C:
+				zlog.Debug("Calling UpdateKadDHT and GetDHTUpdates")
+
 				if _, debug := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debug {
 					zlog.Sugar().Info("Updating Kad DHT")
 				}
 				UpdateKadDHT()
 				GetDHTUpdates(ctx)
-			case <-quit3:
+			case <-stopDHTUpdate:
+				zlog.Debug("Stopping DHT Update")
 				dhtUpdateTicker.Stop()
 				return
 			}
@@ -205,7 +214,6 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			}
 		}
 	}()
-
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {
