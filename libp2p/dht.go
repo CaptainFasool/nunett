@@ -42,8 +42,8 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 
 // Cleans up old peers from DHT
 func CleanupOldPeers() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
+	ctx, ctxCancel := context.WithCancel()
+	defer ctxCancel()
 	for _, node := range p2p.Host.Peerstore().Peers() {
 		peerData, err := p2p.Host.Peerstore().Get(node, "peer_info")
 		if err != nil {
@@ -56,14 +56,14 @@ func CleanupOldPeers() {
 			targetPeer, err := peer.Decode(Data.PeerID)
 			if err != nil {
 				zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
-				return
+				continue
 			}
 			pingResult, pingCancel := NewPing(ctx, targetPeer)
-			defer pingCancel()
 			result := <-pingResult
 			if result.Error == nil {
 				if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 					zlog.Sugar().Info("Peer is reachable.", "PeerID", Data.PeerID)
+					pingCancel()
 					continue
 				}
 			} else {
@@ -72,6 +72,7 @@ func CleanupOldPeers() {
 					p2p.Host.Peerstore().Put(node, "peer_info", nil)
 				}
 			}
+			pingCancel()
 		}
 	}
 }
