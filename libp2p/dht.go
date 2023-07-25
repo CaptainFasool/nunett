@@ -42,7 +42,7 @@ func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
 
 // Cleans up old peers from DHT
 func CleanupOldPeers() {
-	ctx, ctxCancel := context.WithCancel()
+	ctx, ctxCancel := context.WithCancel(context.Background())
 	defer ctxCancel()
 	for _, node := range p2p.Host.Peerstore().Peers() {
 		peerData, err := p2p.Host.Peerstore().Get(node, "peer_info")
