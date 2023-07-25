@@ -12,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
 )
@@ -59,7 +58,9 @@ func CleanupOldPeers() {
 				zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
 				return
 			}
-			result := <-ping.Ping(ctx, p2p.Host, targetPeer)
+			pingResult, pingCancel := NewPing(ctx, targetPeer)
+			defer pingCancel()
+			result := <-pingResult
 			if result.Error == nil {
 				if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 					zlog.Sugar().Info("Peer is reachable.", "PeerID", Data.PeerID)
@@ -314,19 +315,24 @@ func GetDHTUpdates(ctx context.Context) {
 		if err != nil {
 			zlog.Sugar().Errorf("Error decoding peer ID: %v\n", err)
 			gettingDHTUpdate = false
-			return
+			continue
 		}
-		res := <- ping.Ping(ctx, p2p.Host, targetPeer)
+		pingResult, pingCancel := NewPing(ctx, targetPeer)
+		res := <-pingResult
 		if res.Error == nil {
 			if _, verboseDebugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); verboseDebugMode {
 				zlog.Sugar().Info("Peer is reachable.", "PeerID", machine.PeerID)
 			}
-			p2p.Host.Peerstore().Put(targetPeer, "peer_info", machine)
+			err := p2p.Host.Peerstore().Put(targetPeer, "peer_info", machine)
+			if err != nil {
+				zlog.Sugar().Errorf("Error putting peer info of %s in peerstore: %v", targetPeer.String(), err)
+			}
 		} else {
 			if _, verboseDebugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); verboseDebugMode {
 				zlog.Sugar().Info("Peer -  ", machine.PeerID, " is unreachable.")
 			}
 		}
+		pingCancel()
 	}
 	gettingDHTUpdate = false
 	zlog.Debug("Done Getting DHT Updates")

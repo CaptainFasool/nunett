@@ -799,7 +799,7 @@ chat_list() {
     N_CHAT_LIST=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/chat)
     N_CHAT_LIST_ERR_MSG=$(echo $N_CHAT_LIST | jq '. | select(.error != null) | .error' 2>/dev/null)
     if [[ -z "$N_CHAT_LIST_ERR_MSG" ]] ; then
-        echo $N_CHAT_LIST | jq --raw-output '["ID", "Time-Opened"],(.[] | [.ID , .TimeOpened]) | @tsv'
+        echo $N_CHAT_LIST | jq --raw-output '["ID", "From", "Time-Opened"],(.[] | [.ID , .FromPeer , .TimeOpened]) | @tsv' | column -t
     else
         printf "${BAD_C}Error: $N_CHAT_LIST_ERR_MSG ${NORMAL_C}\n"
     fi

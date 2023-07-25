@@ -12,7 +12,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -290,7 +289,7 @@ func StartChatHandler(c *gin.Context) {
 		return
 	}
 
-	welcomeMessage := fmt.Sprintf("Enter the message that you wish to send to %s and press return.", peerID)
+	welcomeMessage := fmt.Sprintf("Enter the message that you wish to send to %s with strea ID: %s and press return.", peerID, stream.ID())
 
 	err = ws.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
 	if err != nil {
@@ -461,7 +460,9 @@ func DefaultDepReqPeer(c *gin.Context) {
 		return
 	}
 
-	result := <-ping.Ping(c.Request.Context(), p2p.Host, targetPeer)
+	pingResult, pingCancel := NewPing(c.Request.Context(), targetPeer)
+	defer pingCancel()
+	result := <-pingResult
 	if result.Error == nil {
 		config.SetConfig("job.target_peer", peerID)
 		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully set %s as default deployment request receiver.", peerID)})
@@ -476,6 +477,29 @@ func DefaultDepReqPeer(c *gin.Context) {
 func ManualDHTUpdateHandler(c *gin.Context) {
 	go UpdateKadDHT()
 	GetDHTUpdates(c)
+}
+
+// DEBUG ONLY
+func CleanupPeerHandler(c *gin.Context) {
+	peerID := c.Query("peerID")
+
+	if peerID == "" {
+		c.JSON(400, gin.H{"error": "peerID not provided"})
+		return
+	}
+	if peerID == p2p.Host.ID().String() {
+		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
+		return
+	}
+
+	targetPeer, err := peer.Decode(peerID)
+	if err != nil {
+		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
+		c.JSON(400, gin.H{"error": "Could not decode string ID to peerID"})
+		return
+	}
+	p2p.Host.Peerstore().RemovePeer(targetPeer)
+	c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully cleaned up peer: %s", peerID)})
 }
 
 // DEBUG ONLY
@@ -506,13 +530,14 @@ func PingPeerHandler(c *gin.Context) {
 		peerInDHT = true
 	}
 
-	result := <-ping.Ping(c.Request.Context(), p2p.Host, targetPeer)
+	pingResult, pingCancel := NewPing(c.Request.Context(), targetPeer)
+	defer pingCancel()
+	result := <-pingResult
 	zlog.Sugar().Infof("Pinged %s --> RTT: %s", targetPeer.String(), result.RTT)
 	if result.Error == nil {
 		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
 	} else {
 		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, result.Error), "peer_in_dht": peerInDHT, "RTT": result.RTT})
-		return
 	}
 }
 

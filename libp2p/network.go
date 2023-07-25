@@ -75,6 +75,13 @@ func GetConnections() []models.Connection {
 	return connections
 }
 
+// PingPeer pings the given peer and returns the result along with the cancel function
+func NewPing(ctx context.Context, targetPeer peer.ID) (<-chan ping.Result, func()) {
+	pingCtx, pingCancel := context.WithCancel(ctx)
+	pingResult := ping.Ping(pingCtx, p2p.Host, targetPeer)
+	return pingResult, pingCancel
+}
+
 func PingHandler(s network.Stream) {
 	// old protocol will be deprecated soon
 	if s.Protocol() == PingProtocolID { // old protocol
