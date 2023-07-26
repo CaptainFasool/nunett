@@ -61,8 +61,8 @@ var (
 	JobCompletedQueue = make(chan string)
 
 	// routine stoppers
-	stopDiscovery = make(chan bool)
-	stopDHTUpdate = make(chan bool)
+	stopDiscovery  = make(chan bool)
+	stopDHTUpdate  = make(chan bool)
 	stopDHTCleanup = make(chan bool)
 )
 

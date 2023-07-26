@@ -51,7 +51,9 @@ var outboundDepReqStream network.Stream
 
 type openStream struct {
 	ID         int
+	StreamID   string
 	TimeOpened string
+	FromPeer   string
 }
 
 func depReqStreamHandler(stream network.Stream) {
@@ -392,7 +394,11 @@ func incomingChatRequests() ([]openStream, error) {
 
 	var out []openStream
 	for idx := 0; idx < len(inboundChatStreams); idx++ {
-		out = append(out, openStream{ID: idx, TimeOpened: inboundChatStreams[idx].Stat().Opened.String()})
+		out = append(out, openStream{
+			ID:         idx,
+			StreamID:   inboundChatStreams[idx].ID(),
+			FromPeer:   inboundChatStreams[idx].Conn().RemotePeer().String(),
+			TimeOpened: inboundChatStreams[idx].Stat().Opened.String()})
 	}
 	return out, nil
 }
