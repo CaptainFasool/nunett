@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.108](#252)
+### Fixed
+- Native ping with cancel
+- DHT cleanup routine context handling
+- Reset ping stream whe not replying
 # [0.4.107](#252)
 ### Fixed
 - Remove wrong context implementation on FetchKadDHTContents
