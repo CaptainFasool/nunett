@@ -460,7 +460,7 @@ func DefaultDepReqPeer(c *gin.Context) {
 		return
 	}
 
-	pingResult, pingCancel := NewPing(c.Request.Context(), targetPeer)
+	pingResult, pingCancel := Ping(c.Request.Context(), targetPeer)
 	defer pingCancel()
 	result := <-pingResult
 	if result.Error == nil {
@@ -530,7 +530,7 @@ func PingPeerHandler(c *gin.Context) {
 		peerInDHT = true
 	}
 
-	pingResult, pingCancel := NewPing(c.Request.Context(), targetPeer)
+	pingResult, pingCancel := Ping(c.Request.Context(), targetPeer)
 	defer pingCancel()
 	result := <-pingResult
 	zlog.Sugar().Infof("Pinged %s --> RTT: %s", targetPeer.String(), result.RTT)
@@ -569,7 +569,7 @@ func OldPingPeerHandler(c *gin.Context) {
 		peerInDHT = true
 	}
 
-	result := OldPingPeer(c.Request.Context(), p2p.Host, targetPeer)
+	result := PingPeer(c.Request.Context(), p2p.Host, targetPeer)
 	zlog.Sugar().Infof("Pinged %s --> RTT: %s", targetPeer.String(), result.RTT)
 	if result.Success {
 		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})

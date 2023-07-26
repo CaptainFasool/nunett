@@ -117,7 +117,7 @@ func HandleRequestService(c *gin.Context) {
 			zlog.Sugar().Errorf("Error decoding peer ID: %v", err)
 			return
 		}
-		pingResult, pingCancel := libp2p.NewPing(c.Request.Context(), targetPeer)
+		pingResult, pingCancel := libp2p.Ping(c.Request.Context(), targetPeer)
 		result := <-pingResult
 		if result.Error == nil {
 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {

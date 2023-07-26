@@ -82,10 +82,10 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	err = p2p.BootstrapNode(ctx)
 	if err != nil {
-		zlog.Sugar().Errorf("Bootstraping failed: %s\n", err)
+		zlog.Sugar().Errorf("Bootstraping failed: %v", err)
 	}
 
-	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler)
+	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler) // to be deprecated
 	host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), PingHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
@@ -96,12 +96,12 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
-		zlog.Sugar().Errorf("metadata.json does not exists or not readable: %s\n", err)
+		zlog.Sugar().Errorf("metadata.json does not exists or not readable: %v", err)
 	}
 	var metadata2 models.MetadataV2
 	err = json.Unmarshal(content, &metadata2)
 	if err != nil {
-		zlog.Sugar().Errorf("unable to parse metadata.json: %s\n", err)
+		zlog.Sugar().Errorf("unable to parse metadata.json: %v", err)
 	}
 
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
@@ -120,7 +120,6 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		host.Peerstore().Put(host.ID(), "peer_info", peerInfo)
 	}
 
-	zlog.Sugar().Debugf("number of p2p.peers: %d", len(p2p.peers))
 	// Start the DHT Update
 	go UpdateKadDHT()
 	go GetDHTUpdates(ctx)
@@ -183,7 +182,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 				for _, conn := range savedConnections {
 					addr, err := multiaddr.NewMultiaddr(conn.Multiaddrs)
 					if err != nil {
-						zlog.Sugar().Error("Unable to convert multiaddr: ", err)
+						zlog.Sugar().Errorf("Unable to convert multiaddr: %v", err)
 					}
 					if err := host.Connect(ctx, peer.AddrInfo{
 						ID:    peer.ID(conn.PeerID),
@@ -296,7 +295,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 	for _, s := range defaultServerFilters {
 		f, err := mafilt.NewMask(s)
 		if err != nil {
-			zlog.Sugar().Errorf("incorrectly formatted address filter in config: %s", s)
+			zlog.Sugar().Errorf("incorrectly formatted address filter in config: %s - %v", s, err)
 		}
 		filter.AddFilter(*f, multiaddr.ActionDeny)
 	}
@@ -380,7 +379,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 		return nil, nil, err
 	}
 
-	zlog.Sugar().Infof("Self Peer Info %s -> %s\n", host.ID(), host.Addrs())
+	zlog.Sugar().Infof("Self Peer Info %s -> %s", host.ID().String(), host.Addrs())
 
 	return host, idht, nil
 }

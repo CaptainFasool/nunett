@@ -75,32 +75,32 @@ func GetConnections() []models.Connection {
 	return connections
 }
 
-// PingPeer pings the given peer and returns the result along with the cancel function
-func NewPing(ctx context.Context, targetPeer peer.ID) (<-chan ping.Result, func()) {
+// Ping pings the given peer and returns the result along with the context cancel function
+func Ping(ctx context.Context, targetPeer peer.ID) (<-chan ping.Result, func()) {
 	pingCtx, pingCancel := context.WithCancel(ctx)
 	pingResult := ping.Ping(pingCtx, p2p.Host, targetPeer)
 	return pingResult, pingCancel
 }
 
+// PingHandler handles an incoming ping. This implementation handles two protocols:
+// 1. The old protocol for backward compatibility (/nunet/dms/ping/0.0.1)
+// 2. The new protocol (/ipfs/ping/1.0.0)
+// The old protocol will be deprecated soon.
 func PingHandler(s network.Stream) {
-	// old protocol will be deprecated soon
-	if s.Protocol() == PingProtocolID { // old protocol
-		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-			zlog.Sugar().Info("Received Old Protocol Ping")
-		}
+	// refuse replying to ping if already running a job
+	if IsDepRespStreamOpen() {
+		zlog.Debug("Refusing to reply to a ping because already running a job")
+		s.Reset()
+		return
+	}
+
+	if s.Protocol() == PingProtocolID {
 		reader := bufio.NewReader(s)
 		writer := bufio.NewWriter(s)
 		data, err := reader.ReadString('\n')
 
 		if err != nil {
-			zlog.Sugar().Errorf("failed to read string from stream: %v\n", err)
-			s.Reset()
-			return
-		}
-
-		// refuse replying to ping if already running a job
-		if IsDepRespStreamOpen() {
-			zlog.Sugar().Info("Refusing to reply to a ping because already running a job")
+			zlog.Sugar().Errorf("failed to read string from stream: %v", err)
 			s.Reset()
 			return
 		}
@@ -108,34 +108,28 @@ func PingHandler(s network.Stream) {
 		// Echo the string back over the stream.
 		_, err = writer.WriteString(data)
 		if err != nil {
-			zlog.Sugar().Errorf("failed to echo string back over stream: %v\n", err)
+			zlog.Sugar().Errorf("failed to echo string back over stream: %v", err)
 			s.Reset()
 			return
 		}
 		err = writer.Flush()
 		if err != nil {
-			zlog.Sugar().Errorf("failed to flush writer: %v\n", err)
+			zlog.Sugar().Errorf("failed to flush writer: %v", err)
 			s.Reset()
 			return
 		}
 	} else {
-		// refuse replying to ping if already running a job
-		if IsDepRespStreamOpen() {
-			zlog.Sugar().Info("Refusing to reply to a ping because already running a job")
-			s.Reset()
-			return
-		}
-
 		pingSrv := ping.PingService{}
 		pingSrv.PingHandler(s)
 	}
 }
 
-func OldPingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResult {
-	zlog.Sugar().Debugf("Pinging peer --> %s", target.String())
+// PingPeer manualy pings the given peer and returns the result which contains success/fail status,
+// RTT and and error message if any.
+// Deprecated: Use Ping instead which returns a channel of ping results and a context cancel function
+func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResult {
 	var pingResult models.PingResult
 	start := time.Now()
-
 	pingCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	// Create a new stream to the target peer using the ping protocol
@@ -190,8 +184,6 @@ func OldPingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingRe
 		pingResult.Error = err
 		return pingResult
 	}
-
-	zlog.Sugar().Debugf("Got pong message: %q from peer: %s", pongMsg, target.String())
 
 	// Check if the pong message is the same as the ping message
 	if pongMsg != "ping"+"\n" {
