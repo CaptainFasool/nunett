@@ -127,12 +127,12 @@ func CalcFreeResources() error {
 }
 
 // CalcFreeResources godoc
-// @Summary      Returns the amount of free resources available
-// @Description  Checks and returns the amount of free resources available
-// @Tags         telemetry
-// @Produce      json
-// @Success      200
-// @Router       /telemetry/free [get]
+//	@Summary		Returns the amount of free resources available
+//	@Description	Checks and returns the amount of free resources available
+//	@Tags			telemetry
+//	@Produce		json
+//	@Success		200
+//	@Router			/telemetry/free [get]
 func GetFreeResource(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/telemetry/free"))

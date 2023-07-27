@@ -34,12 +34,12 @@ func NewClient(sockFile string) *http.Client {
 }
 
 // StartCustom godoc
-// @Summary      Start a VM with custom configuration.
-// @Description  This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
-// @Tags         vm
-// @Produce      json
-// @Success      200
-// @Router       /vm/start-custom [post]
+//	@Summary		Start a VM with custom configuration.
+//	@Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
+//	@Tags			vm
+//	@Produce		json
+//	@Success		200
+//	@Router			/vm/start-custom [post]
 func StartCustom(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/vm/start-custom"))
@@ -128,12 +128,12 @@ func StartCustom(c *gin.Context) {
 }
 
 // StartDefault godoc
-// @Summary      Start a VM with default configuration.
-// @Description  Everything except kernel files and filesystem file will be set by DMS itself.
-// @Tags         vm
-// @Produce      json
-// @Success      200
-// @Router       /vm/start-default [post]
+//	@Summary		Start a VM with default configuration.
+//	@Description	Everything except kernel files and filesystem file will be set by DMS itself.
+//	@Tags			vm
+//	@Produce		json
+//	@Success		200
+//	@Router			/vm/start-default [post]
 func StartDefault(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/vm/start-default"))

@@ -78,10 +78,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Metadata"
-                            }
+                            "$ref": "#/definitions/models.Metadata"
                         }
                     }
                 }
@@ -101,10 +98,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Metadata"
-                            }
+                            "$ref": "#/definitions/models.Metadata"
                         }
                     }
                 }
@@ -143,10 +137,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Metadata"
-                            }
+                            "$ref": "#/definitions/models.Metadata"
                         }
                     }
                 }
@@ -325,6 +316,9 @@ const docTemplate = `{
         "/run/deploy": {
             "get": {
                 "description": "Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.",
+                "tags": [
+                    "run"
+                ],
                 "summary": "Websocket endpoint responsible for sending deployment request and receiving deployment response.",
                 "responses": {
                     "200": {
@@ -339,19 +333,54 @@ const docTemplate = `{
         "/run/request-reward": {
             "post": {
                 "description": "HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.",
+                "tags": [
+                    "run"
+                ],
                 "summary": "Get NTX tokens for work done.",
-                "responses": {}
+                "parameters": [
+                    {
+                        "description": "Claim Reward Body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/tokenomics.ClaimCardanoTokenBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/tokenomics.rewardRespToCPD"
+                        }
+                    }
+                }
             }
         },
         "/run/request-service": {
             "post": {
                 "description": "HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.",
+                "tags": [
+                    "run"
+                ],
                 "summary": "Informs parameters related to blockchain to request to run a service on NuNet",
+                "parameters": [
+                    {
+                        "description": "Deployment Request",
+                        "name": "deployment_request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeploymentRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/machines.fundingRespToSPD"
                         }
                     }
                 }
@@ -360,7 +389,21 @@ const docTemplate = `{
         "/run/send-status": {
             "post": {
                 "description": "HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.",
+                "tags": [
+                    "run"
+                ],
                 "summary": "Sends blockchain status of contract creation.",
+                "parameters": [
+                    {
+                        "description": "Blockchain Transaction Status Body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/machines.BlockchainTxStatus"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -424,6 +467,34 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "machines.BlockchainTxStatus": {
+            "type": "object",
+            "properties": {
+                "transaction_status": {
+                    "type": "string"
+                },
+                "transaction_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "machines.fundingRespToSPD": {
+            "type": "object",
+            "properties": {
+                "compute_provider_addr": {
+                    "type": "string"
+                },
+                "estimated_price": {
+                    "type": "number"
+                },
+                "oracle_message": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                }
+            }
+        },
         "models.BlockchainAddressPrivKey": {
             "type": "object",
             "properties": {
@@ -435,6 +506,103 @@ const docTemplate = `{
                 },
                 "private_key": {
                     "type": "string"
+                }
+            }
+        },
+        "models.DeploymentRequest": {
+            "type": "object",
+            "properties": {
+                "address_user": {
+                    "description": "service provider wallet address",
+                    "type": "string"
+                },
+                "blockchain": {
+                    "type": "string"
+                },
+                "constraints": {
+                    "type": "object",
+                    "properties": {
+                        "complexity": {
+                            "type": "string"
+                        },
+                        "cpu": {
+                            "type": "integer"
+                        },
+                        "power": {
+                            "type": "integer"
+                        },
+                        "ram": {
+                            "type": "integer"
+                        },
+                        "time": {
+                            "type": "integer"
+                        },
+                        "vram": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "max_ntx": {
+                    "type": "integer"
+                },
+                "params": {
+                    "type": "object",
+                    "properties": {
+                        "image_id": {
+                            "type": "string"
+                        },
+                        "local_node_id": {
+                            "description": "NodeID of service provider (machine triggering the job)",
+                            "type": "string"
+                        },
+                        "local_public_key": {
+                            "description": "Public key of service provider",
+                            "type": "string"
+                        },
+                        "machine_type": {
+                            "type": "string"
+                        },
+                        "model_url": {
+                            "type": "string"
+                        },
+                        "node_id": {
+                            "description": "NodeID of compute provider (machine to deploy the job on)",
+                            "type": "string"
+                        },
+                        "packages": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "public_key": {
+                            "description": "Public key of compute provider",
+                            "type": "string"
+                        }
+                    }
+                },
+                "service_type": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "traceinfo": {
+                    "type": "object",
+                    "properties": {
+                        "span_id": {
+                            "type": "string"
+                        },
+                        "trace_flags": {
+                            "type": "string"
+                        },
+                        "trace_id": {
+                            "type": "string"
+                        },
+                        "trace_state": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },
@@ -507,13 +675,35 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "tokenomics.ClaimCardanoTokenBody": {
+            "type": "object",
+            "properties": {
+                "compute_provider_address": {
+                    "type": "string"
+                }
+            }
+        },
+        "tokenomics.rewardRespToCPD": {
+            "type": "object",
+            "properties": {
+                "oracle_message": {
+                    "type": "string"
+                },
+                "reward_type": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                }
+            }
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.108",
+	Version:          "0.4.109",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

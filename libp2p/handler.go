@@ -26,12 +26,12 @@ import (
 var clients = make(map[internal.WebSocketConnection]string)
 
 // ListPeers  godoc
-// @Summary      Return list of peers currently connected to
-// @Description  Gets a list of peers the libp2p node can see within the network and return a list of peers
-// @Tags         p2p
-// @Produce      json
-// @Success      200  {string}	string
-// @Router       /peers [get]
+//	@Summary		Return list of peers currently connected to
+//	@Description	Gets a list of peers the libp2p node can see within the network and return a list of peers
+//	@Tags			p2p
+//	@Produce		json
+//	@Success		200	{string}	string
+//	@Router			/peers [get]
 func ListPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers"))
@@ -57,12 +57,12 @@ func ListPeers(c *gin.Context) {
 }
 
 // ListPeers  godoc
-// @Summary      Return list of peers which have sent a dht update
-// @Description  Gets a list of peers the libp2p node has received a dht update from
-// @Tags         p2p
-// @Produce      json
-// @Success      200  {string}	string
-// @Router       /peers/dht [get]
+//	@Summary		Return list of peers which have sent a dht update
+//	@Description	Gets a list of peers the libp2p node has received a dht update from
+//	@Tags			p2p
+//	@Produce		json
+//	@Success		200	{string}	string
+//	@Router			/peers/dht [get]
 func ListDHTPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/dht"))
@@ -105,12 +105,12 @@ func ListDHTPeers(c *gin.Context) {
 }
 
 // ListKadDHTPeers  godoc
-// @Summary      Return list of peers which have sent a dht update
-// @Description  Gets a list of peers the libp2p node has received a dht update from
-// @Tags         p2p
-// @Produce      json
-// @Success      200  {string}	string
-// @Router       /peers/kad-dht [get]
+//	@Summary		Return list of peers which have sent a dht update
+//	@Description	Gets a list of peers the libp2p node has received a dht update from
+//	@Tags			p2p
+//	@Produce		json
+//	@Success		200	{string}	string
+//	@Router			/peers/kad-dht [get]
 func ListKadDHTPeers(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/kad-dht"))
@@ -170,12 +170,12 @@ func ListKadDHTPeers(c *gin.Context) {
 }
 
 // SelfPeerInfo  godoc
-// @Summary      Return self peer info
-// @Description  Gets self peer info of libp2p node
-// @Tags         p2p
-// @Produce      json
-// @Success      200  {string}	string
-// @Router       /peers/self [get]
+//	@Summary		Return self peer info
+//	@Description	Gets self peer info of libp2p node
+//	@Tags			p2p
+//	@Produce		json
+//	@Success		200	{string}	string
+//	@Router			/peers/self [get]
 func SelfPeerInfo(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/self"))
@@ -201,12 +201,12 @@ func SelfPeerInfo(c *gin.Context) {
 }
 
 // ListChatHandler  godoc
-// @Summary      List chat requests
-// @Description  Get a list of chat requests from peers
-// @Tags         chat
-// @Produce      json
-// @Success      200
-// @Router       /peers/chat [get]
+//	@Summary		List chat requests
+//	@Description	Get a list of chat requests from peers
+//	@Tags			chat
+//	@Produce		json
+//	@Success		200
+//	@Router			/peers/chat [get]
 func ListChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat"))
@@ -224,12 +224,12 @@ func ListChatHandler(c *gin.Context) {
 }
 
 // ClearChatHandler  godoc
-// @Summary      Clear chat requests
-// @Description  Clear chat request streams from peers
-// @Tags         chat
-// @Produce      json
-// @Success      200
-// @Router       /peers/chat/clear [get]
+//	@Summary		Clear chat requests
+//	@Description	Clear chat request streams from peers
+//	@Tags			chat
+//	@Produce		json
+//	@Success		200
+//	@Router			/peers/chat/clear [get]
 func ClearChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat/clear"))
@@ -246,11 +246,11 @@ func ClearChatHandler(c *gin.Context) {
 }
 
 // StartChatHandler  godoc
-// @Summary      Start chat with a peer
-// @Description  Start chat session with a peer
-// @Tags         chat
-// @Success      200
-// @Router       /peers/chat/start [get]
+//	@Summary		Start chat with a peer
+//	@Description	Start chat session with a peer
+//	@Tags			chat
+//	@Success		200
+//	@Router			/peers/chat/start [get]
 func StartChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat/start"))
@@ -307,11 +307,11 @@ func StartChatHandler(c *gin.Context) {
 }
 
 // JoinChatHandler  godoc
-// @Summary      Join chat with a peer
-// @Description  Join a chat session started by a peer
-// @Tags         chat
-// @Success      200
-// @Router       /peers/chat/join [get]
+//	@Summary		Join chat with a peer
+//	@Description	Join a chat session started by a peer
+//	@Tags			chat
+//	@Success		200
+//	@Router			/peers/chat/join [get]
 func JoinChatHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/chat/join"))
@@ -365,12 +365,12 @@ func JoinChatHandler(c *gin.Context) {
 }
 
 // DumpDHT  godoc
-// @Summary      Return a dump of the dht
-// @Description  Returns entire DHT content
-// @Tags         p2p
-// @Produce      json
-// @Success      200  {string}	string
-// @Router       /dht [get]
+//	@Summary		Return a dump of the dht
+//	@Description	Returns entire DHT content
+//	@Tags			p2p
+//	@Produce		json
+//	@Success		200	{string}	string
+//	@Router			/dht [get]
 func DumpDHT(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/dht"))
@@ -414,13 +414,13 @@ func DumpDHT(c *gin.Context) {
 }
 
 // DefaultDepReqPeer  godoc
-// @Summary      Manage default deplyment request receiver peer
-// @Description  Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request.
-// @Description  Show peer set as default deployment request receiver by sending a GET request without any parameters.
-// @Description  Remove default deployment request receiver by sending a GET request with peerID parameter set to '0'.
-// @Tags         peers
-// @Success      200
-// @Router       /peers/depreq [get]
+//	@Summary		Manage default deplyment request receiver peer
+//	@Description	Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request.
+//	@Description	Show peer set as default deployment request receiver by sending a GET request without any parameters.
+//	@Description	Remove default deployment request receiver by sending a GET request with peerID parameter set to '0'.
+//	@Tags			peers
+//	@Success		200
+//	@Router			/peers/depreq [get]
 func DefaultDepReqPeer(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/depreq"))

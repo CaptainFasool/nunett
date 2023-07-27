@@ -20,7 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
-# [0.4.108](#252)
+# [0.4.109](#256)
+### Added
+- Add request and response struct for swagger docs
+- Generate latest docs
+- Add swag directly to project
+# [0.4.108](#243)
 ### Fixed
 - Native ping with cancel
 - DHT cleanup routine context handling
