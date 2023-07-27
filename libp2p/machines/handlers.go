@@ -33,13 +33,23 @@ type BlockchainTxStatus struct {
 	TransactionStatus string `json:"transaction_status"`
 }
 
+type fundingRespToSPD struct {
+	ComputeProviderAddr string  `json:"compute_provider_addr"`
+	EstimatedPrice      float64 `json:"estimated_price"`
+	Signature           string  `json:"signature"`
+	OracleMessage       string  `json:"oracle_message"`
+}
+
 var depreqWsConn *internal.WebSocketConnection
 
 // HandleRequestService  godoc
-// @Summary      Informs parameters related to blockchain to request to run a service on NuNet
-// @Description  HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
-// @Success      200  {string}  string
-// @Router       /run/request-service [post]
+//
+//	@Summary		Informs parameters related to blockchain to request to run a service on NuNet
+//	@Description	HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
+//	@Tags			run
+//	@Param			deployment_request	body		models.DeploymentRequest	true	"Deployment Request"
+//	@Success		200					{object}	fundingRespToSPD
+//	@Router			/run/request-service [post]
 func HandleRequestService(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/request-service"))
@@ -179,26 +189,23 @@ func HandleRequestService(c *gin.Context) {
 	}
 
 	// oracle outputs: compute provider user address, estimated price, signature, oracle message
-	fundingRespToWebapp := struct {
-		ComputeProviderAddr string  `json:"compute_provider_addr"`
-		EstimatedPrice      float64 `json:"estimated_price"`
-		Signature           string  `json:"signature"`
-		OracleMessage       string  `json:"oracle_message"`
-	}{
+	resp := fundingRespToSPD{
 		ComputeProviderAddr: computeProvider.TokenomicsAddress,
 		EstimatedPrice:      estimatedNtx,
 		Signature:           fcr.Signature,
 		OracleMessage:       fcr.OracleMessage,
 	}
-	c.JSON(200, fundingRespToWebapp)
+	c.JSON(200, resp)
 	go outgoingDepReqWebsock()
 }
 
 // HandleDeploymentRequest  godoc
-// @Summary      Websocket endpoint responsible for sending deployment request and receiving deployment response.
-// @Description  Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.
-// @Success      200  {string}  string
-// @Router       /run/deploy [get]
+//
+//	@Summary		Websocket endpoint responsible for sending deployment request and receiving deployment response.
+//	@Description	Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.
+//	@Tags			run
+//	@Success		200	{string}	string
+//	@Router			/run/deploy [get]
 func HandleDeploymentRequest(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
@@ -457,10 +464,13 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection)
 }
 
 // HandleSendStatus  godoc
-// @Summary      Sends blockchain status of contract creation.
-// @Description  HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.
-// @Success      200  {string}  string
-// @Router       /run/send-status [post]
+//
+//	@Summary		Sends blockchain status of contract creation.
+//	@Description	HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.
+//	@Tags			run
+//	@Param			body	body		BlockchainTxStatus	true	"Blockchain Transaction Status Body"
+//	@Success		200		{string}	string
+//	@Router			/run/send-status [post]
 func HandleSendStatus(c *gin.Context) {
 	// TODO: This is a stub function. Replace the logic to talk with Oracle.
 	rand.Seed(time.Now().Unix())
