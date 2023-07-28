@@ -21,7 +21,6 @@ var Done chan bool
 func Heartbeat() {
 	// Create a ticker that ticks every 1 minutes
 	ticker := time.NewTicker(1 * time.Minute)
-
 	// Start a goroutine to perform the repeated function calls
 	go func() {
 		for {
@@ -114,6 +113,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
+		return
 	}
 
 	indexName := "apm-nunet-dms-heartbeat"
@@ -142,8 +142,8 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	// Set a seed value based on the current time
 
 	// Generate a random integer between 1 and 100
-	randomNumber := rand.Intn(100) + 1
-	docMap["callid"] = randomNumber
+	randomNumber := rand.Intn(100000) + 1
+	docMap["callid"] = callid
 	documentID := strconv.Itoa(randomNumber)
 
 	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
@@ -164,6 +164,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	res, err := req.Do(context.Background(), es)
 	if err != nil {
 		zlog.Sugar().Errorf("Error indexing document: %v", err)
+		return
 	}
 	defer res.Body.Close()
 

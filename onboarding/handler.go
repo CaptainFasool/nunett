@@ -28,12 +28,13 @@ var FS afero.Fs = afero.NewOsFs()
 var AFS *afero.Afero = &afero.Afero{Fs: FS}
 
 // GetMetadata      godoc
-// @Summary      Get current device info.
-// @Description  Responds with metadata of current provideer
-// @Tags         onboarding
-// @Produce      json
-// @Success      200  {array}        models.Metadata
-// @Router       /onboarding/metadata [get]
+//
+//	@Summary		Get current device info.
+//	@Description	Responds with metadata of current provideer
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.Metadata
+//	@Router			/onboarding/metadata [get]
 func GetMetadata(c *gin.Context) {
 	// check if the request has any body data
 	// if it has return that body  and skip the below code
@@ -64,12 +65,13 @@ func GetMetadata(c *gin.Context) {
 }
 
 // Onboard      godoc
-// @Summary      Runs the onboarding process.
-// @Description  Onboard runs onboarding script given the amount of resources to onboard.
-// @Tags         onboarding
-// @Produce      json
-// @Success      200  {array}  models.Metadata
-// @Router       /onboarding/onboard [post]
+//
+//	@Summary		Runs the onboarding process.
+//	@Description	Onboard runs onboarding script given the amount of resources to onboard.
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.Metadata
+//	@Router			/onboarding/onboard [post]
 func Onboard(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/onboarding/onboard"))
@@ -235,12 +237,13 @@ func Onboard(c *gin.Context) {
 }
 
 // ProvisionedCapacity      godoc
-// @Summary      Returns provisioned capacity on host.
-// @Description  Get total memory capacity in MB and CPU capacity in MHz.
-// @Tags         onboarding
-// @Produce      json
-// @Success      200  {object}  models.Provisioned
-// @Router       /onboarding/provisioned [get]
+//
+//	@Summary		Returns provisioned capacity on host.
+//	@Description	Get total memory capacity in MB and CPU capacity in MHz.
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.Provisioned
+//	@Router			/onboarding/provisioned [get]
 func ProvisionedCapacity(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/onboarding/provisioned"))
@@ -255,12 +258,13 @@ func ProvisionedCapacity(c *gin.Context) {
 }
 
 // CreatePaymentAddress      godoc
-// @Summary      Create a new payment address.
-// @Description  Create a payment address from public key. Return payment address and private key.
-// @Tags         onboarding
-// @Produce      json
-// @Success      200  {object}  models.BlockchainAddressPrivKey
-// @Router       /onboarding/address/new [get]
+//
+//	@Summary		Create a new payment address.
+//	@Description	Create a payment address from public key. Return payment address and private key.
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.BlockchainAddressPrivKey
+//	@Router			/onboarding/address/new [get]
 func CreatePaymentAddress(c *gin.Context) {
 	// send telemetry data
 	span := trace.SpanFromContext(c.Request.Context())
@@ -285,11 +289,12 @@ func CreatePaymentAddress(c *gin.Context) {
 }
 
 // Config        godoc
-// @Summary      changes the amount of resources of onboarded device .
-// @Tags         onboarding
-// @Produce      json
-// @Success      200  {array}  models.Metadata
-// @Router       /onboarding/resource-config [post]
+//
+//	@Summary	changes the amount of resources of onboarded device .
+//	@Tags		onboarding
+//	@Produce	json
+//	@Success	200	{object}	models.Metadata
+//	@Router		/onboarding/resource-config [post]
 func ResourceConfig(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/onboarding/resource-config"))

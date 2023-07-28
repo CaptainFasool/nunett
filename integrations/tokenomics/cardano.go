@@ -15,10 +15,20 @@ type ClaimCardanoTokenBody struct {
 	ComputeProviderAddress string `json:"compute_provider_address"`
 }
 
+type rewardRespToCPD struct {
+	Signature     string `json:"signature,omitempty"`
+	OracleMessage string `json:"oracle_message,omitempty"`
+	RewardType    string `json:"reward_type,omitempty"`
+}
+
 // HandleRequestReward  godoc
-// @Summary      Get NTX tokens for work done.
-// @Description  HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.
-// @Router       /run/request-reward [post]
+//
+//	@Summary		Get NTX tokens for work done.
+//	@Description	HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.
+//	@Tags			run
+//	@Param			body	body		ClaimCardanoTokenBody	true	"Claim Reward Body"
+//	@Success		200		{object}	rewardRespToCPD
+//	@Router			/run/request-reward [post]
 func HandleRequestReward(c *gin.Context) {
 	rand.Seed(time.Now().Unix())
 
@@ -44,10 +54,16 @@ func HandleRequestReward(c *gin.Context) {
 	}
 
 	// Send the service data to oracle for examination
-	resp, err := oracle.WithdrawTokenRequest(service)
+	oracleResp, err := oracle.WithdrawTokenRequest(service)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "connetction to oracle failed"})
 		return
+	}
+
+	resp := rewardRespToCPD{
+		Signature:     oracleResp.Signature,
+		OracleMessage: oracleResp.OracleMessage,
+		RewardType:    oracleResp.RewardType,
 	}
 
 	c.JSON(200, resp)

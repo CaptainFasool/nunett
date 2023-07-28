@@ -16,6 +16,16 @@ SELF_NAME=$(basename $0)
 DMS_HOST=localhost
 DMS_PORT=9999
 
+# WSL Checker
+
+# Use the uname command with the -a option to get system information
+system_info=$(uname -a)
+
+# Use grep to search for the string "microsoft" in the system information
+if echo "$system_info" | grep -qi "microsoft"; then
+    wsl=true
+fi
+
 usage() {
     echo -e "Usage: $SELF_NAME [OPTIONS] COMMAND\n"
     echo -e "Command line interface for the NuNet Device Management Service.\n"
@@ -146,8 +156,8 @@ resource_config_usage() {
 }
 
 gpu_status() {
-    if ! command -v nvidia-smi > /dev/null || ! command -v rocm-smi > /dev/null; then
-        printf "${BAD_C}Unable to find 'nvidia-smi' or 'rocm-smi'.\nNo NVIDIA or AMD GPU, or driver not installed. ${NORMAL_C}\n"
+    if ! command -v nvidia-smi > /dev/null && ! command -v rocm-smi > /dev/null; then
+        printf "${BAD_C}Unable to find 'nvidia-smi' or 'rocm-smi'.\nNeither NVIDIA nor AMD GPU driver is installed.${NORMAL_C}\n"
         exit
     fi
 
@@ -475,20 +485,34 @@ onboard() {
     while :
         do
             case "$1" in
-                -m | --memory)        N_ONBOARD_MEM="$2"         ; shift 2 ;;
-                -c | --cpu)           N_ONBOARD_CPU="$2"         ; shift 2 ;;
-                -n | --nunet-channel) N_ONBOARD_CHAN="$2"        ; shift 2 ;;
-                -a | --address)       N_ONBOARD_ADD="$2"         ; shift 2 ;;
-                -C | --cardano)       N_ONBOARD_CARDANO=true     ; shift ;;
-                -l | --local-enable)        N_ONBOARD_SERVER_MODE=false ; shift ;;
-                -v | --verbose)       N_ONBOARD_VERBOSE=1        ; shift ;;
-                -p | --pretty)        N_ONBOARD_PRETTY=1         ; shift ;;
+                -m | --memory)        N_ONBOARD_MEM="${2%.*}"         ; shift 2 ;;
+                -c | --cpu)           N_ONBOARD_CPU="${2%.*}"         ; shift 2 ;;
+                -n | --nunet-channel) N_ONBOARD_CHAN="$2"             ; shift 2 ;;
+                -a | --address)       N_ONBOARD_ADD="$2"              ; shift 2 ;;
+                -C | --cardano)       N_ONBOARD_CARDANO=true          ; shift ;;
+                -l | --local-enable)  N_ONBOARD_SERVER_MODE=false     ; shift ;;
+                -v | --verbose)       N_ONBOARD_VERBOSE=1             ; shift ;;
+                -p | --pretty)        N_ONBOARD_PRETTY=1              ; shift ;;
                 --) shift; break ;;
                 *) echo "Unexpected option: $1."
                     onboard_usage ;;
             esac
     done
 
+    # check if already onboarded
+    N_INFO=$(info)
+    if [[ ! $N_INFO == *"Error:"* ]] ; then
+        while true; do
+            read -p "You are already onboarded. Do you want to onboard again with new settings? (yes/no) " new_onboard_resp
+            case $new_onboard_resp in
+                yes ) echo "Proceeding with new onboarding...";
+                    break;;
+                no) echo "Exiting...";
+                    exit;;
+                *) echo "Only 'yes' or 'no' please";;
+            esac
+        done
+    fi
 
     # validation
     [[ -z $N_ONBOARD_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && onboard_usage
@@ -543,12 +567,8 @@ onboard() {
 
 gpu_info() {
 
-    # Use the uname command with the -a option to get system information
-    system_info=$(uname -a)
-
-    # Use grep to search for the string "microsoft" in the system information
-    if echo "$system_info" | grep -qi "microsoft"; then
-        # The string "microsoft" was found, so this is a WSL console
+    # First look for a WSL console
+    if [ "$wsl" = true ]; then
         printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have an NVIDIA GPU and have installed the latest Windows Driver for your NVIDIA GPU before proceeding. AMD GPUs on WSL is not supported.${NORMAL_C}\n"
         sleep 5 # adding some time to read the message
     else
@@ -649,9 +669,6 @@ peer() {
                 "list")
                     N_LIST_PEERS=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers)
                     N_LIST_PEERS_DHT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/dht)
-                    if [[ "$NUNET_DEBUG" == "true" ]]; then
-                        N_LIST_PEERS_KAD_DHT=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/kad-dht)
-                    fi
                     ;;
                 "self")
                     N_SELF_PEER=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/self)
@@ -695,21 +712,7 @@ peer() {
             printf "\n${UNDERLINE}DHT peers${NORMAL}\n"
             echo "$N_LIST_PEERS_DHT" | jq --raw-output '(.[])'
         fi
-    fi
-    if [[ "$NUNET_DEBUG" == "true" ]]; then
-        if [[ -v N_LIST_PEERS_KAD_DHT ]] ; then
-            N_LIST_PEERS_KAD_DHT_ERR_MSG=$(echo $N_LIST_PEERS_KAD_DHT | jq '. | select(.error != null) | .error' 2>/dev/null)
-            if [[ ! -z "$N_LIST_PEERS_KAD_DHT_ERR_MSG" ]] ; then
-                printf "${BAD_C}Error: $N_LIST_PEERS_KAD_DHT_ERR_MSG ${NORMAL_C}\n"
-            elif [[ N_LIST_PEERS_KAD_DHT == "" ]] ; then
-                printf "${BAD_C}No peers available in DHT. Please try again in a few minutes.${NORMAL_C}\n"
-            else
-                printf "\n${UNDERLINE}KAD DHT peers${NORMAL}\n"
-                echo "$N_LIST_PEERS_KAD_DHT" | jq --raw-output '(.[])'
-            fi
-        fi
-    fi
-    
+    fi    
 }
 
 default-depreq-peer() {
@@ -741,10 +744,10 @@ resource-config() {
     while :
         do
             case "$1" in
-                -m | --memory)        N_CONFIG_MEM="$2"         ; shift 2 ;;
-                -c | --cpu)           N_CONFIG_CPU="$2"         ; shift 2 ;;
-                -v | --verbose)       N_CONFIG_VERBOSE=1        ; shift ;;
-                -p | --pretty)        N_CONFIG_PRETTY=1         ; shift ;;
+                -m | --memory)        N_CONFIG_MEM="${2%.*}"         ; shift 2 ;;
+                -c | --cpu)           N_CONFIG_CPU="${2%.*}"         ; shift 2 ;;
+                -v | --verbose)       N_CONFIG_VERBOSE=1             ; shift ;;
+                -p | --pretty)        N_CONFIG_PRETTY=1              ; shift ;;
                 --) shift; break ;;
                 *) echo "Unexpected option: $1."
                     config_usage ;;
@@ -796,7 +799,7 @@ chat_list() {
     N_CHAT_LIST=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/peers/chat)
     N_CHAT_LIST_ERR_MSG=$(echo $N_CHAT_LIST | jq '. | select(.error != null) | .error' 2>/dev/null)
     if [[ -z "$N_CHAT_LIST_ERR_MSG" ]] ; then
-        echo $N_CHAT_LIST | jq --raw-output '["ID", "Time-Opened"],(.[] | [.ID , .TimeOpened]) | @tsv'
+        echo $N_CHAT_LIST | jq --raw-output '["ID", "From", "Time-Opened"],(.[] | [.ID , .FromPeer , .TimeOpened]) | @tsv' | column -t
     else
         printf "${BAD_C}Error: $N_CHAT_LIST_ERR_MSG ${NORMAL_C}\n"
     fi
@@ -861,17 +864,39 @@ secure_boot_check() {
     fi
 }
 
+## Let the DMS systemd service see the path variable in mining operating systems(based on Ubuntu 18.04) to enable cross vendor GPU support
+add-mining-os-path() {
+
+    # Full path to the nunet-dms systemd service file
+    nunet_dms_systemd_file="/etc/systemd/system/nunet-dms.service"
+
+    # Get the current PATH
+    mining_os_path=$(echo $PATH)
+
+    # Check if the PATH already exists in the file(avoid adding multiple entries if GPU onboarding is required more than once)
+    if ! grep -q "Environment=\"PATH=${mining_os_path}\"" ${nunet_dms_systemd_file}; then
+
+        # Use sed to append the new Environment line after the existing one
+        sudo sed -i "/Environment=/a Environment=\"PATH=${mining_os_path}\"" ${nunet_dms_systemd_file}
+
+        # Reload the systemd daemon
+        sudo systemctl daemon-reload
+
+        # Restart the service
+        sudo systemctl restart nunet-dms
+    fi
+}
+
+
+
 ## Install NVIDIA GPU Drivers and Container Runtime
 onboard-gpu() {
 
     # WSL code block
 
-    # Use the uname command with the -a option to get system information
-    system_info=$(uname -a)
-
-    # Use grep to search for the string "microsoft" in the system information
-    if echo "$system_info" | grep -qi "microsoft"; then
-    # The string "microsoft" was found, so this is a WSL console
+    # Look for a WSL console
+    if [ "$wsl" = true ]; then
+        # The string "microsoft" was found, so this is a WSL console
         printf "${INFO_C}You are using Windows Subsystem for Linux. Make sure you have installed the latest Windows Driver for your NVIDIA GPU before proceeding. AMD GPUs on WSL is not supported.${NORMAL_C}\n"
         sleep 5 # adding some time to read the message
 
@@ -904,6 +929,7 @@ onboard-gpu() {
            printf "${INFO_C}Note: For best performance without sharing resources, a dedicated Linux machine is highly recommended for running ML jobs on NuNet.${NORMAL_C}\n"
            sleep 5
            printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
+           printf "${INFO_C}We highly recommend restarting your Windows machine after onboarding your NVIDIA GPU(s) for the first time.${NORMAL_C}\n"
            exit
          fi
     fi
@@ -917,16 +943,20 @@ onboard-gpu() {
     if echo "$OS_INFO" | grep -Eiq "Hive|Rave|PiMP|Minerstat|SimpleMining|NH|Miner|SM|MMP"; then
         mining_os=true
     fi
-    
+
+    if [ "$mining_os" = true ]; then
+        add-mining-os-path
+    fi
+
     nvidia_gpu_exists="$(lshw -c display 2>/dev/null | grep -i nvidia)"
     amd_gpu_exists="$(lshw -c display 2>/dev/null | grep -i 'amd/ati')"
 
     # CHECK IF THERE IS NVIDIA GPU
     if [ -n "$nvidia_gpu_exists" ]; then
-        printf "${GOOD_C}GPU device found! ${NORMAL_C}\n"
+        printf "${GOOD_C}NVIDIA GPU(s) detected! ${NORMAL_C}\n"
         all_gpus=$(nvidia-smi -L 2>/dev/null)
         if [ $? -eq 0 ]; then
-            printf "${INFO_C}All available GPU(s):\n$all_gpus ${NORMAL_C}\n"
+            printf "${INFO_C}All available NVIDIA GPU(s):\n$all_gpus ${NORMAL_C}\n"
             sleep 3 #adding some time for the onboarder to see all GPUs on the machine
 
             gpu_driver_version="$(nvidia-smi 2>/dev/null | grep Driver | awk '{print "NVIDIA " $4 " " $5 " " $6}')" # the gpu driver version
@@ -936,6 +966,7 @@ onboard-gpu() {
             # if machine is running a mining OS, we skip NVIDIA GPU driver installation and only install NVIDIA container runtime
             if [ "$mining_os" = true ]; then
                 printf "${INFO_C}Mining operating system detected. Skipping installation of NVIDIA GPU Driver.${NORMAL_C}\n"
+                exit
             # if gpu_driver_var is not empty we skip GPU driver installation AND only install NVIDIA container runtime
             elif [ -n "$gpu_driver_var" ]; then #IF $gpu_driver_var contains the word "Driver"
                 printf "${INFO_C}$gpu_driver_version is already installed. Skipping installation of NVIDIA GPU Driver.${NORMAL_C}\n"
@@ -956,13 +987,18 @@ onboard-gpu() {
         sudo apt install -y nvidia-container-runtime
         sudo systemctl restart docker
         printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
+        printf "${INFO_C}We highly recommend restarting your Linux machine after onboarding your NVIDIA GPU(s) for the first time.${NORMAL_C}\n"        
+    else
+        # IF THERE IS NO NVIDIA GPU THE nvidia_gpu_exists VARIABLE WILL BE EMPTY SO WE REPORT MISSING GPU
+        printf "${INFO_C}This machine does not have an NVIDIA GPU. Skipping NVIDIA GPU Driver Installation.${NORMAL_C}\n"
+    fi
 
     # CHECK IF THERE IS AMD GPU
-    elif [ -n "$amd_gpu_exists" ]; then
-        printf "${GOOD_C}GPU device found! ${NORMAL_C}\n"
+    if [ -n "$amd_gpu_exists" ]; then
+        printf "${GOOD_C}AMD GPU(S) detected! ${NORMAL_C}\n"
         all_gpus=$(rocm-smi --showid --showproductname 2>/dev/null | grep 'Card series' | awk -F'[][]' '{printf "AMD " $4 "\n"}')
         if [ $? -eq 0 ]; then
-            printf "${INFO_C}All available GPU(s):\n$all_gpus ${NORMAL_C}\n"
+            printf "${INFO_C}All available AMD GPU(s):\n$all_gpus ${NORMAL_C}\n"
             sleep 3 #adding some time for the onboarder to see all GPUs on the machine
 
             gpu_driver_version="$(rocm-smi --showdriverversion 2>/dev/null | grep 'Driver version' | awk '{print $3}')"
@@ -971,6 +1007,7 @@ onboard-gpu() {
             # if machine is running a mining operating system, we skip AMD GPU driver installation and no container runtime installation is necessary
             if [ "$mining_os" = true ]; then
                 printf "${INFO_C}Mining operating system detected. Skipping installation of AMD GPU ROCm Kernel Driver.${NORMAL_C}\n"
+                exit
             # if gpu_driver_var is not empty we skip GPU driver installation and no container runtime installation is necessary
             elif [ -n "$gpu_driver_version" ]; then #IF $gpu_driver_version is not empty
                 printf "${INFO_C}AMD ROCm Kernel Driver Version: $gpu_driver_version is already installed. Skipping installation of AMD GPU ROCm Kernel Driver.${NORMAL_C}\n"
@@ -979,11 +1016,13 @@ onboard-gpu() {
             fi
         else
             install_amdgpu_driver
-        fi    
+        fi
+        printf "${INFO_C}We highly recommend restarting your Linux machine after onboarding your AMD GPU(s) for the first time.${NORMAL_C}\n"
     else
-        # IF THERE IS NO NVIDIA or AMD GPU THE nvidia_gpu_exists AND amd_gpu_exists VARIABLE WILL BE EMPTY SO WE REPORT MISSING GPU
-        printf "${INFO_C}This machine does not have an NVIDIA or AMD GPU. Skipping GPU Driver Installation.${NORMAL_C}\n"
+        # IF THERE IS NO AMD GPU THE amd_gpu_exists VARIABLE WILL BE EMPTY SO WE REPORT MISSING GPU
+        printf "${INFO_C}This machine does not have an AMD GPU. Skipping AMD GPU ROCm Kernel Driver Installation.${NORMAL_C}\n"
     fi
+    
 }
 
 install_nvidiagpu_driver()
@@ -1000,15 +1039,15 @@ install_nvidiagpu_driver()
         if [ "$ubuntu_version" == "18.04" ]; then
             sleep 1 # without this, text from the "apt update" output may get overlapped with the below line when printing
             printf "${INFO_C}Detected Ubuntu 18.04. Installing NVIDIA Driver Series 520...${NORMAL_C}"
-            sudo apt install nvidia-driver-525 # may change later based on ML performance
+            sudo apt install nvidia-driver-525 # may change later based on ML functionality/performance
         elif [ "$ubuntu_version" == "20.04" ]; then
             sleep 1 # without this, text from the "apt update" output may get overlapped with the below line when printing
             printf "${INFO_C}Detected Ubuntu 20.04. Installing NVIDIA Driver Series 520...${NORMAL_C}"
-            sudo apt install nvidia-driver-525 # may change later based on ML performance
+            sudo apt install nvidia-driver-525 # may change later based on ML functionality/performance
         elif [ "$ubuntu_version" == "22.04" ]; then
             sleep 1 # without this, text from the "apt update" output may get overlapped with the below line when printing
             printf "${INFO_C}Detected Ubuntu 22.04. Installing NVIDIA Driver Series 520...${NORMAL_C}"
-            sudo apt install nvidia-driver-525 # may change later based on ML performance
+            sudo apt install nvidia-driver-525 # may change later based on ML functionality/performance
         else
             printf "${BAD_C}Unsupported Ubuntu version: $ubuntu_version${NORMAL_C}"
         fi
@@ -1085,12 +1124,29 @@ install_amdgpu_driver()
 
 
 
-# Onboarding for ML jobs
-onboard-ml()
+fetch_ml_images_wsl()
+{  
+    # WSL supports only NVIDIA GPUs as on June 26 2023
+    # Check if NVIDIA GPUs are detected
+    if [[ $(nvidia-smi 2>/dev/null | grep -i nvidia) ]]; then
+        printf "${GOOD_C}NVIDIA GPU(s) detected.${NORMAL_C}\n"
+        printf "${INFO_C}Pulling CUDA based PyTorch and TensorFlow images.${NORMAL_C}\n"
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
+        sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
+        ml_info
+
+    # If no NVIDIA GPUs are detected
+    else
+        printf "${BAD_C}No NVIDIA GPU(s) detected.${NORMAL_C}\n"
+        printf "${INFO_C}Ensure your machine has compatible NVIDIA GPU(s) and has been onboarded with the 'nunet onboard-gpu' command.${NORMAL_C}\n"
+    fi
+}
+
+fetch_ml_images_linux()
 {
     # Check if both NVIDIA and AMD GPUs are detected
     if [[ $(lshw -c display 2>/dev/null | grep -i nvidia) && $(lshw -c display 2>/dev/null | grep -i 'amd/ati') ]]; then
-        printf "${GOOD_C}Both NVIDIA and AMD GPUs detected.${NORMAL_C}\n"
+        printf "${GOOD_C}NVIDIA and AMD GPUs detected.${NORMAL_C}\n"
         printf "${INFO_C}Pulling CUDA and ROCm based PyTorch and TensorFlow images.${NORMAL_C}\n"
         sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
         sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
@@ -1100,7 +1156,7 @@ onboard-ml()
     
     # Check if NVIDIA GPUs are detected
     elif [[ $(lshw -c display 2>/dev/null | grep -i nvidia) ]]; then
-        printf "${GOOD_C}NVIDIA GPUs detected.${NORMAL_C}\n"
+        printf "${GOOD_C}NVIDIA GPU(s) detected.${NORMAL_C}\n"
         printf "${INFO_C}Pulling CUDA based PyTorch and TensorFlow images.${NORMAL_C}\n"
         sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow
         sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch
@@ -1108,7 +1164,7 @@ onboard-ml()
     
     # Check if AMD GPUs are detected
     elif [[ $(lshw -c display 2>/dev/null | grep -i 'amd/ati') ]]; then
-        printf "${GOOD_C}AMD GPUs detected.${NORMAL_C}\n"
+        printf "${GOOD_C}AMD GPU(s) detected.${NORMAL_C}\n"
         printf "${INFO_C}Pulling ROCm based PyTorch and TensorFlow images.${NORMAL_C}\n"
         sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow-amd
         sudo docker pull registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch-amd
@@ -1116,10 +1172,21 @@ onboard-ml()
 
     # If no GPUs are detected
     else
-        printf "${BAD_C}No NVIDIA or AMD GPUs detected.${NORMAL_C}\n"
+        printf "${BAD_C}No NVIDIA or AMD GPU(s) detected.${NORMAL_C}\n"
         printf "${INFO_C}Ensure your machine has compatible GPU(s) and has been onboarded with the 'nunet onboard-gpu' command.${NORMAL_C}\n"
     fi
 }
+
+# Onboarding for ML jobs
+onboard-ml()
+{
+    if [ "$wsl" = true ]; then
+        fetch_ml_images_wsl
+    else
+        fetch_ml_images_linux
+    fi
+}
+
 
 ## shell websocket connection  
 
