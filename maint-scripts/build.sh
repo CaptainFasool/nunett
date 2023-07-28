@@ -25,6 +25,7 @@
 projectRoot=$(pwd)
 outputDir="$projectRoot/dist"
 version=$(cat main.go | grep @version | awk {'print $3'})
+
 mkdir -p $outputDir
 
 for arch in amd64 # arm64
@@ -34,6 +35,10 @@ do
     cp -r $projectRoot/maint-scripts/nunet-dms $archDir
     sed -i "s/Version:.*/Version: $version/g" $archDir/DEBIAN/control
     sed -i "s/Architecture:.*/Architecture: $arch/g" $archDir/DEBIAN/control
+
+    DMS_INST_SIZE=$(du -sB1 $archDir | awk '{ print $1 }')
+    sed -i "s/Installed-Size:.*/Installed-Size: $DMS_INST_SIZE/g" $archDir/DEBIAN/control
+
     go version # redundant check of go version
     env GOOS=linux GOARCH=$arch go build -o $archDir/usr/bin/nunet-dms -buildvcs=false
     ls -R $archDir/usr # to allow checking all files are where they're supposed to be
@@ -65,5 +70,6 @@ do
     # The remaining part of this script used to upload artifact from build.sh to GitLab Package Registry.
     if [[ -v GITLAB_CI ]] ; then
         curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file ${projectRoot}/dist/nunet-dms_${version}_${arch}.deb ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb
+        curl -X POST -H "Content-Type: application/json" -H "$HOOK_TOKEN_HEADER_NAME: $HOOK_TOKEN_HEADER_VALUE" -d "{\"project\" : \"DMS\", \"version\" : \"$version\", \"commit\" : \"$CI_COMMIT_SHA\", \"commit_msg\" : \"$(echo $CI_COMMIT_MESSAGE | sed "s/\"/'/g")\", \"package_url\" : \"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb\"}" $NUNETBOT_BUILD_ENDPOINT
     fi 
 done

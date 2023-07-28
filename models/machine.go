@@ -123,6 +123,13 @@ type Connection struct {
 type PingResult struct {
 	RTT     time.Duration
 	Success bool
+	Error error
 }
 
 type Machines map[string]PeerData
+
+// machine info for KAD-DHT
+type KadDHTMachineUpdate struct {
+	Data      []byte `json:"data"`
+	Signature []byte `json:"signature"`
+}

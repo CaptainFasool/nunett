@@ -6,6 +6,7 @@ import (
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -14,61 +15,63 @@ import (
 )
 
 func (p2p DMSp2p) StartDiscovery(ctx context.Context, rendezvous string) {
-	Discover(ctx, p2p.Host, p2p.DHT, rendezvous)
-}
-
-func Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous string) {
-
-	var routingDiscovery = drouting.NewRoutingDiscovery(idht)
-	dutil.Advertise(ctx, routingDiscovery, rendezvous)
-
-	ticker := time.NewTicker(time.Second * 1)
+	ticker := time.NewTicker(time.Minute * 5)
 	defer ticker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
+			zlog.Debug("Discovery - context done")
+			return
+		case <-stopDiscovery:
+			zlog.Debug("Discovery - stop")
+			ticker.Stop()
 			return
 		case <-ticker.C:
-
-			peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
-			if err != nil {
-				zlog.Sugar().Errorf("failed to discover peers: %v", err)
-			}
-			peers = filterAddrs(peers)
-			for _, p := range peers {
-				if p.ID == node.ID() {
-					continue
-				}
-				if node.Network().Connectedness(p.ID) != network.Connected {
-					_, err = node.Network().DialPeer(ctx, p.ID)
-					if err != nil {
-						if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-							zlog.Sugar().Debugf("couldn't establish connection with: %s - error: %v", p.ID.String(), err)
-						}
-						continue
-					}
-					if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-						zlog.Sugar().Debugf("connected with: %s", p.ID.String())
-					}
-
-				}
-			}
+			p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, rendezvous)
+			p2p.dialPeers(ctx)
 		}
 	}
 }
 
-func (p2p DMSp2p) getPeers(ctx context.Context, rendezvous string) ([]peer.AddrInfo, error) {
+func (p2p DMSp2p) dialPeers(ctx context.Context) {
+	for _, p := range p2p.peers {
+		newPeer <- p
+		if p.ID == p2p.Host.ID() {
+			continue
+		}
+		if p2p.Host.Network().Connectedness(p.ID) != network.Connected {
+			_, err := p2p.Host.Network().DialPeer(ctx, p.ID)
+			if err != nil {
+				if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+					zlog.Sugar().Debugf("couldn't establish connection with: %s - error: %v", p.ID.String(), err)
+				}
+				continue
+			}
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.Sugar().Debugf("connected with: %s", p.ID.String())
+			}
 
-	routingDiscovery := drouting.NewRoutingDiscovery(p2p.DHT)
+		}
+	}
+}
+
+func discoverPeers(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous string) []peer.AddrInfo {
+	var routingDiscovery = drouting.NewRoutingDiscovery(idht)
 	dutil.Advertise(ctx, routingDiscovery, rendezvous)
-	peers, err := dutil.FindPeers(ctx, routingDiscovery, rendezvous)
+
+	zlog.Debug("Discover - searching for peers")
+	peers, err := dutil.FindPeers(
+		ctx,
+		routingDiscovery,
+		rendezvous,
+		discovery.Limit(30),
+	)
 	if err != nil {
-		zlog.Sugar().Errorf("Error Finding Peers: %s\n", err.Error())
+		zlog.Sugar().Errorf("failed to discover peers: %v", err)
 	}
 	peers = filterAddrs(peers)
-
-	return peers, nil
+	zlog.Sugar().Debugf("Discover - found peers: %v", peers)
+	return peers
 }
 
 func filterAddrs(peers []peer.AddrInfo) []peer.AddrInfo {

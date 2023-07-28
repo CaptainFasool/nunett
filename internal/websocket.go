@@ -36,11 +36,11 @@ var commandChan = make(chan Command)
 var clients = make(map[WebSocketConnection]string)
 
 // HandleWebSocket godoc
-// @Summary      Sends a command to specific node and prints back response.
-// @Description  Sends a command to specific node and prints back response.
-// @Tags         peers
-// @Success      200
-// @Router       /peers/ws [get]
+//	@Summary		Sends a command to specific node and prints back response.
+//	@Description	Sends a command to specific node and prints back response.
+//	@Tags			peers
+//	@Success		200
+//	@Router			/peers/ws [get]
 func HandleWebSocket(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/ws"))

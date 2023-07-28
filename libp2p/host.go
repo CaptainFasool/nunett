@@ -8,7 +8,6 @@ import (
 	"io"
 	mrand "math/rand"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -83,25 +82,26 @@ func RunNode(priv crypto.PrivKey, server bool) {
 
 	err = p2p.BootstrapNode(ctx)
 	if err != nil {
-		zlog.Sugar().Errorf("Bootstraping failed: %s\n", err)
+		zlog.Sugar().Errorf("Bootstraping failed: %v", err)
 	}
 
-	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler)
-	host.SetStreamHandler(protocol.ID(DHTProtocolID), DhtUpdateHandler)
+	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler) // to be deprecated
+	host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), PingHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 
+	p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
-	p2p.peers, _ = p2p.getPeers(ctx, utils.GetChannelName())
+	zlog.Sugar().Debugf("number of p2p.peers: %d", len(p2p.peers))
 
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
-		zlog.Sugar().Errorf("metadata.json does not exists or not readable: %s\n", err)
+		zlog.Sugar().Errorf("metadata.json does not exists or not readable: %v", err)
 	}
 	var metadata2 models.MetadataV2
 	err = json.Unmarshal(content, &metadata2)
 	if err != nil {
-		zlog.Sugar().Errorf("unable to parse metadata.json: %s\n", err)
+		zlog.Sugar().Errorf("unable to parse metadata.json: %v", err)
 	}
 
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
@@ -121,62 +121,44 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	}
 
 	// Start the DHT Update
-	go UpdateDHT()
 	go UpdateKadDHT()
-	go GetDHTUpdates()
-	// Broadcast DHT updates every 30 seconds
-	ticker := time.NewTicker(30 * time.Second)
-	if val, debugMode := os.LookupEnv("NUNET_DHT_UPDATE_INTERVAL"); debugMode {
-		interval, err := strconv.Atoi(val)
-		if err != nil {
-			zlog.Sugar().DPanicf("invalid value for $NUNET_DHT_UPDATE_INTERVAL - %v", val)
-		}
-		ticker = time.NewTicker(time.Duration(interval) * time.Second)
-		zlog.Sugar().Infof("setting DHT update interval to %v seconds", interval)
-	}
-	quit := make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				UpdateDHT()
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	go GetDHTUpdates(ctx)
 
 	// Clean up the DHT every 5 minutes
-	ticker2 := time.NewTicker(5 * time.Minute)
-	quit2 := make(chan struct{})
+	dhtHousekeepingTicker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for {
 			select {
-			case <-ticker2.C:
+			case <-dhtHousekeepingTicker.C:
+				zlog.Debug("Cleaning up DHT")
 				CleanupOldPeers()
 				UpdateConnections(host.Network().Conns())
-			case <-quit2:
-				ticker2.Stop()
+			case <-stopDHTCleanup:
+				zlog.Debug("Stopping DHT Cleanup")
+				dhtHousekeepingTicker.Stop()
 				return
 			}
 		}
 	}()
 
-	ticker3 := time.NewTicker(10 * time.Minute)
-	quit3 := make(chan struct{})
+	dhtUpdateTicker := time.NewTicker(10 * time.Minute)
 	go func() {
 		for {
 			select {
-			case <-ticker3.C:
+			case <-ctx.Done():
+				zlog.Debug("Context is done in DHT Update")
+				return
+			case <-dhtUpdateTicker.C:
+				zlog.Debug("Calling UpdateKadDHT and GetDHTUpdates")
+
 				if _, debug := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debug {
 					zlog.Sugar().Info("Updating Kad DHT")
 				}
 				UpdateKadDHT()
-				GetDHTUpdates()
-			case <-quit3:
-				ticker3.Stop()
+				GetDHTUpdates(ctx)
+			case <-stopDHTUpdate:
+				zlog.Debug("Stopping DHT Update")
+				dhtUpdateTicker.Stop()
 				return
 			}
 		}
@@ -200,7 +182,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 				for _, conn := range savedConnections {
 					addr, err := multiaddr.NewMultiaddr(conn.Multiaddrs)
 					if err != nil {
-						zlog.Sugar().Error("Unable to convert multiaddr: ", err)
+						zlog.Sugar().Errorf("Unable to convert multiaddr: %v", err)
 					}
 					if err := host.Connect(ctx, peer.AddrInfo{
 						ID:    peer.ID(conn.PeerID),
@@ -223,7 +205,6 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			}
 		}
 	}()
-
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {
@@ -314,7 +295,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 	for _, s := range defaultServerFilters {
 		f, err := mafilt.NewMask(s)
 		if err != nil {
-			zlog.Sugar().Errorf("incorrectly formatted address filter in config: %s", s)
+			zlog.Sugar().Errorf("incorrectly formatted address filter in config: %s - %v", s, err)
 		}
 		filter.AddFilter(*f, multiaddr.ActionDeny)
 	}
@@ -363,7 +344,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 					defer close(r)
 					for i := 0; i < num; i++ {
 						select {
-						case p := <-relayPeer:
+						case p := <-newPeer:
 							select {
 							case r <- p:
 							case <-ctx.Done():
@@ -398,7 +379,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 		return nil, nil, err
 	}
 
-	zlog.Sugar().Infof("Self Peer Info %s -> %s\n", host.ID(), host.Addrs())
+	zlog.Sugar().Infof("Self Peer Info %s -> %s", host.ID().String(), host.Addrs())
 
 	return host, idht, nil
 }

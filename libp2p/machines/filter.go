@@ -8,22 +8,6 @@ import (
 
 // FilterPeers searches for available compute providers given specific parameters in depReq.
 func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerData {
-	//XXX TODO: this is a hack to get the machines from the old dht
-	//          instead of kad-dht because the latter takes more time to
-	//          filter machines and causes a problem with job deployment.
-	// machines, err := libp2p.FetchKadMachines(context)
-	// zlog.Sugar().Debugf("KAD machines: %v", machines)
-	// if err != nil {
-	// 	zlog.Sugar().Errorf("failed to fetch machines: %w", err)
-	// }
-	// machines2 := libp2p.FetchMachines(node)
-	// zlog.Sugar().Debugf("Peer store machines: %v", machines2)
-	// for _, val := range machines2 {
-	// 	if _, ok := machines[val.PeerID]; !ok {
-	// 		machines[val.PeerID] = val
-	// 	}
-	// }
-
 	machines := libp2p.FetchMachines(node)
 	zlog.Sugar().Debugf("DHT machines: %v", machines)
 

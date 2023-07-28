@@ -1,5 +1,23 @@
 basePath: /api/v1
 definitions:
+  machines.BlockchainTxStatus:
+    properties:
+      transaction_status:
+        type: string
+      transaction_type:
+        type: string
+    type: object
+  machines.fundingRespToSPD:
+    properties:
+      compute_provider_addr:
+        type: string
+      estimated_price:
+        type: number
+      oracle_message:
+        type: string
+      signature:
+        type: string
+    type: object
   models.BlockchainAddressPrivKey:
     properties:
       address:
@@ -8,6 +26,71 @@ definitions:
         type: string
       private_key:
         type: string
+    type: object
+  models.DeploymentRequest:
+    properties:
+      address_user:
+        description: service provider wallet address
+        type: string
+      blockchain:
+        type: string
+      constraints:
+        properties:
+          complexity:
+            type: string
+          cpu:
+            type: integer
+          power:
+            type: integer
+          ram:
+            type: integer
+          time:
+            type: integer
+          vram:
+            type: integer
+        type: object
+      max_ntx:
+        type: integer
+      params:
+        properties:
+          image_id:
+            type: string
+          local_node_id:
+            description: NodeID of service provider (machine triggering the job)
+            type: string
+          local_public_key:
+            description: Public key of service provider
+            type: string
+          machine_type:
+            type: string
+          model_url:
+            type: string
+          node_id:
+            description: NodeID of compute provider (machine to deploy the job on)
+            type: string
+          packages:
+            items:
+              type: string
+            type: array
+          public_key:
+            description: Public key of compute provider
+            type: string
+        type: object
+      service_type:
+        type: string
+      timestamp:
+        type: string
+      traceinfo:
+        properties:
+          span_id:
+            type: string
+          trace_flags:
+            type: string
+          trace_id:
+            type: string
+          trace_state:
+            type: string
+        type: object
     type: object
   models.Metadata:
     properties:
@@ -54,6 +137,20 @@ definitions:
       total_cores:
         type: integer
     type: object
+  tokenomics.ClaimCardanoTokenBody:
+    properties:
+      compute_provider_address:
+        type: string
+    type: object
+  tokenomics.rewardRespToCPD:
+    properties:
+      oracle_message:
+        type: string
+      reward_type:
+        type: string
+      signature:
+        type: string
+    type: object
 host: localhost:9999
 info:
   contact:
@@ -66,7 +163,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.96
+  version: 0.4.109
 paths:
   /dht:
     get:
@@ -79,19 +176,6 @@ paths:
           schema:
             type: string
       summary: Return a dump of the dht
-      tags:
-      - p2p
-  /kad-dht:
-    get:
-      description: Returns entire Kademlia DHT content
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      summary: Return a dump of the Kademlia dht
       tags:
       - p2p
   /onboarding/address/new:
@@ -117,9 +201,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Metadata'
-            type: array
+            $ref: '#/definitions/models.Metadata'
       summary: Get current device info.
       tags:
       - onboarding
@@ -133,9 +215,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Metadata'
-            type: array
+            $ref: '#/definitions/models.Metadata'
       summary: Runs the onboarding process.
       tags:
       - onboarding
@@ -160,9 +240,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Metadata'
-            type: array
+            $ref: '#/definitions/models.Metadata'
       summary: changes the amount of resources of onboarded device .
       tags:
       - onboarding
@@ -293,35 +371,68 @@ paths:
             type: string
       summary: Websocket endpoint responsible for sending deployment request and receiving
         deployment response.
+      tags:
+      - run
   /run/request-reward:
     post:
       description: HandleRequestReward takes request from the compute provider, talks
         with Oracle and releases tokens if conditions are met.
-      responses: {}
+      parameters:
+      - description: Claim Reward Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tokenomics.ClaimCardanoTokenBody'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tokenomics.rewardRespToCPD'
       summary: Get NTX tokens for work done.
+      tags:
+      - run
   /run/request-service:
     post:
       description: HandleRequestService searches the DHT for non-busy, available devices
         with appropriate metadata. Then informs parameters related to blockchain to
         request to run a service on NuNet.
+      parameters:
+      - description: Deployment Request
+        in: body
+        name: deployment_request
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeploymentRequest'
       responses:
         "200":
           description: OK
           schema:
-            type: string
+            $ref: '#/definitions/machines.fundingRespToSPD'
       summary: Informs parameters related to blockchain to request to run a service
         on NuNet
+      tags:
+      - run
   /run/send-status:
     post:
       description: HandleSendStatus is used by webapps to send status of blockchain
         activities. Such as if tokens have been put in escrow account and account
         creation.
+      parameters:
+      - description: Blockchain Transaction Status Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/machines.BlockchainTxStatus'
       responses:
         "200":
           description: OK
           schema:
             type: string
       summary: Sends blockchain status of contract creation.
+      tags:
+      - run
   /telemetry/free:
     get:
       description: Checks and returns the amount of free resources available
