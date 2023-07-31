@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # setupRepo configures pre-commit hook
 function setupRepo() {
@@ -6,7 +6,9 @@ function setupRepo() {
 }
 
 function installPreReqUbuntu() {
-    bash maint-scripts/build.sh && sudo apt install dist/*deb
+    bash maint-scripts/build.sh
+    newest=$(ls -1v dist/*.deb | tail -n1)
+    sudo apt install "./$newest"
     sudo systemctl stop nunet-dms
 }
 
