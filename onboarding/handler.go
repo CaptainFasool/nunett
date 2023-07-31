@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -64,6 +65,96 @@ func GetMetadata(c *gin.Context) {
 	c.JSON(http.StatusOK, metadata)
 }
 
+// ProvisionedCapacity      godoc
+//
+//	@Summary		Returns provisioned capacity on host.
+//	@Description	Get total memory capacity in MB and CPU capacity in MHz.
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.Provisioned
+//	@Router			/onboarding/provisioned [get]
+func ProvisionedCapacity(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/provisioned"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+
+	totalProvisioned := GetTotalProvisioned()
+	totalPJ, err := json.Marshal(totalProvisioned)
+	if err != nil {
+		zlog.Sugar().ErrorfContext(c.Request.Context(), "couldn't marshal totalProvisioned to json: %v", string(totalPJ))
+	}
+	c.JSON(http.StatusOK, GetTotalProvisioned())
+}
+
+// CreatePaymentAddress      godoc
+//
+//	@Summary		Create a new payment address.
+//	@Description	Create a payment address from public key. Return payment address and private key.
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.BlockchainAddressPrivKey
+//	@Router			/onboarding/address/new [get]
+func CreatePaymentAddress(c *gin.Context) {
+	// send telemetry data
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/address/new"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+
+	blockChain := c.DefaultQuery("blockchain", "cardano")
+
+	var pair *models.BlockchainAddressPrivKey
+	var err error
+	if blockChain == "ethereum" {
+		pair, err = GetEthereumAddressAndPrivateKey()
+	} else if blockChain == "cardano" {
+		pair, err = GetCardanoAddressAndMnemonic()
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"message": "error creating address"})
+	}
+	c.JSON(http.StatusOK, pair)
+}
+
+// Status      godoc
+//
+//	@Summary		Onboarding status and other metadata.
+//	@Description	Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.
+//					  `onboarded` is true if the device is onboarded, false otherwise.
+//					  `error` is the error message if any related to onboarding status check
+//					  `machine_uuid` is the UUID of the machine
+//					  `metadata_path` is the path to metadataV2.json only if it exists
+//					  `database_path` is the path to nunet.db only if it exists
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object} models.OnboardingStatus
+//	@Router			/onboarding/status [get]
+func Status(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/status"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+
+	onboarded, err := utils.IsOnboarded()
+	var metadataPath string
+	var dbPath string
+	if metadataPath = fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath); !fileExists(metadataPath) {
+		metadataPath = ""
+	}
+	if dbPath = fmt.Sprintf("%s/nunet.db", config.GetConfig().General.MetadataPath); !fileExists(dbPath) {
+		dbPath = ""
+	}
+
+	resp := models.OnboardingStatus{
+		Onboarded:    onboarded,
+		Error:        fmt.Sprintf("%v", err),
+		MachineUUID:  utils.GetMachineUUID(),
+		MetadataPath: metadataPath,
+		DatabasePath: dbPath,
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // Onboard      godoc
 //
 //	@Summary		Runs the onboarding process.
@@ -86,7 +177,7 @@ func Onboard(c *gin.Context) {
 	_, err := AFS.Stat(config.GetConfig().General.MetadataPath)
 	if os.IsNotExist(err) {
 		c.JSON(http.StatusBadRequest,
-			gin.H{"error": fmt.Sprintf("%s does not exist. is nunet onboarded successfully?", config.GetConfig().General.MetadataPath)})
+			gin.H{"error": fmt.Sprintf("%s does not exist. is nunet installed correctly?", config.GetConfig().General.MetadataPath)})
 		return
 	}
 
@@ -242,58 +333,6 @@ func Onboard(c *gin.Context) {
 	c.JSON(http.StatusCreated, metadata)
 }
 
-// ProvisionedCapacity      godoc
-//
-//	@Summary		Returns provisioned capacity on host.
-//	@Description	Get total memory capacity in MB and CPU capacity in MHz.
-//	@Tags			onboarding
-//	@Produce		json
-//	@Success		200	{object}	models.Provisioned
-//	@Router			/onboarding/provisioned [get]
-func ProvisionedCapacity(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/provisioned"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
-	totalProvisioned := GetTotalProvisioned()
-	totalPJ, err := json.Marshal(totalProvisioned)
-	if err != nil {
-		zlog.Sugar().ErrorfContext(c.Request.Context(), "couldn't marshal totalProvisioned to json: %v", string(totalPJ))
-	}
-	c.JSON(http.StatusOK, GetTotalProvisioned())
-}
-
-// CreatePaymentAddress      godoc
-//
-//	@Summary		Create a new payment address.
-//	@Description	Create a payment address from public key. Return payment address and private key.
-//	@Tags			onboarding
-//	@Produce		json
-//	@Success		200	{object}	models.BlockchainAddressPrivKey
-//	@Router			/onboarding/address/new [get]
-func CreatePaymentAddress(c *gin.Context) {
-	// send telemetry data
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/address/new"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
-	blockChain := c.DefaultQuery("blockchain", "cardano")
-
-	var pair *models.BlockchainAddressPrivKey
-	var err error
-	if blockChain == "ethereum" {
-		pair, err = GetEthereumAddressAndPrivateKey()
-	} else if blockChain == "cardano" {
-		pair, err = GetCardanoAddressAndMnemonic()
-	}
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError,
-			gin.H{"message": "error creating address"})
-	}
-	c.JSON(http.StatusOK, pair)
-}
-
 // Config        godoc
 //
 //	@Summary	changes the amount of resources of onboarded device .
@@ -312,12 +351,13 @@ func ResourceConfig(c *gin.Context) {
 		return
 	}
 
-	_, err := AFS.Stat(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
-	if os.IsNotExist(err) {
-		c.JSON(http.StatusBadRequest,
-			gin.H{"error": fmt.Sprintf(
-				"%s/metadataV2.json does not exist. is nunet onboarded successfully?",
-				config.GetConfig().General.MetadataPath)})
+	// _, err := AFS.Stat(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
+	if onboarded, err := utils.IsOnboarded(); !onboarded {
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "problem with machine onboarding: " + err.Error()})
+		} else {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "machine not onboarded"})
+		}
 		return
 	}
 
@@ -354,6 +394,87 @@ func ResourceConfig(c *gin.Context) {
 
 	telemetry.CalcFreeResources()
 	c.JSON(http.StatusOK, metadata)
+}
+
+// Offboard      godoc
+// @Summary      Runs the offboarding process.
+// @Description  Offboard runs the offboarding script to remove resources associated with a device.
+// @Tags         onboarding
+// @Success      200  "Successfully Onboarded"
+// @Router       /onboarding/offboard [delete]
+func Offboard(c *gin.Context) {
+	force, _ := strconv.ParseBool(c.DefaultQuery("force", "false"))
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/onboarding/offboard"))
+	span.SetAttributes(attribute.String("Force", fmt.Sprintf("%t", force)))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Offboarding device", span)
+
+	if onboarded, err := utils.IsOnboarded(); !onboarded {
+		if err != nil {
+			if !force {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "problem with state: " + err.Error()})
+				return
+			} else {
+				zlog.Sugar().Errorf("problem with onboarding state: %v", err)
+				zlog.Info("continuing with offboarding because forced")
+			}
+		} else {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "machine not onboarded"})
+			return
+		}
+
+	}
+
+	peerID := ""
+	if libp2p.GetP2P().Host != nil {
+		peerID = libp2p.GetP2P().Host.ID().String()
+	}
+
+	// remove the metadata file
+	err := os.Remove(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
+	if err != nil {
+		if !force {
+			c.AbortWithStatusJSON(http.StatusInternalServerError,
+				gin.H{"error": "failed to delete metadata file"})
+			return
+		} else {
+			zlog.Sugar().Errorf("failed to delete metadata file - problem with onboarding state: %v", err)
+			zlog.Info("continuing with offboarding because forced")
+		}
+	}
+
+	// delete the available resources from database
+	var availableRes models.AvailableResources
+	result := db.DB.WithContext(c.Request.Context()).Where("id = ?", 1).Delete(&availableRes)
+	if result.Error != nil {
+		zlog.Error(result.Error.Error())
+	} else if result.RowsAffected == 0 {
+		zlog.Error("No rows affected")
+		if !force {
+			return
+		}
+	}
+
+	telemetry.DeleteCalcFreeResources()
+	err = libp2p.ShutdownNode()
+	if err != nil && !force {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to properly shutdown the node"})
+		return
+	}
+
+	if peerID != "" {
+		// Sending offboarding status on stats_db via GRPC call
+		deviceOffboardParams := models.DeviceStatusChange{
+			PeerID:    peerID,
+			Status:    "Device Offboarded",
+			Timestamp: float32(statsdb.GetTimestamp()),
+		}
+
+		statsdb.DeviceOffboarded(deviceOffboardParams)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully Offboarded", "forced": force})
 }
 
 func fileExists(filename string) bool {

@@ -128,6 +128,19 @@ definitions:
             type: integer
         type: object
     type: object
+  models.OnboardingStatus:
+    properties:
+      database_path:
+        type: string
+      error:
+        type: string
+      machine_uuid:
+        type: string
+      metadata_path:
+        type: string
+      onboarded:
+        type: boolean
+    type: object
   models.Provisioned:
     properties:
       cpu:
@@ -163,7 +176,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.110
+  version: 0.4.111
 paths:
   /dht:
     get:
@@ -205,6 +218,16 @@ paths:
       summary: Get current device info.
       tags:
       - onboarding
+  /onboarding/offboard:
+    delete:
+      description: Offboard runs the offboarding script to remove resources associated
+        with a device.
+      responses:
+        "204":
+          description: No Content
+      summary: Runs the offboarding process.
+      tags:
+      - onboarding
   /onboarding/onboard:
     post:
       description: Onboard runs onboarding script given the amount of resources to
@@ -242,6 +265,20 @@ paths:
           schema:
             $ref: '#/definitions/models.Metadata'
       summary: changes the amount of resources of onboarded device .
+      tags:
+      - onboarding
+  /onboarding/status:
+    get:
+      description: 'Returns json with 5 parameters: onboarded, error, machine_uuid,
+        metadata_path, database_path.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OnboardingStatus'
+      summary: Onboarding status and other metadata.
       tags:
       - onboarding
   /peers:
