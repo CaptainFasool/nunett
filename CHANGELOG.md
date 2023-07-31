@@ -20,6 +20,9 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.113](#209)
+### Changed
+- Start moving CLI from bash script to main app
 # [0.4.112](#200)
 ### Changed
 - Allow comments in config file
