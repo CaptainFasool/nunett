@@ -54,18 +54,15 @@ func LoadConfig() {
 
 	config, err := findConfig(paths, configFile)
 	if err != nil {
-		fmt.Println("Error reading config file:", err)
 		setDefaultConfig().Unmarshal(&cfg)
 	}
 
 	modifiedConfig := removeComments(config)
 	if err = v.ReadConfig(bytes.NewBuffer(modifiedConfig)); err != nil { // Viper only reads buffer, keeping comments in original config
-		fmt.Println("Error reading config file:", err)
 		setDefaultConfig().Unmarshal(&cfg)
 	}
 
 	if err = v.Unmarshal(&cfg); err != nil {
-		fmt.Println("Error unmarshaling config file:", err)
 		setDefaultConfig().Unmarshal(&cfg)
 	}
 }

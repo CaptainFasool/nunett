@@ -95,6 +95,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huin/goupnp v1.1.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/boxo v0.8.0 // indirect
 	github.com/ipfs/go-cid v0.4.1 // indirect
 	github.com/ipfs/go-datastore v0.6.0 // indirect
@@ -222,6 +223,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/jaypipes/ghw v0.10.0
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
+	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	github.com/uptrace/opentelemetry-go-extra/otelzap v0.1.21
 )
