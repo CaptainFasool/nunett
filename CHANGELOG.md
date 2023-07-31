@@ -20,6 +20,9 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.110](#241)
+### Added
+- Wallet address validation
 # [0.4.109](#256)
 ### Added
 - Add request and response struct for swagger docs

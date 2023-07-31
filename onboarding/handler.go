@@ -113,6 +113,12 @@ func Onboard(c *gin.Context) {
 	capacityForNunet := models.CapacityForNunet{ServerMode: true}
 	c.BindJSON(&capacityForNunet)
 
+	// validate the public (payment) address
+	if err := ValidateAddress(capacityForNunet.PaymentAddress); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if (capacityForNunet.Memory > int64(totalMem)) &&
 		capacityForNunet.CPU > int64(totalCpu) {
 		c.JSON(http.StatusBadRequest,
