@@ -92,8 +92,8 @@ const docTemplate = `{
                 ],
                 "summary": "Runs the offboarding process.",
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "Successfully Onboarded"
                     }
                 }
             }
@@ -757,7 +757,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.111",
+	Version:          "0.4.112",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
