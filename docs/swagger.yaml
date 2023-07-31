@@ -176,7 +176,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.111
+  version: 0.4.112
 paths:
   /dht:
     get:
@@ -223,8 +223,8 @@ paths:
       description: Offboard runs the offboarding script to remove resources associated
         with a device.
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: Successfully Onboarded
       summary: Runs the offboarding process.
       tags:
       - onboarding

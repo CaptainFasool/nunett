@@ -20,6 +20,9 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.112](#200)
+### Changed
+- Allow comments in config file
 # [0.4.111](#242)
 ### Added
 - `Offboard` endpoint and CLI command
