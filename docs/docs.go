@@ -84,6 +84,20 @@ const docTemplate = `{
                 }
             }
         },
+        "/onboarding/offboard": {
+            "delete": {
+                "description": "Offboard runs the offboarding script to remove resources associated with a device.",
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Runs the offboarding process.",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/onboarding/onboard": {
             "post": {
                 "description": "Onboard runs onboarding script given the amount of resources to onboard.",
@@ -138,6 +152,26 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Metadata"
+                        }
+                    }
+                }
+            }
+        },
+        "/onboarding/status": {
+            "get": {
+                "description": "Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Onboarding status and other metadata.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.OnboardingStatus"
                         }
                     }
                 }
@@ -662,6 +696,26 @@ const docTemplate = `{
                 }
             }
         },
+        "models.OnboardingStatus": {
+            "type": "object",
+            "properties": {
+                "database_path": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "machine_uuid": {
+                    "type": "string"
+                },
+                "metadata_path": {
+                    "type": "string"
+                },
+                "onboarded": {
+                    "type": "boolean"
+                }
+            }
+        },
         "models.Provisioned": {
             "type": "object",
             "properties": {
@@ -703,7 +757,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.110",
+	Version:          "0.4.111",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

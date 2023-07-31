@@ -29,6 +29,8 @@ func SetupRouter() *gin.Engine {
 		onboardingRoute.GET("/provisioned", onboarding.ProvisionedCapacity)
 		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
 		onboardingRoute.POST("/onboard", onboarding.Onboard)
+		onboardingRoute.GET("/status", onboarding.Status)
+		onboardingRoute.DELETE("/offboard", onboarding.Offboard)
 		onboardingRoute.POST("/resource-config", onboarding.ResourceConfig)
 		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
 	}

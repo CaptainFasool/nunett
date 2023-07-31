@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.111](#242)
+### Added
+- `Offboard` endpoint and CLI command
+- Onboarding status endpoint
 # [0.4.110](#241)
 ### Added
 - Wallet address validation

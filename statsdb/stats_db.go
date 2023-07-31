@@ -91,6 +91,30 @@ func GetPeerID() (string, error) {
 	return metadata.NodeID, nil
 }
 
+func DeviceOffboarded(inputData models.DeviceStatusChange) {
+	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		zlog.Sugar().Errorf("did not connect: %v", err)
+		return
+	}
+
+	client := pb.NewEventListenerClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	res, err := client.DeviceStatusChange(ctx, &pb.DeviceStatusChangeInput{
+		PeerId:    inputData.PeerID,
+		Status:    inputData.Status,
+		Timestamp: inputData.Timestamp,
+	})
+
+	if err != nil {
+		zlog.Sugar().Errorf("connection failed: %v", err)
+		return
+	}
+	zlog.Sugar().Infof("DeviceOffboarded is Responding: %s", res.PeerId)
+}
+
 // NewDeviceOnboarded sends the newly onboarded telemetry info to the stats db via grpc call.
 func NewDeviceOnboarded(inputData models.NewDeviceOnboarded) {
 	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))

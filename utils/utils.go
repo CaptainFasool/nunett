@@ -126,3 +126,17 @@ func ReadMetadataFile() (models.MetadataV2, error) {
 	}
 	return metadata, nil
 }
+
+func IsOnboarded() (bool, error) {
+	var libp2pInfo models.Libp2pInfo
+	_ = db.DB.Where("id = ?", 1).Find(&libp2pInfo)
+	_, err := ReadMetadataFile()
+
+	if err == nil && libp2pInfo.PrivateKey != nil {
+		return true, nil
+	} else if err != nil && libp2pInfo.PrivateKey == nil {
+		return false, nil
+	} else {
+		return false, err
+	}
+}

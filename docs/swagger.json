@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.110"
+        "version": "0.4.111"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -78,6 +78,20 @@
                 }
             }
         },
+        "/onboarding/offboard": {
+            "delete": {
+                "description": "Offboard runs the offboarding script to remove resources associated with a device.",
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Runs the offboarding process.",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/onboarding/onboard": {
             "post": {
                 "description": "Onboard runs onboarding script given the amount of resources to onboard.",
@@ -132,6 +146,26 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Metadata"
+                        }
+                    }
+                }
+            }
+        },
+        "/onboarding/status": {
+            "get": {
+                "description": "Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "onboarding"
+                ],
+                "summary": "Onboarding status and other metadata.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.OnboardingStatus"
                         }
                     }
                 }
@@ -653,6 +687,26 @@
                             "type": "integer"
                         }
                     }
+                }
+            }
+        },
+        "models.OnboardingStatus": {
+            "type": "object",
+            "properties": {
+                "database_path": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "machine_uuid": {
+                    "type": "string"
+                },
+                "metadata_path": {
+                    "type": "string"
+                },
+                "onboarded": {
+                    "type": "boolean"
                 }
             }
         },
