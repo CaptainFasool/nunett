@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.114](oracle#4)
+### Changed
+- New oracle addresses
+- TLS for oracle RPC
 # [0.4.113](#209)
 ### Changed
 - Start moving CLI from bash script to main app
