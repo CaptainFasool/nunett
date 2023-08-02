@@ -18,7 +18,6 @@ import (
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -491,25 +490,9 @@ func HandleSendStatus(c *gin.Context) {
 		if err := db.DB.Where("deleted_at IS NULL").Delete(&models.Services{}).Error; err != nil {
 			zlog.Sugar().Errorln(err)
 		}
-		// sending ntx_payment info to stats database via grpc Call
-		NtxPaymentParams := models.NtxPayment{
-			CallID:      requestTracker.CallID,
-			ServiceID:   requestTracker.ServiceType,
-			AmountOfNtx: requestTracker.MaxTokens,
-			PeerID:      requestTracker.NodeID,
-			Timestamp:   float32(statsdb.GetTimestamp()),
-		}
-		statsdb.NtxPayment(NtxPaymentParams)
 	}
 
 	serviceStatus := body.TransactionType + " with " + body.TransactionStatus
-	ServiceStatusParams := models.ServiceStatus{
-		CallID:              requestTracker.CallID,
-		PeerIDOfServiceHost: requestTracker.NodeID,
-		Status:              serviceStatus,
-		Timestamp:           float32(statsdb.GetTimestamp()),
-	}
-	statsdb.ServiceStatus(ServiceStatusParams)
 
 	requestTracker.Status = serviceStatus
 	db.DB.Save(&requestTracker)
