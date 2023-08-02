@@ -18,7 +18,7 @@ func ConnectDatabase() {
 	if err != nil {
 		panic("Failed to connect to database!")
 	}
-
+	database.AutoMigrate(&models.ElasticToken{})
 	database.AutoMigrate(&models.VirtualMachine{})
 	database.AutoMigrate(&models.Machine{})
 	database.AutoMigrate(&models.AvailableResources{})

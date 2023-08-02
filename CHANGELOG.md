@@ -20,6 +20,13 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.115](#247)
+### Added
+- Send telemetry events to ELK stack
+
+### Removed
+- Deprecated StatsDB
+
 # [0.4.114](oracle#4)
 ### Changed
 - New oracle addresses

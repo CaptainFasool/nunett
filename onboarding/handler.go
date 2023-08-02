@@ -13,12 +13,11 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
-
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -168,6 +167,9 @@ func Onboard(c *gin.Context) {
 	span.SetAttributes(attribute.String("URL", "/onboarding/onboard"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 
+	// get capacity user want to rent to NuNet
+	capacityForNunet := models.CapacityForNunet{ServerMode: true}
+	c.BindJSON(&capacityForNunet)
 	// check if request body is empty
 	if c.Request.ContentLength == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "request body is empty"})
@@ -198,10 +200,6 @@ func Onboard(c *gin.Context) {
 	metadata.Resource.TotalCore = int64(numCores)
 	metadata.Resource.CPUMax = int64(totalCpu)
 
-	// read the request body to fill rest of the fields
-
-	// get capacity user want to rent to NuNet
-	capacityForNunet := models.CapacityForNunet{ServerMode: true}
 	c.BindJSON(&capacityForNunet)
 
 	// validate the public (payment) address
@@ -319,16 +317,10 @@ func Onboard(c *gin.Context) {
 		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
 	}
 
-	// Sending onboarding resources on stats_db via GRPC call
-	NewDeviceOnboardParams := models.NewDeviceOnboarded{
-		PeerID:        metadata.NodeID,
-		CPU:           float32(metadata.Reserved.CPU),
-		RAM:           float32(metadata.Reserved.Memory),
-		Network:       0.0,
-		DedicatedTime: 0.0,
-		Timestamp:     float32(statsdb.GetTimestamp()),
+	err = heartbeat.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)
+	if err != nil {
+		zlog.Sugar().Errorf("unable to get new telemetry token: %v", err)
 	}
-	statsdb.NewDeviceOnboarded(NewDeviceOnboardParams)
 
 	c.JSON(http.StatusCreated, metadata)
 }
@@ -382,8 +374,6 @@ func ResourceConfig(c *gin.Context) {
 	availableRes.Ram = int(capacityForNunet.Memory)
 	db.DB.Save(&availableRes)
 
-	statsdb.DeviceResourceConfig(metadata)
-
 	file, _ := json.MarshalIndent(metadata, "", " ")
 	err = AFS.WriteFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath), file, 0644)
 	if err != nil {
@@ -423,12 +413,6 @@ func Offboard(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "machine not onboarded"})
 			return
 		}
-
-	}
-
-	peerID := ""
-	if libp2p.GetP2P().Host != nil {
-		peerID = libp2p.GetP2P().Host.ID().String()
 	}
 
 	// remove the metadata file
@@ -461,17 +445,6 @@ func Offboard(c *gin.Context) {
 	if err != nil && !force {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to properly shutdown the node"})
 		return
-	}
-
-	if peerID != "" {
-		// Sending offboarding status on stats_db via GRPC call
-		deviceOffboardParams := models.DeviceStatusChange{
-			PeerID:    peerID,
-			Status:    "Device Offboarded",
-			Timestamp: float32(statsdb.GetTimestamp()),
-		}
-
-		statsdb.DeviceOffboarded(deviceOffboardParams)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully Offboarded", "forced": force})

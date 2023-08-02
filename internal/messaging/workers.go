@@ -5,15 +5,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 )
+
+// GetCallID returns a call ID to track the deployement request
+func GetCallID() int64 {
+	min := int64(1e15)
+	max := int64(1e16 - 1)
+	return min + rand.Int63n(max-min+1)
+}
 
 func sendDeploymentResponse(success bool, content string) {
 	depResp, _ := json.Marshal(&models.DeploymentResponse{
@@ -105,24 +112,9 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 
 func handleDockerDeployment(depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
-	callID := float32(statsdb.GetCallID())
+	callID := float32(GetCallID())
 	peerIDOfServiceHost := depReq.Params.LocalNodeID
-	timeStamp := float32(statsdb.GetTimestamp())
 	status := "accepted"
-
-	ServiceCallParams := models.ServiceCall{
-		CallID:              callID,
-		PeerIDOfServiceHost: peerIDOfServiceHost,
-		ServiceID:           depReq.ServiceType,
-		CPUUsed:             0.0,
-		MaxRAM:              float32(depReq.Constraints.RAM),
-		MemoryUsed:          0.0,
-		NetworkBwUsed:       0.0,
-		TimeTaken:           0.0,
-		Status:              status,
-		Timestamp:           timeStamp,
-	}
-	statsdb.ServiceCall(ServiceCallParams)
 
 	requestTracker := models.RequestTracker{
 		ID:          1,

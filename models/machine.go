@@ -123,7 +123,7 @@ type Connection struct {
 type PingResult struct {
 	RTT     time.Duration
 	Success bool
-	Error error
+	Error   error
 }
 
 type Machines map[string]PeerData
@@ -132,4 +132,10 @@ type Machines map[string]PeerData
 type KadDHTMachineUpdate struct {
 	Data      []byte `json:"data"`
 	Signature []byte `json:"signature"`
+}
+
+type ElasticToken struct {
+	NodeId      string
+	Token       string
+	ChannelName string
 }
