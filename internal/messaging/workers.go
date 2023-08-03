@@ -4,6 +4,7 @@ package messaging
 import (
 	"encoding/json"
 	"fmt"
+	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"io"
 	"math/rand"
 
@@ -124,6 +125,7 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		Status:      status,
 		MaxTokens:   int32(depReq.MaxNtx),
 	}
+	elk.ProcessStatus(int(callID), peerIDOfServiceHost, "", status, 0)
 
 	// Check if we have a previous entry in the table
 	var reqTracker models.RequestTracker
