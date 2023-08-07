@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/docker/docker/pkg/stdcopy"
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -18,7 +19,13 @@ func newLogBin(title string) (LogbinResponse, error) {
 	logbinToken, err := utils.GetLogbinToken()
 	if err != nil {
 		zlog.Sugar().Errorf("unable to fetch logbin token from db: %v", err)
-		return LogbinResponse{}, err
+
+		// backward compatibility: machines already onboarded without a logbin auth token
+		logbinToken, err = utils.RegisterLogbin(utils.GetMachineUUID(), libp2p.GetP2P().Host.ID().String())
+		if err != nil {
+			zlog.Sugar().Errorf("unable to register logbin: %v", err)
+			return LogbinResponse{}, err
+		}
 	}
 
 	log := NewLog{
