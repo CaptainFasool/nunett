@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,7 +18,6 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/google/go-github/github"
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
@@ -30,7 +30,7 @@ import (
 
 var (
 	vcpuToMicroseconds float64       = 100000
-	gistUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.GistUpdateInterval) * time.Minute
+	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
 )
 
 func freeUsedResources() {
@@ -71,8 +71,8 @@ func mhzToVCPU(cpuInMhz int) (float64, error) {
 
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
-// log update every gistUpdateDuration.
-func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, resCh chan<- models.DeploymentResponse, servicePK uint, chosenGPUVendor gpuinfo.GPUVendor) {
+// log update every logUpdateDuration.
+func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdLog LogbinResponse, resCh chan<- models.DeploymentResponse, servicePK uint, chosenGPUVendor gpuinfo.GPUVendor) {
 	zlog.Info("Entering RunContainer")
 	machine_type := depReq.Params.MachineType
 	gpuOpts := opts.GpuOpts{}
@@ -218,7 +218,7 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	depRes := models.DeploymentResponse{Success: true}
 	resCh <- depRes
 
-	tick := time.NewTicker(gistUpdateInterval)
+	tick := time.NewTicker(logUpdateInterval)
 	defer tick.Stop()
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
@@ -241,14 +241,14 @@ outerLoop:
 			zlog.Info("[container running] entering second case; container exiting")
 
 			// get the last logs & exit...
-			updateGist(*createdGist.ID, resp.ID)
+			updateLogbin(ctx, createdLog.ID, resp.ID)
 
 			// Add a response for log update
 			if r := db.DB.Where("container_id = ?", resp.ID).First(&service); r.Error != nil {
 				zlog.Sugar().Errorf("problem updating services: %v", r.Error)
 				service.JobStatus = "finished with errors"
 			}
-			sendLogsToSPD(resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 
 			var requestTracker models.RequestTracker
 			res := db.DB.Where("id = ?", 1).Find(&requestTracker)
@@ -324,14 +324,14 @@ outerLoop:
 				}
 			}
 
-			updateGist(*createdGist.ID, resp.ID)
+			updateLogbin(ctx, createdLog.ID, resp.ID)
 
 			// Add a response for log update
 			db.DB.Where("container_id = ?", resp.ID).First(&service)
 			zlog.Debug("service.LastLogFetch",
 				zap.String("value", service.LastLogFetch.Format("2006-01-02T15:04:05Z")),
 			)
-			sendLogsToSPD(resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
 		}
@@ -339,7 +339,7 @@ outerLoop:
 }
 
 // PullImage is a wrapper around Docker SDK's function with same name.
-func PullImage(imageName string) error {
+func PullImage(ctx context.Context, imageName string) error {
 	out, err := dc.ImagePull(ctx, imageName, types.ImagePullOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to pull image: %v", err)
@@ -384,7 +384,7 @@ func calculateResourceUsage(input string) float64 {
 
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, delete container, send log to the requester
-func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse {
+func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) models.DeploymentResponse {
 	var chosenGPUVendor gpuinfo.GPUVendor
 	if depReq.Params.MachineType == "gpu" {
 		// Finding the GPU with the highest free VRAM regardless of vendor type
@@ -437,7 +437,7 @@ func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse
 	if chosenGPUVendor == gpuinfo.AMD {
 		imageName += "-amd"
 	}
-	err := PullImage(imageName)
+	err := PullImage(ctx, imageName)
 	if err != nil {
 		zlog.Sugar().Errorf("couldn't pull image: %v", err)
 		return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}
@@ -451,14 +451,20 @@ func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse
 	service.JobDuration = 5           // these are dummy data, implementation pending
 	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
 
-	// create gist here and pass it to RunContainer to update logs
-	createdGist, _, err := createGist()
+	// create logbin here and pass it to RunContainer to update logs
+	createdLog, err := newLogBin(
+		strings.Join(
+			[]string{
+				depReq.Params.LocalNodeID[:10],
+				depReq.Params.RemoteNodeID[:10],
+				fmt.Sprintf("%d", time.Now().Unix())},
+			"_"))
 	if err != nil {
-		zlog.Sugar().Errorf("couldn't create gist: %v", err)
-		return models.DeploymentResponse{Success: false, Content: "Unable to create Gist."}
+		zlog.Sugar().Errorf("couldn't create log at logbin: %v", err)
+		return models.DeploymentResponse{Success: false, Content: "Unable to create log at LogBin."}
 	}
 
-	service.LogURL = *createdGist.HTMLURL
+	service.LogURL = createdLog.RawUrl
 	// Save the service with logs
 	if err := db.DB.Create(&service).Error; err != nil {
 		zlog.Sugar().Errorf("couldn't save service: %v", err)
@@ -472,11 +478,11 @@ func HandleDeployment(depReq models.DeploymentRequest) models.DeploymentResponse
 	resCh := make(chan models.DeploymentResponse)
 
 	// Run the container.
-	go RunContainer(depReq, createdGist, resCh, service.ID, chosenGPUVendor)
+	go RunContainer(ctx, depReq, createdLog, resCh, service.ID, chosenGPUVendor)
 
 	res := <-resCh
 
-	// Send back *createdGist.HTMLURL
-	res.Content = *createdGist.HTMLURL
+	// Send back createdLog.RawUrl
+	res.Content = createdLog.RawUrl
 	return res
 }
