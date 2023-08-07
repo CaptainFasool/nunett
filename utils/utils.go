@@ -128,7 +128,7 @@ func RegisterLogbin(uuid string, peer_id string) (string, error) {
 		zlog.Sugar().Errorf("unable to marshal logbin auth request: %v", err)
 		return "", err
 	}
-	req, err := http.NewRequest(http.MethodPut, "https://log.nunet.io/api/v1/auth/register", bytes.NewBuffer(jsonAuth))
+	req, err := http.NewRequest(http.MethodPost, "https://log.nunet.io/api/v1/auth/register", bytes.NewBuffer(jsonAuth))
 
 	if err != nil {
 		zlog.Sugar().Errorf("unable to create http request: %v", err)
@@ -137,7 +137,7 @@ func RegisterLogbin(uuid string, peer_id string) (string, error) {
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json")
-	var client *http.Client
+	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		zlog.Sugar().Errorf("unable to register with logbin: %v", err)
@@ -175,8 +175,8 @@ func RegisterLogbin(uuid string, peer_id string) (string, error) {
 
 func GetLogbinToken() (string, error) {
 	var logbinAuth models.LogBinAuth
-	result := db.DB.Where("id = ?", 1).Find(&logbinAuth)
-	if result.Error != nil {
+	result := db.DB.Find(&logbinAuth)
+	if result.Error != nil{
 		zlog.Sugar().Errorf("unable to find logbin auth record in DB: %v", result.Error)
 		return "", result.Error
 	}

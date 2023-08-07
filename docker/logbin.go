@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,7 +20,10 @@ func newLogBin(title string) (LogbinResponse, error) {
 	logbinToken, err := utils.GetLogbinToken()
 	if err != nil {
 		zlog.Sugar().Errorf("unable to fetch logbin token from db: %v", err)
+		return LogbinResponse{}, err
+	}
 
+	if logbinToken == "" {
 		// backward compatibility: machines already onboarded without a logbin auth token
 		logbinToken, err = utils.RegisterLogbin(utils.GetMachineUUID(), libp2p.GetP2P().Host.ID().String())
 		if err != nil {
@@ -49,11 +53,16 @@ func newLogBin(title string) (LogbinResponse, error) {
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", logbinToken)
-	var client *http.Client
+	client := http.Client{}
 	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != 201 {
+	if err != nil {
 		zlog.Sugar().Errorf("unable to create log at logbin: %v", err)
 		return LogbinResponse{}, err
+	}
+	zlog.Sugar().Info("unable to create log at logbin: %v", err)
+	if resp.StatusCode != 201 {
+		zlog.Sugar().Errorf("unable to create log at logbin - statusCode: %v", resp.Status)
+		return LogbinResponse{}, errors.New("unable to create log at logbin - " + resp.Status)
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -114,7 +123,7 @@ func updateLogbin(ctx context.Context, logbinID string, containerID string) {
 		}
 		req.Header.Set("Content-Type", "application/json; charset=utf-8")
 		req.Header.Set("Authorization", logbinToken)
-		var client *http.Client
+		client := http.Client{}
 		resp, err := client.Do(req)
 		if err != nil || resp.StatusCode != 200 {
 			zlog.Sugar().Errorf("unable to append log at logbin: %v", err)
