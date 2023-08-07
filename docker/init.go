@@ -15,4 +15,5 @@ var (
 
 func init() {
 	zlog = logger.New("docker")
+	dc, _ = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 }
