@@ -104,6 +104,11 @@ func Create() {
 	// Check the response status
 	if res.IsError() {
 		zlog.Sugar().Errorf("Error response received: %s", res.Status())
+		if res.StatusCode == 401 {
+			var elastictoken models.ElasticToken
+			db.DB.Delete(&elastictoken, "node_id = ? and channel_name=?", libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+			NewToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+		}
 	}
 
 }
