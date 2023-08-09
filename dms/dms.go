@@ -13,7 +13,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/plugins"
+	plugins "gitlab.com/nunet/device-management-service/plugins/plugins_startup"
 	"gitlab.com/nunet/device-management-service/routes"
 	"gitlab.com/nunet/device-management-service/utils"
 
