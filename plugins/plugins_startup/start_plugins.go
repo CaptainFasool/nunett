@@ -16,7 +16,8 @@ func StartPlugins() {
 
 	enabledPlugins, err := solveEnabledPlugins(utils.ReadMetadataFile)
 	if err != nil {
-		zlog.Sugar().Errorf("Couldn't get enabled plugins: ", err)
+		zlog.Sugar().Warn("Enabled plugins were not started: Couldn't get enabled plugins: ", err)
+		return
 	}
 
 	if enabledPlugins == nil {
