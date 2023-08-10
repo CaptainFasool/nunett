@@ -527,7 +527,11 @@ onboard() {
     fi
     
     # Transforming plugins from bash array into JSON array
-    N_ONBOARD_PLUGINS_JSON=$(printf '%s\n' "${N_ONBOARD_PLUGINS[@]}" | jq -R . | jq -s .)
+    if [ ${#N_ONBOARD_PLUGINS[@]} -eq 0 ]; then
+        N_ONBOARD_PLUGINS_JSON="[]"
+    else
+        N_ONBOARD_PLUGINS_JSON=$(printf '%s\n' "${N_ONBOARD_PLUGINS[@]}" | jq -R . | jq -s .)
+    fi
 
     # validation
     [[ -z $N_ONBOARD_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && onboard_usage
