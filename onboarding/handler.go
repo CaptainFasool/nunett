@@ -147,6 +147,7 @@ func Status(c *gin.Context) {
 func Onboard(c *gin.Context) {
 	// get capacity user want to rent to NuNet
 	capacityForNunet := models.CapacityForNunet{ServerMode: true}
+
 	if err := c.BindJSON(&capacityForNunet); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
 		return
@@ -223,16 +224,14 @@ func Onboard(c *gin.Context) {
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
 
-	// Check if onboarded plugins are integrated into DMS.
+	// If any onboarded, check if plugins are integrated into DMS.
 	// We only accept integraded plugins for now
-	if len(capacityForNunet.Plugins) != 0 {
-		for _, p := range capacityForNunet.Plugins {
-			_, err = plugins.GetPluginType(p)
-			if err != nil {
-				c.JSON(http.StatusBadRequest,
-					gin.H{"error": fmt.Sprintf("Invalid plugin (not integrated or wrong name): %v", err)})
-				return
-			}
+	for _, p := range capacityForNunet.Plugins {
+		_, err = plugins.GetPluginType(p)
+		if err != nil {
+			c.JSON(http.StatusBadRequest,
+				gin.H{"error": fmt.Sprintf("Invalid plugin (not integrated or wrong name): %v", err)})
+			return
 		}
 	}
 
