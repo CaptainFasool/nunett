@@ -1,8 +1,8 @@
 package cmd
 
 import (
-    "github.com/spf13/cobra"
-    "gitlab.com/nunet/device-management-service/dms"
+	"github.com/spf13/cobra"
+	"gitlab.com/nunet/device-management-service/dms"
 )
 
 func init() {
