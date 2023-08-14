@@ -1,4 +1,4 @@
-package dms
+package dms_temp
 
 import (
 	"context"
@@ -75,11 +75,13 @@ func (dms *DMS) RunNode(priv crypto.PrivKey, server bool) {
 		dms.zlog.Sugar().Errorf("Bootstraping failed: %s\n", err)
 	}
 
-	dms.P2P.Host.SetStreamHandler(protocol.ID(libp2p.PingProtocolID), libp2p.PingHandler)
+	dms.P2P.Host.SetStreamHandler(protocol.ID(libp2p.PingProtocolID), libp2p.PingHandler) // to be deprecated
+	dms.P2P.Host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), libp2p.PingHandler)
 	dms.P2P.Host.SetStreamHandler(protocol.ID(libp2p.DepReqProtocolID), libp2p.DepReqStreamHandler)
 	dms.P2P.Host.SetStreamHandler(protocol.ID(libp2p.ChatProtocolID), libp2p.ChatStreamHandler)
 
 	go dms.P2P.StartDiscovery(ctx, utils.GetChannelName())
+	dms.zlog.Sugar().Debugf("number of p2p.peers: %d", len(dms.P2P.Peers))
 
 	content, err := dms.AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
