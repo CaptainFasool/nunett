@@ -29,6 +29,8 @@ func SetupRouter() *gin.Engine {
 		onboardingRoute.GET("/provisioned", onboarding.ProvisionedCapacity)
 		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
 		onboardingRoute.POST("/onboard", onboarding.Onboard)
+		onboardingRoute.GET("/status", onboarding.Status)
+		onboardingRoute.DELETE("/offboard", onboarding.Offboard)
 		onboardingRoute.POST("/resource-config", onboarding.ResourceConfig)
 		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
 	}
@@ -63,6 +65,8 @@ func SetupRouter() *gin.Engine {
 			kadDht.GET("", libp2p.DumpKademliaDHT)
 		}
 		v1.GET("/ping", libp2p.PingPeerHandler)
+		v1.GET("/oldping", libp2p.OldPingPeerHandler)
+		v1.GET("/cleanup", libp2p.CleanupPeerHandler)
 	}
 
 	p2p := v1.Group("/peers")

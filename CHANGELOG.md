@@ -20,6 +20,40 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.115](#247)
+### Added
+- Send telemetry events to ELK stack
+
+### Removed
+- Deprecated StatsDB
+
+# [0.4.114](oracle#4)
+### Changed
+- New oracle addresses
+- TLS for oracle RPC
+# [0.4.113](#209)
+### Changed
+- Start moving CLI from bash script to main app
+# [0.4.112](#200)
+### Changed
+- Allow comments in config file
+# [0.4.111](#242)
+### Added
+- `Offboard` endpoint and CLI command
+- Onboarding status endpoint
+# [0.4.110](#241)
+### Added
+- Wallet address validation
+# [0.4.109](#256)
+### Added
+- Add request and response struct for swagger docs
+- Generate latest docs
+- Add swag directly to project
+# [0.4.108](#243)
+### Fixed
+- Native ping with cancel
+- DHT cleanup routine context handling
+- Reset ping stream whe not replying
 # [0.4.107](#252)
 ### Fixed
 - Remove wrong context implementation on FetchKadDHTContents

@@ -2,12 +2,14 @@ package oracle
 
 import (
 	context "context"
+	"crypto/tls"
+	"strings"
 	"time"
 
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 	grpc "google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
 func getAddress() string {
@@ -16,10 +18,10 @@ func getAddress() string {
 		addr string
 
 		// Oracle Address
-		nunetStagingAddr string = "test.nunet.io:10052"
-		nunetTestAddr    string = "test.nunet.io:20052"
-		nunetTeamAddr    string = "dev.nunet.io:40052"
-		nunetEdgeAddr    string = "dev.nunet.io:50052"
+		nunetStagingAddr string = "oracle-staging.test.nunet.io:10052"
+		nunetTestAddr    string = "oracle-test.test.nunet.io:20052"
+		nunetEdgeAddr    string = "oracle-edge.dev.nunet.io:30052"
+		nunetTeamAddr    string = "oracle-team.dev.nunet.io:40052"
 	)
 
 	if channelName == "nunet-staging" {
@@ -37,9 +39,19 @@ func getAddress() string {
 	return addr
 }
 
+func getOracleTlsCredentials(address string) credentials.TransportCredentials {
+	serverName := strings.Split(address, ":")[0]
+	creds := credentials.NewTLS(&tls.Config{
+		InsecureSkipVerify: false,
+		ServerName:         serverName,
+	})
+	return creds
+}
+
 // WithdrawTokenRequest acts as a middleman between withdraw endpoint handler and Oracle to withdraw token
 func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
-	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	address := getAddress()
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(getOracleTlsCredentials(address)))
 	if err != nil {
 		return WithdrawResponse{}, err
 	}
@@ -78,7 +90,8 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 // FundContractRequest is called from the HandleRequestService to cummunicate Oracle for
 // Signature and OracleMessage
 func FundContractRequest() (FundingResponse, error) {
-	conn, err := grpc.Dial(getAddress(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	address := getAddress()
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(getOracleTlsCredentials(address)))
 	if err != nil {
 		return FundingResponse{}, err
 	}

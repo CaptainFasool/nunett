@@ -72,3 +72,11 @@ type MetadataV2 struct {
 	GpuInfo      []Gpu  `json:"gpu_info,omitempty"`
 	Dashboard    string `json:"name,omitempty"`
 }
+
+type OnboardingStatus struct {
+	Onboarded bool `json:"onboarded"`
+	Error string `json:"error"`
+	MachineUUID string `json:"machine_uuid"`
+	MetadataPath string `json:"metadata_path"`
+	DatabasePath string `json:"database_path"`
+}

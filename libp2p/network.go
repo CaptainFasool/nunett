@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 
 	// "github.com/libp2p/go-libp2p/core/ping"
 
@@ -74,44 +75,61 @@ func GetConnections() []models.Connection {
 	return connections
 }
 
-func PingHandler(s network.Stream) {
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-		zlog.Sugar().Info("Received Ping message")
-	}
-	reader := bufio.NewReader(s)
-	writer := bufio.NewWriter(s)
-	data, err := reader.ReadString('\n')
-
-	if err != nil {
-		zlog.Sugar().Errorf("failed to read string from stream: %v\n", err)
-		return
-	}
-
-	// refuse replying to ping if already running a job
-	if IsDepRespStreamOpen() {
-		zlog.Sugar().Info("Refusing to reply to a ping because already running a job")
-		return
-	}
-
-	// Echo the string back over the stream.
-	_, err = writer.WriteString(data)
-	if err != nil {
-		zlog.Sugar().Errorf("failed to echo string back over stream: %v\n", err)
-		return
-	}
-	err = writer.Flush()
-	if err != nil {
-		zlog.Sugar().Errorf("failed to flush writer: %v\n", err)
-		return
-	}
-
+// Ping pings the given peer and returns the result along with the context cancel function
+func Ping(ctx context.Context, targetPeer peer.ID) (<-chan ping.Result, func()) {
+	pingCtx, pingCancel := context.WithCancel(ctx)
+	pingResult := ping.Ping(pingCtx, p2p.Host, targetPeer)
+	return pingResult, pingCancel
 }
 
+// PingHandler handles an incoming ping. This implementation handles two protocols:
+// 1. The old protocol for backward compatibility (/nunet/dms/ping/0.0.1)
+// 2. The new protocol (/ipfs/ping/1.0.0)
+// The old protocol will be deprecated soon.
+func PingHandler(s network.Stream) {
+	// refuse replying to ping if already running a job
+	if IsDepRespStreamOpen() {
+		zlog.Debug("Refusing to reply to a ping because already running a job")
+		s.Reset()
+		return
+	}
+
+	if s.Protocol() == PingProtocolID {
+		reader := bufio.NewReader(s)
+		writer := bufio.NewWriter(s)
+		data, err := reader.ReadString('\n')
+
+		if err != nil {
+			zlog.Sugar().Errorf("failed to read string from stream: %v", err)
+			s.Reset()
+			return
+		}
+
+		// Echo the string back over the stream.
+		_, err = writer.WriteString(data)
+		if err != nil {
+			zlog.Sugar().Errorf("failed to echo string back over stream: %v", err)
+			s.Reset()
+			return
+		}
+		err = writer.Flush()
+		if err != nil {
+			zlog.Sugar().Errorf("failed to flush writer: %v", err)
+			s.Reset()
+			return
+		}
+	} else {
+		pingSrv := ping.PingService{}
+		pingSrv.PingHandler(s)
+	}
+}
+
+// PingPeer manualy pings the given peer and returns the result which contains success/fail status,
+// RTT and and error message if any.
+// Deprecated: Use Ping instead which returns a channel of ping results and a context cancel function
 func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResult {
-	zlog.Sugar().Debugf("Pinging peer --> %s", target.String())
 	var pingResult models.PingResult
 	start := time.Now()
-
 	pingCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	// Create a new stream to the target peer using the ping protocol
@@ -127,6 +145,7 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 		return pingResult
 	}
 	stream.SetDeadline(time.Now().Add(10 * time.Second)) // 10 second timeout
+	defer stream.Close()
 
 	r := bufio.NewReader(stream)
 	w := bufio.NewWriter(stream)
@@ -166,8 +185,6 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 		return pingResult
 	}
 
-	zlog.Sugar().Debugf("Got pong message: %q from peer: %s", pongMsg, target.String())
-
 	// Check if the pong message is the same as the ping message
 	if pongMsg != "ping"+"\n" {
 		if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
@@ -183,7 +200,6 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 	pingResult.Success = true
 	pingResult.RTT = duration
 	pingResult.Error = nil
-	stream.Close()
 
 	return pingResult
 }

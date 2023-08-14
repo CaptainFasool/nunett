@@ -1,12 +1,18 @@
 package config
 
 import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
+	"regexp"
 
 	"github.com/spf13/viper"
 )
 
 var cfg Config
+var home = os.Getenv("HOME")
 
 func getViper() *viper.Viper {
 	v := viper.New()
@@ -38,11 +44,25 @@ func setDefaultConfig() *viper.Viper {
 }
 
 func LoadConfig() {
+	paths := []string{
+		".",
+		home + "/.nunet",
+		"/etc/nunet",
+	}
+	configFile := "dms_config.json"
 	v := setDefaultConfig()
-	v.ReadInConfig()
-	err := v.Unmarshal(&cfg)
+
+	config, err := findConfig(paths, configFile)
 	if err != nil {
-		// error unmarshalling config file - using default config
+		setDefaultConfig().Unmarshal(&cfg)
+	}
+
+	modifiedConfig := removeComments(config)
+	if err = v.ReadConfig(bytes.NewBuffer(modifiedConfig)); err != nil { // Viper only reads buffer, keeping comments in original config
+		setDefaultConfig().Unmarshal(&cfg)
+	}
+
+	if err = v.Unmarshal(&cfg); err != nil {
 		setDefaultConfig().Unmarshal(&cfg)
 	}
 }
@@ -52,7 +72,6 @@ func SetConfig(key string, value interface{}) {
 	v.Set(key, value)
 	err := v.Unmarshal(&cfg)
 	if err != nil {
-		// error unmarshalling config file - using default config
 		setDefaultConfig().Unmarshal(&cfg)
 	}
 }
@@ -62,4 +81,27 @@ func GetConfig() *Config {
 		LoadConfig()
 	}
 	return &cfg
+}
+
+func findConfig(paths []string, filename string) ([]byte, error) {
+	for _, path := range paths {
+		fullPath := filepath.Join(path, filename)
+		_, err := os.Stat(fullPath)
+		if err == nil {
+			config, err := os.ReadFile(fullPath)
+			if err == nil {
+				return config, nil
+			} else {
+				return nil, err
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("file not found in any of the paths")
+}
+
+func removeComments(configBytes []byte) []byte {
+	re := regexp.MustCompile("(?s)//.*?\n") // match all '//' until the end of the line
+	result := re.ReplaceAll(configBytes, nil)
+	return result
 }

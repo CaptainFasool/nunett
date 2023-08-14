@@ -25,7 +25,6 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"go.uber.org/zap"
 )
 
@@ -34,14 +33,12 @@ var (
 	gistUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.GistUpdateInterval) * time.Minute
 )
 
-func freeUsedResources(contID string) {
+func freeUsedResources() {
 	// update the available resources table
-	telemetry.CalcFreeResources()
-	freeResource, err := telemetry.GetFreeResources()
+	err := telemetry.CalcFreeResources()
 	if err != nil {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
-	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateKadDHT()
 }
 
@@ -181,14 +178,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	}
 	status := "started"
 
-	ServiceStatusParams := models.ServiceStatus{
-		CallID:              requestTracker.CallID,
-		PeerIDOfServiceHost: requestTracker.NodeID,
-		Status:              status,
-		Timestamp:           float32(statsdb.GetTimestamp()),
-	}
-	statsdb.ServiceStatus(ServiceStatusParams)
-
 	// updating RequestTracker
 	requestTracker.Status = status
 	requestTracker.RequestID = resp.ID
@@ -224,13 +213,6 @@ func RunContainer(depReq models.DeploymentRequest, createdGist *github.Gist, res
 	// TODO: Update service based on passed pk
 
 	telemetry.CalcFreeResources()
-	freeResource, err := telemetry.GetFreeResources()
-	if err != nil {
-		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
-	} else {
-		statsdb.DeviceResourceChange(freeResource)
-	}
-
 	libp2p.UpdateKadDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
@@ -252,7 +234,7 @@ outerLoop:
 				zlog.Sugar().Errorf("problem in running contianer: %v", err)
 				depRes := models.DeploymentResponse{Success: false, Content: "Problem occurred with container. Unable to complete request."}
 				resCh <- depRes
-				freeUsedResources(resp.ID)
+				freeUsedResources()
 				return
 			}
 		case containerStatus := <-statusCh: // not running?
@@ -295,23 +277,6 @@ outerLoop:
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
 
-			duration := time.Now().Sub(service.CreatedAt)
-			timeTaken := duration.Seconds()
-			averageNetBw := networkBwUsed / timeTaken
-			ServiceCallParams := models.ServiceCall{
-				CallID:              requestTracker.CallID,
-				PeerIDOfServiceHost: depReq.Params.LocalNodeID,
-				CPUUsed:             float32(maxUsedCPU),
-				MemoryUsed:          float32(maxUsedRAM),
-				MaxRAM:              float32(depReq.Constraints.RAM),
-				NetworkBwUsed:       float32(averageNetBw),
-				TimeTaken:           float32(timeTaken),
-				Status:              status,
-				AmountOfNtx:         requestTracker.MaxTokens,
-				Timestamp:           float32(statsdb.GetTimestamp()),
-			}
-			statsdb.ServiceCall(ServiceCallParams)
-
 			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
 			if res.Error != nil {
 				zlog.Sugar().Errorf("problem updating request tracker: %v", res.Error)
@@ -319,7 +284,7 @@ outerLoop:
 				resCh <- depRes
 				return
 			}
-			freeUsedResources(resp.ID)
+			freeUsedResources()
 			break outerLoop
 		case <-tick.C:
 			zlog.Info("[container running] entering third case; time ticker")
@@ -335,8 +300,7 @@ outerLoop:
 			if err := db.DB.Where("container_id = ?", resp.ID).First(&tempService).Error; err != nil {
 				panic(err)
 			}
-			duration := time.Since(tempService.CreatedAt)
-			timeTaken := duration.Seconds()
+
 			for _, s := range stats {
 				if s.Container == contID {
 					usedRAM := strings.Split(s.Memory.Raw, "/")
@@ -359,20 +323,6 @@ outerLoop:
 					}
 				}
 			}
-			averageNetBw := networkBwUsed / timeTaken
-			ServiceCallParams := models.ServiceCall{
-				CallID:              requestTracker.CallID,
-				PeerIDOfServiceHost: depReq.Params.LocalNodeID,
-				CPUUsed:             float32(maxUsedCPU),
-				MemoryUsed:          float32(maxUsedRAM),
-				MaxRAM:              float32(depReq.Constraints.RAM),
-				NetworkBwUsed:       float32(averageNetBw),
-				TimeTaken:           0.0,
-				Status:              "started",
-				AmountOfNtx:         requestTracker.MaxTokens,
-				Timestamp:           float32(statsdb.GetTimestamp()),
-			}
-			statsdb.ServiceCall(ServiceCallParams)
 
 			updateGist(*createdGist.ID, resp.ID)
 
