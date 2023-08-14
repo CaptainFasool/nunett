@@ -27,8 +27,8 @@ import (
 type P2P struct {
 	Host     host.Host
 	DHT      *dht.IpfsDHT
-	peers    []peer.AddrInfo
-	newPeer  chan peer.AddrInfo
+	Peers    []peer.AddrInfo
+	newPeer  chan peer.AddrInfo // XXX: Check usage and remove if not needed
 	newPeers chan []peer.AddrInfo
 }
 

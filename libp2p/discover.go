@@ -45,8 +45,53 @@ func (p2p DMSp2p) Discover(ctx context.Context, node host.Host, idht *dht.IpfsDH
 	}
 }
 
+func (p2p P2P) Discover(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous string) {
+
+	var routingDiscovery = drouting.NewRoutingDiscovery(idht)
+	dutil.Advertise(ctx, routingDiscovery, rendezvous)
+
+	ticker := time.NewTicker(time.Second * 1)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			zlog.Debug("Discovery - context done")
+			return
+		case <-stopDiscovery:
+			zlog.Debug("Discovery - stop")
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			p2p.Peers = discoverPeers(ctx, p2p.Host, p2p.DHT, rendezvous)
+			p2p.dialPeers(ctx)
+		}
+	}
+}
+
 func (p2p DMSp2p) dialPeers(ctx context.Context) {
 	for _, p := range p2p.peers {
+		newPeer <- p
+		if p.ID == p2p.Host.ID() {
+			continue
+		}
+		if p2p.Host.Network().Connectedness(p.ID) != network.Connected {
+			_, err := p2p.Host.Network().DialPeer(ctx, p.ID)
+			if err != nil {
+				if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+					zlog.Sugar().Debugf("couldn't establish connection with: %s - error: %v", p.ID.String(), err)
+				}
+				continue
+			}
+			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+				zlog.Sugar().Debugf("connected with: %s", p.ID.String())
+			}
+
+		}
+	}
+}
+
+func (p2p P2P) dialPeers(ctx context.Context) {
+	for _, p := range p2p.Peers {
 		newPeer <- p
 		if p.ID == p2p.Host.ID() {
 			continue
@@ -111,7 +156,7 @@ func Discover(ctx context.Context, p2p P2P, rendezvous string) {
 			}
 			peers = filterAddrs(peers)
 			zlog.Sugar().Debugf("Discover - found peers: %v", peers)
-			p2p.peers = peers
+			p2p.Peers = peers
 			p2p.newPeers <- peers
 			for _, p := range peers {
 				newPeer <- p
