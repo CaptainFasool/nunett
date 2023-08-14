@@ -1,4 +1,4 @@
-package dms_temp
+package dms
 
 import (
 	"testing"
