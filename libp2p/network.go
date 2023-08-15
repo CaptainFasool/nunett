@@ -267,7 +267,9 @@ func (ps *PubSub) Unsubscribe() {
 	ps.Sub.Cancel()
 }
 
-type blankValidator struct {
+type blankValidator struct{}
+
+type NewValidator struct {
 	P2p *P2P
 }
 
@@ -305,7 +307,7 @@ func (bv blankValidator) Validate(key string, value []byte) error {
 	// Get the public key of the remote peer from the peerstore
 	// remotePeerPublicKey :=
 	// blankValidator.p2p.Host.Peerstore().PubKey(remotePeerID)
-	remotePeerPublicKey := bv.P2p.Host.Peerstore().PubKey(remotePeerID)
+	remotePeerPublicKey := p2p.Host.Peerstore().PubKey(remotePeerID)
 
 	if remotePeerPublicKey == nil {
 
@@ -327,3 +329,61 @@ func (bv blankValidator) Validate(key string, value []byte) error {
 	return nil
 }
 func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
+
+// To be used with refactored version in node.go
+func (nv NewValidator) Validate(key string, value []byte) error {
+	// Check if the key has the correct namespace
+	if !strings.HasPrefix(key, customNamespace) {
+		return errors.New("invalid key namespace")
+	}
+
+	components := strings.Split(key, "/")
+	key = components[len(components)-1]
+	var dhtUpdate models.KadDHTMachineUpdate
+
+	err := json.Unmarshal(value, &dhtUpdate)
+	if err != nil {
+		zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+		return err
+	}
+
+	// Extract data and signature fields
+	data := dhtUpdate.Data
+	var peerInfo models.PeerData
+	err = json.Unmarshal(dhtUpdate.Data, &peerInfo)
+	if err != nil {
+		zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+		return err
+	}
+
+	signature := dhtUpdate.Signature
+	remotePeerID, err := peer.Decode(key)
+	if err != nil {
+		zlog.Sugar().Errorf("Error decoding peerID: %v", err)
+		return errors.New("error decoding peerID")
+	}
+	// Get the public key of the remote peer from the peerstore
+	// remotePeerPublicKey :=
+	// blankValidator.p2p.Host.Peerstore().PubKey(remotePeerID)
+	remotePeerPublicKey := nv.P2p.Host.Peerstore().PubKey(remotePeerID)
+
+	if remotePeerPublicKey == nil {
+
+		return errors.New("public key for remote peer not found in peerstore")
+	}
+	verify, err := remotePeerPublicKey.Verify(data, signature)
+	if err != nil {
+		zlog.Sugar().Errorf("Error verifying signature: %v", err)
+		return err
+	}
+	if !verify {
+		zlog.Sugar().Info("Invalid signature")
+		return errors.New("invalid signature")
+	}
+
+	if len(value) == 0 {
+		return errors.New("value cannot be empty")
+	}
+	return nil
+}
+func (NewValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
