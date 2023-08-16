@@ -64,7 +64,7 @@ func discoverPeers(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rende
 		ctx,
 		routingDiscovery,
 		rendezvous,
-		discovery.Limit(30),
+		discovery.Limit(40),
 	)
 	if err != nil {
 		zlog.Sugar().Errorf("failed to discover peers: %v", err)

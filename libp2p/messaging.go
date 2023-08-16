@@ -169,7 +169,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 			panic(err)
 		}
 
-		zlog.Sugar().Debugf("received deployment update: %s", resp)
+		zlog.Sugar().Debugf("received deployment update  -   msg: %s", resp)
 
 		var depUpd models.DeploymentUpdate
 		err = json.Unmarshal([]byte(resp), &depUpd)
@@ -180,8 +180,8 @@ func DeploymentUpdateListener(stream network.Stream) {
 
 		var depReqFlat models.DeploymentRequestFlat
 
-		if depUpd.MsgType == MsgJobStatus {
-
+		switch depUpd.MsgType {
+		case MsgJobStatus:
 			service := models.Services{}
 			err = json.Unmarshal([]byte(depUpd.Msg), &service)
 			if err != nil {
@@ -224,8 +224,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 			if err := db.DB.Save(&depReqFlat).Error; err != nil {
 				zlog.Sugar().Errorf("unable to update job status on finish. %v", err)
 			}
-
-		} else if depUpd.MsgType == MsgDepResp {
+		case MsgDepResp:
 			zlog.Sugar().Debugf("received deployment response: %s", resp)
 
 			if err != nil {
@@ -253,8 +252,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 					zlog.Sugar().Errorf("%v", err)
 				}
 			}
-
-		} else if depUpd.MsgType == MsgLogStdout || depUpd.MsgType == MsgLogStderr {
+		case MsgLogStdout, MsgLogStderr:
 			zlog.Sugar().Debugf("received log response with length: %d", len(resp))
 
 			if depUpd.MsgType == MsgLogStdout {
@@ -262,18 +260,25 @@ func DeploymentUpdateListener(stream network.Stream) {
 			} else if depUpd.MsgType == MsgLogStderr {
 				JobLogStderrQueue <- depUpd.Msg
 			}
+		default:
+			zlog.Sugar().Errorf("received unknown type deployment update")
 		}
 	}
 }
 
-// DeploymentUpdate is an auxilary function to send updates from Compute Provider
-// to Service Provider.
-func DeploymentUpdate(msgType, msg string, close bool) error {
+// DeploymentUpdate is an auxilary function to send updates from one machine to another
+// Args:
+//
+//	msgType: one of MsgDepResp, MsgDepReq, MsgDepReqUpdate, MsgJobStatus, MsgLogStderr, MsgLogStdout
+//	msg:     message to send
+//	inbound: true if the depReq was inbound (DMS is CP) or false if depReq was outbound (DMS is SP)
+//	close:   true if the depReq stream needs to be closed after sending the message
+func DeploymentUpdate(msgType string, msg string, close bool) error {
 	ctx := context.Background()
 	defer ctx.Done()
 
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.String("MsgType", MsgDepResp))
+	span.SetAttributes(attribute.String("MsgType", msgType))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	kLogger.Info("Deployment update", span)
 
@@ -288,14 +293,14 @@ func DeploymentUpdate(msgType, msg string, close bool) error {
 	msgBytes, _ := json.Marshal(depUpdateMsg)
 
 	if inboundDepReqStream == nil {
-		zlog.Sugar().ErrorfContext(ctx, "no inbound deployment request to respond to")
+		zlog.Sugar().ErrorfContext(ctx, "no inbound deployment request stream to send an update to")
 		return fmt.Errorf("no inbound deployment request to respond to")
 	}
 
 	w := bufio.NewWriter(inboundDepReqStream)
 	_, err := w.WriteString(fmt.Sprintf("%s\n", string(msgBytes)))
 	if err != nil {
-		zlog.Sugar().ErrorfContext(ctx, "failed to write deployment response to buffer")
+		zlog.Sugar().ErrorfContext(ctx, "failed to write deployment update to buffer")
 		return err
 	}
 
@@ -306,9 +311,10 @@ func DeploymentUpdate(msgType, msg string, close bool) error {
 	}
 
 	if close {
+		zlog.Sugar().InfofContext(ctx, "closing deployment request stream from")
 		err = inboundDepReqStream.Close()
 		if err != nil {
-			zlog.Sugar().ErrorfContext(ctx, "failed to close inbound deployment request stream - %v", err)
+			zlog.Sugar().ErrorfContext(ctx, "failed to close deployment request stream - %v", err)
 		}
 		inboundDepReqStream = nil
 	}

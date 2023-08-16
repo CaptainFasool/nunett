@@ -43,10 +43,15 @@ func SetupRouter() *gin.Engine {
 
 	run := v1.Group("/run")
 	{
-		run.POST("/request-service", machines.HandleRequestService)
 		run.GET("/deploy", machines.HandleDeploymentRequest) // websocket
-		run.POST("/request-reward", tokenomics.HandleRequestReward)
-		run.POST("/send-status", machines.HandleSendStatus)
+		run.POST("/request-service", machines.HandleRequestService)
+	}
+
+	tx := v1.Group("/transactions")
+	{
+		tx.GET("", tokenomics.GetJobTxHashes)
+		tx.POST("/request-reward", tokenomics.HandleRequestReward)
+		run.POST("/send-status", tokenomics.HandleSendStatus)
 	}
 
 	tele := v1.Group("/telemetry")
