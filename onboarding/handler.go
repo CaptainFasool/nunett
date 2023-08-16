@@ -322,6 +322,11 @@ func Onboard(c *gin.Context) {
 		zlog.Sugar().Errorf("unable to get new telemetry token: %v", err)
 	}
 
+	_, err = utils.RegisterLogbin(utils.GetMachineUUID(), libp2p.GetP2P().Host.ID().String())
+	if err != nil {
+		zlog.Sugar().Errorf("unable to register with logbin: %v", err)
+	}
+
 	c.JSON(http.StatusCreated, metadata)
 }
 
