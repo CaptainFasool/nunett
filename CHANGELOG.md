@@ -20,6 +20,14 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.117](#267)
+### Added
+- Endpoint to retrieve list of tx hashes for jobs done on machine
+
+### Changed
+- Accept tx hash from spd on send-status
+- Include tx hash in depreq to CP
+- Use tx hash to match job done during claim
 # [0.4.116](#255)
 ### Changed
 - Replace gist with logbin for log storage

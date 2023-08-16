@@ -450,6 +450,7 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	service.JobStatus = "running"
 	service.JobDuration = 5           // these are dummy data, implementation pending
 	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
+	service.TxHash = depReq.TxHash
 
 	// create logbin here and pass it to RunContainer to update logs
 	createdLog, err := newLogBin(
