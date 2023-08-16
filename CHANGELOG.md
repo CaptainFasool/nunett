@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.116](#255)
+### Changed
+- Replace gist with logbin for log storage
+
 # [0.4.115](#247)
 ### Added
 - Send telemetry events to ELK stack

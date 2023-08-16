@@ -2,6 +2,7 @@
 package messaging
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -45,15 +46,15 @@ func DeploymentWorker() {
 	for {
 		select {
 		case msg := <-libp2p.DepReqQueue:
+			ctx := context.Background()
 			var depReq models.DeploymentRequest
-
 			jsonDataMsg, _ := json.Marshal(msg)
 			json.Unmarshal(jsonDataMsg, &depReq)
 
 			if depReq.ServiceType == "cardano_node" {
 				handleCardanoDeployment(depReq)
 			} else if depReq.ServiceType == "ml-training-cpu" || depReq.ServiceType == "ml-training-gpu" {
-				handleDockerDeployment(depReq)
+				handleDockerDeployment(ctx, depReq)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
 				sendDeploymentResponse(false, "Unknown service type.")
@@ -110,7 +111,7 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	sendDeploymentResponse(true, "Cardano Node Deployment Successful.")
 }
 
-func handleDockerDeployment(depReq models.DeploymentRequest) {
+func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
 	callID := float32(GetCallID())
 	peerIDOfServiceHost := depReq.Params.LocalNodeID
@@ -139,6 +140,6 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		}
 	}
 
-	depResp = docker.HandleDeployment(depReq)
+	depResp = docker.HandleDeployment(ctx, depReq)
 	sendDeploymentResponse(depResp.Success, depResp.Content)
 }
