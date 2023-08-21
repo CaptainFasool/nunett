@@ -2,7 +2,10 @@ package ipfs_plugin
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/plugins/plugins_management"
 
@@ -13,10 +16,11 @@ import (
 )
 
 type IPFSPlugin struct {
-	info        models.PluginInfo
-	exposedPort string
-	exposedAddr string
-	dockerImg   string
+	info    models.PluginInfo
+	process *os.Process
+	running bool
+	port    string
+	addr    string
 }
 
 const (
@@ -31,9 +35,8 @@ const (
 
 func NewIPFSPlugin() *IPFSPlugin {
 	p := &IPFSPlugin{}
-	p.dockerImg = "registry.gitlab.com/nunet/data-persistence/ipfs-plugin:0.0.1"
-	p.exposedAddr = loopbackIP
-	p.exposedPort = "31001"
+	p.addr = loopbackIP
+	p.port = "31001"
 
 	i := models.PluginInfo{}
 	i.Name = "ipfs-plugin"
@@ -44,58 +47,70 @@ func NewIPFSPlugin() *IPFSPlugin {
 	return p
 }
 
-// Run deals with the startup of IPFS-Plugin, downloading the image,
-// configuring and starting the Docker container
+// Run deals with the startup of IPFS-Plugin through exec.Command()
+// in which the default path for plugins is $dms-root/plugins/executables
 func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels) {
-	err := pullImage(p.dockerImg, dc)
+	zlog.Sugar().Debug("Starting ", p.info.Name)
+	executablePath := fmt.Sprintf("%v/%v", config.GetConfig().General.PluginsPath, p.info.Name)
+	cmd := exec.Command(executablePath)
+	env := []string{
+		fmt.Sprintf("kuboSwarmPort=%v", kuboSwarmPort),
+		fmt.Sprintf("kuboAPIPort=%v", kuboAPIPort),
+		fmt.Sprintf("kuboGatewayPort=%v", kuboGatewayPort),
+	}
+	cmd.Env = append([]string{}, env...)
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Start()
 	if err != nil {
-		zlog.Sugar().Errorf("Couldn't pull ipfs-plugin docker image: %v", err)
-		pluginsManager.ErrCh <- err
+		pluginsManager.ErrCh <- fmt.Errorf(
+			"Couldn't execute cmd.Start() for: %v, Error: %w", p.info.Name, err,
+		)
 		return
 	}
 
-	zlog.Sugar().Debug("Entering IPFS-Plugin container")
+	p.running = true
+	p.process = cmd.Process
+	zlog.Sugar().Infof("Plugin %v started, path: %v, pid: %v", p.info.Name, cmd.Path, p.process.Pid)
 
-	containerConfig, hostConfig, err := p.configureContainer()
-	if err != nil {
-		zlog.Sugar().Errorf("Error occured when configuring container: %v", err)
-		pluginsManager.ErrCh <- err
-		return
-	}
-
-	resp, err := dc.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
-	if err != nil {
-		zlog.Sugar().Errorf("Unable to create plugin container: %v", err)
-		pluginsManager.ErrCh <- err
-		return
-	}
-
-	zlog.Sugar().Debug("Starting IPFS-Plugin container")
-	if err := dc.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		zlog.Sugar().Errorf("Unable to start plugin container: %v", err)
-		pluginsManager.ErrCh <- err
-		return
-	}
-
-	// We're not running from within IPFS-Plugin container because this
-	// requires some workarounds with Docker socket and the container itself
-	zlog.Sugar().Debug("Starting Kubo node container")
+	zlog.Sugar().Debug("Starting Kubo node within a Docker container")
 	if err := runKuboNode(dc); err != nil {
-		zlog.Sugar().Errorf("Unable to start Kubo node for IPFS-Plugin: %v", err)
-		pluginsManager.ErrCh <- err
+		pluginsManager.ErrCh <- fmt.Errorf(
+			"Unable to start Kubo node for IPFS-Plugin: %w", err,
+		)
 		return
 	}
 
 	pluginsManager.SucceedStartup <- &p.info
 
-	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	err = cmd.Wait()
+	if err != nil {
+		p.running = false
+		pluginsManager.ErrCh <- fmt.Errorf(
+			"Plugin %v exited, Error: %w", p.info.Name, err,
+		)
+		return
+	}
+
+	return
+
 }
 
 // Stop stops the IPFS-Plugin Docker container and return an error if any.
 func (p *IPFSPlugin) Stop(pluginsManager *plugins_management.PluginsInfoChannels) error {
-	err := stopPluginDcContainer(p.info.Name, dc)
+	if p.process == nil {
+		return fmt.Errorf("There is no assigned process for plugin %v", p.info.Name)
+	}
+
+	defer func() {
+		p.process = nil
+	}()
+
+	err := p.process.Kill()
 	if err != nil {
-		pluginsManager.ErrCh <- err
+		pluginsManager.ErrCh <- fmt.Errorf("Unable to kill ipfs-plugin process, Erro: %w", err)
 		return err
 	}
 	return nil
@@ -103,58 +118,7 @@ func (p *IPFSPlugin) Stop(pluginsManager *plugins_management.PluginsInfoChannels
 
 // IsRunning checks if a IPFS-Plugin Docker container is running
 func (p *IPFSPlugin) IsRunning(pluginsManager *plugins_management.PluginsInfoChannels) (bool, error) {
-	isRunning, err := isPluginDcContainerRunning(p.info.Name, dc)
-	if err != nil {
-		pluginsManager.ErrCh <- err
-		return false, err
-	}
-
-	if isRunning {
-		return true, nil
-	}
-	return false, nil
-}
-
-// configureContainer returns the configuration values for IPFS-Plugin Docker container.
-// Here is where ports, imageURL and other Docker container configs are defined.
-func (p *IPFSPlugin) configureContainer() (*container.Config, *container.HostConfig, error) {
-	env := []string{
-		fmt.Sprintf("kuboSwarmPort=%v", kuboSwarmPort),
-		fmt.Sprintf("kuboAPIPort=%v", kuboAPIPort),
-		fmt.Sprintf("kuboGatewayPort=%v", kuboGatewayPort),
-	}
-
-	port, err := nat.NewPort("tcp", p.exposedPort)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	labels := map[string]string{
-		"dms-related": "true",
-	}
-
-	labels["dms-plugin"] = p.info.Name
-
-	containerConfig := &container.Config{
-		Image: p.dockerImg,
-		ExposedPorts: nat.PortSet{
-			port: struct{}{},
-		},
-		Labels: labels,
-		Env:    env,
-	}
-
-	hostConfig := &container.HostConfig{
-		PortBindings: nat.PortMap{
-			port: []nat.PortBinding{
-				{
-					HostIP:   p.exposedAddr,
-					HostPort: p.exposedPort,
-				},
-			},
-		},
-	}
-	return containerConfig, hostConfig, nil
+	return p.running, nil
 }
 
 // runKuboNode starts Kubo node (docker container) through its official docker image
@@ -217,6 +181,5 @@ func runKuboNode(dc *client.Client) error {
 		return fmt.Errorf("Unable to start Kubo container: %v", err)
 	}
 
-	// statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	return nil
 }
