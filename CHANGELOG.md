@@ -20,6 +20,13 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.118](#214)
+### Added
+- Logger class with the basic log levels
+- Partial/main functionalities logging to elk
+
+### Removed
+- Removed telemetry spans
 # [0.4.117](#267)
 ### Added
 - Endpoint to retrieve list of tx hashes for jobs done on machine

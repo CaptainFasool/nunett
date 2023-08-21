@@ -2,9 +2,11 @@ package heartbeat
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,7 +16,6 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/libp2p"
 
 	"strconv"
 
@@ -30,17 +31,17 @@ func Heartbeat() {
 	ticker := time.NewTicker(1 * time.Minute)
 	// Start a goroutine to perform the repeated function calls
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				zlog.Sugar().Errorf("Recovered from error: %v", r)
+			}
+		}()
 		for {
 			select {
 			case <-Done:
 				// Stop the goroutine when the channel receives a signal
 				return
 			case <-ticker.C:
-				defer func() {
-					if r := recover(); r != nil {
-						zlog.Sugar().Errorf("Recovered from error: %v", r)
-					}
-				}()
 				Create()
 			}
 		}
@@ -48,19 +49,9 @@ func Heartbeat() {
 }
 
 func Create() {
-	if libp2p.GetP2P().Host == nil {
-		return
-	}
-
-	es, err := getElasticsearchClient()
-	if err != nil {
-		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
-		return
-	}
-
 	indexName := "apm-nunet-dms-heartbeat"
 
-	documentID := libp2p.GetP2P().Host.ID().String()
+	documentID := elastictoken.NodeId
 	documentData := `{
 		"cpu": 0,
 		"ram": 0,
@@ -80,7 +71,7 @@ func Create() {
 	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
 	docMap["cpu"] = metadata.Reserved.CPU
 	docMap["ram"] = metadata.Reserved.Memory
-	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
+	docMap["ID"] = elastictoken.NodeId
 
 	updatedDocBytes, _ := json.Marshal(docMap)
 
@@ -94,8 +85,16 @@ func Create() {
 		Refresh:    "true",
 	}
 
+	if esClient == nil {
+		client, err := getElasticSearchClient()
+		if err != nil {
+			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+		}
+		esClient = client
+	}
+
 	// Perform the request
-	res, err := req.Do(context.Background(), es)
+	res, err := req.Do(context.Background(), esClient)
 	if err != nil {
 		zlog.Sugar().Errorf("Error indexing document: %v", err)
 	}
@@ -109,12 +108,6 @@ func Create() {
 }
 
 func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetaken int, ntx int) {
-	es, err := getElasticsearchClient()
-	if err != nil {
-		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
-		return
-	}
-
 	indexName := "apm-nunet-dms-heartbeat"
 	documentData := `{
 		"usedcpu": 0,
@@ -145,7 +138,15 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	docMap["callid"] = callid
 	documentID := strconv.Itoa(callid)
 
-	exists, err := documentExists(context.Background(), es, indexName, documentID)
+	if esClient == nil {
+		client, err := getElasticSearchClient()
+		if err != nil {
+			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+		}
+		esClient = client
+	}
+
+	exists, err := documentExists(context.Background(), esClient, indexName, documentID)
 
 	if err != nil {
 		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
@@ -163,7 +164,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 			"ntx":         ntx,
 		}
 		//err = UpdateDocumentField(context.Background(), es, indexName, documentID, "usedcpu", "50")
-		err = updateDocumentFields(context.Background(), es, indexName, documentID, fields)
+		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
 
 		if err != nil {
 			zlog.Sugar().Errorf("Error retrieving the document : %v", err)
@@ -171,7 +172,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 		return
 	}
 
-	docMap["ID"] = libp2p.GetP2P().Host.ID().String()
+	docMap["ID"] = elastictoken
 
 	updatedDocBytes, _ := json.Marshal(docMap)
 
@@ -186,7 +187,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	}
 
 	// Perform the request
-	res, err := req.Do(context.Background(), es)
+	res, err := req.Do(context.Background(), esClient)
 	if err != nil {
 		zlog.Sugar().Errorf("Error indexing document: %v", err)
 		return
@@ -201,17 +202,19 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 }
 
 func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, status string, timestamp int) {
-	es, err := getElasticsearchClient()
-	if err != nil {
-		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
-		return
-	}
-
 	indexName := "apm-nunet-dms-heartbeat"
 
 	documentID := strconv.Itoa(callid)
 
-	exists, err := documentExists(context.Background(), es, indexName, documentID)
+	if esClient == nil {
+		client, err := getElasticSearchClient()
+		if err != nil {
+			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+		}
+		esClient = client
+	}
+
+	exists, err := documentExists(context.Background(), esClient, indexName, documentID)
 
 	if err != nil {
 		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
@@ -226,7 +229,7 @@ func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, sta
 			"status":    status,
 			"serviceID": serviceID,
 		}
-		err = updateDocumentFields(context.Background(), es, indexName, documentID, fields)
+		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
 
 		if err != nil {
 			zlog.Sugar().Errorf("Error updating the document : %v", err)
@@ -237,17 +240,19 @@ func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, sta
 }
 
 func NtxPayment(callid int, serviceID string, successFailStatus string, peerID string, amountOfNtx int, timestamp int) {
-	es, err := getElasticsearchClient()
-	if err != nil {
-		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
-		return
-	}
-
 	indexName := "apm-nunet-dms-heartbeat"
 
 	documentID := strconv.Itoa(callid)
 
-	exists, err := documentExists(context.Background(), es, indexName, documentID)
+	if esClient == nil {
+		client, err := getElasticSearchClient()
+		if err != nil {
+			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+		}
+		esClient = client
+	}
+
+	exists, err := documentExists(context.Background(), esClient, indexName, documentID)
 
 	if err != nil {
 		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
@@ -262,7 +267,7 @@ func NtxPayment(callid int, serviceID string, successFailStatus string, peerID s
 			"status":    successFailStatus,
 			"ntx":       amountOfNtx,
 		}
-		err = updateDocumentFields(context.Background(), es, indexName, documentID, fields)
+		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
 
 		if err != nil {
 			zlog.Sugar().Errorf("Error updating the document : %v", err)
@@ -273,17 +278,19 @@ func NtxPayment(callid int, serviceID string, successFailStatus string, peerID s
 }
 
 func DeviceResourceChange(cpu int, ram int) {
-	es, err := getElasticsearchClient()
-	if err != nil {
-		zlog.Sugar().Errorf("Error creating the Elasticsearch client: %v", err)
-		return
-	}
-
 	indexName := "apm-nunet-dms-heartbeat"
 
-	documentID := libp2p.GetP2P().Host.ID().String()
+	documentID := elastictoken.NodeId
 
-	exists, err := documentExists(context.Background(), es, indexName, documentID)
+	if esClient == nil {
+		client, err := getElasticSearchClient()
+		if err != nil {
+			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+		}
+		esClient = client
+	}
+
+	exists, err := documentExists(context.Background(), esClient, indexName, documentID)
 
 	if err != nil {
 		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
@@ -296,7 +303,7 @@ func DeviceResourceChange(cpu int, ram int) {
 			"cpu": cpu,
 			"ram": ram,
 		}
-		err = updateDocumentFields(context.Background(), es, indexName, documentID, fields)
+		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
 
 		if err != nil {
 			zlog.Sugar().Errorf("Error updating the document : %v", err)
@@ -306,42 +313,100 @@ func DeviceResourceChange(cpu int, ram int) {
 
 }
 
-func getElasticsearchClient() (*elasticsearch.Client, error) {
-	var elastictoken models.ElasticToken
-	elastictoken.NodeId = libp2p.GetP2P().Host.ID().Pretty()
+func DmsLoggs(log string, level string) {
+	indexName := "apm-nunet-dms-logs"
+	documentID := strconv.Itoa(generateRandomInt())
+	documentData := `{
+		"log": "",
+		"level": "",
+		"ID": "",
+		"timestamp":""
+		}`
+
+	var docMap map[string]interface{}
+	json.Unmarshal([]byte(documentData), &docMap)
+
+	docMap["timestamp"] = time.Now().Format("2006-01-02T15:04:05.999Z07:00")
+	docMap["log"] = log
+	docMap["level"] = level
+	docMap["ID"] = elastictoken.NodeId
+	updatedDocBytes, _ := json.Marshal(docMap)
+
+	updatedDocString := string(updatedDocBytes)
+
+	// Create the request
+	req := esapi.IndexRequest{
+		Index:      indexName,
+		DocumentID: documentID,
+		Body:       strings.NewReader(updatedDocString),
+		Refresh:    "true",
+	}
+
+	if esClient == nil {
+		client, err := getElasticSearchClient()
+		if err != nil {
+			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+		}
+		esClient = client
+	}
+
+	// Perform the request
+	res, err := req.Do(context.Background(), esClient)
+	if err != nil {
+		zlog.Sugar().Errorf("Error indexing document: %v", err)
+	}
+	defer res.Body.Close()
+
+	// Check the response status
+	if res.IsError() {
+		zlog.Sugar().Errorf("Error response received: %s", res.Status())
+	}
+
+}
+
+func getElasticSearchClient() (*elasticsearch.Client, error) {
+	elastictoken = models.ElasticToken{}
+	db.DB.First(&elastictoken)
+	// db.DB.Find(&elastictoken)
 	elastictoken.ChannelName = utils.GetChannelName()
 
 	db.DB.Find(&elastictoken, "node_id = ? and channel_name=?", elastictoken.NodeId, elastictoken.ChannelName)
 	accessToken := elastictoken.Token
 
 	if accessToken == "" {
-		accessToken, _ = GetToken(elastictoken.NodeId, elastictoken.ChannelName)
+		accessToken, err := NewToken(elastictoken.NodeId, elastictoken.ChannelName)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create token: %v", err)
+		}
 		elastictoken.Token = accessToken
-		db.DB.Create(&elastictoken)
 	}
 
 	address := ""
 	if elastictoken.ChannelName == "nunet-test" {
-		address = "http://elastic-test.test.nunet.io"
+		address = "https://elastic-test.test.nunet.io"
 	} else {
 		address = "http://elastic-staging.dev.nunet.io"
 	}
 
+	if esClient != nil {
+		return esClient, nil
+	}
+
 	// Create the HTTP client with the access token
-	client, err := elasticsearch.NewClient(elasticsearch.Config{
+	var err error
+	esClient, err = elasticsearch.NewClient(elasticsearch.Config{
 		Addresses: []string{address},
 		Header:    http.Header{"Authorization": []string{"ApiKey " + accessToken}},
 	})
 	if err != nil {
 		return nil, err
 	}
-
 	// Check if the connection is successful
-	res, err := client.Info()
+	res, err := esClient.Info()
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
+	// defer res.Body.Close()
 
 	// Decode the response
 	var info map[string]interface{}
@@ -349,8 +414,9 @@ func getElasticsearchClient() (*elasticsearch.Client, error) {
 		return nil, err
 	}
 
-	return client, nil
+	return esClient, nil
 }
+
 
 // DocumentExists checks if a document ID exists in Elasticsearch
 func documentExists(ctx context.Context, es *elasticsearch.Client, index, docID string) (bool, error) {
@@ -419,7 +485,7 @@ func GetToken(peerID string, channel string) (string, error) {
 	data.Set("peerid", peerID)
 	url := ""
 	if channel == "nunet-test" {
-		url = "http://test.nunet.io:24000/getOrCreate"
+		url = "https://elastic-test.test.nunet.io/getOrCreate"
 	} else {
 		url = "http://dev.nunet.io:24000/getOrCreate"
 	}
@@ -437,16 +503,48 @@ func GetToken(peerID string, channel string) (string, error) {
 	return string(body), nil
 }
 
-func NewToken(peerID string, channel string) error {
+func NewToken(peerID string, channel string) (string, error) {
+	var existingTokens []models.ElasticToken
+	result := db.DB.Where("node_id = ? and channel_name=?", peerID, channel).Find(&existingTokens)
+	if result.RowsAffected > 0 {
+		db.DB.Delete(&existingTokens)
+	}
+
 	var elastictoken models.ElasticToken
 	elastictoken.NodeId = peerID
 	elastictoken.ChannelName = channel
 	token, _ := GetToken(elastictoken.NodeId, elastictoken.ChannelName)
 	elastictoken.Token = token
-	result := db.DB.Create(&elastictoken)
+
+	result = db.DB.Create(&elastictoken)
 	if result.Error != nil {
 		zlog.Sugar().Errorf("could not create elastic search access token record in DB: %v", result.Error)
-		return result.Error
+		return "", result.Error
 	}
+	return token, nil
+}
+
+func CheckToken(peerID string, channel string) error {
+	var elasticToken models.ElasticToken
+	result := db.DB.Find(&elasticToken)
+	if result.Error != nil || elasticToken.Token == "" {
+		zlog.Sugar().Errorf("unable to read elastic token from db - err: %v , noToken: %t", result.Error, elasticToken.Token == "")
+		_, err := NewToken(peerID, channel)
+		if err != nil {
+			return fmt.Errorf("unable to create token: %v", err)
+		}
+	}
+
 	return nil
 }
+
+func generateRandomInt() int {
+	min := big.NewInt(1000000000)
+	max := big.NewInt(10000000000 - 1)
+	n, err := rand.Int(rand.Reader, max.Sub(max, min))
+	if err != nil {
+		zlog.Sugar().Errorf("unable to generate random integer: %v", err)
+	}
+	return int(n.Int64()) + 1000000000
+}
+

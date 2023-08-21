@@ -136,6 +136,7 @@ type KadDHTMachineUpdate struct {
 }
 
 type ElasticToken struct {
+	gorm.Model
 	NodeId      string
 	Token       string
 	ChannelName string

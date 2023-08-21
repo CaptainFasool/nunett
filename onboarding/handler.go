@@ -14,12 +14,10 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
-	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
+	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/spf13/afero"
 )
@@ -39,11 +37,6 @@ func GetMetadata(c *gin.Context) {
 	// check if the request has any body data
 	// if it has return that body  and skip the below code
 	// just for the test cases
-
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/metadata"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
 	// read the info
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
@@ -73,10 +66,6 @@ func GetMetadata(c *gin.Context) {
 //	@Success		200	{object}	models.Provisioned
 //	@Router			/onboarding/provisioned [get]
 func ProvisionedCapacity(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/provisioned"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
 	totalProvisioned := GetTotalProvisioned()
 	totalPJ, err := json.Marshal(totalProvisioned)
 	if err != nil {
@@ -95,10 +84,6 @@ func ProvisionedCapacity(c *gin.Context) {
 //	@Router			/onboarding/address/new [get]
 func CreatePaymentAddress(c *gin.Context) {
 	// send telemetry data
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/address/new"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
 	blockChain := c.DefaultQuery("blockchain", "cardano")
 
 	var pair *models.BlockchainAddressPrivKey
@@ -130,10 +115,6 @@ func CreatePaymentAddress(c *gin.Context) {
 //	@Success		200	{object} models.OnboardingStatus
 //	@Router			/onboarding/status [get]
 func Status(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/status"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
 	onboarded, err := utils.IsOnboarded()
 	var metadataPath string
 	var dbPath string
@@ -163,10 +144,6 @@ func Status(c *gin.Context) {
 //	@Success		200	{object}	models.Metadata
 //	@Router			/onboarding/onboard [post]
 func Onboard(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/onboard"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
 	// get capacity user want to rent to NuNet
 	capacityForNunet := models.CapacityForNunet{ServerMode: true}
 	c.BindJSON(&capacityForNunet)
@@ -220,6 +197,7 @@ func Onboard(c *gin.Context) {
 		if capacityForNunet.Memory < 10000 || capacityForNunet.CPU < 6000 {
 			c.JSON(http.StatusBadRequest,
 				gin.H{"error": "cardano node requires 10000MB of RAM and 6000MHz CPU"})
+			klogger.Logger.Error("onboarding error : wrong capacity provided")
 			return
 		}
 		metadata.AllowCardano = true
@@ -280,8 +258,6 @@ func Onboard(c *gin.Context) {
 		PriceDisk: 0,
 	}
 
-	kLogger.Resource(int(capacityForNunet.CPU), int(capacityForNunet.Memory), 0, 0, span)
-
 	var availableRes models.AvailableResources
 	if res := db.DB.WithContext(c.Request.Context()).Find(&availableRes); res.RowsAffected == 0 {
 		result := db.DB.WithContext(c.Request.Context()).Create(&available_resources)
@@ -310,17 +286,17 @@ func Onboard(c *gin.Context) {
 	}
 	telemetry.CalcFreeResources()
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
-	span.SetAttributes(attribute.String("PeerID", libp2p.GetP2P().Host.ID().String()))
 
 	// check if nodeID is empty
 	if len(metadata.NodeID) == 0 {
 		metadata.NodeID = libp2p.GetP2P().Host.ID().Pretty()
 	}
 
-	err = heartbeat.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)
+	_, err = heartbeat.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)
 	if err != nil {
 		zlog.Sugar().Errorf("unable to get new telemetry token: %v", err)
 	}
+	klogger.Logger.Info("device onboarded")
 
 	_, err = utils.RegisterLogbin(utils.GetMachineUUID(), libp2p.GetP2P().Host.ID().String())
 	if err != nil {
@@ -338,10 +314,7 @@ func Onboard(c *gin.Context) {
 //	@Success	200	{object}	models.Metadata
 //	@Router		/onboarding/resource-config [post]
 func ResourceConfig(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/resource-config"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
+	klogger.Logger.Info("device resource change started")
 	// check if request body is empty
 	if c.Request.ContentLength == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "request body is empty"})
@@ -386,7 +359,7 @@ func ResourceConfig(c *gin.Context) {
 			gin.H{"error": "could not write metadata.json"})
 		return
 	}
-
+	klogger.Logger.Info("device resource changed")
 	telemetry.CalcFreeResources()
 	c.JSON(http.StatusOK, metadata)
 }
@@ -398,17 +371,13 @@ func ResourceConfig(c *gin.Context) {
 // @Success      200  "Successfully Onboarded"
 // @Router       /onboarding/offboard [delete]
 func Offboard(c *gin.Context) {
+	klogger.Logger.Info("device offboarding started")
 	force, _ := strconv.ParseBool(c.DefaultQuery("force", "false"))
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/onboarding/offboard"))
-	span.SetAttributes(attribute.String("Force", fmt.Sprintf("%t", force)))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Offboarding device", span)
-
 	if onboarded, err := utils.IsOnboarded(); !onboarded {
 		if err != nil {
 			if !force {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "problem with state: " + err.Error()})
+				klogger.Logger.Error("offboarding error : " + err.Error())
 				return
 			} else {
 				zlog.Sugar().Errorf("problem with onboarding state: %v", err)
@@ -416,6 +385,7 @@ func Offboard(c *gin.Context) {
 			}
 		} else {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "machine not onboarded"})
+			klogger.Logger.Error("offboarding error : machine not onboarded")
 			return
 		}
 	}
@@ -451,7 +421,7 @@ func Offboard(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to properly shutdown the node"})
 		return
 	}
-
+	klogger.Logger.Info("device offboarded successfully")
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully Offboarded", "forced": force})
 }
 
