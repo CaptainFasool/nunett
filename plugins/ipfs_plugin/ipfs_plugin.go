@@ -104,15 +104,14 @@ func (p *IPFSPlugin) Stop(pluginsManager *plugins_management.PluginsInfoChannels
 		return fmt.Errorf("There is no assigned process for plugin %v", p.info.Name)
 	}
 
-	defer func() {
-		p.process = nil
-	}()
-
 	err := p.process.Kill()
 	if err != nil {
 		pluginsManager.ErrCh <- fmt.Errorf("Unable to kill ipfs-plugin process, Erro: %w", err)
 		return err
 	}
+
+	p.process = nil
+	p.running = false
 	return nil
 }
 
