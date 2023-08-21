@@ -32,10 +32,6 @@ func StartPlugins() {
 	go plugins_management.ManagePlugins(pluginsCentralChannels)
 
 	for _, currentPlugin := range enabledPlugins {
-		// Currently killing plugin if already running to update possible new configs
-		if isRunning, _ := currentPlugin.IsRunning(pluginsCentralChannels); isRunning {
-			currentPlugin.Stop(pluginsCentralChannels)
-		}
 		go currentPlugin.Run(pluginsCentralChannels)
 	}
 

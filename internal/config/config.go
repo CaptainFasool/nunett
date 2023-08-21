@@ -10,6 +10,7 @@ type Config struct {
 type General struct {
 	MetadataPath string `mapstructure:"metadata_path"`
 	Debug        bool   `mapstructure:"debug"`
+	PluginsPath  string `mapstructure:"plugins_path"`
 }
 
 type Rest struct {
