@@ -28,7 +28,7 @@ func setDefaultConfig() *viper.Viper {
 	v := getViper()
 	v.SetDefault("general.metadata_path", "/etc/nunet")
 	v.SetDefault("general.debug", false)
-	v.SetDefault("general.plugins_path", home+"/.nunet")
+	v.SetDefault("general.plugins_path", home+"/.nunet/plugins")
 	v.SetDefault("rest.port", 9999)
 	v.SetDefault("p2p.listen_address", []string{
 		"/ip4/0.0.0.0/tcp/9000",
