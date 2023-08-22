@@ -25,8 +25,6 @@ type wsMessage struct {
 	Message json.RawMessage `json:"message"`
 }
 
-
-
 type fundingRespToSPD struct {
 	ComputeProviderAddr string  `json:"compute_provider_addr"`
 	EstimatedPrice      float64 `json:"estimated_price"`

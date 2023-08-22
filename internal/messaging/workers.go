@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
+	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -113,7 +114,7 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 
 func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
-	callID := float32(GetCallID())
+	callID := GetCallID()
 	peerIDOfServiceHost := depReq.Params.LocalNodeID
 	status := "accepted"
 
@@ -123,7 +124,7 @@ func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest
 		CallID:      callID,
 		NodeID:      peerIDOfServiceHost,
 		Status:      status,
-		MaxTokens:   int32(depReq.MaxNtx),
+		MaxTokens:   depReq.MaxNtx,
 	}
 
 	// Check if we have a previous entry in the table
@@ -139,6 +140,9 @@ func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest
 			zlog.Error(result.Error.Error())
 		}
 	}
+
+	// sending service call info to elastic search
+	elk.ProcessUsage(int(callID), 0, 0, 0, 0, depReq.MaxNtx)
 
 	depResp = docker.HandleDeployment(ctx, depReq)
 	sendDeploymentResponse(depResp.Success, depResp.Content)

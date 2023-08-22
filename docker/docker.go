@@ -22,6 +22,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
@@ -30,7 +31,7 @@ import (
 
 var (
 	vcpuToMicroseconds float64       = 100000
-	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
+	logUpdateInterval  time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
 )
 
 func freeUsedResources() {
@@ -39,6 +40,11 @@ func freeUsedResources() {
 	if err != nil {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	elk.DeviceResourceChange(freeResource.TotCpuHz, freeResource.Ram)
 	libp2p.UpdateKadDHT()
 }
 
@@ -178,6 +184,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	}
 	status := "started"
 
+	// updating status of service to elastic search
+	elk.ProcessStatus(int(requestTracker.CallID), requestTracker.NodeID, "", status, 0)
+
 	// updating RequestTracker
 	requestTracker.Status = status
 	requestTracker.RequestID = resp.ID
@@ -250,12 +259,6 @@ outerLoop:
 			}
 			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 
-			var requestTracker models.RequestTracker
-			res := db.DB.Where("id = ?", 1).Find(&requestTracker)
-			if res.Error != nil {
-				zlog.Error(res.Error.Error())
-			}
-
 			// add exitStatus to db
 			if containerStatus.StatusCode == 0 {
 				service.JobStatus = libp2p.ContainerJobFinishedWithoutErrors
@@ -277,13 +280,15 @@ outerLoop:
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
 
-			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
-			if res.Error != nil {
-				zlog.Sugar().Errorf("problem updating request tracker: %v", res.Error)
-				depRes := models.DeploymentResponse{Success: false, Content: "Problem with request tracker. Unable to complete request."}
-				resCh <- depRes
-				return
-			}
+			duration := time.Now().Sub(service.CreatedAt)
+			timeTaken := duration.Seconds()
+			averageNetBw := networkBwUsed / timeTaken
+
+			// updating elastic search with status of service
+			elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
+				int(averageNetBw), int(timeTaken), requestTracker.MaxTokens)
+			elk.ProcessStatus(int(requestTracker.CallID), depReq.Params.LocalNodeID, "", status, 0)
+			db.DB.Save(requestTracker)
 			freeUsedResources()
 			break outerLoop
 		case <-tick.C:
@@ -300,6 +305,9 @@ outerLoop:
 			if err := db.DB.Where("container_id = ?", resp.ID).First(&tempService).Error; err != nil {
 				panic(err)
 			}
+			duration := time.Since(tempService.CreatedAt)
+			timeTaken := duration.Seconds()
+			averageNetBw := networkBwUsed / timeTaken
 
 			for _, s := range stats {
 				if s.Container == contID {
@@ -324,6 +332,10 @@ outerLoop:
 				}
 			}
 
+			// updating elastic search with telemetry info during job running
+			elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
+				int(averageNetBw), int(timeTaken), requestTracker.MaxTokens)
+
 			updateLogbin(ctx, createdLog.ID, resp.ID)
 
 			// Add a response for log update
@@ -334,6 +346,7 @@ outerLoop:
 			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
+			db.DB.Save(requestTracker)
 		}
 	}
 }
