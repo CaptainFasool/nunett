@@ -12,11 +12,11 @@ import (
 type ReadMetadataFileFunc func() (models.MetadataV2, error)
 
 func StartPlugins() {
-	zlog.Sugar().Debug("Starting plugins")
-
 	enabledPlugins, err := solveEnabledPlugins(utils.ReadMetadataFile)
 	if err != nil {
-		zlog.Sugar().Warn("Enabled plugins were not started: Couldn't get enabled plugins: ", err)
+		zlog.Sugar().Warn(
+			"Couldn't get enabled plugins, they won't start if any; Error: %v",
+			err)
 		return
 	}
 
@@ -35,7 +35,6 @@ func StartPlugins() {
 		go currentPlugin.Run(pluginsCentralChannels)
 	}
 
-	zlog.Sugar().Debug("Exiting StartPlugins")
 	return
 }
 
@@ -64,8 +63,9 @@ func solveEnabledPlugins(readMetadataFile ReadMetadataFileFunc) ([]plugins_manag
 func getMetadataPlugins(readMetadataFile ReadMetadataFileFunc) ([]string, error) {
 	metadata, err := readMetadataFile()
 	if err != nil {
-		zlog.Sugar().Errorf("Couldn't read from metadata file (you probably hadn't onboarded your machine yet): %v", err)
-		return []string{}, err
+		return []string{}, fmt.Errorf(
+			"Couldn't read from metadata file (you probably hadn't onboarded your machine yet), Error: %w",
+			err)
 	}
 	enabledPlugins := metadata.Plugins
 	return enabledPlugins, nil
