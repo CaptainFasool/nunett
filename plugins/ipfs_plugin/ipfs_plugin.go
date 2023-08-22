@@ -69,7 +69,6 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 	}
 
 	return
-
 }
 
 // Stop stops the IPFS-Plugin Docker container and return an error if any.
