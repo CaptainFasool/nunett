@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -15,17 +16,16 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
-	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
+	"gitlab.com/nunet/device-management-service/internal/klogger"
+
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/utils"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
 var clients = make(map[internal.WebSocketConnection]string)
 
 // ListPeers  godoc
+//
 //	@Summary		Return list of peers currently connected to
 //	@Description	Gets a list of peers the libp2p node can see within the network and return a list of peers
 //	@Tags			p2p
@@ -33,30 +33,32 @@ var clients = make(map[internal.WebSocketConnection]string)
 //	@Success		200	{string}	string
 //	@Router			/peers [get]
 func ListPeers(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("List peers", span)
-
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
+	klogger.Logger.Info("List peers executed by " + p2p.Host.ID().String())
 	if p2p.peers == nil {
 		c.JSON(500, gin.H{"error": "Peers haven't yet been fetched."})
+		klogger.Logger.Error("Peers haven't yet been fetched.")
+
 		return
 	}
 	if len(p2p.peers) == 0 {
 		c.JSON(500, gin.H{"error": "No Peers Yet."})
+		klogger.Logger.Error("No Peers Yet.")
+
 		return
 	}
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+
+	klogger.Logger.Info("List of peers" + p2p.Host.ID().String())
 
 	c.JSON(200, p2p.peers)
 
 }
 
 // ListPeers  godoc
+//
 //	@Summary		Return list of peers which have sent a dht update
 //	@Description	Gets a list of peers the libp2p node has received a dht update from
 //	@Tags			p2p
@@ -64,16 +66,11 @@ func ListPeers(c *gin.Context) {
 //	@Success		200	{string}	string
 //	@Router			/peers/dht [get]
 func ListDHTPeers(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/dht"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("List DHT peers", span)
-
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+	klogger.Logger.Info("List DHT peers executed by " + p2p.Host.ID().String())
 
 	var dhtPeers []peer.ID
 	for _, peer := range p2p.peers {
@@ -92,19 +89,22 @@ func ListDHTPeers(c *gin.Context) {
 
 	if len(dhtPeers) == 0 {
 		c.JSON(200, gin.H{"message": "No peers found"})
+		klogger.Logger.Error("No peers found")
 		return
 	}
 
 	dhtPeersJ, err := json.Marshal(dhtPeers)
 	if err != nil {
 		zlog.ErrorContext(c.Request.Context(), "failed to json marshal dhtPeers: %v", zap.Error(err))
+		klogger.Logger.Error("failed to json marshal dhtPeers")
 	}
+	klogger.Logger.Info("Response: " + string(dhtPeersJ))
 
-	span.SetAttributes(attribute.String("Response", string(dhtPeersJ)))
 	c.JSON(200, dhtPeers)
 }
 
 // ListKadDHTPeers  godoc
+//
 //	@Summary		Return list of peers which have sent a dht update
 //	@Description	Gets a list of peers the libp2p node has received a dht update from
 //	@Tags			p2p
@@ -112,15 +112,11 @@ func ListDHTPeers(c *gin.Context) {
 //	@Success		200	{string}	string
 //	@Router			/peers/kad-dht [get]
 func ListKadDHTPeers(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/kad-dht"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+	klogger.Logger.Info("List Kademlia DHT peers executed by " + p2p.Host.ID().String())
 
 	var dhtPeers []string
 
@@ -141,6 +137,7 @@ func ListKadDHTPeers(c *gin.Context) {
 		if err != nil {
 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
 				zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+
 			}
 			continue
 		}
@@ -157,6 +154,7 @@ func ListKadDHTPeers(c *gin.Context) {
 
 	if len(dhtPeers) == 0 {
 		c.JSON(200, gin.H{"message": "No peers found"})
+		klogger.Logger.Error("No peers found")
 		return
 	}
 
@@ -164,12 +162,13 @@ func ListKadDHTPeers(c *gin.Context) {
 	if err != nil {
 		zlog.ErrorContext(c.Request.Context(), "failed to json marshal dhtPeers: %v", zap.Error(err))
 	}
+	klogger.Logger.Info("Response: " + string(dhtPeersJ))
 
-	span.SetAttributes(attribute.String("Response", string(dhtPeersJ)))
 	c.JSON(200, dhtPeers)
 }
 
 // SelfPeerInfo  godoc
+//
 //	@Summary		Return self peer info
 //	@Description	Gets self peer info of libp2p node
 //	@Tags			p2p
@@ -177,17 +176,13 @@ func ListKadDHTPeers(c *gin.Context) {
 //	@Success		200	{string}	string
 //	@Router			/peers/self [get]
 func SelfPeerInfo(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/self"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Self peer info", span)
-
+	stTime := time.Now().UnixMilli()
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
-
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
+	klogger.Logger.Info(" result : Self Peer ID " + p2p.Host.ID().String())
+	zlog.Sugar().Infof("----------klogger time taken=%d ms", time.Now().UnixMilli()-stTime)
 
 	out := struct {
 		ID    string
@@ -196,11 +191,13 @@ func SelfPeerInfo(c *gin.Context) {
 		p2p.Host.ID().String(),
 		p2p.Host.Addrs(),
 	}
+	zlog.Sugar().Infof("----------overall time taken=%d ms", time.Now().UnixMilli()-stTime)
 
 	c.JSON(200, out)
 }
 
 // ListChatHandler  godoc
+//
 //	@Summary		List chat requests
 //	@Description	Get a list of chat requests from peers
 //	@Tags			chat
@@ -208,22 +205,17 @@ func SelfPeerInfo(c *gin.Context) {
 //	@Success		200
 //	@Router			/peers/chat [get]
 func ListChatHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/chat"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("List chat handler", span)
-
 	chatRequests, err := incomingChatRequests()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
+		klogger.Logger.Error("List chat handler Error: " + err.Error())
 		return
 	}
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
-
 	c.JSON(200, chatRequests)
 }
 
 // ClearChatHandler  godoc
+//
 //	@Summary		Clear chat requests
 //	@Description	Clear chat request streams from peers
 //	@Tags			chat
@@ -231,33 +223,23 @@ func ListChatHandler(c *gin.Context) {
 //	@Success		200
 //	@Router			/peers/chat/clear [get]
 func ClearChatHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/chat/clear"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Clear chat handler", span)
-
 	if err := clearIncomingChatRequests(); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
+		klogger.Logger.Error("Clear chat handler Error: " + err.Error())
 		return
 	}
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 
 	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound Chat Requests."})
 }
 
 // StartChatHandler  godoc
+//
 //	@Summary		Start chat with a peer
 //	@Description	Start chat session with a peer
 //	@Tags			chat
 //	@Success		200
 //	@Router			/peers/chat/start [get]
 func StartChatHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/chat/start"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Start chat handler", span)
-
 	peerID := c.Query("peerID")
 
 	if len(peerID) == 0 {
@@ -307,18 +289,13 @@ func StartChatHandler(c *gin.Context) {
 }
 
 // JoinChatHandler  godoc
+//
 //	@Summary		Join chat with a peer
 //	@Description	Join a chat session started by a peer
 //	@Tags			chat
 //	@Success		200
 //	@Router			/peers/chat/join [get]
 func JoinChatHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/chat/join"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Join chat handler", span)
-
 	streamReqID := c.Query("streamID")
 	if streamReqID == "" {
 		c.AbortWithStatusJSON(400, gin.H{"error": "Stream ID not provided"})
@@ -365,6 +342,7 @@ func JoinChatHandler(c *gin.Context) {
 }
 
 // DumpDHT  godoc
+//
 //	@Summary		Return a dump of the dht
 //	@Description	Returns entire DHT content
 //	@Tags			p2p
@@ -372,16 +350,10 @@ func JoinChatHandler(c *gin.Context) {
 //	@Success		200	{string}	string
 //	@Router			/dht [get]
 func DumpDHT(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/dht"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Dump dht", span)
-
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
 	}
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 
 	dhtContent := []models.PeerData{}
 	for _, peer := range p2p.Host.Peerstore().Peers() {
@@ -404,16 +376,11 @@ func DumpDHT(c *gin.Context) {
 		return
 	}
 
-	dhtContentJ, err := json.Marshal(dhtContent)
-	if err != nil {
-		zlog.ErrorContext(c.Request.Context(), "failed to json marshal dhtContent: %v", zap.Error(err))
-	}
-
-	span.SetAttributes(attribute.String("Response", string(dhtContentJ)))
 	c.JSON(200, dhtContent)
 }
 
 // DefaultDepReqPeer  godoc
+//
 //	@Summary		Manage default deplyment request receiver peer
 //	@Description	Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request.
 //	@Description	Show peer set as default deployment request receiver by sending a GET request without any parameters.
@@ -422,11 +389,6 @@ func DumpDHT(c *gin.Context) {
 //	@Success		200
 //	@Router			/peers/depreq [get]
 func DefaultDepReqPeer(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/depreq"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
 	peerID := c.Query("peerID")
 
 	if peerID == "0" {
@@ -581,11 +543,6 @@ func OldPingPeerHandler(c *gin.Context) {
 
 // DEBUG ONLY
 func DumpKademliaDHT(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/kad-dht"))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-
 	if p2p.Host == nil {
 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
 		return
@@ -649,11 +606,5 @@ func DumpKademliaDHT(c *gin.Context) {
 		return
 	}
 
-	dhtContentJ, err := json.Marshal(dhtContent)
-	if err != nil {
-		zlog.ErrorContext(c.Request.Context(), "failed to json marshal dhtContent: %v", zap.Error(err))
-	}
-
-	span.SetAttributes(attribute.String("Response", string(dhtContentJ)))
 	c.JSON(200, dhtContent)
 }

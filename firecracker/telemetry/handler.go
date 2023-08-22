@@ -126,6 +126,16 @@ func CalcFreeResources() error {
 	return nil
 }
 
+func DeleteCalcFreeResources() error {
+	var freeResource models.FreeResources
+	result := db.DB.Where("id = ?", 1).Delete(&freeResource)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
+
 // CalcFreeResources godoc
 //	@Summary		Returns the amount of free resources available
 //	@Description	Checks and returns the amount of free resources available

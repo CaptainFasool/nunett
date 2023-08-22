@@ -36,6 +36,7 @@ usage() {
     echo "  capacity            Display capacity of device resources"
     echo "  wallet              Get Current Wallet Address"
     echo "  onboard             Onboard the device to NuNet"
+    echo "  offboard            Offboard the device from NuNet"
     echo "  info                Get info about currently onboarded machine"
     echo "  onboard-gpu         Install NVIDIA/AMD GPU driver and Container Runtime"
     echo "  onboard-ml          Prepare the system for Machine Learning with GPU"
@@ -113,6 +114,15 @@ peer_usage() {
     echo "Commands:"
     echo "  list         List visible peers."
     echo -e "  self         Show self peer info.\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
+offboard_usage() {
+    echo -e "Usage: $SELF_NAME offboard [OPTION] \n"
+    echo -e "Offboard an onboarded machine.\n"
+    echo "Option:"
+    echo "  -f, --force         Force offboarding even if problems."
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
@@ -524,6 +534,8 @@ onboard() {
     N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
     N_AVAILABLE_CPU=$(echo $N_AVAILABLE_RES | jq ".cpu")
     N_AVAILABLE_CPU=$(printf "%.0f" $(echo $N_AVAILABLE_CPU | bc)) # rounding in case of decimal values cpu freq such as cloud
+
+
     if [[ $N_ONBOARD_MEM -gt $((N_AVAILABLE_MEM*9/10)) || $N_ONBOARD_MEM -lt $((N_AVAILABLE_MEM/10)) ]] ; then
         printf "${BAD_C}Memory should be between 10%% and 90%% of the available memory ($((N_AVAILABLE_MEM/10)) and $((N_AVAILABLE_MEM*9/10))) ${NORMAL_C}\n"
         printf "${INFO_C}Check available resource with 'nunet capacity --available --pretty'${NORMAL_C}\n"
@@ -554,7 +566,7 @@ onboard() {
             \"cardano\": $N_ONBOARD_CARDANO, \"server_mode\": $N_ONBOARD_SERVER_MODE}" \
             $DMS_HOST:$DMS_PORT/api/v1/onboarding/onboard)
         # check if error
-        N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq '. | select(.error != null) | .error')
+        N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq -r '. | select(.error != null) | .error')
         if [[ ! -z $N_ONBOARD_ERR_MSG ]] ; then
             printf "${BAD_C}Error: $N_ONBOARD_ERR_MSG ${NORMAL_C}\n"
         else
@@ -563,6 +575,33 @@ onboard() {
         fi
     fi
 
+}
+
+offboard() {
+    while true; do
+        printf "${INFO_C}Warning: Offboarding will remove all your data and you will not be able to onboard again with the same identity.${NORMAL_C}\n"
+        read -p "Are you sure you want to offboard? (yes/no) " new_onboard_resp
+        case $new_onboard_resp in
+            yes ) echo "Proceeding with offoarding...";
+                break;;
+            no) echo "Exiting...";
+                exit;;
+            *) echo "Only 'yes' or 'no' please";;
+        esac
+    done
+    if [[ "$1" == "" ]]  ; then
+        N_OFFBOARD_RESPONSE=$(curl -s -X DELETE $DMS_HOST:$DMS_PORT/api/v1/onboarding/offboard)
+    elif [[ "$1" == "-f" || "$1" == "--force" ]] ; then
+        N_OFFBOARD_RESPONSE=$(curl -s -X DELETE $DMS_HOST:$DMS_PORT/api/v1/onboarding/offboard?force=true)
+    else
+        offboard_usage
+    fi
+    N_OFFBOARD_ERR_MSG=$(echo $N_OFFBOARD_RESPONSE | jq -r '. | select(.error != null) | .error')
+    if [[ ! -z $N_OFFBOARD_ERR_MSG ]] ; then
+        printf "${BAD_C}Error: $N_OFFBOARD_ERR_MSG ${NORMAL_C}\n"
+    else
+        printf "${GOOD_C}$(echo $N_OFFBOARD_RESPONSE | jq -r .message) ${NORMAL_C}\n"
+    fi
 }
 
 gpu_info() {
@@ -650,7 +689,7 @@ ml_info() {
 
 info() {
     N_INFO=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/metadata)
-    N_INFO_ERR_MSG=$(echo $N_INFO | jq '. | select(.error != null) | .error')
+    N_INFO_ERR_MSG=$(echo $N_INFO | jq -r '. | select(.error != null) | .error')
     if [[ ! -z $N_INFO_ERR_MSG ]] ; then
         printf "${BAD_C}Error: $N_INFO_ERR_MSG ${NORMAL_C}\n"
     else
@@ -1238,7 +1277,7 @@ check_dms_run() {
 }
 
 
-cmds=("capacity" "wallet" "onboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version" "default-depreq-peer")
+cmds=("capacity" "wallet" "onboard" "offboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version" "default-depreq-peer")
 
 if [ $# -eq  0 ] ; then
     usage

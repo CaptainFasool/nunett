@@ -54,6 +54,7 @@ type AvailableResources struct {
 
 type Services struct {
 	gorm.Model
+	TxHash               string
 	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
 	JobDuration          int64  // job duration in minutes
 	EstimatedJobDuration int64  // job duration in minutes
@@ -123,7 +124,7 @@ type Connection struct {
 type PingResult struct {
 	RTT     time.Duration
 	Success bool
-	Error error
+	Error   error
 }
 
 type Machines map[string]PeerData
@@ -132,4 +133,11 @@ type Machines map[string]PeerData
 type KadDHTMachineUpdate struct {
 	Data      []byte `json:"data"`
 	Signature []byte `json:"signature"`
+}
+
+type ElasticToken struct {
+	gorm.Model
+	NodeId      string
+	Token       string
+	ChannelName string
 }

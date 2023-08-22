@@ -37,7 +37,7 @@ type DockerJob struct {
 func NewDockerJob(depReq *models.DeploymentRequest) *DockerJob {
 	return &DockerJob{
 		depReq:       depReq,
-		tickInterval: time.Duration(config.GetConfig().Job.GistUpdateInterval) * time.Minute,
+		tickInterval: time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute,
 	}
 
 }
