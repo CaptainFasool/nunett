@@ -14,7 +14,7 @@ type ReadMetadataFileFunc func() (models.MetadataV2, error)
 func StartPlugins() {
 	enabledPlugins, err := solveEnabledPlugins(utils.ReadMetadataFile)
 	if err != nil {
-		zlog.Sugar().Warn(
+		zlog.Sugar().Warnf(
 			"Couldn't get enabled plugins, they won't start if any; Error: %v",
 			err)
 		return
