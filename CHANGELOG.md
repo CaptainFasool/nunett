@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.119](#263)
+### Removed
+- Removed RequestTracker table from DMS.
+- Removed stats_db related code from Onboard API
 # [0.4.118](#214)
 ### Added
 - Logger class with the basic log levels
