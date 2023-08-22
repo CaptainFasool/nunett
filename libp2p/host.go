@@ -238,6 +238,38 @@ func SaveNodeInfo(priv crypto.PrivKey, pub crypto.PubKey, serverMode bool) error
 	return nil
 }
 
+func ShutdownNode() error {
+	stopDHTUpdate <- true
+	stopDHTCleanup <- true
+
+	for _, node := range p2p.Host.Peerstore().Peers() {
+		p2p.Host.Network().ClosePeer(node)
+		p2p.Host.Peerstore().Put(node, "peer_info", nil)
+		p2p.Host.Peerstore().ClearAddrs(node)
+		p2p.Host.Peerstore().RemovePeer(node)
+	}
+
+	err := p2p.Host.Close()
+	if err != nil {
+		return err
+	}
+	err = p2p.DHT.Close()
+	if err != nil {
+		return err
+	}
+
+	var libp2pInfo models.Libp2pInfo
+	result := db.DB.Where("id = ?", 1).Delete(&libp2pInfo)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	p2p.Host = nil
+	p2p.DHT = nil
+
+	return nil
+}
+
 func GetPublicKey() (crypto.PubKey, error) {
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)

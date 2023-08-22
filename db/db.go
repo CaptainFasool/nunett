@@ -18,7 +18,7 @@ func ConnectDatabase() {
 	if err != nil {
 		panic("Failed to connect to database!")
 	}
-
+	database.AutoMigrate(&models.ElasticToken{})
 	database.AutoMigrate(&models.VirtualMachine{})
 	database.AutoMigrate(&models.Machine{})
 	database.AutoMigrate(&models.AvailableResources{})
@@ -31,6 +31,7 @@ func ConnectDatabase() {
 	database.AutoMigrate(&models.DeploymentRequestFlat{})
 	database.AutoMigrate(&models.MachineUUID{})
 	database.AutoMigrate(&models.Connection{})
+	database.AutoMigrate(&models.LogBinAuth{})
 
 	DB = database
 	if err := DB.Use(otelgorm.NewPlugin()); err != nil {

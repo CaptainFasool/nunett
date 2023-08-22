@@ -2,8 +2,6 @@ package machines
 
 import (
 	"encoding/json"
-	"fmt"
-	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -18,7 +16,6 @@ import (
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -28,10 +25,7 @@ type wsMessage struct {
 	Message json.RawMessage `json:"message"`
 }
 
-type BlockchainTxStatus struct {
-	TransactionType   string `json:"transaction_type"`
-	TransactionStatus string `json:"transaction_status"`
-}
+
 
 type fundingRespToSPD struct {
 	ComputeProviderAddr string  `json:"compute_provider_addr"`
@@ -92,7 +86,8 @@ func HandleRequestService(c *gin.Context) {
 
 	depReq.Timestamp = time.Now().In(time.UTC)
 	depReq.Params.LocalNodeID = selfNodeID
-	depReq.Params.LocalPublicKey = pKey.Type().String()
+	localPubKey, _ := pKey.Raw()
+	depReq.Params.LocalPublicKey = string(localPubKey)
 
 	// check if the pricing matched
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
@@ -159,10 +154,13 @@ func HandleRequestService(c *gin.Context) {
 		zlog.Sugar().Errorf("Error decoding peer ID: %v", err)
 		return
 	}
-	computeProviderPubKey := libp2p.GetP2P().Host.Peerstore().PubKey(computeProviderPeerID)
+	computeProviderPubKey, err := libp2p.GetP2P().Host.Peerstore().PubKey(computeProviderPeerID).Raw()
+	if err != nil {
+		zlog.Sugar().Errorf("unable to obtain compute provider public key: %v", err)
+	}
 
-	depReq.Params.RemotePublicKey = computeProviderPubKey.Type().String()
-	zlog.Sugar().Debugf("compute provider public key: %s", computeProviderPubKey.Type().String())
+	depReq.Params.RemotePublicKey = string(computeProviderPubKey)
+	zlog.Sugar().Debugf("compute provider public key: %s", string(computeProviderPubKey))
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Info("sending fund contract request to oracle")
@@ -396,7 +394,7 @@ func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebS
 
 	switch m.Action {
 	case "send-status":
-		var txStatus BlockchainTxStatus
+		var txStatus models.BlockchainTxStatus
 		err := json.Unmarshal(m.Message, &txStatus)
 		if err != nil || txStatus.TransactionStatus != "success" {
 			// Send event to Signoz
@@ -406,14 +404,14 @@ func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebS
 			return
 		}
 
-		err = sendDeploymentRequest(ctx, conn)
+		err = sendDeploymentRequest(ctx, conn, txStatus.TxHash)
 		if err != nil {
 			zlog.Error(err.Error())
 		}
 	}
 }
 
-func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection) error {
+func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection, txHash string) error {
 	span := trace.SpanFromContext(ctx.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
 	span.SetAttributes(attribute.String("TransactionStatus", "success"))
@@ -434,6 +432,8 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection)
 	if err != nil {
 		zlog.Sugar().Errorf(err.Error())
 	}
+
+	depReq.TxHash = txHash
 
 	//extract a span context parameters , so that a child span constructed on the reciever side
 	depReq.TraceInfo.SpanID = span.SpanContext().TraceID().String()
@@ -461,58 +461,4 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection)
 	go libp2p.DeploymentUpdateListener(depReqStream)
 
 	return nil
-}
-
-// HandleSendStatus  godoc
-//
-//	@Summary		Sends blockchain status of contract creation.
-//	@Description	HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.
-//	@Tags			run
-//	@Param			body	body		BlockchainTxStatus	true	"Blockchain Transaction Status Body"
-//	@Success		200		{string}	string
-//	@Router			/run/send-status [post]
-func HandleSendStatus(c *gin.Context) {
-	// TODO: This is a stub function. Replace the logic to talk with Oracle.
-	rand.Seed(time.Now().Unix())
-
-	body := BlockchainTxStatus{}
-	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot read payload body"})
-		return
-	}
-
-	var requestTracker models.RequestTracker
-	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
-	if res.Error != nil {
-		zlog.Error(res.Error.Error())
-	}
-	if body.TransactionType == "withdraw" && body.TransactionStatus == "success" {
-		// Delete the entry
-		if err := db.DB.Where("deleted_at IS NULL").Delete(&models.Services{}).Error; err != nil {
-			zlog.Sugar().Errorln(err)
-		}
-		// sending ntx_payment info to stats database via grpc Call
-		NtxPaymentParams := models.NtxPayment{
-			CallID:      requestTracker.CallID,
-			ServiceID:   requestTracker.ServiceType,
-			AmountOfNtx: requestTracker.MaxTokens,
-			PeerID:      requestTracker.NodeID,
-			Timestamp:   float32(statsdb.GetTimestamp()),
-		}
-		statsdb.NtxPayment(NtxPaymentParams)
-	}
-
-	serviceStatus := body.TransactionType + " with " + body.TransactionStatus
-	ServiceStatusParams := models.ServiceStatus{
-		CallID:              requestTracker.CallID,
-		PeerIDOfServiceHost: requestTracker.NodeID,
-		Status:              serviceStatus,
-		Timestamp:           float32(statsdb.GetTimestamp()),
-	}
-	statsdb.ServiceStatus(ServiceStatusParams)
-
-	requestTracker.Status = serviceStatus
-	db.DB.Save(&requestTracker)
-
-	c.JSON(200, gin.H{"message": fmt.Sprintf("transaction status %s acknowledged", body.TransactionStatus)})
 }

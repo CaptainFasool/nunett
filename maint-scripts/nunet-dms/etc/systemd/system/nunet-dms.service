@@ -9,7 +9,7 @@ Type=simple
 User=nunet
 
 Environment=GIN_MODE=release
-ExecStart=/usr/bin/nunet-dms
+ExecStart=/usr/bin/nunet-dms run
 
 Restart=on-failure
 RestartSec=5

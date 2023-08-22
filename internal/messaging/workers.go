@@ -2,18 +2,26 @@
 package messaging
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 )
+
+// GetCallID returns a call ID to track the deployement request
+func GetCallID() int64 {
+	min := int64(1e15)
+	max := int64(1e16 - 1)
+	return min + rand.Int63n(max-min+1)
+}
 
 func sendDeploymentResponse(success bool, content string) {
 	depResp, _ := json.Marshal(&models.DeploymentResponse{
@@ -38,15 +46,15 @@ func DeploymentWorker() {
 	for {
 		select {
 		case msg := <-libp2p.DepReqQueue:
+			ctx := context.Background()
 			var depReq models.DeploymentRequest
-
 			jsonDataMsg, _ := json.Marshal(msg)
 			json.Unmarshal(jsonDataMsg, &depReq)
 
 			if depReq.ServiceType == "cardano_node" {
 				handleCardanoDeployment(depReq)
 			} else if depReq.ServiceType == "ml-training-cpu" || depReq.ServiceType == "ml-training-gpu" {
-				handleDockerDeployment(depReq)
+				handleDockerDeployment(ctx, depReq)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
 				sendDeploymentResponse(false, "Unknown service type.")
@@ -90,7 +98,10 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	}
 	jsonBody, _ := json.Marshal(startDefaultBody)
 
-	resp := utils.MakeInternalRequest(&gin.Context{}, "POST", "/vm/start-default", jsonBody)
+	resp, err := utils.MakeInternalRequest(&gin.Context{}, "POST", "/api/v1/vm/start-default", jsonBody)
+	if err != nil {
+		zlog.Error(err.Error())
+	}
 	_, err = io.ReadAll(resp.Body)
 	if err != nil {
 		zlog.Error(err.Error())
@@ -100,26 +111,11 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	sendDeploymentResponse(true, "Cardano Node Deployment Successful.")
 }
 
-func handleDockerDeployment(depReq models.DeploymentRequest) {
+func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
-	callID := float32(statsdb.GetCallID())
+	callID := float32(GetCallID())
 	peerIDOfServiceHost := depReq.Params.LocalNodeID
-	timeStamp := float32(statsdb.GetTimestamp())
 	status := "accepted"
-
-	ServiceCallParams := models.ServiceCall{
-		CallID:              callID,
-		PeerIDOfServiceHost: peerIDOfServiceHost,
-		ServiceID:           depReq.ServiceType,
-		CPUUsed:             0.0,
-		MaxRAM:              float32(depReq.Constraints.RAM),
-		MemoryUsed:          0.0,
-		NetworkBwUsed:       0.0,
-		TimeTaken:           0.0,
-		Status:              status,
-		Timestamp:           timeStamp,
-	}
-	statsdb.ServiceCall(ServiceCallParams)
 
 	requestTracker := models.RequestTracker{
 		ID:          1,
@@ -144,6 +140,6 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		}
 	}
 
-	depResp = docker.HandleDeployment(depReq)
+	depResp = docker.HandleDeployment(ctx, depReq)
 	sendDeploymentResponse(depResp.Success, depResp.Content)
 }

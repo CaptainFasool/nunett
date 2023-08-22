@@ -3,6 +3,7 @@ package docker
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -31,9 +32,12 @@ func cleanFlushInfo(bytesBuffer *bytes.Buffer) string {
 
 // GetLogs return logs from the container io.ReadCloser. It's the caller duty
 // duty to do a stdcopy.StdCopy. Any other method might render unknown
-// unicode character as log output has both stdout and stderr. That starting
+// unicode character as log output has both stt
+// ctx      context.Context
+// dc       *client.Client
+// gHealthy booldout and stderr. That starting
 // has info if that line is stderr or stdout.
-func GetLogs(contName string) (io.ReadCloser, error) {
+func GetLogs(ctx context.Context, contName string) (io.ReadCloser, error) {
 	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
 
 	out, err := dc.ContainerLogs(ctx, contName, options)
@@ -46,9 +50,9 @@ func GetLogs(contName string) (io.ReadCloser, error) {
 
 // sendLogsToSPD is a facade which handles fetching and sending of chunked
 // logs to service provider.
-func sendLogsToSPD(containerID string, since string) {
+func sendLogsToSPD(ctx context.Context, containerID string, since string) {
 	// Fetch delta of logs from last log fetch.
-	stdout, stderr := fetchLogsFromContainer(containerID, since)
+	stdout, stderr := fetchLogsFromContainer(ctx, containerID, since)
 	if stdout.Len() == 0 && stderr.Len() == 0 {
 		return
 	}
@@ -62,7 +66,7 @@ func sendLogsToSPD(containerID string, since string) {
 	}
 }
 
-func fetchLogsFromContainer(containerID string, since string) (stdout, stderr bytes.Buffer) {
+func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer) {
 	// use go docker api to fetch logs from given containerID
 	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Since: since}
 

@@ -1,12 +1,5 @@
 basePath: /api/v1
 definitions:
-  machines.BlockchainTxStatus:
-    properties:
-      transaction_status:
-        type: string
-      transaction_type:
-        type: string
-    type: object
   machines.fundingRespToSPD:
     properties:
       compute_provider_addr:
@@ -25,6 +18,15 @@ definitions:
       mnemonic:
         type: string
       private_key:
+        type: string
+    type: object
+  models.BlockchainTxStatus:
+    properties:
+      transaction_status:
+        type: string
+      transaction_type:
+        type: string
+      tx_hash:
         type: string
     type: object
   models.DeploymentRequest:
@@ -91,6 +93,8 @@ definitions:
           trace_state:
             type: string
         type: object
+      tx_hash:
+        type: string
     type: object
   models.Metadata:
     properties:
@@ -128,6 +132,19 @@ definitions:
             type: integer
         type: object
     type: object
+  models.OnboardingStatus:
+    properties:
+      database_path:
+        type: string
+      error:
+        type: string
+      machine_uuid:
+        type: string
+      metadata_path:
+        type: string
+      onboarded:
+        type: boolean
+    type: object
   models.Provisioned:
     properties:
       cpu:
@@ -140,6 +157,15 @@ definitions:
   tokenomics.ClaimCardanoTokenBody:
     properties:
       compute_provider_address:
+        type: string
+      tx_hash:
+        type: string
+    type: object
+  tokenomics.TxHashResp:
+    properties:
+      date_time:
+        type: string
+      tx_hash:
         type: string
     type: object
   tokenomics.rewardRespToCPD:
@@ -163,7 +189,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.109
+  version: 0.4.118
 paths:
   /dht:
     get:
@@ -205,6 +231,16 @@ paths:
       summary: Get current device info.
       tags:
       - onboarding
+  /onboarding/offboard:
+    delete:
+      description: Offboard runs the offboarding script to remove resources associated
+        with a device.
+      responses:
+        "200":
+          description: Successfully Onboarded
+      summary: Runs the offboarding process.
+      tags:
+      - onboarding
   /onboarding/onboard:
     post:
       description: Onboard runs onboarding script given the amount of resources to
@@ -242,6 +278,20 @@ paths:
           schema:
             $ref: '#/definitions/models.Metadata'
       summary: changes the amount of resources of onboarded device .
+      tags:
+      - onboarding
+  /onboarding/status:
+    get:
+      description: 'Returns json with 5 parameters: onboarded, error, machine_uuid,
+        metadata_path, database_path.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OnboardingStatus'
+      summary: Onboarding status and other metadata.
       tags:
       - onboarding
   /peers:
@@ -373,25 +423,6 @@ paths:
         deployment response.
       tags:
       - run
-  /run/request-reward:
-    post:
-      description: HandleRequestReward takes request from the compute provider, talks
-        with Oracle and releases tokens if conditions are met.
-      parameters:
-      - description: Claim Reward Body
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/tokenomics.ClaimCardanoTokenBody'
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/tokenomics.rewardRespToCPD'
-      summary: Get NTX tokens for work done.
-      tags:
-      - run
   /run/request-service:
     post:
       description: HandleRequestService searches the DHT for non-busy, available devices
@@ -413,26 +444,6 @@ paths:
         on NuNet
       tags:
       - run
-  /run/send-status:
-    post:
-      description: HandleSendStatus is used by webapps to send status of blockchain
-        activities. Such as if tokens have been put in escrow account and account
-        creation.
-      parameters:
-      - description: Blockchain Transaction Status Body
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/machines.BlockchainTxStatus'
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      summary: Sends blockchain status of contract creation.
-      tags:
-      - run
   /telemetry/free:
     get:
       description: Checks and returns the amount of free resources available
@@ -444,6 +455,55 @@ paths:
       summary: Returns the amount of free resources available
       tags:
       - telemetry
+  /transactions:
+    get:
+      description: Get list of TxHashes along with the date and time of jobs done.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tokenomics.TxHashResp'
+      summary: Get list of TxHashes for jobs done.
+      tags:
+      - run
+  /transactions/request-reward:
+    post:
+      description: HandleRequestReward takes request from the compute provider, talks
+        with Oracle and releases tokens if conditions are met.
+      parameters:
+      - description: Claim Reward Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tokenomics.ClaimCardanoTokenBody'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tokenomics.rewardRespToCPD'
+      summary: Get NTX tokens for work done.
+      tags:
+      - run
+  /transactions/send-status:
+    post:
+      description: HandleSendStatus is used by webapps to send status of blockchain
+        activities. Such token withdrawl.
+      parameters:
+      - description: Blockchain Transaction Status Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.BlockchainTxStatus'
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Sends blockchain status of contract creation.
+      tags:
+      - run
   /vm/start-custom:
     post:
       description: This endpoint is an abstraction of all primitive endpoints. When

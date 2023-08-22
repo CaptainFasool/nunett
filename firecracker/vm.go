@@ -19,7 +19,6 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/statsdb"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -156,11 +155,11 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	telemetry.CalcFreeResources()
-	freeResource, err := telemetry.GetFreeResources()
+	_, err := telemetry.GetFreeResources()
 	if err != nil {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
-	statsdb.DeviceResourceChange(freeResource)
+
 	libp2p.UpdateKadDHT()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -182,10 +181,9 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
 	telemetry.CalcFreeResources()
-	freeResource, err := telemetry.GetFreeResources()
+	_, err := telemetry.GetFreeResources()
 	if err != nil {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
-	statsdb.DeviceResourceChange(freeResource)
 	libp2p.UpdateKadDHT()
 }
