@@ -2,6 +2,7 @@
 package messaging
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
+	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -45,15 +47,15 @@ func DeploymentWorker() {
 	for {
 		select {
 		case msg := <-libp2p.DepReqQueue:
+			ctx := context.Background()
 			var depReq models.DeploymentRequest
-
 			jsonDataMsg, _ := json.Marshal(msg)
 			json.Unmarshal(jsonDataMsg, &depReq)
 
 			if depReq.ServiceType == "cardano_node" {
 				handleCardanoDeployment(depReq)
 			} else if depReq.ServiceType == "ml-training-cpu" || depReq.ServiceType == "ml-training-gpu" {
-				handleDockerDeployment(depReq)
+				handleDockerDeployment(ctx, depReq)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
 				sendDeploymentResponse(false, "Unknown service type.")
@@ -110,9 +112,9 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	sendDeploymentResponse(true, "Cardano Node Deployment Successful.")
 }
 
-func handleDockerDeployment(depReq models.DeploymentRequest) {
+func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest) {
 	depResp := models.DeploymentResponse{}
-	callID := float32(GetCallID())
+	callID := GetCallID()
 	peerIDOfServiceHost := depReq.Params.LocalNodeID
 	status := "accepted"
 
@@ -122,7 +124,7 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		CallID:      callID,
 		NodeID:      peerIDOfServiceHost,
 		Status:      status,
-		MaxTokens:   int32(depReq.MaxNtx),
+		MaxTokens:   depReq.MaxNtx,
 	}
 
 	// Check if we have a previous entry in the table
@@ -139,6 +141,9 @@ func handleDockerDeployment(depReq models.DeploymentRequest) {
 		}
 	}
 
-	depResp = docker.HandleDeployment(depReq)
+	// sending service call info to elastic search
+	elk.ProcessUsage(int(callID), 0, 0, 0, 0, depReq.MaxNtx)
+
+	depResp = docker.HandleDeployment(ctx, depReq)
 	sendDeploymentResponse(depResp.Success, depResp.Content)
 }

@@ -14,6 +14,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
+	"gitlab.com/nunet/device-management-service/utils"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -44,6 +45,9 @@ func Run() {
 
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
+	if libp2p.GetP2P().Host != nil {
+		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+	}
 	wg.Wait()
 }
 

@@ -364,34 +364,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/run/request-reward": {
-            "post": {
-                "description": "HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.",
-                "tags": [
-                    "run"
-                ],
-                "summary": "Get NTX tokens for work done.",
-                "parameters": [
-                    {
-                        "description": "Claim Reward Body",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/tokenomics.ClaimCardanoTokenBody"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/tokenomics.rewardRespToCPD"
-                        }
-                    }
-                }
-            }
-        },
         "/run/request-service": {
             "post": {
                 "description": "HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.",
@@ -420,34 +392,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/run/send-status": {
-            "post": {
-                "description": "HandleSendStatus is used by webapps to send status of blockchain activities. Such as if tokens have been put in escrow account and account creation.",
-                "tags": [
-                    "run"
-                ],
-                "summary": "Sends blockchain status of contract creation.",
-                "parameters": [
-                    {
-                        "description": "Blockchain Transaction Status Body",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/machines.BlockchainTxStatus"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/telemetry/free": {
             "get": {
                 "description": "Checks and returns the amount of free resources available",
@@ -461,6 +405,79 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK"
+                    }
+                }
+            }
+        },
+        "/transactions": {
+            "get": {
+                "description": "Get list of TxHashes along with the date and time of jobs done.",
+                "tags": [
+                    "run"
+                ],
+                "summary": "Get list of TxHashes for jobs done.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/tokenomics.TxHashResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/request-reward": {
+            "post": {
+                "description": "HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.",
+                "tags": [
+                    "run"
+                ],
+                "summary": "Get NTX tokens for work done.",
+                "parameters": [
+                    {
+                        "description": "Claim Reward Body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/tokenomics.ClaimCardanoTokenBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/tokenomics.rewardRespToCPD"
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/send-status": {
+            "post": {
+                "description": "HandleSendStatus is used by webapps to send status of blockchain activities. Such token withdrawl.",
+                "tags": [
+                    "run"
+                ],
+                "summary": "Sends blockchain status of contract creation.",
+                "parameters": [
+                    {
+                        "description": "Blockchain Transaction Status Body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.BlockchainTxStatus"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -501,17 +518,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "machines.BlockchainTxStatus": {
-            "type": "object",
-            "properties": {
-                "transaction_status": {
-                    "type": "string"
-                },
-                "transaction_type": {
-                    "type": "string"
-                }
-            }
-        },
         "machines.fundingRespToSPD": {
             "type": "object",
             "properties": {
@@ -539,6 +545,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "private_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.BlockchainTxStatus": {
+            "type": "object",
+            "properties": {
+                "transaction_status": {
+                    "type": "string"
+                },
+                "transaction_type": {
+                    "type": "string"
+                },
+                "tx_hash": {
                     "type": "string"
                 }
             }
@@ -637,6 +657,9 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
+                },
+                "tx_hash": {
+                    "type": "string"
                 }
             }
         },
@@ -735,6 +758,20 @@ const docTemplate = `{
             "properties": {
                 "compute_provider_address": {
                     "type": "string"
+                },
+                "tx_hash": {
+                    "type": "string"
+                }
+            }
+        },
+        "tokenomics.TxHashResp": {
+            "type": "object",
+            "properties": {
+                "date_time": {
+                    "type": "string"
+                },
+                "tx_hash": {
+                    "type": "string"
                 }
             }
         },
@@ -757,7 +794,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.115",
+	Version:          "0.4.119",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

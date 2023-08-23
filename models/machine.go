@@ -54,6 +54,7 @@ type AvailableResources struct {
 
 type Services struct {
 	gorm.Model
+	TxHash               string
 	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
 	JobDuration          int64  // job duration in minutes
 	EstimatedJobDuration int64  // job duration in minutes
@@ -135,6 +136,7 @@ type KadDHTMachineUpdate struct {
 }
 
 type ElasticToken struct {
+	gorm.Model
 	NodeId      string
 	Token       string
 	ChannelName string

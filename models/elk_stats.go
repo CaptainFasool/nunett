@@ -90,12 +90,14 @@ type NtxPayment struct {
 }
 
 // RequestTracker defines the schema of the data to be saved in db for tracking the status of the deployement request
+//
+// Deprecated: Should be removed soon since its use has run out when statsdb was deprecated.
 type RequestTracker struct {
 	ID          uint
 	ServiceType string
 	NodeID      string
-	CallID      float32
+	CallID      int64
 	Status      string
 	RequestID   string
-	MaxTokens   int32
+	MaxTokens   int
 }
