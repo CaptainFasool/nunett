@@ -8,6 +8,7 @@ import (
 	"io"
 	mrand "math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -334,7 +335,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 	var libp2pOpts []libp2p.Option
 	baseOpts := []dht.Option{
 		kadPrefix,
-		dht.NamespacedValidator("nunet-dht", blankValidator{}),
+		dht.NamespacedValidator(strings.ReplaceAll(customNamespace, "/", ""), blankValidator{}),
 		dht.Mode(dht.ModeServer),
 	}
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(

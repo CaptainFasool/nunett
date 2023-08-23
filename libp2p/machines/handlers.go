@@ -107,6 +107,8 @@ func HandleRequestService(c *gin.Context) {
 		filteredPeers = FilterPeers(depReq, libp2p.GetP2P().Host)
 	}
 
+	zlog.Sugar().Infof("FILTERED PEERS: %+v", filteredPeers)
+
 	if len(filteredPeers) < 1 {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
 		return
