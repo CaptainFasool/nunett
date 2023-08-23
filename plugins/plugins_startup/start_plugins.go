@@ -71,7 +71,7 @@ func getMetadataPlugins(readMetadataFile ReadMetadataFileFunc) ([]string, error)
 	return enabledPlugins, nil
 }
 
-// getPluginType returns, based on the plugin name, the specific plugin type struct
+// GetPluginType returns, based on the plugin name, the specific plugin type struct
 // which can implement different interface methods
 func GetPluginType(pluginName string) (plugins_management.Plugin, error) {
 	switch pluginName {
