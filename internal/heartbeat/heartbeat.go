@@ -178,7 +178,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 		return
 	}
 
-	docMap["ID"] = elastictoken
+	docMap["ID"] = elastictoken.NodeId
 
 	updatedDocBytes, _ := json.Marshal(docMap)
 
@@ -435,7 +435,6 @@ func getElasticSearchClient() (*elasticsearch.Client, error) {
 	return esClient, nil
 }
 
-
 // DocumentExists checks if a document ID exists in Elasticsearch
 func documentExists(ctx context.Context, es *elasticsearch.Client, index, docID string) (bool, error) {
 	req := esapi.ExistsRequest{
@@ -569,4 +568,3 @@ func generateRandomInt() int {
 	}
 	return int(n.Int64()) + 1000000000
 }
-
