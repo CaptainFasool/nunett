@@ -62,7 +62,7 @@ func TestGetPluginType(t *testing.T) {
 	pluginsTable := getMockExpectedPluginsTable()
 	for testName, tt := range pluginsTable {
 		t.Run(testName, func(t *testing.T) {
-			pluginInterface, err := getPluginType(tt.pluginName)
+			pluginInterface, err := GetPluginType(tt.pluginName)
 			if reflect.TypeOf(pluginInterface) != tt.pluginInterface {
 				t.Errorf("getPluginType() = %v, want %v", reflect.TypeOf(pluginInterface), tt.pluginInterface)
 			}
