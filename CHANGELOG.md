@@ -20,6 +20,9 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.121](#281)
+### Fixed
+- Correct nodeid on processUsage telemetry
 # [0.4.120](!221)
 ### Fixed
 - Added validation on Onboard API for dedicated capacity to NuNet
