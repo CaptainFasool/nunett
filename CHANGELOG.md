@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.120](!221)
+### Fixed
+- Added validation on Onboard API for dedicated capacity to NuNet
+- Removed redundancy of binding request data to JSON
+- Fix heartbeat invalid token issue
+- Update protocol versions due to depreq backward incompatibility
 # [0.4.119](#263)
 ### Removed
 - Removed RequestTracker table from DMS.

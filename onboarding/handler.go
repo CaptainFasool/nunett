@@ -146,10 +146,8 @@ func Status(c *gin.Context) {
 func Onboard(c *gin.Context) {
 	// get capacity user want to rent to NuNet
 	capacityForNunet := models.CapacityForNunet{ServerMode: true}
-	c.BindJSON(&capacityForNunet)
-	// check if request body is empty
-	if c.Request.ContentLength == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "request body is empty"})
+	if err := c.BindJSON(&capacityForNunet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
 		return
 	}
 
@@ -177,18 +175,15 @@ func Onboard(c *gin.Context) {
 	metadata.Resource.TotalCore = int64(numCores)
 	metadata.Resource.CPUMax = int64(totalCpu)
 
-	c.BindJSON(&capacityForNunet)
-
 	// validate the public (payment) address
 	if err := ValidateAddress(capacityForNunet.PaymentAddress); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if (capacityForNunet.Memory > int64(totalMem)) &&
-		capacityForNunet.CPU > int64(totalCpu) {
-		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "wrong capacity provided"})
+	// validate dedicated capacity to NuNet (should be between 10% to 90%)
+	if err := validateCapacityForNunet(capacityForNunet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -267,6 +262,7 @@ func Onboard(c *gin.Context) {
 		zlog.Panic(err.Error())
 	}
 	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
+
 	telemetry.CalcFreeResources()
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 
@@ -309,9 +305,18 @@ func ResourceConfig(c *gin.Context) {
 		return
 	}
 
-	// read the request body
+	// reading the request body
 	capacityForNunet := models.CapacityForNunet{}
-	c.BindJSON(&capacityForNunet)
+	if err := c.BindJSON(&capacityForNunet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
+		return
+	}
+
+	// validate dedicated capacity to NuNet (should be between 10% to 90%)
+	if err := validateCapacityForNunet(capacityForNunet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	// read metadataV2.json file and update it with new resources
 	metadata, err := utils.ReadMetadataFile()
@@ -324,7 +329,10 @@ func ResourceConfig(c *gin.Context) {
 	// read the existing data and update it with new resources
 	var availableRes models.AvailableResources
 	if res := db.DB.WithContext(c.Request.Context()).First(&availableRes); res.RowsAffected == 0 {
-		zlog.Sugar().Errorf("availableRes table does not exist: %v", err)
+		zlog.Error("availableRes table does not exist")
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "Could not proceed, please check have you onboarded your machine on Nunet"})
+		return
 	}
 	availableRes.TotCpuHz = int(capacityForNunet.CPU)
 	availableRes.Ram = int(capacityForNunet.Memory)
@@ -409,4 +417,19 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+func validateCapacityForNunet(capacityForNunet models.CapacityForNunet) error {
+	totalCpu := GetTotalProvisioned().CPU
+	totalMem := GetTotalProvisioned().Memory
+
+	if capacityForNunet.CPU > int64(totalCpu*9/10) || capacityForNunet.CPU < int64(totalCpu/10) {
+		return fmt.Errorf("CPU should be between 10%% and 90%% of the available CPU (%d and %d)", int64(totalCpu/10), int64(totalCpu*9/10))
+	}
+
+	if capacityForNunet.Memory > int64(totalMem*9/10) || capacityForNunet.Memory < int64(totalMem/10) {
+		return fmt.Errorf("memory should be between 10%% and 90%% of the available memory (%d and %d)", int64(totalMem/10), int64(totalMem*9/10))
+	}
+
+	return nil
 }
