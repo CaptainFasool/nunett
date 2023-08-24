@@ -8,6 +8,10 @@ import (
 	"gitlab.com/nunet/device-management-service/docs"
 )
 
+func init() {
+	rootCmd.AddCommand(startCmd)
+}
+
 var rootCmd = &cobra.Command{
 	Use:     "nunet",
 	Short:   "NuNet Device Management Service",
