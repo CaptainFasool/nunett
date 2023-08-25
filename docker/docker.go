@@ -457,7 +457,6 @@ outerLoop:
 			   // Update the last log fetch time
 			   service.LastLogFetch = time.Now().In(time.UTC)
 			   db.DB.Save(&service)
-			   db.DB.Save(requestTracker)
 			}
 
 		   // Create a log inside the Alpine container
