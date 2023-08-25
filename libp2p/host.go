@@ -230,12 +230,11 @@ func SaveNodeInfo(priv crypto.PrivKey, pub crypto.PubKey, serverMode bool) error
 	libp2pInfo.PublicKey, _ = crypto.MarshalPublicKey(pub)
 	libp2pInfo.ServerMode = serverMode
 
-	if res := db.DB.Find(&libp2pInfo); res.RowsAffected == 0 {
-		result := db.DB.Create(&libp2pInfo)
-		if result.Error != nil {
-			return result.Error
-		}
+	result := db.DB.Save(&libp2pInfo)
+	if result.Error != nil {
+		return result.Error
 	}
+
 	return nil
 }
 

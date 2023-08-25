@@ -531,17 +531,14 @@ func NewToken(peerID string, channel string) (string, error) {
 		return "", fmt.Errorf("peerID and channel can't be empty")
 	}
 
-	var elastictoken models.ElasticToken
-	elastictoken.NodeId = peerID
-	elastictoken.ChannelName = channel
-	token, _ := GetToken(elastictoken.NodeId, elastictoken.ChannelName)
-	elastictoken.Token = token
-
-	result = db.DB.Create(&elastictoken)
+	token, _ := GetToken(peerID, utils.GetChannelName())
+	newElastictoken := models.ElasticToken{NodeId: peerID, ChannelName: channel, Token: token}
+	result = db.DB.Create(&newElastictoken)
 	if result.Error != nil {
 		zlog.Sugar().Errorf("could not create elastic search access token record in DB: %v", result.Error)
 		return "", result.Error
 	}
+	elastictoken = newElastictoken
 	return token, nil
 }
 
