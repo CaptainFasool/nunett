@@ -1,8 +1,11 @@
 package docker
 
 import (
+	
+	"bufio"
 	"context"
 	"encoding/json"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"math"
@@ -10,7 +13,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"runtime"
+	"encoding/binary"
 	"strings"
 	"time"
 
@@ -18,6 +21,8 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	//containertypes "github.com/docker/docker/api/types/container"
+
 	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
@@ -27,11 +32,13 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
 	"go.uber.org/zap"
+	//"github.com/docker/docker/pkg/stdcopy"
 )
 
 var (
 	vcpuToMicroseconds float64       = 100000
-	logUpdateInterval  time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
+	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
+	spdUpdateInterval = 1 * time.Second
 )
 
 func freeUsedResources() {
@@ -75,6 +82,29 @@ func mhzToVCPU(cpuInMhz int) (float64, error) {
 	return toFixed(vcpu, 2), nil
 }
 
+func groupExists(groupName string) bool {
+	_, err := user.LookupGroup(groupName)
+	return err == nil
+}
+
+// DockerLogReader reads Docker log entries and removes the header.
+type DockerLogReader struct {
+	r *bufio.Reader
+}
+
+func (d *DockerLogReader) Read(p []byte) (int, error) {
+	header := make([]byte, 8)
+	if _, err := io.ReadFull(d.r, header); err != nil {
+		return 0, err
+	}
+	length := binary.BigEndian.Uint32(header[4:])
+	data := make([]byte, length)
+	if _, err := io.ReadFull(d.r, data); err != nil {
+		return 0, err
+	}
+	return copy(p, data), nil
+}
+
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
 // log update every logUpdateDuration.
@@ -85,12 +115,17 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	if machine_type == "gpu" {
 		gpuOpts.Set("all") // TODO find a way to use GPU and CPU
 	}
+	//imageName := depReq.Params.ImageID
+	imageName := "test"
+    if chosenGPUVendor == gpuinfo.AMD {
+        imageName += "-amd"
+    }	
 	modelURL := depReq.Params.ModelURL
 	packages := strings.Join(depReq.Params.Packages, " ")
 	containerConfig := &container.Config{
-		Image: depReq.Params.ImageID,
+		Image: imageName,
 		Cmd:   []string{modelURL, packages},
-		// Tty:          true,
+		//Tty:   true,
 	}
 	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
 	VCPU, err := mhzToVCPU(depReq.Constraints.CPU)
@@ -136,7 +171,8 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 			GroupAdd: []string{"video"},
 		}
 
-		if runtime.GOOS != "ubuntu18.04" {
+		// For Ubuntu > 18.04
+		if groupExists("render") {
 			hostConfigAMDGPU.GroupAdd = append(hostConfigAMDGPU.GroupAdd, "render")
 		}
 
@@ -176,6 +212,60 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		resCh <- depRes
 		return
 	}
+
+	// Create Alpine container with 'cat' command
+	alpineContainerConfig := &container.Config{
+		Image:     "alpine",
+		Cmd:       []string{"sh", "-c", "cat >/dev/stdout"},
+		Tty:       false,
+		OpenStdin: true,
+		StdinOnce: false,
+	}
+
+	alpineContainer, err := dc.ContainerCreate(ctx, alpineContainerConfig, nil, nil, nil, "")
+
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to create Alpine container for SPD: %v", err)
+	}
+
+	if err := dc.ContainerStart(ctx, alpineContainer.ID, types.ContainerStartOptions{}); err != nil {
+		zlog.Sugar().Errorf("Failed to start Alpine container for SPD: %v", err)
+	}
+
+	defer dc.ContainerRemove(ctx, alpineContainer.ID, types.ContainerRemoveOptions{Force: true})
+
+	zlog.Info("Alpine container started for SPD.")
+
+	// Get logs from Job container (stdout and stderr)
+	jobLogs, err := dc.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to get Job container logs: %v", err)
+	}
+
+	// Attach to Alpine container's stdin
+	alpineInput, err := dc.ContainerAttach(ctx, alpineContainer.ID, types.ContainerAttachOptions{
+		Stream: true,
+		Stdin:  true,
+	})
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to attach to Alpine container for SPD: %v", err)
+	}
+
+	// Create DockerLogReader to handle Docker log headers
+	logReader := &DockerLogReader{r: bufio.NewReader(jobLogs)}
+
+	// Copy Job container's logs to Alpine container's stdin
+	go func() {
+		_, err := io.Copy(alpineInput.Conn, logReader)
+		if err != nil {
+			return
+		}
+		alpineInput.CloseWrite()
+	}()
 
 	var requestTracker models.RequestTracker
 	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
@@ -230,6 +320,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	tick := time.NewTicker(logUpdateInterval)
 	defer tick.Stop()
 
+	spdTick := time.NewTicker(spdUpdateInterval)
+	defer spdTick.Stop()	
+
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	maxUsedRAM, maxUsedCPU, networkBwUsed := 0.0, 0.0, 0.0
 
@@ -257,7 +350,7 @@ outerLoop:
 				zlog.Sugar().Errorf("problem updating services: %v", r.Error)
 				service.JobStatus = "finished with errors"
 			}
-			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+			//sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 
 			// add exitStatus to db
 			if containerStatus.StatusCode == 0 {
@@ -292,7 +385,7 @@ outerLoop:
 			freeUsedResources()
 			break outerLoop
 		case <-tick.C:
-			zlog.Info("[container running] entering third case; time ticker")
+			zlog.Info("[container running] entering third case; logbin time ticker")
 
 			// get the latest logs ...
 			contID := requestTracker.RequestID[:12]
@@ -343,10 +436,35 @@ outerLoop:
 			zlog.Debug("service.LastLogFetch",
 				zap.String("value", service.LastLogFetch.Format("2006-01-02T15:04:05Z")),
 			)
-			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+			// sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
 			db.DB.Save(requestTracker)
+		case <-spdTick.C:
+			zlog.Info("[spd container running] entering fourth case; spd console")
+		   //db.DB.Where("container_id = ?", alpineContainer.ID).First(&service)
+		   // zlog.Debug("service.LastLogFetch",
+		   // 	zap.String("value", service.LastLogFetch.Format("2006-01-02T15:04:05Z")),
+		   // )
+   
+		   // Fetch the current logs from the container
+		   //stdout, stderr := fetchLogsFromContainer(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+   
+		   // Check if there's a new log line (either stdout or stderr)
+		   //if stdout.Len() > 0 || stderr.Len() > 0 {
+			   // Send the update to SPD only if there's a new log line
+			   //sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+			   
+			   // Update the last log fetch time
+			   //service.LastLogFetch = time.Now().In(time.UTC)
+			   //db.DB.Save(&service)
+		   //}
+
+		   // Create a log inside the Alpine container
+	   
+		   sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+		   service.LastLogFetch = time.Now().In(time.UTC)
+		   db.DB.Save(&service)				
 		}
 	}
 }
@@ -446,20 +564,23 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 		zlog.Sugar().Infof("Chosen GPU Vendor: %v\n", chosenGPUVendor)
 	}
 	// Pull the image
-	imageName := depReq.Params.ImageID
+	//imageName := depReq.Params.ImageID	
+	imageName := "test"
 	if chosenGPUVendor == gpuinfo.AMD {
 		imageName += "-amd"
 	}
-	err := PullImage(ctx, imageName)
-	if err != nil {
-		zlog.Sugar().Errorf("couldn't pull image: %v", err)
-		return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}
-	}
+	// err := PullImage(ctx, imageName)
+	// if err != nil {
+	// 	zlog.Sugar().Errorf("couldn't pull image: %v", err)
+	// 	return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}
+	// }
 
 	// create a service and pass the primary key to the RunContainer to update ContainerID
 	var service models.Services
-	service.ImageID = depReq.Params.ImageID
-	service.ServiceName = depReq.Params.ImageID
+	//service.ImageID = depReq.Params.ImageID
+	service.ImageID = "alpine"
+	//service.ServiceName = depReq.Params.ImageID
+	service.ServiceName = "alpine"
 	service.JobStatus = "running"
 	service.JobDuration = 5           // these are dummy data, implementation pending
 	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
