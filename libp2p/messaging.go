@@ -422,10 +422,14 @@ func readData(r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	zlog.Sugar().Debugf("received raw data from stream: %s", str)
-	if str == "\n" {
+
+	trimmedStr := strings.TrimSpace(str)
+
+	if trimmedStr == "" {
 		return "", nil
 	}
+
+	zlog.Sugar().Debugf("received raw data from stream: %s", str)
 	return str, nil
 }
 
@@ -463,9 +467,9 @@ func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stre
 		if err != nil {
 			zlog.Sugar().Errorf("Error Reading From Websocket Connection.  - %v", err)
 			panic(err)
-		} else {
-			writeData(w, string(msg))
 		}
+
+		writeData(w, string(msg))
 	}
 }
 
@@ -486,9 +490,9 @@ func StreamReadSockWrite(conn *internal.WebSocketConnection, stream network.Stre
 		reply, err := readData(r)
 		if err != nil {
 			panic(err)
-		} else if reply == "" {
-			// do nothing
-		} else {
+		}
+
+		if reply != "" {
 			conn.Conn.WriteMessage(websocket.TextMessage, []byte("Peer: "+reply))
 		}
 	}
