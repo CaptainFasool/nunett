@@ -448,8 +448,8 @@ outerLoop:
    
 
 		    sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
-		    //service.LastLogFetch = time.Now().In(time.UTC)
-		    //db.DB.Save(&service)
+		    service.LastLogFetch = time.Now().In(time.UTC)
+		    db.DB.Save(&service)
 		}
 	}
 }
@@ -563,9 +563,9 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	// create a service and pass the primary key to the RunContainer to update ContainerID
 	var service models.Services
 	//service.ImageID = depReq.Params.ImageID
-	service.ImageID = "alpine"
+	service.ImageID = "test"
 	//service.ServiceName = depReq.Params.ImageID
-	service.ServiceName = "alpine"
+	service.ServiceName = "test"
 	service.JobStatus = "running"
 	service.JobDuration = 5           // these are dummy data, implementation pending
 	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
