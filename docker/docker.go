@@ -446,24 +446,10 @@ outerLoop:
 		   // 	zap.String("value", service.LastLogFetch.Format("2006-01-02T15:04:05Z")),
 		   // )
    
-		   // Fetch the current logs from the container
-		   stdout, stderr := fetchLogsFromContainer(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
-   
-		   // Check if there's a new log line (either stdout or stderr)
-		   if stdout.Len() > 0 || stderr.Len() > 0 {
-			   // Send the update to SPD only if there's a new log line
-			   sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
-			   
-			   // Update the last log fetch time
-			   service.LastLogFetch = time.Now().In(time.UTC)
-			   db.DB.Save(&service)
-			}
 
-		   // Create a log inside the Alpine container
-	   
-		//    sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
-		//    service.LastLogFetch = time.Now().In(time.UTC)
-		//    db.DB.Save(&service)
+		    sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+		    service.LastLogFetch = time.Now().In(time.UTC)
+		    db.DB.Save(&service)
 		}
 	}
 }
