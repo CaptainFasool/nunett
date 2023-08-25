@@ -30,6 +30,7 @@ type DockerJob struct {
 	ctx          *context.Context
 	depReq       *models.DeploymentRequest
 	tickInterval time.Duration
+	spdtickInterval time.Duration
 	dc           *client.Client
 }
 
@@ -38,6 +39,7 @@ func NewDockerJob(depReq *models.DeploymentRequest) *DockerJob {
 	return &DockerJob{
 		depReq:       depReq,
 		tickInterval: time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute,
+		spdtickInterval: 1 * time.Second
 	}
 
 }
@@ -174,6 +176,9 @@ func (dj *DockerJob) Run(
 
 	tick := time.NewTicker(dj.tickInterval)
 	defer tick.Stop()
+
+	spdtick := time.NewTicker(spdtickInterval)
+	defer spdTick.Stop()
 
 	statusCh, errCh := dj.dc.ContainerWait(*dj.ctx, resp.ID, container.WaitConditionNotRunning)
 	// maxUsedRAM, maxUsedCPU, networkBwUsed := 0.0, 0.0, 0.0
@@ -328,6 +333,10 @@ outerLoop:
 			// sendLogsToSPD(resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 			// service.LastLogFetch = time.Now().In(time.UTC)
 			// db.DB.Save(&service)
+		case <-spdtick.C:
+			dj.log.Info("[spd container running] entering fourth case; spd console")
+
+			running()
 		}
 	}
 	return nil
