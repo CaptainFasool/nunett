@@ -37,7 +37,7 @@ import (
 var (
 	vcpuToMicroseconds float64       = 100000
 	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
-	spdUpdateInterval = 5 * time.Second
+	spdUpdateInterval = 10 * time.Second
 )
 
 func freeUsedResources() {

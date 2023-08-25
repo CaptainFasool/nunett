@@ -39,7 +39,7 @@ func NewDockerJob(depReq *models.DeploymentRequest) *DockerJob {
 	return &DockerJob{
 		depReq:       depReq,
 		tickInterval: time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute,
-		spdtickInterval: 5 * time.Second
+		spdtickInterval: 10 * time.Second
 	}
 
 }
