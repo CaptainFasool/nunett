@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -28,10 +29,11 @@ var startChatCmd = &cobra.Command{
 
 		peerID := args[0]
 		port := config.GetConfig().Rest.Port
+		portStr := strconv.Itoa(port)
 
 		serverURL := url.URL{
 			Scheme:   "ws",
-			Host:     "localhost:" + string(port),
+			Host:     "localhost:" + portStr,
 			Path:     "/api/v1/peers/chat/start",
 			RawQuery: "peerID=" + peerID,
 		}
@@ -45,11 +47,11 @@ var startChatCmd = &cobra.Command{
 		// Goroutine for receiving messages
 		go func() {
 			for {
-				_, message, err := conn.ReadMessage()
+				_, msg, err := conn.ReadMessage()
 				if err != nil {
 					log.Fatalf("Error trying to read message: %v", err)
 				}
-				fmt.Println(message)
+				fmt.Println(string(msg))
 			}
 		}()
 
