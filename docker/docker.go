@@ -445,9 +445,7 @@ outerLoop:
 		   // zlog.Debug("service.LastLogFetch",
 		   // 	zap.String("value", service.LastLogFetch.Format("2006-01-02T15:04:05Z")),
 		   // )
-   
-
-		    sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+   		    sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 		    service.LastLogFetch = time.Now().In(time.UTC)
 		    db.DB.Save(&service)
 		}
@@ -559,6 +557,12 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	// 	zlog.Sugar().Errorf("couldn't pull image: %v", err)
 	// 	return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}
 	// }
+
+	err := PullImage(ctx, "alpine")
+	if err != nil {
+		zlog.Sugar().Errorf("couldn't pull image: %v", err)
+		return models.DeploymentResponse{Success: false, Content: "Unable to pull alpine image for SPD."}
+	}	
 
 	// create a service and pass the primary key to the RunContainer to update ContainerID
 	var service models.Services
