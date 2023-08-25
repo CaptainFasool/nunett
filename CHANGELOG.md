@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+# [0.4.122](#282)
+### Fixed
+- Correct new elastic parameters on new token
+- Correctly save new keys for peer info on subsequent creation
 # [0.4.121](#281)
 ### Fixed
 - Correct nodeid on processUsage telemetry
