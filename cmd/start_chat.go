@@ -23,11 +23,9 @@ var startChatCmd = &cobra.Command{
 	Short: "Start chat with a peer",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
-		// Define interrupt signal (Ctrl+C)
 		interrupt := make(chan os.Signal, 1)
 		signal.Notify(interrupt, os.Interrupt)
 
-		// peerID passed as argument
 		peerID := args[0]
 		port := config.GetConfig().Rest.Port
 
@@ -79,7 +77,7 @@ var startChatCmd = &cobra.Command{
 			case <-ticker.C:
 				conn.WriteMessage(websocket.PingMessage, []byte{})
 			case <-interrupt:
-				log.Println("Received interrupt signal, closing connection")
+				log.Println("(interrupt) closing connection")
 				conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				return
 			}
