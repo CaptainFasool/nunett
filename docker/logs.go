@@ -61,9 +61,9 @@ func sendLogsToSPD(ctx context.Context, containerID string, since string) {
 	if stdout.String() != "" {
 		libp2p.DeploymentUpdate(libp2p.MsgLogStdout, stdout.String(), false)
 	}
-	if stderr.String() != "" {
-		libp2p.DeploymentUpdate(libp2p.MsgLogStderr, stderr.String(), false)
-	}
+	//if stderr.String() != "" {
+	//	libp2p.DeploymentUpdate(libp2p.MsgLogStderr, stderr.String(), false)
+	//}
 }
 
 func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer) {
