@@ -9,11 +9,9 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
+	"os/user"
 	"regexp"
 	"strconv"
-
-	"encoding/binary"
 	"strings"
 	"time"
 
