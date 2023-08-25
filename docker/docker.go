@@ -448,8 +448,8 @@ outerLoop:
    
 
 		    sendLogsToSPD(ctx, alpineContainer.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
-		    service.LastLogFetch = time.Now().In(time.UTC)
-		    db.DB.Save(&service)
+		    //service.LastLogFetch = time.Now().In(time.UTC)
+		    //db.DB.Save(&service)
 		}
 	}
 }
