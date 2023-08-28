@@ -423,9 +423,7 @@ func readData(r *bufio.Reader) (string, error) {
 		return "", err
 	}
 
-	trimmedStr := strings.TrimSpace(str)
-
-	if trimmedStr == "" {
+	if str == "" {
 		return "", nil
 	}
 
@@ -434,7 +432,6 @@ func readData(r *bufio.Reader) (string, error) {
 }
 
 func writeData(w *bufio.Writer, msg string) {
-
 	zlog.Sugar().Debugf("writing raw data to stream: %s", msg)
 
 	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
@@ -469,7 +466,9 @@ func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stre
 			panic(err)
 		}
 
-		writeData(w, string(msg))
+		if string(msg) != "" {
+			writeData(w, string(msg))
+		}
 	}
 }
 
