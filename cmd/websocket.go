@@ -12,9 +12,11 @@ import (
 
 type Client struct {
 	Conn *websocket.Conn
+	stop chan struct{}
 }
 
 func (c *Client) Initialize(url string) error {
+	c.stop = make(chan struct{})
 	var err error
 	c.Conn, _, err = websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
@@ -25,12 +27,17 @@ func (c *Client) Initialize(url string) error {
 
 func (c *Client) ReadMessages() {
 	for {
-		_, msg, err := c.Conn.ReadMessage()
-		if err != nil {
-			fmt.Println("Error reading message:", err)
+		select {
+		case <-c.stop:
 			return
+		default:
+			_, msg, err := c.Conn.ReadMessage()
+			if err != nil {
+				fmt.Println("Error reading message:", err)
+				return
+			}
+			fmt.Printf("%s\n", msg)
 		}
-		fmt.Printf("%s\n", msg)
 	}
 }
 
@@ -56,8 +63,9 @@ func (c *Client) HandleInterruptsAndPings() {
 		case <-ticker.C:
 			c.Conn.WriteMessage(websocket.PingMessage, []byte{})
 		case <-interrupt:
-			fmt.Println("(interrupt) closing connection")
+			fmt.Println("signal: interrupt")
 			c.Conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			close(c.stop)
 			return
 		}
 	}
