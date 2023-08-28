@@ -36,7 +36,7 @@ func (c *Client) ReadMessages() {
 				fmt.Println("Error reading message:", err)
 				return
 			}
-			fmt.Printf("%s\n", msg)
+			fmt.Printf("%s", msg)
 		}
 	}
 }
@@ -45,9 +45,11 @@ func (c *Client) WriteMessages() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		msg, _ := reader.ReadString('\n')
-		if err := c.Conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
-			fmt.Println("Error writing message:", err)
-			return
+		if msg != "" {
+			if err := c.Conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+				fmt.Println("Error writing message:", err)
+				return
+			}
 		}
 	}
 }
