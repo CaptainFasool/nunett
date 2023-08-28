@@ -13,7 +13,7 @@ func init() {
 var peerCmd = &cobra.Command{
 	Use:   "peer",
 	Short: "Display information about peers",
-    Long: `Usage: nunet peer COMMAND [OPTIONS]
+	Long: `Usage: nunet peer COMMAND [OPTIONS]
     Display connected peers and self peer information
 
     Commands:
@@ -28,7 +28,7 @@ var peerCmd = &cobra.Command{
 var selfPeerCmd = &cobra.Command{
 	Use:   "self",
 	Short: "Show self peer",
-	Long: `Show self peer`,
+	Long:  `Show self peer`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Show self peer")
 	},
