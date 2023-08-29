@@ -33,6 +33,9 @@ func (c *Client) ReadMessages() {
 		default:
 			_, msg, err := c.Conn.ReadMessage()
 			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+					return
+				}
 				fmt.Println("Error reading message:", err)
 				return
 			}
@@ -43,11 +46,24 @@ func (c *Client) ReadMessages() {
 
 func (c *Client) WriteMessages() {
 	reader := bufio.NewReader(os.Stdin)
+	inputChan := make(chan string)
+
+	go func() {
+		for {
+			msg, _ := reader.ReadString('\n')
+			inputChan <- msg
+		}
+	}()
+
 	for {
-		msg, _ := reader.ReadString('\n')
-		if err := c.Conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
-			fmt.Println("Error writing message:", err)
+		select {
+		case <-c.stop:
 			return
+		case msg := <-inputChan:
+			if err := c.Conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+				fmt.Println("Error writing message:", err)
+				return
+			}
 		}
 	}
 }

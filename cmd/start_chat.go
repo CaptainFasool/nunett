@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -33,8 +34,23 @@ var startChatCmd = &cobra.Command{
 		}
 		defer client.Conn.Close()
 
-		go client.ReadMessages()
-		go client.WriteMessages()
-		client.HandleInterruptsAndPings()
+		var wg sync.WaitGroup
+		wg.Add(3)
+
+		go func() {
+			client.ReadMessages()
+			wg.Done()
+		}()
+		go func() {
+			client.WriteMessages()
+			wg.Done()
+		}()
+
+		go func() {
+			client.HandleInterruptsAndPings()
+			wg.Done()
+		}()
+
+		wg.Wait()
 	},
 }
