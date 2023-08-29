@@ -423,18 +423,19 @@ func readData(r *bufio.Reader) (string, error) {
 		return "", err
 	}
 
-	if str == "" {
+	if str == "\n" {
 		return "", nil
 	}
 
 	zlog.Sugar().Debugf("received raw data from stream: %s", str)
+
 	return str, nil
 }
 
 func writeData(w *bufio.Writer, msg string) {
 	zlog.Sugar().Debugf("writing raw data to stream: %s", msg)
 
-	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
+	_, err := w.WriteString(fmt.Sprintf("%s", msg))
 	if err != nil {
 		// XXX: need to handle unsent messages better - retry, notify upstream or clean up
 		zlog.Sugar().Errorf("failed to write to buffer: %v", err)
@@ -465,8 +466,7 @@ func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stre
 			zlog.Sugar().Errorf("Error Reading From Websocket Connection.  - %v", err)
 			panic(err)
 		}
-
-		if string(msg) != "" {
+		if string(msg) != "\n" {
 			writeData(w, string(msg))
 		}
 	}
@@ -490,6 +490,8 @@ func StreamReadSockWrite(conn *internal.WebSocketConnection, stream network.Stre
 		if err != nil {
 			panic(err)
 		}
+
+		reply = strings.TrimSuffix(reply, "\n")
 
 		if reply != "" {
 			conn.Conn.WriteMessage(websocket.TextMessage, []byte("Peer: "+reply))
