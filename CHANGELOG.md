@@ -20,6 +20,23 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+# [0.4.125](#287)
+### Fixed
+- Filter correct job/services executed on machine with tx hash for request reward
+# [0.4.124](!212)
+### Fixed
+- Fixed a bug where the NVIDIA Container Runtime Installation would be skipped when onboarding on mining operating systems with NVIDIA GPUs
+- Fixed showing the AMD ROCm Kernel Driver detection
+- Fixed a bug where DMS tries to deploy NVIDIA GPU container after pulling AMD GPU image
+
+### Changed
+- Revised container runtime installation script and condition for adding the render group for AMD GPUs if it exists (Ubuntu > 18.04)
+- Set Service Names based on imageName to create distinct services for every image
+# [0.4.123](#284)
+### Fixed
+- Update timestamp when call service events are changed
+- Keep elastic tokens for different channels
 # [0.4.122](#282)
 ### Fixed
 - Correct new elastic parameters on new token

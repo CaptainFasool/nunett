@@ -956,14 +956,13 @@ onboard-gpu() {
            printf "${INFO_C}Available GPU(s):\n$nvidia_gpu_names${NORMAL_C}\n"
            printf "${INFO_C}-----Starting NVIDIA Container Runtime Installation-----${NORMAL_C}\n"
            sleep 5 # add some time to see available GPUs on the machine
-           curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | sudo apt-key add -
-           distribution=$(
-               . /etc/os-release
-               echo $ID$VERSION_ID
-           )
-           curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+           distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+           && curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+           && curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
+           sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+           sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
            sudo apt update
-           sudo apt -y install nvidia-container-runtime
+           sudo apt -y install nvidia-container-toolkit-base nvidia-container-toolkit nvidia-container-runtime libnvidia-container-tools libnvidia-container1
            sudo systemctl restart docker
            printf "${INFO_C}Note: For best performance without sharing resources, a dedicated Linux machine is highly recommended for running ML jobs on NuNet.${NORMAL_C}\n"
            sleep 5
@@ -1005,7 +1004,6 @@ onboard-gpu() {
             # if machine is running a mining OS, we skip NVIDIA GPU driver installation and only install NVIDIA container runtime
             if [ "$mining_os" = true ]; then
                 printf "${INFO_C}Mining operating system detected. Skipping installation of NVIDIA GPU Driver.${NORMAL_C}\n"
-                exit
             # if gpu_driver_var is not empty we skip GPU driver installation AND only install NVIDIA container runtime
             elif [ -n "$gpu_driver_var" ]; then #IF $gpu_driver_var contains the word "Driver"
                 printf "${INFO_C}$gpu_driver_version is already installed. Skipping installation of NVIDIA GPU Driver.${NORMAL_C}\n"
@@ -1016,14 +1014,13 @@ onboard-gpu() {
             install_nvidiagpu_driver
         fi
         printf "${INFO_C}-----Starting NVIDIA Container Runtime Installation-----${NORMAL_C}\n"
-        curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | sudo apt-key add -
-        distribution=$(
-            . /etc/os-release
-            echo $ID$VERSION_ID
-        )
-        curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+        distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+        && curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+        && curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
+        sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+        sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
         sudo apt update
-        sudo apt install -y nvidia-container-runtime
+        sudo apt -y install nvidia-container-toolkit-base nvidia-container-toolkit nvidia-container-runtime libnvidia-container-tools libnvidia-container1
         sudo systemctl restart docker
         printf "${GOOD_C}-----NVIDIA Container Runtime Installed-----${NORMAL_C}\n"
         printf "${INFO_C}We highly recommend restarting your Linux machine after onboarding your NVIDIA GPU(s) for the first time.${NORMAL_C}\n"        
@@ -1046,7 +1043,6 @@ onboard-gpu() {
             # if machine is running a mining operating system, we skip AMD GPU driver installation and no container runtime installation is necessary
             if [ "$mining_os" = true ]; then
                 printf "${INFO_C}Mining operating system detected. Skipping installation of AMD GPU ROCm Kernel Driver.${NORMAL_C}\n"
-                exit
             # if gpu_driver_var is not empty we skip GPU driver installation and no container runtime installation is necessary
             elif [ -n "$gpu_driver_version" ]; then #IF $gpu_driver_version is not empty
                 printf "${INFO_C}AMD ROCm Kernel Driver Version: $gpu_driver_version is already installed. Skipping installation of AMD GPU ROCm Kernel Driver.${NORMAL_C}\n"
