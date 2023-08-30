@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"runtime"
+	"os/user"
 	"strings"
 	"time"
 
@@ -75,6 +75,11 @@ func mhzToVCPU(cpuInMhz int) (float64, error) {
 	return toFixed(vcpu, 2), nil
 }
 
+func groupExists(groupName string) bool {
+	_, err := user.LookupGroup(groupName)
+	return err == nil
+}
+
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
 // log update every logUpdateDuration.
@@ -85,12 +90,15 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	if machine_type == "gpu" {
 		gpuOpts.Set("all") // TODO find a way to use GPU and CPU
 	}
+	imageName := depReq.Params.ImageID
+    if chosenGPUVendor == gpuinfo.AMD {
+        imageName += "-amd"
+    }
 	modelURL := depReq.Params.ModelURL
 	packages := strings.Join(depReq.Params.Packages, " ")
 	containerConfig := &container.Config{
-		Image: depReq.Params.ImageID,
+		Image: imageName,
 		Cmd:   []string{modelURL, packages},
-		// Tty:          true,
 	}
 	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
 	VCPU, err := mhzToVCPU(depReq.Constraints.CPU)
@@ -136,7 +144,8 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 			GroupAdd: []string{"video"},
 		}
 
-		if runtime.GOOS != "ubuntu18.04" {
+		// For Ubuntu > 18.04
+		if groupExists("render") {
 			hostConfigAMDGPU.GroupAdd = append(hostConfigAMDGPU.GroupAdd, "render")
 		}
 
@@ -458,8 +467,8 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 
 	// create a service and pass the primary key to the RunContainer to update ContainerID
 	var service models.Services
-	service.ImageID = depReq.Params.ImageID
-	service.ServiceName = depReq.Params.ImageID
+	service.ImageID = imageName
+	service.ServiceName = imageName
 	service.JobStatus = "running"
 	service.JobDuration = 5           // these are dummy data, implementation pending
 	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
