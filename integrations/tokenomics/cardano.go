@@ -70,7 +70,7 @@ func HandleRequestReward(c *gin.Context) {
 	// against which container we are requesting reward
 	service := models.Services{TxHash: body.TxHash}
 	// SELECTs the first record; first record which is not marked as delete
-	if err := db.DB.Find(&service).Error; err != nil {
+	if err := db.DB.Where("tx_hash = ?", body.TxHash).Find(&service).Error; err != nil {
 		zlog.Sugar().Errorln(err)
 		c.JSON(404, gin.H{"error": "unknown tx hash"})
 		return
