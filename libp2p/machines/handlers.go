@@ -25,8 +25,6 @@ type wsMessage struct {
 	Message json.RawMessage `json:"message"`
 }
 
-
-
 type fundingRespToSPD struct {
 	ComputeProviderAddr string  `json:"compute_provider_addr"`
 	EstimatedPrice      float64 `json:"estimated_price"`
@@ -108,6 +106,8 @@ func HandleRequestService(c *gin.Context) {
 		zlog.Debug("Filtering peers - no default target peer specified")
 		filteredPeers = FilterPeers(depReq, libp2p.GetP2P().Host)
 	}
+
+	zlog.Sugar().Infof("FILTERED PEERS: %+v", filteredPeers)
 
 	if len(filteredPeers) < 1 {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})

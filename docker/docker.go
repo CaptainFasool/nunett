@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"runtime"
+	"os/user"
 	"strings"
 	"time"
 
@@ -22,6 +22,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
@@ -30,7 +31,7 @@ import (
 
 var (
 	vcpuToMicroseconds float64       = 100000
-	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
+	logUpdateInterval  time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
 )
 
 func freeUsedResources() {
@@ -39,6 +40,11 @@ func freeUsedResources() {
 	if err != nil {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
+	freeResource, err := telemetry.GetFreeResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+	}
+	elk.DeviceResourceChange(freeResource.TotCpuHz, freeResource.Ram)
 	libp2p.UpdateKadDHT()
 }
 
@@ -69,6 +75,11 @@ func mhzToVCPU(cpuInMhz int) (float64, error) {
 	return toFixed(vcpu, 2), nil
 }
 
+func groupExists(groupName string) bool {
+	_, err := user.LookupGroup(groupName)
+	return err == nil
+}
+
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
 // log update every logUpdateDuration.
@@ -79,12 +90,15 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	if machine_type == "gpu" {
 		gpuOpts.Set("all") // TODO find a way to use GPU and CPU
 	}
+	imageName := depReq.Params.ImageID
+    if chosenGPUVendor == gpuinfo.AMD {
+        imageName += "-amd"
+    }
 	modelURL := depReq.Params.ModelURL
 	packages := strings.Join(depReq.Params.Packages, " ")
 	containerConfig := &container.Config{
-		Image: depReq.Params.ImageID,
+		Image: imageName,
 		Cmd:   []string{modelURL, packages},
-		// Tty:          true,
 	}
 	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
 	VCPU, err := mhzToVCPU(depReq.Constraints.CPU)
@@ -130,7 +144,8 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 			GroupAdd: []string{"video"},
 		}
 
-		if runtime.GOOS != "ubuntu18.04" {
+		// For Ubuntu > 18.04
+		if groupExists("render") {
 			hostConfigAMDGPU.GroupAdd = append(hostConfigAMDGPU.GroupAdd, "render")
 		}
 
@@ -177,6 +192,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		zlog.Error(res.Error.Error())
 	}
 	status := "started"
+
+	// updating status of service to elastic search
+	elk.ProcessStatus(int(requestTracker.CallID), requestTracker.NodeID, "", status, 0)
 
 	// updating RequestTracker
 	requestTracker.Status = status
@@ -250,12 +268,6 @@ outerLoop:
 			}
 			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 
-			var requestTracker models.RequestTracker
-			res := db.DB.Where("id = ?", 1).Find(&requestTracker)
-			if res.Error != nil {
-				zlog.Error(res.Error.Error())
-			}
-
 			// add exitStatus to db
 			if containerStatus.StatusCode == 0 {
 				service.JobStatus = libp2p.ContainerJobFinishedWithoutErrors
@@ -277,13 +289,15 @@ outerLoop:
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
 
-			res = db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Updates(requestTracker)
-			if res.Error != nil {
-				zlog.Sugar().Errorf("problem updating request tracker: %v", res.Error)
-				depRes := models.DeploymentResponse{Success: false, Content: "Problem with request tracker. Unable to complete request."}
-				resCh <- depRes
-				return
-			}
+			duration := time.Now().Sub(service.CreatedAt)
+			timeTaken := duration.Seconds()
+			averageNetBw := networkBwUsed / timeTaken
+
+			// updating elastic search with status of service
+			elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
+				int(averageNetBw), int(timeTaken), requestTracker.MaxTokens)
+			elk.ProcessStatus(int(requestTracker.CallID), depReq.Params.LocalNodeID, "", status, 0)
+			db.DB.Save(requestTracker)
 			freeUsedResources()
 			break outerLoop
 		case <-tick.C:
@@ -300,6 +314,9 @@ outerLoop:
 			if err := db.DB.Where("container_id = ?", resp.ID).First(&tempService).Error; err != nil {
 				panic(err)
 			}
+			duration := time.Since(tempService.CreatedAt)
+			timeTaken := duration.Seconds()
+			averageNetBw := networkBwUsed / timeTaken
 
 			for _, s := range stats {
 				if s.Container == contID {
@@ -324,6 +341,10 @@ outerLoop:
 				}
 			}
 
+			// updating elastic search with telemetry info during job running
+			elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
+				int(averageNetBw), int(timeTaken), requestTracker.MaxTokens)
+
 			updateLogbin(ctx, createdLog.ID, resp.ID)
 
 			// Add a response for log update
@@ -334,6 +355,7 @@ outerLoop:
 			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
+			db.DB.Save(requestTracker)
 		}
 	}
 }
@@ -445,8 +467,8 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 
 	// create a service and pass the primary key to the RunContainer to update ContainerID
 	var service models.Services
-	service.ImageID = depReq.Params.ImageID
-	service.ServiceName = depReq.Params.ImageID
+	service.ImageID = imageName
+	service.ServiceName = imageName
 	service.JobStatus = "running"
 	service.JobDuration = 5           // these are dummy data, implementation pending
 	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
