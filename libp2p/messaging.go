@@ -49,11 +49,11 @@ var inboundChatStreams []network.Stream
 var inboundDepReqStream network.Stream
 var outboundDepReqStream network.Stream
 
-type openStream struct {
-	ID         int
-	StreamID   string
-	TimeOpened string
-	FromPeer   string
+type OpenStream struct {
+	ID         int    `json:"id"`
+	StreamID   string `json:"stream_id"`
+	FromPeer   string `json:"from_peer"`
+	TimeOpened string `json:"time_opened"`
 }
 
 func depReqStreamHandler(stream network.Stream) {
@@ -393,14 +393,14 @@ func chatStreamHandler(stream network.Stream) {
 	}
 }
 
-func incomingChatRequests() ([]openStream, error) {
+func incomingChatRequests() ([]OpenStream, error) {
 	if len(inboundChatStreams) == 0 {
 		return nil, fmt.Errorf("no incoming message stream")
 	}
 
-	var out []openStream
+	var out []OpenStream
 	for idx := 0; idx < len(inboundChatStreams); idx++ {
-		out = append(out, openStream{
+		out = append(out, OpenStream{
 			ID:         idx,
 			StreamID:   inboundChatStreams[idx].ID(),
 			FromPeer:   inboundChatStreams[idx].Conn().RemotePeer().String(),
