@@ -11,6 +11,7 @@ import (
 func init() {
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(joinCmd)
+	rootCmd.AddCommand(clearCmd)
 }
 
 var rootCmd = &cobra.Command{
