@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+# [0.4.123](#284)
+### Fixed
+- Update timestamp when call service events are changed
+- Keep elastic tokens for different channels
 # [0.4.122](#282)
 ### Fixed
 - Correct new elastic parameters on new token
