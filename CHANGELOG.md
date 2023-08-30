@@ -21,6 +21,9 @@ Types of changes
 
 -->
 
+# [0.4.125](#287)
+### Fixed
+- Filter correct job/services executed on machine with tx hash for request reward
 # [0.4.124](!212)
 ### Fixed
 - Fixed a bug where the NVIDIA Container Runtime Installation would be skipped when onboarding on mining operating systems with NVIDIA GPUs
