@@ -86,6 +86,7 @@ func SetupRouter() *gin.Engine {
 		p2p.GET("/chat/start", libp2p.StartChatHandler)
 		p2p.GET("/chat/join", libp2p.JoinChatHandler)
 		p2p.GET("/chat/clear", libp2p.ClearChatHandler)
+		p2p.GET("/dht/dump", libp2p.DumpDHT)
 		// peer.GET("/shell", internal.HandleWebSocket)
 		// peer.GET("/log", internal.HandleWebSocket)
 	}

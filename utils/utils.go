@@ -210,3 +210,9 @@ func IsOnboarded() (bool, error) {
 		return false, err
 	}
 }
+
+func ReadyForElastic() bool {
+	elasticToken := models.ElasticToken{}
+	db.DB.Find(&elasticToken)
+	return elasticToken.NodeId != "" && elasticToken.ChannelName != "" 
+}

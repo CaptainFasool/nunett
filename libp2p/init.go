@@ -14,17 +14,17 @@ import (
 const (
 	// Stream Protocols
 	// Stream Protocol for Deployment Requests
-	DepReqProtocolID = "/nunet/dms/depreq/0.0.2"
+	DepReqProtocolID = "/nunet/dms/depreq/0.0.3"
 
 	// Stream Protocol for Chat
 	ChatProtocolID = "/nunet/dms/chat/0.0.1"
 
 	// Stream Protocol for Ping
-	PingProtocolID = "/nunet/dms/ping/0.0.1"
+	PingProtocolID = "/nunet/dms/ping/0.0.2"
 
 	// namespaces
-	// Custom namespace for DHT protocol
-	customNamespace = "/nunet-dht/"
+	// Custom namespace for DHT protocol with version number
+	customNamespace = "/nunet-dht-1/"
 
 	// Rendezvous Points
 	// Team Rendezvous

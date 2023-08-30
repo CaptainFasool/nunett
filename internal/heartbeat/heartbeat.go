@@ -49,6 +49,9 @@ func Heartbeat() {
 }
 
 func Create() {
+	if !utils.ReadyForElastic() {
+		return
+	}
 	indexName := "apm-nunet-dms-heartbeat"
 
 	documentID := elastictoken.NodeId
@@ -108,6 +111,9 @@ func Create() {
 }
 
 func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetaken int, ntx int) {
+	if !utils.ReadyForElastic() {
+		return
+	}
 	indexName := "apm-nunet-dms-heartbeat"
 	documentData := `{
 		"usedcpu": 0,
@@ -161,7 +167,9 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 			"usedram":     usedram,
 			"usednetwork": networkused,
 			"timetaken":   timetaken,
-			"ntx":         ntx,
+			"timestamp":   time.Now().Format("2006-01-02T15:04:05.999Z07:00"),
+
+			"ntx": ntx,
 		}
 		//err = UpdateDocumentField(context.Background(), es, indexName, documentID, "usedcpu", "50")
 		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
@@ -172,7 +180,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 		return
 	}
 
-	docMap["ID"] = elastictoken
+	docMap["ID"] = elastictoken.NodeId
 
 	updatedDocBytes, _ := json.Marshal(docMap)
 
@@ -202,6 +210,9 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 }
 
 func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, status string, timestamp int) {
+	if !utils.ReadyForElastic() {
+		return
+	}
 	indexName := "apm-nunet-dms-heartbeat"
 
 	documentID := strconv.Itoa(callid)
@@ -240,6 +251,9 @@ func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, sta
 }
 
 func NtxPayment(callid int, serviceID string, successFailStatus string, peerID string, amountOfNtx int, timestamp int) {
+	if !utils.ReadyForElastic() {
+		return
+	}
 	indexName := "apm-nunet-dms-heartbeat"
 
 	documentID := strconv.Itoa(callid)
@@ -278,6 +292,9 @@ func NtxPayment(callid int, serviceID string, successFailStatus string, peerID s
 }
 
 func DeviceResourceChange(cpu int, ram int) {
+	if !utils.ReadyForElastic() {
+		return
+	}
 	indexName := "apm-nunet-dms-heartbeat"
 
 	documentID := elastictoken.NodeId
@@ -314,6 +331,9 @@ func DeviceResourceChange(cpu int, ram int) {
 }
 
 func DmsLoggs(log string, level string) {
+	if !utils.ReadyForElastic() {
+		return
+	}
 	indexName := "apm-nunet-dms-logs"
 	documentID := strconv.Itoa(generateRandomInt())
 	documentData := `{
@@ -366,11 +386,7 @@ func DmsLoggs(log string, level string) {
 
 func getElasticSearchClient() (*elasticsearch.Client, error) {
 	elastictoken = models.ElasticToken{}
-	db.DB.First(&elastictoken)
-	// db.DB.Find(&elastictoken)
-	elastictoken.ChannelName = utils.GetChannelName()
-
-	db.DB.Find(&elastictoken, "node_id = ? and channel_name=?", elastictoken.NodeId, elastictoken.ChannelName)
+	db.DB.Where("channel_name = ?", utils.GetChannelName()).Find(&elastictoken)
 	accessToken := elastictoken.Token
 
 	if accessToken == "" {
@@ -381,7 +397,7 @@ func getElasticSearchClient() (*elasticsearch.Client, error) {
 		elastictoken.Token = accessToken
 	}
 
-	address := ""
+	var address string
 	if elastictoken.ChannelName == "nunet-test" {
 		address = "https://elastic-test.test.nunet.io"
 	} else {
@@ -416,7 +432,6 @@ func getElasticSearchClient() (*elasticsearch.Client, error) {
 
 	return esClient, nil
 }
-
 
 // DocumentExists checks if a document ID exists in Elasticsearch
 func documentExists(ctx context.Context, es *elasticsearch.Client, index, docID string) (bool, error) {
@@ -504,31 +519,33 @@ func GetToken(peerID string, channel string) (string, error) {
 }
 
 func NewToken(peerID string, channel string) (string, error) {
+	zlog.Sugar().Infof("obtaining a new elastic token")
 	var existingTokens []models.ElasticToken
-	result := db.DB.Where("node_id = ? and channel_name=?", peerID, channel).Find(&existingTokens)
+	result := db.DB.Where("channel_name = ?", channel).Find(&existingTokens)
 	if result.RowsAffected > 0 {
 		db.DB.Delete(&existingTokens)
 	}
 
-	var elastictoken models.ElasticToken
-	elastictoken.NodeId = peerID
-	elastictoken.ChannelName = channel
-	token, _ := GetToken(elastictoken.NodeId, elastictoken.ChannelName)
-	elastictoken.Token = token
+	if peerID == "" || channel == "" {
+		return "", fmt.Errorf("peerID and channel can't be empty")
+	}
 
-	result = db.DB.Create(&elastictoken)
+	token, _ := GetToken(peerID, utils.GetChannelName())
+	newElastictoken := models.ElasticToken{NodeId: peerID, ChannelName: channel, Token: token}
+	result = db.DB.Create(&newElastictoken)
 	if result.Error != nil {
 		zlog.Sugar().Errorf("could not create elastic search access token record in DB: %v", result.Error)
 		return "", result.Error
 	}
+	elastictoken = newElastictoken
 	return token, nil
 }
 
 func CheckToken(peerID string, channel string) error {
-	var elasticToken models.ElasticToken
-	result := db.DB.Find(&elasticToken)
+	elasticToken := models.ElasticToken{ChannelName: channel}
+	result := db.DB.Where("channel_name = ?", channel).Find(&elasticToken)
 	if result.Error != nil || elasticToken.Token == "" {
-		zlog.Sugar().Errorf("unable to read elastic token from db - err: %v , noToken: %t", result.Error, elasticToken.Token == "")
+		zlog.Sugar().Warnf("unable to read elastic token from db - err: %v , noToken: %t", result.Error, elasticToken.Token == "")
 		_, err := NewToken(peerID, channel)
 		if err != nil {
 			return fmt.Errorf("unable to create token: %v", err)
@@ -547,4 +564,3 @@ func generateRandomInt() int {
 	}
 	return int(n.Int64()) + 1000000000
 }
-

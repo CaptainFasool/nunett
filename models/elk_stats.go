@@ -96,8 +96,8 @@ type RequestTracker struct {
 	ID          uint
 	ServiceType string
 	NodeID      string
-	CallID      float32
+	CallID      int64
 	Status      string
 	RequestID   string
-	MaxTokens   int32
+	MaxTokens   int
 }

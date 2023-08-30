@@ -20,6 +20,40 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+# [0.4.125](#287)
+### Fixed
+- Filter correct job/services executed on machine with tx hash for request reward
+# [0.4.124](!212)
+### Fixed
+- Fixed a bug where the NVIDIA Container Runtime Installation would be skipped when onboarding on mining operating systems with NVIDIA GPUs
+- Fixed showing the AMD ROCm Kernel Driver detection
+- Fixed a bug where DMS tries to deploy NVIDIA GPU container after pulling AMD GPU image
+
+### Changed
+- Revised container runtime installation script and condition for adding the render group for AMD GPUs if it exists (Ubuntu > 18.04)
+- Set Service Names based on imageName to create distinct services for every image
+# [0.4.123](#284)
+### Fixed
+- Update timestamp when call service events are changed
+- Keep elastic tokens for different channels
+# [0.4.122](#282)
+### Fixed
+- Correct new elastic parameters on new token
+- Correctly save new keys for peer info on subsequent creation
+# [0.4.121](#281)
+### Fixed
+- Correct nodeid on processUsage telemetry
+# [0.4.120](!221)
+### Fixed
+- Added validation on Onboard API for dedicated capacity to NuNet
+- Removed redundancy of binding request data to JSON
+- Fix heartbeat invalid token issue
+- Update protocol versions due to depreq backward incompatibility
+# [0.4.119](#263)
+### Removed
+- Removed RequestTracker table from DMS.
+- Removed stats_db related code from Onboard API
 # [0.4.118](#214)
 ### Added
 - Logger class with the basic log levels

@@ -89,7 +89,7 @@ If the above CPU has 4 cores, your available CPU would be around 8000 MHz. So if
 - Free Disk Space - 100 GB
 - Internet Download/Upload Speed - 100 Mbps
 
-Here's a step by step process to install the device management service (DMS) on a compute provider machine:
+Here's a step by step process to install the device management service (DMS) on a machine:
 
 1. **Download the DMS package**:
 
@@ -101,30 +101,31 @@ wget https://d.nunet.io/nunet-dms-latest.deb -O nunet-dms-latest.deb
 
 2. **Install DMS**: 
 
-   DMS has some dependencies, but they'll be installed automatically during the installation process.
-
-​	   Open a terminal and navigate to the directory where you downloaded the DMS package (skip this step if you used 	   the ***wget*** command above). Install the DMS with this command:
+​	   Navigate to the directory where you downloaded the DMS package and install the DMS with this command:
 
 ```
 sudo apt update && sudo apt install ./nunet-dms-latest.deb -y
 ```
 
-​		If the installation fails, try these commands instead:
+​		If the above fails, try dpkg instead:
 
 ```
 sudo dpkg -i nunet-dms-latest.deb
 sudo apt -f install -y
 ```
 
-If you see a "Permission denied" error, don't worry, it's just a notice. Proceed to the next step.
 
-Check if DMS is running: Look for "/usr/bin/nunet-dms" in the output of this command:
+Check if DMS is running. Either look for the _nunet-dms_ process with:
 
 ```
 ps aux | grep nunet-dms
 ```
+or use systemd:
+```
+sudo systemctl status nunet-dms.service
+```
 
-If it's not running, [submit a bug report](https://gitlab.com/nunet/documentation/-/issues) with the error messages. Here are the [contribution guidelines](https://gitlab.com/nunet/documentation/-/wikis/Contribution-Guidelines).
+If it's not running and you notice errors, [submit a bug report](https://gitlab.com/nunet/documentation/-/issues) with the error messages. Here are the [contribution guidelines](https://gitlab.com/nunet/documentation/-/wikis/Contribution-Guidelines).
 
 3. **Uninstall DMS** (if needed): 
 
@@ -153,11 +154,9 @@ sudo dpkg --purge nunet-dms
 
 5. **Update DMS**: 
 
-To update the DMS to the latest version, follow these steps in the given sequence:
-
-​	a. Uninstall the current DMS (Step 3) 
-​	b. Download the latest DMS package (Step 1) 
-​	c. Install the new DMS package (Step 2)
+To update the DMS to the latest version, follow these steps in the given sequence:​    
+   - a. Download the latest DMS package (Step 1) 
+   - b. Install the new DMS package (Step 2)
 
 
 # License
