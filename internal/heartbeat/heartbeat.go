@@ -167,7 +167,9 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 			"usedram":     usedram,
 			"usednetwork": networkused,
 			"timetaken":   timetaken,
-			"ntx":         ntx,
+			"timestamp":   time.Now().Format("2006-01-02T15:04:05.999Z07:00"),
+
+			"ntx": ntx,
 		}
 		//err = UpdateDocumentField(context.Background(), es, indexName, documentID, "usedcpu", "50")
 		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
@@ -384,11 +386,7 @@ func DmsLoggs(log string, level string) {
 
 func getElasticSearchClient() (*elasticsearch.Client, error) {
 	elastictoken = models.ElasticToken{}
-	db.DB.First(&elastictoken)
-	// db.DB.Find(&elastictoken)
-	elastictoken.ChannelName = utils.GetChannelName()
-
-	db.DB.Find(&elastictoken, "channel_name=?", elastictoken.ChannelName)
+	db.DB.Where("channel_name = ?", utils.GetChannelName()).Find(&elastictoken)
 	accessToken := elastictoken.Token
 
 	if accessToken == "" {
@@ -521,8 +519,9 @@ func GetToken(peerID string, channel string) (string, error) {
 }
 
 func NewToken(peerID string, channel string) (string, error) {
+	zlog.Sugar().Infof("obtaining a new elastic token")
 	var existingTokens []models.ElasticToken
-	result := db.DB.Find(&existingTokens)
+	result := db.DB.Where("channel_name = ?", channel).Find(&existingTokens)
 	if result.RowsAffected > 0 {
 		db.DB.Delete(&existingTokens)
 	}
@@ -543,10 +542,10 @@ func NewToken(peerID string, channel string) (string, error) {
 }
 
 func CheckToken(peerID string, channel string) error {
-	var elasticToken models.ElasticToken
-	result := db.DB.Find(&elasticToken)
+	elasticToken := models.ElasticToken{ChannelName: channel}
+	result := db.DB.Where("channel_name = ?", channel).Find(&elasticToken)
 	if result.Error != nil || elasticToken.Token == "" {
-		zlog.Sugar().Errorf("unable to read elastic token from db - err: %v , noToken: %t", result.Error, elasticToken.Token == "")
+		zlog.Sugar().Warnf("unable to read elastic token from db - err: %v , noToken: %t", result.Error, elasticToken.Token == "")
 		_, err := NewToken(peerID, channel)
 		if err != nil {
 			return fmt.Errorf("unable to create token: %v", err)
