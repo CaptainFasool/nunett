@@ -285,12 +285,13 @@ func DeploymentUpdate(msgType string, msg string, close bool) error {
 
 	// Lock mutex to prevent race conditions
 	mu.Lock()
-	defer mu.Unlock()	
-
 	if msg == lastSentMsg {
 		zlog.Sugar().Infof("Duplicate message detected. Not sending.")
+		mu.Unlock()
 		return nil
 	}
+	lastSentMsg = msg
+	mu.Unlock()
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("MsgType", msgType))
