@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/stdcopy"
 	"gitlab.com/nunet/device-management-service/libp2p"
+	"go.uber.org/zap"
 )
 
 var (
@@ -56,12 +57,20 @@ func GetLogs(ctx context.Context, contName string) (io.ReadCloser, error) {
 // sendLogsToSPD is a facade which handles fetching and sending of chunked
 // logs to service provider.
 func sendLogsToSPD(ctx context.Context, containerID string, since string) {
+	zlog, _ := zap.NewProduction()
+	sugar := zlog.Sugar()
+
 	// Lock mutex to prevent race conditions
 	mu.Lock()
 	defer mu.Unlock()
-		
-	// Fetch delta of logs from last log fetch.
-	stdout, stderr := fetchLogsFromContainer(ctx, containerID, since)
+
+	// Fetch delta of logs from the last log fetch
+	stdout, stderr, err := fetchLogsFromContainer(ctx, containerID, since)
+	if err != nil {
+		sugar.Errorf("Failed to fetch logs for container ID: %s, error: %v", containerID, err)
+		return
+	}
+
 	if stdout.Len() == 0 && stderr.Len() == 0 {
 		return
 	}
@@ -75,16 +84,28 @@ func sendLogsToSPD(ctx context.Context, containerID string, since string) {
 	}
 }
 
-func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer) {
-	// use go docker api to fetch logs from given containerID
-	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Since: since}
+func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer, err error) {
+	zlog, _ := zap.NewProduction()
+	sugar := zlog.Sugar()
 
+	sugar.Infof("Fetching logs for container ID: %s since: %s", containerID, since)
+
+	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Since: since}
 	out, err := dc.ContainerLogs(ctx, containerID, options)
 	if err != nil {
-		return bytes.Buffer{}, bytes.Buffer{}
+		return bytes.Buffer{}, bytes.Buffer{}, err
+	}
+	defer out.Close()
+
+	// Using a Mutex for making writes to the buffer thread-safe
+	var mu sync.Mutex
+	mu.Lock()
+	defer mu.Unlock()
+
+	_, err = stdcopy.StdCopy(&stdout, &stderr, out)
+	if err != nil {
+		return bytes.Buffer{}, bytes.Buffer{}, err
 	}
 
-	stdcopy.StdCopy(&stdout, &stderr, out)
-
-	return stdout, stderr
+	return stdout, stderr, nil
 }
