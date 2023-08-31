@@ -52,6 +52,8 @@ var outboundDepReqStream network.Stream
 
 // Mutex for thread-safe operations
 var mu sync.Mutex
+var lastSentMsg string // Global or scoped variable to keep track of the last sent message
+
 
 type openStream struct {
 	ID         int
@@ -283,14 +285,17 @@ func DeploymentUpdate(msgType string, msg string, close bool) error {
 
 	// Lock mutex to prevent race conditions
 	mu.Lock()
-	defer mu.Unlock()
+	defer mu.Unlock()	
+
+	if msg == lastSentMsg {
+		zlog.Sugar().Infof("Duplicate message detected. Not sending.")
+		return nil
+	}
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("MsgType", msgType))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	kLogger.Info("Deployment update", span)
-
-	zlog.Sugar().DebugfContext(ctx, "DeploymentUpdate -- msgType: %s -- closeStream: %t -- msg: %s", msgType, close, msg)
 
 	// Construct the outer message before sending
 	depUpdateMsg := &models.DeploymentUpdate{
@@ -317,6 +322,8 @@ func DeploymentUpdate(msgType string, msg string, close bool) error {
 		zlog.Sugar().Errorf("failed to flush buffer")
 		return err
 	}
+
+	lastSentMsg = msg // Update lastSentMsg after successful send
 
 	if close {
 		zlog.Sugar().InfofContext(ctx, "closing deployment request stream from")
