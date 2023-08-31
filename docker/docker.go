@@ -356,6 +356,7 @@ outerLoop:
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
 			db.DB.Save(requestTracker)
+			time.Sleep(1 * time.Second)
 		}
 	}
 }

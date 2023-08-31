@@ -2,7 +2,6 @@ package libp2p
 
 import (
 	"bufio"
-	"sync"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -49,9 +48,6 @@ const (
 var inboundChatStreams []network.Stream
 var inboundDepReqStream network.Stream
 var outboundDepReqStream network.Stream
-
-// Mutex for thread-safe operations
-var mu sync.Mutex
 
 type openStream struct {
 	ID         int
@@ -280,9 +276,6 @@ func DeploymentUpdateListener(stream network.Stream) {
 func DeploymentUpdate(msgType string, msg string, close bool) error {
 	ctx := context.Background()
 	defer ctx.Done()
-	
-	mu.Lock()
-	defer mu.Unlock()
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("MsgType", msgType))
