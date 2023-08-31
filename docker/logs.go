@@ -3,6 +3,7 @@ package docker
 import (
 	"bufio"
 	"bytes"
+	"sync"
 	"context"
 	"fmt"
 	"io"
@@ -11,6 +12,10 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/stdcopy"
 	"gitlab.com/nunet/device-management-service/libp2p"
+)
+
+var (
+	mu sync.Mutex
 )
 
 // cleanFlushInfo takes in bytes.Buffer from docker logs output and for each line
@@ -51,6 +56,10 @@ func GetLogs(ctx context.Context, contName string) (io.ReadCloser, error) {
 // sendLogsToSPD is a facade which handles fetching and sending of chunked
 // logs to service provider.
 func sendLogsToSPD(ctx context.Context, containerID string, since string) {
+	// Lock mutex to prevent race conditions
+	mu.Lock()
+	defer mu.Unlock()
+		
 	// Fetch delta of logs from last log fetch.
 	stdout, stderr := fetchLogsFromContainer(ctx, containerID, since)
 	if stdout.Len() == 0 && stderr.Len() == 0 {
