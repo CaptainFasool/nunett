@@ -75,28 +75,19 @@ func sendLogsToSPD(ctx context.Context, containerID string, since string) {
 	}
 }
 
-func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer, err error) {
-	zlog, _ := zap.NewProduction()
-	sugar := zlog.Sugar()
+func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer) {
 
-	sugar.Infof("Fetching logs for container ID: %s since: %s", containerID, since)
-
+	zlog.Sugar().Infof("Fetching logs for container ID: %s since: %s", containerID, since)
+	
+	// use go docker api to fetch logs from given containerID
 	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Since: since}
+
 	out, err := dc.ContainerLogs(ctx, containerID, options)
 	if err != nil {
-		return bytes.Buffer{}, bytes.Buffer{}, err
-	}
-	defer out.Close()
-
-	// Using a Mutex for making writes to the buffer thread-safe
-	var mu sync.Mutex
-	mu.Lock()
-	defer mu.Unlock()
-
-	_, err = stdcopy.StdCopy(&stdout, &stderr, out)
-	if err != nil {
-		return bytes.Buffer{}, bytes.Buffer{}, err
+		return bytes.Buffer{}, bytes.Buffer{}
 	}
 
-	return stdout, stderr, nil
+	stdcopy.StdCopy(&stdout, &stderr, out)
+
+	return stdout, stderr
 }
