@@ -106,7 +106,7 @@ func depReqStreamHandler(stream network.Stream) {
 	//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
 	//      from/to the buffer. So far, all messages are sent with a \n at the end and the
 	//      reader looks for it as a delimiter. See also DeploymentResponse - w.WriteString
-	str, err := r.ReadString('\n')
+	str, err := r.ReadString('')
 	if err != nil {
 		zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
 		w := bufio.NewWriter(stream)
