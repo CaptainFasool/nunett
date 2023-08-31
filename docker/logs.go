@@ -76,6 +76,9 @@ func sendLogsToSPD(ctx context.Context, containerID string, since string) {
 }
 
 func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer) {
+
+	zlog.Sugar().Infof("Fetching logs for container ID: %s since: %s", containerID, since)
+	
 	// use go docker api to fetch logs from given containerID
 	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Since: since}
 
