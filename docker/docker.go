@@ -259,7 +259,7 @@ outerLoop:
 			zlog.Info("[container running] entering second case; container exiting")
 
 			// get the last logs & exit...
-			updateLogbin(ctx, createdLog.ID, resp.ID)
+			//updateLogbin(ctx, createdLog.ID, resp.ID)
 
 			// Add a response for log update
 			if r := db.DB.Where("container_id = ?", resp.ID).First(&service); r.Error != nil {
@@ -345,7 +345,7 @@ outerLoop:
 			elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
 				int(averageNetBw), int(timeTaken), requestTracker.MaxTokens)
 
-			updateLogbin(ctx, createdLog.ID, resp.ID)
+			//updateLogbin(ctx, createdLog.ID, resp.ID)
 
 			// Add a response for log update
 			db.DB.Where("container_id = ?", resp.ID).First(&service)
