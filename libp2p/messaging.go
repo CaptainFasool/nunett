@@ -9,6 +9,7 @@ import (
 	"io"
 	"strings"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -317,7 +318,7 @@ func actualSend(msgType string, msg string, close bool) error {
 	span.SetAttributes(attribute.String("MsgType", msgType))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	kLogger.Info("Deployment update", span)
-	
+
 	zlog.Sugar().DebugfContext(ctx, "DeploymentUpdate -- msgType: %s -- closeStream: %t -- msg: %s", msgType, close, msg)
 
 	// Construct the outer message before sending
