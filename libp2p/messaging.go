@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"strconv"
 
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -50,10 +51,14 @@ var inboundChatStreams []network.Stream
 var inboundDepReqStream network.Stream
 var outboundDepReqStream network.Stream
 
-// Mutex for thread-safe operations
-var mu sync.Mutex
+
 var lastSentMsg string // Global or scoped variable to keep track of the last sent message
 
+// Mutex for thread-safe operations
+var mu sync.Mutex
+var lastSentMsgCount int
+var lastSentTime time.Time
+var rateLimit = 1 * time.Second // one second
 
 type openStream struct {
 	ID         int
@@ -279,23 +284,41 @@ func DeploymentUpdateListener(stream network.Stream) {
 //	msg:     message to send
 //	inbound: true if the depReq was inbound (DMS is CP) or false if depReq was outbound (DMS is SP)
 //	close:   true if the depReq stream needs to be closed after sending the message
+
 func DeploymentUpdate(msgType string, msg string, close bool) error {
+    mu.Lock()
+    defer mu.Unlock()
+
+    now := time.Now()
+    if msg == lastSentMsg && now.Sub(lastSentTime) < rateLimit {
+        lastSentMsgCount++
+        return nil
+    }
+
+    if lastSentMsgCount > 0 {
+        // If this is a new message, first send an aggregated log of the last message
+        aggMsg := lastSentMsg + " (repeated " + strconv.Itoa(lastSentMsgCount) + " times)"
+        actualSend("Aggregated Log", aggMsg, close)
+    }
+
+    // Reset counters
+    lastSentMsg = msg
+    lastSentMsgCount = 0
+    lastSentTime = now
+
+    return actualSend(msgType, msg, close)
+}
+
+func actualSend(msgType string, msg string, close bool) error {
 	ctx := context.Background()
 	defer ctx.Done()
-
-	// Lock mutex to prevent race conditions
-	mu.Lock()
-	if msg == lastSentMsg {
-		zlog.Sugar().Infof("Duplicate message detected. Not sending.")
-		mu.Unlock()
-		return nil
-	}
-	mu.Unlock() // Unlock as soon as the critical section is done
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("MsgType", msgType))
 	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	kLogger.Info("Deployment update", span)
+	
+	zlog.Sugar().DebugfContext(ctx, "DeploymentUpdate -- msgType: %s -- closeStream: %t -- msg: %s", msgType, close, msg)
 
 	// Construct the outer message before sending
 	depUpdateMsg := &models.DeploymentUpdate{
@@ -322,11 +345,6 @@ func DeploymentUpdate(msgType string, msg string, close bool) error {
 		zlog.Sugar().Errorf("failed to flush buffer")
 		return err
 	}
-
-	// Update lastSentMsg after successful send
-	mu.Lock()
-	lastSentMsg = msg
-	mu.Unlock()
 
 	if close {
 		zlog.Sugar().InfofContext(ctx, "closing deployment request stream from")
