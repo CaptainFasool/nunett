@@ -13,8 +13,8 @@ func init() {
 
 }
 
-var clearChatCmd = &cobra.Command{
-	Use:   "chat",
+var chatClearCmd = &cobra.Command{
+	Use:   "clear",
 	Short: "Clear open chat streams",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {

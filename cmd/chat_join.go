@@ -10,24 +10,23 @@ import (
 )
 
 func init() {
-
 }
 
-var startChatCmd = &cobra.Command{
-	Use:   "chat",
-	Short: "Start chat with a peer",
+var chatJoinCmd = &cobra.Command{
+	Use:   "join",
+	Short: "Join open chat stream",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
-		query := "peerID=" + args[0]
+		query := "streamID=" + args[0]
 
-		startURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/chat/start", query)
+		joinURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/chat/join", query)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
 		client := &Client{}
-		err = client.Initialize(startURL)
+		err = client.Initialize(joinURL)
 		if err != nil {
 			fmt.Println("Failed to initialize client:", err)
 			os.Exit(1)
@@ -35,6 +34,7 @@ var startChatCmd = &cobra.Command{
 		defer client.Conn.Close()
 
 		var wg sync.WaitGroup
+
 		wg.Add(3)
 
 		go func() {

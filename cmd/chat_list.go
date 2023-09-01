@@ -17,9 +17,9 @@ func init() {
 
 }
 
-var listChatCmd = &cobra.Command{
-	Use:   "chat",
-	Short: "Display a list of open chat streams",
+var chatListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "Display table of open chat streams",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
 		body, err := utils.ResponseBody(nil, "GET", "/api/v1/peers/chat", nil)
