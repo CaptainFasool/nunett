@@ -9,9 +9,7 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(startCmd)
-	rootCmd.AddCommand(joinCmd)
-	rootCmd.AddCommand(clearCmd)
+    rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(shellCmd)
 }
 
