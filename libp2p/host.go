@@ -13,6 +13,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -37,10 +38,11 @@ import (
 )
 
 type DMSp2p struct {
-	Host  host.Host
-	DHT   *dht.IpfsDHT
-	PS    peerstore.Peerstore
-	peers []peer.AddrInfo
+	Host   host.Host
+	DHT    *dht.IpfsDHT
+	PS     peerstore.Peerstore
+	peers  []peer.AddrInfo
+	Pubsub *pubsub.PubSub
 }
 
 func DMSp2pInit(node host.Host, dht *dht.IpfsDHT) *DMSp2p {
