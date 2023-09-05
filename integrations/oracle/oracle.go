@@ -77,10 +77,13 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 		return WithdrawResponse{}, err
 	}
 
+	// TODOKHALED: remove below line, and update the commented part
+	_ = res
+
 	withdrawRes := WithdrawResponse{
-		Signature:     res.GetSignature(),
-		OracleMessage: res.GetOracleMessage(),
-		RewardType:    res.GetRewardType(),
+		// Signature:     res.GetSignature(),
+		// OracleMessage: res.GetOracleMessage(),
+		// RewardType:    res.GetRewardType(),
 	}
 
 	zlog.Sugar().Infof("withdraw response from oracle: %v", withdrawRes)
@@ -110,9 +113,12 @@ func FundContractRequest() (FundingResponse, error) {
 		return FundingResponse{}, err
 	}
 
+	// TODOKHALED: remove below line, and update the commented part
+	_ = res
+
 	fundingRes := FundingResponse{
-		Signature:     res.GetSignature(),
-		OracleMessage: res.GetOracleMessage(),
+		// Signature:     res.GetSignature(),
+		// OracleMessage: res.GetOracleMessage(),
 	}
 
 	zlog.Sugar().Infof("funding response from oracle: %v", fundingRes)

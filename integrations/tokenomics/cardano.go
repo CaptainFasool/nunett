@@ -89,10 +89,12 @@ func HandleRequestReward(c *gin.Context) {
 		return
 	}
 
+	// TODOKHALED: remove below line, and update the commented part
+	_ = oracleResp
 	resp := rewardRespToCPD{
-		Signature:     oracleResp.Signature,
-		OracleMessage: oracleResp.OracleMessage,
-		RewardType:    oracleResp.RewardType,
+		// Signature:     oracleResp.Signature,
+		// OracleMessage: oracleResp.OracleMessage,
+		// RewardType:    oracleResp.RewardType,
 	}
 
 	c.JSON(200, resp)

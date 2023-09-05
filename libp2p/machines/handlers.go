@@ -186,12 +186,15 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
+	// TODOKHALED: remove below line, and update the commented part
+	_ = fcr
+
 	// oracle outputs: compute provider user address, estimated price, signature, oracle message
 	resp := fundingRespToSPD{
 		ComputeProviderAddr: computeProvider.TokenomicsAddress,
 		EstimatedPrice:      estimatedNtx,
-		Signature:           fcr.Signature,
-		OracleMessage:       fcr.OracleMessage,
+		// Signature:           fcr.Signature,
+		// OracleMessage:       fcr.OracleMessage,
 	}
 	c.JSON(200, resp)
 	go outgoingDepReqWebsock()
