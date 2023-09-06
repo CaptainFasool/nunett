@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"gitlab.com/nunet/device-management-service/libp2p"
-
 	libp2pPS "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 )
@@ -57,6 +55,7 @@ func (psHost *PubSubPeer) JoinTopic(topicName string) (*PsTopicSubscription, err
 		return nil,
 			fmt.Errorf("Failed to subscribe to topic %v, Error: %v", topicName, err)
 	}
+	zlog.Sugar().Debugf("Topic %v joined", topicName)
 
 	return &PsTopicSubscription{
 		topic: tp,
@@ -88,29 +87,21 @@ func (ts *PsTopicSubscription) Unsubscribe() {
 
 func (ts *PsTopicSubscription) listenForMessages(ctx context.Context, msgCh chan *libp2pPS.Message) {
 	for {
-		zlog.Sugar().Debug("here")
+		zlog.Sugar().Debug("Waiting for message")
 		msg, err := ts.sub.Next(ctx)
-		zlog.Sugar().Debug("finalyy")
 		if err != nil {
-
-			if err == context.Canceled ||
-				err == libp2pPS.ErrSubscriptionCancelled {
-
-				zlog.Sugar().Infof("Libp2p Pubsub topic %v done: %v", ts.topic.String(), err)
-			} else {
-				zlog.Sugar().Infof(
-					"Unexpected error for libp2p pubsub topic %v done: %v", ts.topic.String(), err)
-			}
+			zlog.Sugar().Infof("Libp2p Pubsub topic %v done: %v", ts.topic.String(), err)
 			return
 		}
 
-		if msg.GetFrom().String() == libp2p.GetP2P().Host.ID().String() {
-			continue
-		}
+		// TODO: check if message come from peer-self, and ignore if it comes
+		// zlog.Sugar().Debug("h1ew")
+		// if msg.GetFrom().String() == libp2p.GetP2P().Host.ID().String() {
+		// 	continue
+		// }
 
+		zlog.Sugar().Debugf("(%v): %v", msg.GetFrom().String(), msg.Message.Data)
 		msgCh <- msg
-		zlog.Sugar().Debugf("(%v): %v", msg.GetFrom().String(), msg.Message.String())
-
 	}
 }
 

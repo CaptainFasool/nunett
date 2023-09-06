@@ -23,6 +23,7 @@ func (p2p DMSp2p) BootstrapNode(ctx context.Context) error {
 }
 
 func Bootstrap(ctx context.Context, node host.Host, idht *dht.IpfsDHT) error {
+	// TODO: pass bootstrap peers as params
 	if err := idht.Bootstrap(ctx); err != nil {
 		return err
 	}
