@@ -19,9 +19,15 @@ type ClaimCardanoTokenBody struct {
 	TxHash                 string `json:"tx_hash"`
 }
 type rewardRespToCPD struct {
-	Signature     string `json:"signature,omitempty"`
-	OracleMessage string `json:"oracle_message,omitempty"`
-	RewardType    string `json:"reward_type,omitempty"`
+	Signature         string `json:"signature,omitempty"`
+	OracleMessage     string `json:"oracle_message,omitempty"`
+	RewardType        string `json:"reward_type,omitempty"`
+	SignatureDatum    string `json:"signature_datum,omitempty"`
+	MessageHashDatum  string `json:"message_hash_datum,omitempty"`
+	Datum             string `json:"datum,omitempty"`
+	SignatureAction   string `json:"signature_action,omitempty"`
+	MessageHashAction string `json:"message_hash_action,omitempty"`
+	Action            string `json:"action,omitempty"`
 }
 
 // GetJobTxHashes  godoc
@@ -89,12 +95,8 @@ func HandleRequestReward(c *gin.Context) {
 		return
 	}
 
-	// TODOKHALED: remove below line, and update the commented part
-	_ = oracleResp
 	resp := rewardRespToCPD{
-		// Signature:     oracleResp.Signature,
-		// OracleMessage: oracleResp.OracleMessage,
-		// RewardType:    oracleResp.RewardType,
+		RewardType: oracleResp.RewardType,
 	}
 
 	c.JSON(200, resp)

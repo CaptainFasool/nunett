@@ -28,8 +28,14 @@ type wsMessage struct {
 type fundingRespToSPD struct {
 	ComputeProviderAddr string  `json:"compute_provider_addr"`
 	EstimatedPrice      float64 `json:"estimated_price"`
-	Signature           string  `json:"signature"`
-	OracleMessage       string  `json:"oracle_message"`
+	// Deprecated: This field will be removed in future versions.
+	Signature string `json:"signature"`
+	// Deprecated: This field will be removed in future versions.
+	OracleMessage  string `json:"oracle_message"`
+	MetadataHash   string `json:"metadata_hash"`
+	WithdrawHash   string `json:"withdraw_hash"`
+	RefundHash     string `json:"refund_hash"`
+	DistributeHash string `json:"distribute_hash"`
 }
 
 var depreqWsConn *internal.WebSocketConnection
@@ -186,15 +192,14 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
-	// TODOKHALED: remove below line, and update the commented part
-	_ = fcr
-
-	// oracle outputs: compute provider user address, estimated price, signature, oracle message
+	// oracle outputs: compute provider user address, estimated price, and the hashes
 	resp := fundingRespToSPD{
 		ComputeProviderAddr: computeProvider.TokenomicsAddress,
 		EstimatedPrice:      estimatedNtx,
-		// Signature:           fcr.Signature,
-		// OracleMessage:       fcr.OracleMessage,
+		MetadataHash:        fcr.MetadataHash,
+		WithdrawHash:        fcr.WithdrawHash,
+		RefundHash:          fcr.RefundHash,
+		DistributeHash:      fcr.DistributeHash,
 	}
 	c.JSON(200, resp)
 	go outgoingDepReqWebsock()

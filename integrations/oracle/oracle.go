@@ -49,11 +49,11 @@ func getOracleTlsCredentials(address string) credentials.TransportCredentials {
 }
 
 // WithdrawTokenRequest acts as a middleman between withdraw endpoint handler and Oracle to withdraw token
-func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
+func WithdrawTokenRequest(service models.Services) (RewardResponse, error) {
 	address := getAddress()
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(getOracleTlsCredentials(address)))
 	if err != nil {
-		return WithdrawResponse{}, err
+		return RewardResponse{}, err
 	}
 
 	defer conn.Close()
@@ -63,7 +63,7 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 
 	oracleClient := NewOracleClient(conn)
 
-	withdrawReq := WithdrawRequest{
+	withdrawReq := RewardRequest{
 		JobStatus:            service.JobStatus,
 		JobDuration:          service.JobDuration,
 		EstimatedJobDuration: service.EstimatedJobDuration,
@@ -71,19 +71,14 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 	}
 
 	zlog.Sugar().Infof("sending withdraw request to oracle")
-	res, err := oracleClient.ValidateWithdrawReq(ctx, &withdrawReq)
+	res, err := oracleClient.ValidateRewardReq(ctx, &withdrawReq)
 	if err != nil {
 		zlog.Sugar().Infof("withdraw request failed %v", err)
-		return WithdrawResponse{}, err
+		return RewardResponse{}, err
 	}
 
-	// TODOKHALED: remove below line, and update the commented part
-	_ = res
-
-	withdrawRes := WithdrawResponse{
-		// Signature:     res.GetSignature(),
-		// OracleMessage: res.GetOracleMessage(),
-		// RewardType:    res.GetRewardType(),
+	withdrawRes := RewardResponse{
+		RewardType: res.GetRewardType(),
 	}
 
 	zlog.Sugar().Infof("withdraw response from oracle: %v", withdrawRes)
@@ -113,12 +108,11 @@ func FundContractRequest() (FundingResponse, error) {
 		return FundingResponse{}, err
 	}
 
-	// TODOKHALED: remove below line, and update the commented part
-	_ = res
-
 	fundingRes := FundingResponse{
-		// Signature:     res.GetSignature(),
-		// OracleMessage: res.GetOracleMessage(),
+		MetadataHash:   res.MetadataHash,
+		WithdrawHash:   res.WithdrawHash,
+		RefundHash:     res.RefundHash,
+		DistributeHash: res.DistributeHash,
 	}
 
 	zlog.Sugar().Infof("funding response from oracle: %v", fundingRes)
