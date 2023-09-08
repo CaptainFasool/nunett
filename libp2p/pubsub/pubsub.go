@@ -10,74 +10,129 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 )
 
-type PubSubPeer struct{ *libp2pPS.PubSub }
+// PubSub is basically a wrapper around *libp2p.PubSub original struct
+// which has one additional method for joining and subscribing to a given topic
+type PubSub struct {
+	*libp2pPS.PubSub
+	hostID            string
+	joinSubscribeOnce sync.Once
+}
 
+// PsTopicSubscription is returned when the host joins/subs to a topic using the
+// created JoinSubscribeTopic method. With its values, the host can deal with all
+// the available attributes and methods for the given *libp2p.Topic and *libp2p.Subscribe.
 type PsTopicSubscription struct {
 	topic *libp2pPS.Topic
 	sub   *libp2pPS.Subscription
 
-	subscribeOnce sync.Once
-	closeOnce     sync.Once
+	hostID string
+
+	closeOnce sync.Once
 }
 
-var pubsubHost *PubSubPeer
-var once sync.Once
+var (
+	pubsubHost   *PubSub
+	onceGossipPS sync.Once
+)
 
 // NewGossipPubSub creates a new GossipSub instance with the given host or returns
 // an existing one if it has been previously created.
-func NewGossipPubSub(ctx context.Context, host host.Host) (*PubSubPeer, error) {
+func NewGossipPubSub(ctx context.Context, host host.Host) (*PubSub, error) {
 	if pubsubHost != nil {
 		return pubsubHost, nil
 	}
 
-	once.Do(func() {
+	onceGossipPS.Do(func() {
 		gs, err := libp2pPS.NewGossipSub(ctx, host)
 		if err != nil {
 			zlog.Sugar().Errorf("Failed to create gossipsub: %v", err)
 			return
 		}
-		pubsubHost = &PubSubPeer{gs}
+		pubsubHost = &PubSub{
+			gs,
+			host.ID().String(),
+			sync.Once{},
+		}
+
 	})
 
 	return pubsubHost, nil
 }
 
-// JoinTopic joins the given topic and subscribes to the topic.
-func (psHost *PubSubPeer) JoinTopic(topicName string) (*PsTopicSubscription, error) {
-	tp, err := psHost.Join(topicName)
+// JoinSubscribeTopic joins the given topic and subscribes to the topic.
+func (ps *PubSub) JoinSubscribeTopic(topicName string) (*PsTopicSubscription, error) {
+	// TODO: I'm not sure if having both methods called in the same function is a good thing.
+	// We'll discover along the way (I did this because they seem to be highly coupled)
+	var err error
+	var topicSub *PsTopicSubscription
+
+	ps.joinSubscribeOnce.Do(func() {
+		tp, err := ps.Join(topicName)
+		if err != nil {
+			err = fmt.Errorf("Failed to join topic %v, Error: %v", topicName, err)
+			return
+		}
+
+		sub, err := tp.Subscribe()
+		if err != nil {
+			err = fmt.Errorf("Failed to subscribe to topic %v, Error: %v", topicName, err)
+			return
+		}
+		zlog.Sugar().Debugf("Joined and subscribe to topic: %v", topicName)
+
+		topicSub = &PsTopicSubscription{
+			topic:  tp,
+			sub:    sub,
+			hostID: ps.hostID,
+		}
+	})
+
 	if err != nil {
-		return nil,
-			fmt.Errorf("Failed to join topic %v, Error: %v", topicName, err)
+		return nil, err
 	}
 
-	sub, err := tp.Subscribe()
-	if err != nil {
-		return nil,
-			fmt.Errorf("Failed to subscribe to topic %v, Error: %v", topicName, err)
+	if topicSub == nil {
+		return nil, fmt.Errorf("Topic already joined and/or subscribed!")
 	}
-	zlog.Sugar().Debugf("Topic %v joined", topicName)
 
-	return &PsTopicSubscription{
-		topic: tp,
-		sub:   sub,
-	}, nil
+	return topicSub, nil
 }
 
-// Publish publishes the given message to the topic.
+// Publish publishes the given message to the objected topic
 func (ts *PsTopicSubscription) Publish(msg any) error {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("Failed to marshal message, Error: %v", err)
 	}
 
-	zlog.Debug("Publishing")
 	err = ts.topic.Publish(context.Background(), msgBytes)
 	if err != nil {
 		return fmt.Errorf("Failed to publish message, Error: %v", err)
 	}
-	zlog.Sugar().Debug("Published message")
+	zlog.Sugar().Debug("Published message successfully")
 
 	return nil
+}
+
+// ListenForMessages receives a channel of type *libp2pPS.Message and it sends
+// all the messages received for a given topic to this channel. Ignoring
+// the messages send by the host
+func (ts *PsTopicSubscription) ListenForMessages(ctx context.Context, msgCh chan *libp2pPS.Message) {
+	for {
+		zlog.Sugar().Debugf("Waiting for message for topic: %v", ts.topic.String())
+		msg, err := ts.sub.Next(ctx)
+		if err != nil {
+			zlog.Sugar().Infof("Libp2p Pubsub topic %v done: %v", ts.topic.String(), err)
+			return
+		}
+
+		if msg.GetFrom().String() == ts.hostID {
+			continue
+		}
+
+		zlog.Sugar().Debugf("(%v): %v", msg.GetFrom().String(), msg.Message.Data)
+		msgCh <- msg
+	}
 }
 
 // Unsubscribe unsubscribes from the topic subscription.
@@ -85,36 +140,18 @@ func (ts *PsTopicSubscription) Unsubscribe() {
 	ts.sub.Cancel()
 }
 
-func (ts *PsTopicSubscription) listenForMessages(ctx context.Context) {
-	for {
-		zlog.Sugar().Debug("Waiting for message")
-		msg, err := ts.sub.Next(ctx)
-		if err != nil {
-			zlog.Sugar().Infof("Libp2p Pubsub topic %v done: %v", ts.topic.String(), err)
-			return
-		}
-
-		// TODO: check if message come from peer-self, and ignore if it comes
-		// zlog.Sugar().Debug("h1ew")
-		// if msg.GetFrom().String() == libp2p.GetP2P().Host.ID().String() {
-		// 	continue
-		// }
-
-		zlog.Sugar().Debugf("(%v): %v", msg.GetFrom().String(), msg.Message.Data)
-	}
-}
-
+// Close closes both subscription and topic for the given values assigned
+// to ts *PsTopicSubscription
 func (ts *PsTopicSubscription) Close(ctx context.Context) error {
 	var err error
 	ts.closeOnce.Do(func() {
-		zlog.Sugar().Infof("Closing subscription and topic itself for %v", ts.topic.String())
 		if ts.sub != nil {
 			ts.sub.Cancel()
 		}
 		if ts.topic != nil {
 			err = ts.topic.Close()
 		}
-
+		zlog.Sugar().Infof("Closed subscription and topic itself for topic: %v", ts.topic.String())
 	})
 
 	if err != nil {

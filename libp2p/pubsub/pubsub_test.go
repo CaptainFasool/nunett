@@ -2,7 +2,7 @@ package pubsub
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"sync"
 	"testing"
 	"time"
@@ -11,46 +11,128 @@ import (
 	libp2pPS "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/stretchr/testify/suite"
-	"gitlab.com/nunet/device-management-service/utils"
 )
 
 type PubSubTestSuite struct {
 	suite.Suite
 	ctx          context.Context
-	node1        *psNodeConfigTest
+	nodeAB       *psNodeConfigTest
+	nodeXY       *psNodeConfigTest
 	observerNode *psNodeConfigTest
 	topicName    string
-	wg           *sync.WaitGroup
 }
 
 type psNodeConfigTest struct {
-	host   host.Host
-	pubsub *PubSubPeer
-	topic  *PsTopicSubscription
-	msg    string
+	host     host.Host
+	pubsub   *PubSub
+	topicSub *PsTopicSubscription
+	msg      string
 }
 
+func (s *PubSubTestSuite) SetupSuite() {
+	var err error
+	s.ctx = context.Background()
+
+	s.observerNode, err = startupHostPubSubTest(context.Background())
+	s.Require().NoError(err)
+
+	s.nodeAB, err = startupHostPubSubTest(context.Background(), s.observerNode.host)
+	s.Require().NoError(err)
+
+	s.nodeXY, err = startupHostPubSubTest(context.Background(), s.observerNode.host)
+	s.Require().NoError(err)
+
+	s.topicName = "test topic"
+	s.nodeAB.msg = "I love lasagna!"
+	s.nodeXY.msg = "Me too!"
+	s.observerNode.msg = "I must not catch my own message"
+}
+
+func (s *PubSubTestSuite) TearDownSuite() {
+	s.NoError(s.observerNode.host.Close())
+	s.NoError(s.nodeAB.host.Close())
+	s.NoError(s.nodeXY.host.Close())
+}
+
+// TestPubSub tests the libp2p's GossipSub implementation and message publishing
+// and retrieving processes
+func (s *PubSubTestSuite) TestPubSub() {
+	var err error
+
+	// Joining observerNode to the topic and making it listen to all coming messages
+	s.observerNode.topicSub, err = s.observerNode.pubsub.JoinSubscribeTopic(s.topicName)
+	s.Require().NoError(err)
+	msgCh := make(chan *libp2pPS.Message)
+	go s.observerNode.topicSub.ListenForMessages(context.Background(), msgCh)
+	time.Sleep(1 * time.Second)
+
+	// joining nodeAB into the topic
+	s.nodeAB.topicSub, err = s.nodeAB.pubsub.JoinSubscribeTopic(s.topicName)
+	s.Require().NoError(err)
+
+	// joining nodeXY into the topic
+	s.nodeXY.topicSub, err = s.nodeXY.pubsub.JoinSubscribeTopic(s.topicName)
+	s.Require().NoError(err)
+
+	// Publishing message with observerNode which should be ignored by
+	// its own ListenForMessages()
+	s.NoError(s.observerNode.topicSub.Publish(s.observerNode.msg))
+	time.Sleep(1 * time.Second)
+
+	// Publishing message with nodeAB and nodeXY
+	s.NoError(s.nodeAB.topicSub.Publish(s.nodeAB.msg))
+	time.Sleep(1 * time.Second)
+	s.NoError(s.nodeXY.topicSub.Publish(s.nodeXY.msg))
+
+	// Check if we observerNode received the right messages from the right peers.
+	// Just two messages were send so we iterate 2 times
+	var m string
+	for i := 0; i < 2; i++ {
+		msg := <-msgCh
+
+		err := json.Unmarshal(msg.Data, &m)
+		s.Require().NoError(err)
+		if msg.GetFrom() == s.nodeAB.host.ID() {
+			zlog.Sugar().Debug(msg.GetFrom(), m)
+			s.Equal(m, s.nodeAB.msg)
+		} else if msg.GetFrom() == s.nodeXY.host.ID() {
+			zlog.Sugar().Debug(msg.GetFrom(), m)
+			s.Equal(m, s.nodeXY.msg)
+		}
+	}
+
+	zlog.Sugar().Debug("Finalizing")
+	s.ctx.Deadline()
+}
+
+// TestPubSubClose tests if peers are successfully quitting and unsubscribing
+// a given topic
+func (s *PubSubTestSuite) TestPubSubClose() {
+	s.NoError(s.observerNode.topicSub.Close(context.Background()))
+	s.Equal(0, len(s.observerNode.pubsub.GetTopics()))
+
+	s.NoError(s.nodeAB.topicSub.Close(context.Background()))
+	s.Equal(0, len(s.nodeAB.pubsub.GetTopics()))
+
+	s.NoError(s.nodeXY.topicSub.Close(context.Background()))
+	s.Equal(0, len(s.nodeXY.pubsub.GetTopics()))
+}
+
+func TestPubSubSuite(t *testing.T) {
+	suite.Run(t, new(PubSubTestSuite))
+}
+
+// startupHostPubSubTest initializes a libp2p host, a GossipSub router and connects
+// to given peers
 func startupHostPubSubTest(ctx context.Context, peers ...host.Host) (*psNodeConfigTest, error) {
 	var err error
 
-	zlog.Sugar().Debug("Creating host")
-
-	port, err := utils.GetFreePort()
+	host, err := libp2p.New()
 	if err != nil {
 		return nil, err
 	}
 
-	host, err := libp2p.New(
-		libp2p.ListenAddrStrings(
-			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port),
-		),
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	ps, err := newTestGossipPubSub(ctx, host)
+	gs, err := libp2pPS.NewGossipSub(ctx, host)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +142,11 @@ func startupHostPubSubTest(ctx context.Context, peers ...host.Host) (*psNodeConf
 	}
 
 	return &psNodeConfigTest{
-		host:   host,
-		pubsub: ps,
+		host: host,
+		pubsub: &PubSub{
+			gs,
+			host.ID().String(),
+			sync.Once{}},
 	}, nil
 }
 
@@ -77,75 +162,4 @@ func connectToPeers(h host.Host, peers ...host.Host) error {
 	}
 	zlog.Sugar().Debugf("Peers connected: %v", h.Network().Peers())
 	return nil
-}
-
-func (s *PubSubTestSuite) SetupSuite() {
-	var err error
-	s.ctx = context.Background()
-
-	s.observerNode, err = startupHostPubSubTest(context.Background())
-	s.Require().NoError(err)
-	time.Sleep(5 * time.Second)
-
-	s.node1, err = startupHostPubSubTest(context.Background(), s.observerNode.host)
-	s.Require().NoError(err)
-
-	s.topicName = "topicTest"
-	s.node1.msg = "I love lasagna"
-
-	s.wg = &sync.WaitGroup{}
-}
-
-// newTestGossipPubSub creates a new GossipSub instance for tests
-func newTestGossipPubSub(ctx context.Context, host host.Host) (*PubSubPeer, error) {
-	gs, err := libp2pPS.NewGossipSub(ctx, host)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create gossipsub, Error: %w", err)
-	}
-	return &PubSubPeer{gs}, nil
-}
-
-func (s *PubSubTestSuite) TearDownSuite() {
-	s.NoError(s.observerNode.host.Close())
-	s.NoError(s.node1.host.Close())
-}
-
-// TestPubSub tests the libp2p's GossipSub implementation and message publishing
-// and retrieving processes
-func (s *PubSubTestSuite) TestPubSub() {
-	var err error
-
-	s.observerNode.topic, err = s.observerNode.pubsub.JoinTopic(s.topicName)
-	s.Require().NoError(err)
-	s.observerNode.topic.topic.EventHandler()
-	go s.observerNode.topic.listenForMessages(s.ctx)
-	time.Sleep(1 * time.Second)
-
-	s.node1.topic, err = s.node1.pubsub.JoinTopic(s.topicName)
-	s.Require().NoError(err)
-	time.Sleep(1 * time.Second)
-
-	zlog.Sugar().Debugf("topics: %v", s.observerNode.pubsub)
-	zlog.Sugar().Debugf("topics: %v", s.node1.pubsub)
-	zlog.Sugar().Debug(s.observerNode.topic.topic.ListPeers(), s.node1.topic.topic.ListPeers())
-
-	//msgCh := make(chan *libp2pPS.Message)
-	//go s.observerNode.topic.listenForMessages(context.Background(), msgCh)
-	time.Sleep(1 * time.Second)
-
-	s.NoError(s.observerNode.topic.Publish("dsadsa"))
-	s.NoError(s.node1.topic.Publish(s.node1.msg))
-	time.Sleep(1 * time.Second)
-
-	// Check if we observerNode received the right messages from the right peers
-	// Just to messages were send so we iterate 2 times
-	zlog.Sugar().Debug(s.observerNode.topic.topic.ListPeers(), s.node1.topic.topic.ListPeers())
-
-	zlog.Sugar().Debug("Finalizing")
-
-	s.ctx.Deadline()
-}
-
-func TestPubSubSuite(t *testing.T) {
-	suite.Run(t, new(PubSubTestSuite))
 }
