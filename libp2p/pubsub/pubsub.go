@@ -85,7 +85,7 @@ func (ts *PsTopicSubscription) Unsubscribe() {
 	ts.sub.Cancel()
 }
 
-func (ts *PsTopicSubscription) listenForMessages(ctx context.Context, msgCh chan *libp2pPS.Message) {
+func (ts *PsTopicSubscription) listenForMessages(ctx context.Context) {
 	for {
 		zlog.Sugar().Debug("Waiting for message")
 		msg, err := ts.sub.Next(ctx)
@@ -101,7 +101,6 @@ func (ts *PsTopicSubscription) listenForMessages(ctx context.Context, msgCh chan
 		// }
 
 		zlog.Sugar().Debugf("(%v): %v", msg.GetFrom().String(), msg.Message.Data)
-		msgCh <- msg
 	}
 }
 
