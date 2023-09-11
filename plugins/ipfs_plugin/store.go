@@ -30,7 +30,8 @@ func UseSnapshotsFeatIPFS(jobID string, scheduleSec int) {
 
 func UseOutputFeatIPFS(jobID string) {
 	// TODO 1: Store Data
-	err := storeOutputIPFS(jobID)
+	ipfsPlug := NewIPFSPlugin()
+	err := ipfsPlug.storeOutputIPFS(jobID)
 	if err != nil {
 		zlog.Sugar().Error(err)
 	}
@@ -42,14 +43,14 @@ func storeSnapshotsIPFS(jobID string, scheduleSec int) {
 	return
 }
 
-func storeOutputIPFS(jobID string) error {
+func (p *IPFSPlugin) storeOutputIPFS(jobID string) error {
 	storeResponse, err := store(jobID)
 	if err != nil {
 		return err
 	}
 
 	zlog.Sugar().Info("Returned CID for output stored on IPFS: %v ", storeResponse.CID)
-	// TODO: distribute CID
+	p.ts.Publish(storeResponse.CID)
 
 	return nil
 }

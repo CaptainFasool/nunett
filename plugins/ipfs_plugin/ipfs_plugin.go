@@ -1,28 +1,49 @@
 package ipfs_plugin
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
+	"time"
 
 	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/libp2p/pubsub"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/plugins/plugins_management"
+
+	libp2pPS "github.com/libp2p/go-libp2p-pubsub"
 )
 
 type IPFSPlugin struct {
 	info    models.PluginInfo
 	process *os.Process
+	ts      *pubsub.PsTopicSubscription
 	port    string
 	addr    string
 }
 
 const (
-	loopbackIP = "127.0.0.1"
+	loopbackIP      = "127.0.0.1"
+	pubsubTopicName = "cid_distribution"
+)
+
+var (
+	ipfsPlugin   *IPFSPlugin
+	muIPFSPlugin sync.Mutex
 )
 
 func NewIPFSPlugin() *IPFSPlugin {
+	muIPFSPlugin.Lock()
+	defer muIPFSPlugin.Unlock()
+
+	if ipfsPlugin != nil {
+		return ipfsPlugin
+	}
+
 	p := &IPFSPlugin{}
 	p.addr = loopbackIP
 	p.port = "31001"
@@ -57,6 +78,15 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 	p.process = cmd.Process
 	pluginsManager.SucceedStartup <- &p.info
 	zlog.Sugar().Infof("Plugin %v started, path: %v, pid: %v", p.info.Name, cmd.Path, p.process.Pid)
+
+	err = p.enterStoragePubSub()
+	if err != nil {
+		pluginsManager.ErrCh <- fmt.Errorf(
+			"Couldn't enter on PubSub topic for CID distribution, Error: %w", err,
+		)
+		return
+
+	}
 
 	err = cmd.Wait()
 	if err != nil {
@@ -100,4 +130,47 @@ func (p *IPFSPlugin) IsRunning(pluginsManager *plugins_management.PluginsInfoCha
 		return false, err
 	}
 	return true, nil
+}
+
+func (p *IPFSPlugin) enterStoragePubSub() error {
+	ps, err := pubsub.NewGossipPubSub(ctx, libp2p.GetP2P().Host)
+	if err != nil {
+		return fmt.Errorf("Couldn't init GossipSub for IPFS-Plugin, Error: %w", err)
+	}
+
+	ts, err := ps.JoinSubscribeTopic(pubsubTopicName)
+	if err != nil {
+		return fmt.Errorf("Couldn't enter on pubsub topic for IPFS-Plugin, Error: %w", err)
+	}
+
+	p.ts = ts
+
+	return nil
+}
+
+func (p *IPFSPlugin) ReadAndPinTopicCIDs() error {
+	msgCh := make(chan *libp2pPS.Message)
+	p.ts.ListenForMessages(ctx, msgCh)
+
+	tick := time.NewTicker(10 * time.Second)
+	defer tick.Stop()
+
+	var m string
+	for {
+		select {
+		case msg := <-msgCh:
+			err := json.Unmarshal(msg.Data, &m)
+			if err != nil {
+				close(msgCh)
+				return fmt.Errorf("Couldn't unmarshal message from PubSub, Error: %w", err)
+			}
+			zlog.Sugar().Debugf("Sending CID %v to pin", m)
+			// TODO: send call to IPFS-PLugin to pin the data
+		case <-tick.C:
+			zlog.Sugar().Debug("Interval of IPFS-Plugin, no messages (CIDs) received")
+		}
+
+	}
+
+	return nil
 }
