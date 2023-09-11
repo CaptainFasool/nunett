@@ -100,6 +100,7 @@ func (s *PubSubTestSuite) TestPubSub() {
 			s.Equal(m, s.nodeXY.msg)
 		}
 	}
+	close(msgCh)
 
 	zlog.Sugar().Debug("Finalizing")
 	s.ctx.Deadline()
@@ -146,7 +147,9 @@ func startupHostPubSubTest(ctx context.Context, peers ...host.Host) (*psNodeConf
 		pubsub: &PubSub{
 			gs,
 			host.ID().String(),
-			sync.Once{}},
+			sync.Once{},
+			map[string]*PsTopicSubscription{},
+		},
 	}, nil
 }
 
