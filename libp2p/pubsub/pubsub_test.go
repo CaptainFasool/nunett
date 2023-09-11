@@ -100,6 +100,7 @@ func (s *PubSubTestSuite) TestPubSub() {
 			s.Equal(m, s.nodeXY.msg)
 		}
 	}
+	close(msgCh)
 
 	zlog.Sugar().Debug("Finalizing")
 	s.ctx.Deadline()
