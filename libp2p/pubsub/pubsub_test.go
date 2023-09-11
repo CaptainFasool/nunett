@@ -147,7 +147,9 @@ func startupHostPubSubTest(ctx context.Context, peers ...host.Host) (*psNodeConf
 		pubsub: &PubSub{
 			gs,
 			host.ID().String(),
-			sync.Once{}},
+			sync.Once{},
+			map[string]*PsTopicSubscription{},
+		},
 	}, nil
 }
 
