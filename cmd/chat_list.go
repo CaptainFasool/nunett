@@ -8,7 +8,6 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/utils"
 )
 
 func init() {
