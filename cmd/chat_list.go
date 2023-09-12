@@ -21,7 +21,7 @@ var chatListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		chatList, err := libp2p.IncomingChatRequests()
 		if err != nil {
-			fmt.Println("Error retrieving chat list:", err)
+			fmt.Println("Error:", err)
 			os.Exit(1)
 		}
 
