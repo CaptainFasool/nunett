@@ -1,3 +1,1 @@
-## Docker developer documentation
-
 TBD
