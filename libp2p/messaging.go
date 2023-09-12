@@ -393,7 +393,7 @@ func chatStreamHandler(stream network.Stream) {
 	}
 }
 
-func incomingChatRequests() ([]OpenStream, error) {
+func IncomingChatRequests() ([]OpenStream, error) {
 	if len(inboundChatStreams) == 0 {
 		return nil, fmt.Errorf("no incoming message stream")
 	}
@@ -409,7 +409,7 @@ func incomingChatRequests() ([]OpenStream, error) {
 	return out, nil
 }
 
-func clearIncomingChatRequests() error {
+func ClearIncomingChatRequests() error {
 	if len(inboundChatStreams) == 0 {
 		return fmt.Errorf("no inbound message streams")
 	}

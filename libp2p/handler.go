@@ -205,7 +205,7 @@ func SelfPeerInfo(c *gin.Context) {
 //	@Success		200
 //	@Router			/peers/chat [get]
 func ListChatHandler(c *gin.Context) {
-	chatRequests, err := incomingChatRequests()
+	chatRequests, err := IncomingChatRequests()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		klogger.Logger.Error("List chat handler Error: " + err.Error())
@@ -223,7 +223,7 @@ func ListChatHandler(c *gin.Context) {
 //	@Success		200
 //	@Router			/peers/chat/clear [get]
 func ClearChatHandler(c *gin.Context) {
-	if err := clearIncomingChatRequests(); err != nil {
+	if err := ClearIncomingChatRequests(); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		klogger.Logger.Error("Clear chat handler Error: " + err.Error())
 		return
