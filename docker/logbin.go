@@ -59,7 +59,7 @@ func newLogBin(title string) (LogbinResponse, error) {
 		zlog.Sugar().Errorf("unable to create log at logbin: %v", err)
 		return LogbinResponse{}, err
 	}
-	zlog.Sugar().Info("unable to create log at logbin: %v", err)
+
 	if resp.StatusCode != 201 {
 		zlog.Sugar().Errorf("unable to create log at logbin - statusCode: %v", resp.Status)
 		return LogbinResponse{}, errors.New("unable to create log at logbin - " + resp.Status)
