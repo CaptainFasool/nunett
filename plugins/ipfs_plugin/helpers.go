@@ -1,6 +1,7 @@
 package ipfs_plugin
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -15,7 +16,7 @@ import (
 
 // getContainerIDIfExists returns the Docker container ID based on its name
 func getContainerIDIfExists(name string, dc *client.Client) (string, error) {
-	containers, err := dc.ContainerList(ctx, types.ContainerListOptions{
+	containers, err := dc.ContainerList(context.Background(), types.ContainerListOptions{
 		Filters: filters.NewArgs(filters.Arg("name", name)),
 		All:     true,
 	})
@@ -41,20 +42,20 @@ func stopAndRemoveContainerIfExists(name string, dc *client.Client) error {
 	}
 
 	if id != "" {
-		container, err := dc.ContainerInspect(ctx, id)
+		container, err := dc.ContainerInspect(context.Background(), id)
 		if err != nil {
 			return fmt.Errorf("Unable to inspect container with ID: %v, Error: %w", id, err)
 		}
 
 		if container.State.Running {
-			if err := dc.ContainerStop(ctx, id, nil); err != nil {
+			if err := dc.ContainerStop(context.Background(), id, nil); err != nil {
 				return fmt.Errorf(
 					"Unable to stop container with ID: %v, Error: %w",
 					id, err)
 			}
 		}
 
-		if err := dc.ContainerRemove(ctx, id, types.ContainerRemoveOptions{}); err != nil {
+		if err := dc.ContainerRemove(context.Background(), id, types.ContainerRemoveOptions{}); err != nil {
 			return fmt.Errorf("Unable to remove container: %v, Error: %w", name, err)
 		}
 	}
@@ -64,7 +65,7 @@ func stopAndRemoveContainerIfExists(name string, dc *client.Client) error {
 // stopPluginContainer stops a plugin container based on the plugin name.
 func stopPluginDcContainer(pluginName string, dc *client.Client) error {
 	// Get the list of running containers
-	containers, err := dc.ContainerList(ctx, types.ContainerListOptions{
+	containers, err := dc.ContainerList(context.Background(), types.ContainerListOptions{
 		Filters: filters.NewArgs(filters.Arg("label", "dms-plugin="+pluginName)),
 	})
 	if err != nil {
@@ -73,7 +74,7 @@ func stopPluginDcContainer(pluginName string, dc *client.Client) error {
 	}
 
 	for _, container := range containers {
-		if err := dc.ContainerStop(ctx, container.ID, nil); err != nil {
+		if err := dc.ContainerStop(context.Background(), container.ID, nil); err != nil {
 			zlog.Sugar().Errorf("Unable to stop plugin container: %v", pluginName)
 			return err
 		}
@@ -86,7 +87,7 @@ func stopPluginDcContainer(pluginName string, dc *client.Client) error {
 // isPluginDcContainerRunning checks if a Plugin Docker container is running based on its name
 func isPluginDcContainerRunning(pluginName string, dc *client.Client) (bool, error) {
 	// Get the list of running containers
-	containers, err := dc.ContainerList(ctx, types.ContainerListOptions{
+	containers, err := dc.ContainerList(context.Background(), types.ContainerListOptions{
 		Filters: filters.NewArgs(filters.Arg("label", "dms-plugin="+pluginName)),
 	})
 	if err != nil {
@@ -108,7 +109,7 @@ func pullImage(imageName string, dc *client.Client) error {
 	// TODO: We should rename the docker package to deployment package
 	// and create a new docker package.
 	// OR put this image in utils/utils.go
-	out, err := dc.ImagePull(ctx, imageName, types.ImagePullOptions{})
+	out, err := dc.ImagePull(context.Background(), imageName, types.ImagePullOptions{})
 	if err != nil {
 		return err
 	}
