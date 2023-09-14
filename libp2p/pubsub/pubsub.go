@@ -28,8 +28,9 @@ type PubSub struct {
 // created JoinSubscribeTopic method. With its values, the host can deal with all
 // the available attributes and methods for the given *libp2p.Topic and *libp2p.Subscribe.
 type PsTopicSubscription struct {
-	Topic *libp2pPS.Topic
-	Sub   *libp2pPS.Subscription
+	Topic  *libp2pPS.Topic
+	events *libp2pPS.TopicEventHandler
+	Sub    *libp2pPS.Subscription
 
 	hostID string
 
@@ -43,13 +44,13 @@ var (
 
 // NewGossipPubSub creates a new GossipSub instance with the given host or returns
 // an existing one if it has been previously created.
-func NewGossipPubSub(ctx context.Context, host host.Host) (*PubSub, error) {
+func NewGossipPubSub(ctx context.Context, host host.Host, opts ...libp2pPS.Option) (*PubSub, error) {
 	if pubsubHost != nil {
 		return pubsubHost, nil
 	}
 
 	onceGossipPS.Do(func() {
-		gs, err := libp2pPS.NewGossipSub(ctx, host)
+		gs, err := libp2pPS.NewGossipSub(ctx, host, opts...)
 		if err != nil {
 			zlog.Sugar().Errorf("Failed to create gossipsub: %v", err)
 			return
@@ -67,7 +68,8 @@ func NewGossipPubSub(ctx context.Context, host host.Host) (*PubSub, error) {
 }
 
 // JoinSubscribeTopic joins the given topic and subscribes to the topic.
-func (ps *PubSub) JoinSubscribeTopic(topicName string) (*PsTopicSubscription, error) {
+func (ps *PubSub) JoinSubscribeTopic(ctx context.Context, topicName string,
+	debug bool) (*PsTopicSubscription, error) {
 	// TODO: I'm not sure if having both methods called in the same function is a good thing.
 	// We'll discover along the way (I did this because they seem to be highly coupled)
 	var err error
@@ -85,6 +87,17 @@ func (ps *PubSub) JoinSubscribeTopic(topicName string) (*PsTopicSubscription, er
 			return
 		}
 
+		var events *libp2pPS.TopicEventHandler
+		if debug {
+			events, err = tp.EventHandler()
+			if err != nil {
+				err = fmt.Errorf("Couldn't create topic's event handler for %v, Error: %v",
+					topicName, err)
+				return
+			}
+			go logEvents(ctx, events)
+		}
+
 		sub, err := tp.Subscribe()
 		if err != nil {
 			err = fmt.Errorf("Failed to subscribe to topic %v, Error: %v", topicName, err)
@@ -95,6 +108,7 @@ func (ps *PubSub) JoinSubscribeTopic(topicName string) (*PsTopicSubscription, er
 		topicSub = &PsTopicSubscription{
 			Topic:  tp,
 			Sub:    sub,
+			events: events,
 			hostID: ps.hostID,
 		}
 
@@ -149,6 +163,26 @@ func (ts *PsTopicSubscription) ListenForMessages(ctx context.Context, msgCh chan
 	}
 }
 
+func logEvents(ctx context.Context, eventHandler *libp2pPS.TopicEventHandler) {
+	for {
+		ev, err := eventHandler.NextPeerEvent(ctx)
+		if err != nil {
+			zlog.Sugar().Debug("Error trying to get next event from topic")
+			eventHandler.Cancel()
+			return
+		}
+
+		var typeString string
+		if ev.Type == libp2pPS.PeerJoin {
+			typeString = "JOIN"
+		} else {
+			typeString = "LEAVE"
+		}
+
+		zlog.Sugar().Debugf("Peer: %v, Event: %v", ev.Peer.String(), typeString)
+	}
+}
+
 // Unsubscribe unsubscribes from the topic subscription.
 func (ts *PsTopicSubscription) Unsubscribe() {
 	ts.Sub.Cancel()
@@ -159,6 +193,9 @@ func (ts *PsTopicSubscription) Unsubscribe() {
 func (ts *PsTopicSubscription) Close(ctx context.Context) error {
 	var err error
 	ts.closeOnce.Do(func() {
+		if ts.events != nil {
+			ts.events.Cancel()
+		}
 		if ts.Sub != nil {
 			ts.Sub.Cancel()
 		}
@@ -169,7 +206,7 @@ func (ts *PsTopicSubscription) Close(ctx context.Context) error {
 	})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("For peer %v, Error: %w", ts.hostID, err)
 	}
 
 	return nil
