@@ -16,6 +16,7 @@ import (
 type PubSubTestSuite struct {
 	suite.Suite
 	ctx          context.Context
+	ctxCancel    context.CancelFunc
 	nodeAB       *psNodeConfigTest
 	nodeXY       *psNodeConfigTest
 	observerNode *psNodeConfigTest
@@ -31,7 +32,7 @@ type psNodeConfigTest struct {
 
 func (s *PubSubTestSuite) SetupSuite() {
 	var err error
-	s.ctx = context.Background()
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
 	s.observerNode, err = startupHostPubSubTest(context.Background())
 	s.Require().NoError(err)
@@ -60,18 +61,18 @@ func (s *PubSubTestSuite) TestPubSub() {
 	var err error
 
 	// Joining observerNode to the topic and making it listen to all coming messages
-	s.observerNode.topicSub, err = s.observerNode.pubsub.JoinSubscribeTopic(s.topicName)
+	s.observerNode.topicSub, err = s.observerNode.pubsub.JoinSubscribeTopic(s.ctx, s.topicName, true)
 	s.Require().NoError(err)
 	msgCh := make(chan *libp2pPS.Message)
 	go s.observerNode.topicSub.ListenForMessages(context.Background(), msgCh)
 	time.Sleep(1 * time.Second)
 
 	// joining nodeAB into the topic
-	s.nodeAB.topicSub, err = s.nodeAB.pubsub.JoinSubscribeTopic(s.topicName)
+	s.nodeAB.topicSub, err = s.nodeAB.pubsub.JoinSubscribeTopic(s.ctx, s.topicName, false)
 	s.Require().NoError(err)
 
 	// joining nodeXY into the topic
-	s.nodeXY.topicSub, err = s.nodeXY.pubsub.JoinSubscribeTopic(s.topicName)
+	s.nodeXY.topicSub, err = s.nodeXY.pubsub.JoinSubscribeTopic(s.ctx, s.topicName, false)
 	s.Require().NoError(err)
 
 	// Publishing message with observerNode which should be ignored by
@@ -101,22 +102,20 @@ func (s *PubSubTestSuite) TestPubSub() {
 		}
 	}
 	close(msgCh)
-
-	zlog.Sugar().Debug("Finalizing")
-	s.ctx.Deadline()
 }
 
 // TestPubSubClose tests if peers are successfully quitting and unsubscribing
 // a given topic
 func (s *PubSubTestSuite) TestPubSubClose() {
-	s.NoError(s.observerNode.topicSub.Close(context.Background()))
-	s.Equal(0, len(s.observerNode.pubsub.GetTopics()))
-
 	s.NoError(s.nodeAB.topicSub.Close(context.Background()))
 	s.Equal(0, len(s.nodeAB.pubsub.GetTopics()))
 
 	s.NoError(s.nodeXY.topicSub.Close(context.Background()))
 	s.Equal(0, len(s.nodeXY.pubsub.GetTopics()))
+
+	s.NoError(s.observerNode.topicSub.Close(context.Background()))
+	s.Equal(0, len(s.observerNode.pubsub.GetTopics()))
+
 }
 
 func TestPubSubSuite(t *testing.T) {
