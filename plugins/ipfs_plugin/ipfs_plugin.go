@@ -1,6 +1,7 @@
 package ipfs_plugin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,9 +20,13 @@ import (
 )
 
 type IPFSPlugin struct {
-	info    models.PluginInfo
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	info models.PluginInfo
+	ts   *pubsub.PsTopicSubscription
+
 	process *os.Process
-	ts      *pubsub.PsTopicSubscription
 	port    string
 	addr    string
 }
@@ -45,6 +50,8 @@ func NewIPFSPlugin() *IPFSPlugin {
 	}
 
 	p := &IPFSPlugin{}
+	p.ctx, p.cancel = context.WithCancel(context.Background())
+
 	p.addr = loopbackIP
 	p.port = "31001"
 
@@ -69,6 +76,7 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 
 	err := cmd.Start()
 	if err != nil {
+		p.cancel()
 		pluginsManager.ErrCh <- fmt.Errorf(
 			"Couldn't execute cmd.Start() for: %v, Error: %w", p.info.Name, err,
 		)
@@ -79,8 +87,9 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 	pluginsManager.SucceedStartup <- &p.info
 	zlog.Sugar().Infof("Plugin %v started, path: %v, pid: %v", p.info.Name, cmd.Path, p.process.Pid)
 
-	err = p.enterStoragePubSub()
+	err = p.enterStoragePubSub(p.ctx)
 	if err != nil {
+		p.cancel()
 		pluginsManager.ErrCh <- fmt.Errorf(
 			"Couldn't enter on PubSub topic for CID distribution, Error: %w", err,
 		)
@@ -88,8 +97,21 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 
 	}
 
+	go p.ReadAndPinTopicCIDs(p.ctx)
+	if err != nil {
+		p.cancel()
+		pluginsManager.ErrCh <- fmt.Errorf(
+			"Unexpected error when reading and sending CIDs to be pinned, Error: %w", err,
+		)
+		return
+
+	}
+
+	p.debugTopic()
+
 	err = cmd.Wait()
 	if err != nil {
+		p.cancel()
 		pluginsManager.ErrCh <- fmt.Errorf(
 			"Plugin %v exited, Error: %w", p.info.Name, err,
 		)
@@ -132,13 +154,16 @@ func (p *IPFSPlugin) IsRunning(pluginsManager *plugins_management.PluginsInfoCha
 	return true, nil
 }
 
-func (p *IPFSPlugin) enterStoragePubSub() error {
-	ps, err := pubsub.NewGossipPubSub(ctx, libp2p.GetP2P().Host)
-	if err != nil {
-		return fmt.Errorf("Couldn't init GossipSub for IPFS-Plugin, Error: %w", err)
-	}
+func (p *IPFSPlugin) enterStoragePubSub(ctx context.Context) error {
+	ps := libp2p.GetP2P().PubSub
+	// var routingDiscovery = drouting.NewRoutingDiscovery(dmsHost.DHT)
+	// opt := libp2pPS.WithDiscovery(routingDiscovery)
+	// ps, err := pubsub.NewGossipPubSub(ctx, dmsHost.Host, opt)
+	// if err != nil {
+	// 	return fmt.Errorf("Couldn't init GossipSub for IPFS-Plugin, Error: %w", err)
+	// }
 
-	ts, err := ps.JoinSubscribeTopic(pubsubTopicName)
+	ts, err := ps.JoinSubscribeTopic(ctx, pubsubTopicName, true)
 	if err != nil {
 		return fmt.Errorf("Couldn't enter on pubsub topic for IPFS-Plugin, Error: %w", err)
 	}
@@ -148,9 +173,9 @@ func (p *IPFSPlugin) enterStoragePubSub() error {
 	return nil
 }
 
-func (p *IPFSPlugin) ReadAndPinTopicCIDs() error {
+func (p *IPFSPlugin) ReadAndPinTopicCIDs(ctx context.Context) error {
 	msgCh := make(chan *libp2pPS.Message)
-	p.ts.ListenForMessages(ctx, msgCh)
+	go p.ts.ListenForMessages(ctx, msgCh)
 
 	tick := time.NewTicker(10 * time.Second)
 	defer tick.Stop()
@@ -158,6 +183,9 @@ func (p *IPFSPlugin) ReadAndPinTopicCIDs() error {
 	var m string
 	for {
 		select {
+		case <-ctx.Done():
+			close(msgCh)
+			zlog.Sugar().Debug("Context is done. Stop listening to messages (CIDs) from PubSub", m)
 		case msg := <-msgCh:
 			err := json.Unmarshal(msg.Data, &m)
 			if err != nil {
@@ -165,6 +193,7 @@ func (p *IPFSPlugin) ReadAndPinTopicCIDs() error {
 				return fmt.Errorf("Couldn't unmarshal message from PubSub, Error: %w", err)
 			}
 			zlog.Sugar().Debugf("Sending CID %v to pin", m)
+
 			// TODO: send call to IPFS-PLugin to pin the data
 		case <-tick.C:
 			zlog.Sugar().Debug("Interval of IPFS-Plugin, no messages (CIDs) received")
@@ -173,4 +202,12 @@ func (p *IPFSPlugin) ReadAndPinTopicCIDs() error {
 	}
 
 	return nil
+}
+
+func (p *IPFSPlugin) debugTopic() {
+	for {
+		p.ts.Publish("DSNABDMNSABDMNSAVDMSAVDBSANC")
+		zlog.Sugar().Debug(p.ts.Topic.ListPeers())
+		time.Sleep(10 * time.Second)
+	}
 }

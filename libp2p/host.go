@@ -13,7 +13,6 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -33,6 +32,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	pubsub "gitlab.com/nunet/device-management-service/libp2p/pubsub"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 )
@@ -42,11 +42,11 @@ type DMSp2p struct {
 	DHT    *dht.IpfsDHT
 	PS     peerstore.Peerstore
 	peers  []peer.AddrInfo
-	Pubsub *pubsub.PubSub
+	PubSub *pubsub.PubSub
 }
 
-func DMSp2pInit(node host.Host, dht *dht.IpfsDHT) *DMSp2p {
-	return &DMSp2p{Host: node, DHT: dht}
+func DMSp2pInit(node host.Host, dht *dht.IpfsDHT, ps *pubsub.PubSub) *DMSp2p {
+	return &DMSp2p{Host: node, DHT: dht, PubSub: ps}
 }
 
 var p2p DMSp2p
@@ -82,7 +82,13 @@ func RunNode(priv crypto.PrivKey, server bool) {
 		panic(err)
 	}
 
-	p2p = *DMSp2pInit(host, dht)
+	ps, err := pubsub.NewGossipPubSub(ctx, host)
+	if err != nil {
+		zlog.Sugar().Errorf("Couldn't init GossipSub for IPFS-Plugin, Error: %w", err)
+		return
+	}
+
+	p2p = *DMSp2pInit(host, dht, ps)
 
 	err = p2p.BootstrapNode(ctx)
 	if err != nil {
