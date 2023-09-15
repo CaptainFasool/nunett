@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.28.1
 // 	protoc        v3.12.4
-// source: integrations/specs/compute-api-spec/ipfs_plugin.proto
+// source: integrations/specs/data-persistence-api-spec/ipfs_plugin.proto
 
 package ipfs_plugin
 
@@ -20,7 +20,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type StoreRequest struct {
+type StoreOutputRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -28,23 +28,23 @@ type StoreRequest struct {
 	ContainerId string `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
 }
 
-func (x *StoreRequest) Reset() {
-	*x = StoreRequest{}
+func (x *StoreOutputRequest) Reset() {
+	*x = StoreOutputRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_integrations_specs_compute_api_spec_ipfs_plugin_proto_msgTypes[0]
+		mi := &file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *StoreRequest) String() string {
+func (x *StoreOutputRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StoreRequest) ProtoMessage() {}
+func (*StoreOutputRequest) ProtoMessage() {}
 
-func (x *StoreRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_integrations_specs_compute_api_spec_ipfs_plugin_proto_msgTypes[0]
+func (x *StoreOutputRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,19 +55,19 @@ func (x *StoreRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StoreRequest.ProtoReflect.Descriptor instead.
-func (*StoreRequest) Descriptor() ([]byte, []int) {
-	return file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use StoreOutputRequest.ProtoReflect.Descriptor instead.
+func (*StoreOutputRequest) Descriptor() ([]byte, []int) {
+	return file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *StoreRequest) GetContainerId() string {
+func (x *StoreOutputRequest) GetContainerId() string {
 	if x != nil {
 		return x.ContainerId
 	}
 	return ""
 }
 
-type StoreResponse struct {
+type StoreOutputResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -75,23 +75,23 @@ type StoreResponse struct {
 	CID string `protobuf:"bytes,1,opt,name=CID,proto3" json:"CID,omitempty"`
 }
 
-func (x *StoreResponse) Reset() {
-	*x = StoreResponse{}
+func (x *StoreOutputResponse) Reset() {
+	*x = StoreOutputResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_integrations_specs_compute_api_spec_ipfs_plugin_proto_msgTypes[1]
+		mi := &file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *StoreResponse) String() string {
+func (x *StoreOutputResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StoreResponse) ProtoMessage() {}
+func (*StoreOutputResponse) ProtoMessage() {}
 
-func (x *StoreResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_integrations_specs_compute_api_spec_ipfs_plugin_proto_msgTypes[1]
+func (x *StoreOutputResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -102,75 +102,174 @@ func (x *StoreResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StoreResponse.ProtoReflect.Descriptor instead.
-func (*StoreResponse) Descriptor() ([]byte, []int) {
-	return file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescGZIP(), []int{1}
+// Deprecated: Use StoreOutputResponse.ProtoReflect.Descriptor instead.
+func (*StoreOutputResponse) Descriptor() ([]byte, []int) {
+	return file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *StoreResponse) GetCID() string {
+func (x *StoreOutputResponse) GetCID() string {
 	if x != nil {
 		return x.CID
 	}
 	return ""
 }
 
-var File_integrations_specs_compute_api_spec_ipfs_plugin_proto protoreflect.FileDescriptor
+type PinByCIDRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
 
-var file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDesc = []byte{
-	0x0a, 0x35, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2f, 0x73,
-	0x70, 0x65, 0x63, 0x73, 0x2f, 0x63, 0x6f, 0x6d, 0x70, 0x75, 0x74, 0x65, 0x2d, 0x61, 0x70, 0x69,
-	0x2d, 0x73, 0x70, 0x65, 0x63, 0x2f, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69,
-	0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0b, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c,
-	0x75, 0x67, 0x69, 0x6e, 0x22, 0x31, 0x0a, 0x0c, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65,
-	0x72, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x63, 0x6f, 0x6e, 0x74,
-	0x61, 0x69, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x22, 0x21, 0x0a, 0x0d, 0x53, 0x74, 0x6f, 0x72, 0x65,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x43, 0x49, 0x44, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x43, 0x49, 0x44, 0x32, 0x4e, 0x0a, 0x0a, 0x49, 0x50,
-	0x46, 0x53, 0x50, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x12, 0x40, 0x0a, 0x05, 0x53, 0x74, 0x6f, 0x72,
-	0x65, 0x12, 0x19, 0x2e, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2e,
-	0x53, 0x74, 0x6f, 0x72, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x69,
-	0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2e, 0x53, 0x74, 0x6f, 0x72, 0x65,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x0e, 0x5a, 0x0c, 0x2f, 0x69,
-	0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	CID string `protobuf:"bytes,1,opt,name=CID,proto3" json:"CID,omitempty"`
+}
+
+func (x *PinByCIDRequest) Reset() {
+	*x = PinByCIDRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PinByCIDRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PinByCIDRequest) ProtoMessage() {}
+
+func (x *PinByCIDRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PinByCIDRequest.ProtoReflect.Descriptor instead.
+func (*PinByCIDRequest) Descriptor() ([]byte, []int) {
+	return file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PinByCIDRequest) GetCID() string {
+	if x != nil {
+		return x.CID
+	}
+	return ""
+}
+
+type PinByCIDResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *PinByCIDResponse) Reset() {
+	*x = PinByCIDResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PinByCIDResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PinByCIDResponse) ProtoMessage() {}
+
+func (x *PinByCIDResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PinByCIDResponse.ProtoReflect.Descriptor instead.
+func (*PinByCIDResponse) Descriptor() ([]byte, []int) {
+	return file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescGZIP(), []int{3}
+}
+
+var File_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto protoreflect.FileDescriptor
+
+var file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDesc = []byte{
+	0x0a, 0x3e, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2f, 0x73,
+	0x70, 0x65, 0x63, 0x73, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x2d, 0x70, 0x65, 0x72, 0x73, 0x69, 0x73,
+	0x74, 0x65, 0x6e, 0x63, 0x65, 0x2d, 0x61, 0x70, 0x69, 0x2d, 0x73, 0x70, 0x65, 0x63, 0x2f, 0x69,
+	0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x12, 0x0b, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x22, 0x37, 0x0a,
+	0x12, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72,
+	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x63, 0x6f, 0x6e, 0x74, 0x61,
+	0x69, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x22, 0x27, 0x0a, 0x13, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4f,
+	0x75, 0x74, 0x70, 0x75, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x10, 0x0a,
+	0x03, 0x43, 0x49, 0x44, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x43, 0x49, 0x44, 0x22,
+	0x23, 0x0a, 0x0f, 0x50, 0x69, 0x6e, 0x42, 0x79, 0x43, 0x49, 0x44, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x43, 0x49, 0x44, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x43, 0x49, 0x44, 0x22, 0x12, 0x0a, 0x10, 0x50, 0x69, 0x6e, 0x42, 0x79, 0x43, 0x49, 0x44,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32, 0xa5, 0x01, 0x0a, 0x04, 0x49, 0x50, 0x46,
+	0x53, 0x12, 0x52, 0x0a, 0x0b, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74,
+	0x12, 0x1f, 0x2e, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2e, 0x53,
+	0x74, 0x6f, 0x72, 0x65, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x20, 0x2e, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2e,
+	0x53, 0x74, 0x6f, 0x72, 0x65, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x49, 0x0a, 0x08, 0x50, 0x69, 0x6e, 0x42, 0x79, 0x43, 0x49,
+	0x44, 0x12, 0x1c, 0x2e, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2e,
+	0x50, 0x69, 0x6e, 0x42, 0x79, 0x43, 0x49, 0x44, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x1d, 0x2e, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2e, 0x50, 0x69,
+	0x6e, 0x42, 0x79, 0x43, 0x49, 0x44, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00,
+	0x42, 0x0e, 0x5a, 0x0c, 0x2f, 0x69, 0x70, 0x66, 0x73, 0x5f, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
-	file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescOnce sync.Once
-	file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescData = file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDesc
+	file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescOnce sync.Once
+	file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescData = file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDesc
 )
 
-func file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescGZIP() []byte {
-	file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescOnce.Do(func() {
-		file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescData = protoimpl.X.CompressGZIP(file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescData)
+func file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescGZIP() []byte {
+	file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescOnce.Do(func() {
+		file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescData = protoimpl.X.CompressGZIP(file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescData)
 	})
-	return file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDescData
+	return file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDescData
 }
 
-var file_integrations_specs_compute_api_spec_ipfs_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_integrations_specs_compute_api_spec_ipfs_plugin_proto_goTypes = []interface{}{
-	(*StoreRequest)(nil),  // 0: ipfs_plugin.StoreRequest
-	(*StoreResponse)(nil), // 1: ipfs_plugin.StoreResponse
+var file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_goTypes = []interface{}{
+	(*StoreOutputRequest)(nil),  // 0: ipfs_plugin.StoreOutputRequest
+	(*StoreOutputResponse)(nil), // 1: ipfs_plugin.StoreOutputResponse
+	(*PinByCIDRequest)(nil),     // 2: ipfs_plugin.PinByCIDRequest
+	(*PinByCIDResponse)(nil),    // 3: ipfs_plugin.PinByCIDResponse
 }
-var file_integrations_specs_compute_api_spec_ipfs_plugin_proto_depIdxs = []int32{
-	0, // 0: ipfs_plugin.IPFSPlugin.Store:input_type -> ipfs_plugin.StoreRequest
-	1, // 1: ipfs_plugin.IPFSPlugin.Store:output_type -> ipfs_plugin.StoreResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+var file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_depIdxs = []int32{
+	0, // 0: ipfs_plugin.IPFS.StoreOutput:input_type -> ipfs_plugin.StoreOutputRequest
+	2, // 1: ipfs_plugin.IPFS.PinByCID:input_type -> ipfs_plugin.PinByCIDRequest
+	1, // 2: ipfs_plugin.IPFS.StoreOutput:output_type -> ipfs_plugin.StoreOutputResponse
+	3, // 3: ipfs_plugin.IPFS.PinByCID:output_type -> ipfs_plugin.PinByCIDResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_integrations_specs_compute_api_spec_ipfs_plugin_proto_init() }
-func file_integrations_specs_compute_api_spec_ipfs_plugin_proto_init() {
-	if File_integrations_specs_compute_api_spec_ipfs_plugin_proto != nil {
+func init() { file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_init() }
+func file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_init() {
+	if File_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_integrations_specs_compute_api_spec_ipfs_plugin_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StoreRequest); i {
+		file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StoreOutputRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -181,8 +280,32 @@ func file_integrations_specs_compute_api_spec_ipfs_plugin_proto_init() {
 				return nil
 			}
 		}
-		file_integrations_specs_compute_api_spec_ipfs_plugin_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StoreResponse); i {
+		file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StoreOutputResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PinByCIDRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PinByCIDResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -198,18 +321,18 @@ func file_integrations_specs_compute_api_spec_ipfs_plugin_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDesc,
+			RawDescriptor: file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_integrations_specs_compute_api_spec_ipfs_plugin_proto_goTypes,
-		DependencyIndexes: file_integrations_specs_compute_api_spec_ipfs_plugin_proto_depIdxs,
-		MessageInfos:      file_integrations_specs_compute_api_spec_ipfs_plugin_proto_msgTypes,
+		GoTypes:           file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_goTypes,
+		DependencyIndexes: file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_depIdxs,
+		MessageInfos:      file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_msgTypes,
 	}.Build()
-	File_integrations_specs_compute_api_spec_ipfs_plugin_proto = out.File
-	file_integrations_specs_compute_api_spec_ipfs_plugin_proto_rawDesc = nil
-	file_integrations_specs_compute_api_spec_ipfs_plugin_proto_goTypes = nil
-	file_integrations_specs_compute_api_spec_ipfs_plugin_proto_depIdxs = nil
+	File_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto = out.File
+	file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_rawDesc = nil
+	file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_goTypes = nil
+	file_integrations_specs_data_persistence_api_spec_ipfs_plugin_proto_depIdxs = nil
 }

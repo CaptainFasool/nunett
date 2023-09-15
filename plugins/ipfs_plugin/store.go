@@ -10,6 +10,7 @@ import (
 
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 )
 
 var (
-	gRPCClient pb.IPFSPluginClient
+	gRPCClient pb.IPFSClient
 	conn       *grpc.ClientConn
 	mu         sync.Mutex
 )
@@ -28,56 +29,57 @@ func UseSnapshotsFeatIPFS(jobID string, scheduleSec int) {
 	return
 }
 
-func UseOutputFeatIPFS(jobID string) {
-	// TODO 1: Store Data
+func UseOutputFeatIPFS(jobID string) error {
+	// Store Data
 	ipfsPlug := NewIPFSPlugin()
-	err := ipfsPlug.storeOutputIPFS(jobID)
+	storeResponse, err := ipfsPlug.storeOutputIPFS(jobID)
 	if err != nil {
 		zlog.Sugar().Error(err)
+		return err
 	}
 
-	// TODO 2: Distribute CID
+	// Distributing CIDs to topic
+	ipfsPlug.ts.Publish(storeResponse.CID)
+	return nil
 }
 
 func storeSnapshotsIPFS(jobID string, scheduleSec int) {
 	return
 }
 
-func (p *IPFSPlugin) storeOutputIPFS(jobID string) error {
-	storeResponse, err := store(jobID)
+func (p *IPFSPlugin) storeOutputIPFS(jobID string) (*pb.StoreOutputResponse, error) {
+	storeResponse, err := storeOutputRPC(jobID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	zlog.Sugar().Info("Returned CID for output stored on IPFS: %v ", storeResponse.CID)
-	p.ts.Publish(storeResponse.CID)
 
-	return nil
+	return storeResponse, nil
 }
 
-func store(jobID string) (pb.StoreResponse, error) {
+func storeOutputRPC(jobID string) (*pb.StoreOutputResponse, error) {
 	zlog.Sugar().Infof("Sending gRPC /store call to IPFS-Plugin")
 	client, err := newgRPCClient()
 	if err != nil {
 		zlog.Sugar().Errorf("Fail creating gRPC instance to IPFS-Plugin server: %v", err)
-		return pb.StoreResponse{}, err
+		return nil, err
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	storeReq := pb.StoreRequest{
+	storeReq := pb.StoreOutputRequest{
 		ContainerId: jobID,
 	}
 
-	res, err := client.Store(ctx, &storeReq)
+	res, err := client.StoreOutput(ctx, &storeReq)
 	if err != nil {
 		zlog.Sugar().Errorf("Failed when gRPC calling /store to IPFS-Plugin %v", err)
-		return pb.StoreResponse{}, err
+		return nil, err
 	}
 
-	storeRes := pb.StoreResponse{
+	storeRes := &pb.StoreOutputResponse{
 		CID: res.GetCID(),
 	}
 
@@ -85,7 +87,37 @@ func store(jobID string) (pb.StoreResponse, error) {
 	return storeRes, nil
 }
 
-func newgRPCClient() (pb.IPFSPluginClient, error) {
+func pinBasedOnCidRPC(cid string) error {
+	zlog.Sugar().Infof("Sending gRPC /PinByCID call to IPFS-Plugin")
+	client, err := newgRPCClient()
+	if err != nil {
+		zlog.Sugar().Errorf("Fail creating gRPC instance to IPFS-Plugin server: %v", err)
+		return err
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	storeReq := pb.PinByCIDRequest{
+		CID: cid,
+	}
+
+	_, err = client.PinByCID(ctx, &storeReq)
+	if err != nil {
+		if errStatus, ok := status.FromError(err); ok {
+			return fmt.Errorf(
+				"(%v) Something went wrong pinning data based on CID, Error message: %w",
+				errStatus.Code(), errStatus.Message())
+		} else {
+			return fmt.Errorf("Error calling gRPC server of IPFS-Plugin, Error: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func newgRPCClient() (pb.IPFSClient, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -96,7 +128,7 @@ func newgRPCClient() (pb.IPFSPluginClient, error) {
 	var err error
 	conn, err = grpc.Dial(fmt.Sprintf("localhost:%s", port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err == nil {
-		gRPCClient = pb.NewIPFSPluginClient(conn)
+		gRPCClient = pb.NewIPFSClient(conn)
 	}
 
 	return gRPCClient, err

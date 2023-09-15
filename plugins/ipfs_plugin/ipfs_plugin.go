@@ -98,16 +98,6 @@ func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels)
 	}
 
 	go p.ReadAndPinTopicCIDs(p.ctx)
-	if err != nil {
-		p.cancel()
-		pluginsManager.ErrCh <- fmt.Errorf(
-			"Unexpected error when reading and sending CIDs to be pinned, Error: %w", err,
-		)
-		return
-
-	}
-
-	p.debugTopic()
 
 	err = cmd.Wait()
 	if err != nil {
@@ -190,11 +180,18 @@ func (p *IPFSPlugin) ReadAndPinTopicCIDs(ctx context.Context) error {
 			err := json.Unmarshal(msg.Data, &m)
 			if err != nil {
 				close(msgCh)
-				return fmt.Errorf("Couldn't unmarshal message from PubSub, Error: %w", err)
+				zlog.Sugar().Errorf("Couldn't unmarshal message from PubSub, Error: %v", err)
 			}
 			zlog.Sugar().Debugf("Sending CID %v to pin", m)
 
-			// TODO: send call to IPFS-PLugin to pin the data
+			// Send call to IPFS-PLugin to pin the data
+			if m != "" {
+				err = pinBasedOnCidRPC(m)
+				if err != nil {
+					close(msgCh)
+					zlog.Sugar().Errorf("Error: %v", err)
+				}
+			}
 		case <-tick.C:
 			zlog.Sugar().Debug("Interval of IPFS-Plugin, no messages (CIDs) received")
 		}

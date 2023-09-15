@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.12.4
-// source: integrations/specs/compute-api-spec/ipfs_plugin.proto
+// source: integrations/specs/data-persistence-api-spec/ipfs_plugin.proto
 
 package ipfs_plugin
 
@@ -18,88 +18,124 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// IPFSPluginClient is the client API for IPFSPlugin service.
+// IPFSClient is the client API for IPFS service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type IPFSPluginClient interface {
-	Store(ctx context.Context, in *StoreRequest, opts ...grpc.CallOption) (*StoreResponse, error)
+type IPFSClient interface {
+	StoreOutput(ctx context.Context, in *StoreOutputRequest, opts ...grpc.CallOption) (*StoreOutputResponse, error)
+	PinByCID(ctx context.Context, in *PinByCIDRequest, opts ...grpc.CallOption) (*PinByCIDResponse, error)
 }
 
-type iPFSPluginClient struct {
+type iPFSClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewIPFSPluginClient(cc grpc.ClientConnInterface) IPFSPluginClient {
-	return &iPFSPluginClient{cc}
+func NewIPFSClient(cc grpc.ClientConnInterface) IPFSClient {
+	return &iPFSClient{cc}
 }
 
-func (c *iPFSPluginClient) Store(ctx context.Context, in *StoreRequest, opts ...grpc.CallOption) (*StoreResponse, error) {
-	out := new(StoreResponse)
-	err := c.cc.Invoke(ctx, "/ipfs_plugin.IPFSPlugin/Store", in, out, opts...)
+func (c *iPFSClient) StoreOutput(ctx context.Context, in *StoreOutputRequest, opts ...grpc.CallOption) (*StoreOutputResponse, error) {
+	out := new(StoreOutputResponse)
+	err := c.cc.Invoke(ctx, "/ipfs_plugin.IPFS/StoreOutput", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// IPFSPluginServer is the server API for IPFSPlugin service.
-// All implementations must embed UnimplementedIPFSPluginServer
+func (c *iPFSClient) PinByCID(ctx context.Context, in *PinByCIDRequest, opts ...grpc.CallOption) (*PinByCIDResponse, error) {
+	out := new(PinByCIDResponse)
+	err := c.cc.Invoke(ctx, "/ipfs_plugin.IPFS/PinByCID", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// IPFSServer is the server API for IPFS service.
+// All implementations must embed UnimplementedIPFSServer
 // for forward compatibility
-type IPFSPluginServer interface {
-	Store(context.Context, *StoreRequest) (*StoreResponse, error)
-	mustEmbedUnimplementedIPFSPluginServer()
+type IPFSServer interface {
+	StoreOutput(context.Context, *StoreOutputRequest) (*StoreOutputResponse, error)
+	PinByCID(context.Context, *PinByCIDRequest) (*PinByCIDResponse, error)
+	mustEmbedUnimplementedIPFSServer()
 }
 
-// UnimplementedIPFSPluginServer must be embedded to have forward compatible implementations.
-type UnimplementedIPFSPluginServer struct {
+// UnimplementedIPFSServer must be embedded to have forward compatible implementations.
+type UnimplementedIPFSServer struct {
 }
 
-func (UnimplementedIPFSPluginServer) Store(context.Context, *StoreRequest) (*StoreResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Store not implemented")
+func (UnimplementedIPFSServer) StoreOutput(context.Context, *StoreOutputRequest) (*StoreOutputResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StoreOutput not implemented")
 }
-func (UnimplementedIPFSPluginServer) mustEmbedUnimplementedIPFSPluginServer() {}
+func (UnimplementedIPFSServer) PinByCID(context.Context, *PinByCIDRequest) (*PinByCIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PinByCID not implemented")
+}
+func (UnimplementedIPFSServer) mustEmbedUnimplementedIPFSServer() {}
 
-// UnsafeIPFSPluginServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to IPFSPluginServer will
+// UnsafeIPFSServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to IPFSServer will
 // result in compilation errors.
-type UnsafeIPFSPluginServer interface {
-	mustEmbedUnimplementedIPFSPluginServer()
+type UnsafeIPFSServer interface {
+	mustEmbedUnimplementedIPFSServer()
 }
 
-func RegisterIPFSPluginServer(s grpc.ServiceRegistrar, srv IPFSPluginServer) {
-	s.RegisterService(&IPFSPlugin_ServiceDesc, srv)
+func RegisterIPFSServer(s grpc.ServiceRegistrar, srv IPFSServer) {
+	s.RegisterService(&IPFS_ServiceDesc, srv)
 }
 
-func _IPFSPlugin_Store_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StoreRequest)
+func _IPFS_StoreOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StoreOutputRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IPFSPluginServer).Store(ctx, in)
+		return srv.(IPFSServer).StoreOutput(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ipfs_plugin.IPFSPlugin/Store",
+		FullMethod: "/ipfs_plugin.IPFS/StoreOutput",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IPFSPluginServer).Store(ctx, req.(*StoreRequest))
+		return srv.(IPFSServer).StoreOutput(ctx, req.(*StoreOutputRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// IPFSPlugin_ServiceDesc is the grpc.ServiceDesc for IPFSPlugin service.
+func _IPFS_PinByCID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PinByCIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IPFSServer).PinByCID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ipfs_plugin.IPFS/PinByCID",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IPFSServer).PinByCID(ctx, req.(*PinByCIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// IPFS_ServiceDesc is the grpc.ServiceDesc for IPFS service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var IPFSPlugin_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ipfs_plugin.IPFSPlugin",
-	HandlerType: (*IPFSPluginServer)(nil),
+var IPFS_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "ipfs_plugin.IPFS",
+	HandlerType: (*IPFSServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Store",
-			Handler:    _IPFSPlugin_Store_Handler,
+			MethodName: "StoreOutput",
+			Handler:    _IPFS_StoreOutput_Handler,
+		},
+		{
+			MethodName: "PinByCID",
+			Handler:    _IPFS_PinByCID_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "integrations/specs/compute-api-spec/ipfs_plugin.proto",
+	Metadata: "integrations/specs/data-persistence-api-spec/ipfs_plugin.proto",
 }
