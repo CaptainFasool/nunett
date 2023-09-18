@@ -44,6 +44,8 @@ var (
 
 // NewGossipPubSub creates a new GossipSub instance with the given host or returns
 // an existing one if it has been previously created.
+// Note: it must be called before connected to peers, otherwise, peers might be invisible
+// within the entered topics
 func NewGossipPubSub(ctx context.Context, host host.Host, opts ...libp2pPS.Option) (*PubSub, error) {
 	if pubsubHost != nil {
 		return pubsubHost, nil
@@ -137,7 +139,7 @@ func (ts *PsTopicSubscription) Publish(msg any) error {
 	if err != nil {
 		return fmt.Errorf("Failed to publish message, Error: %v", err)
 	}
-	zlog.Sugar().Debug("Published message successfully")
+	zlog.Sugar().Debugf("Published message: %v", string(msgBytes))
 
 	return nil
 }
