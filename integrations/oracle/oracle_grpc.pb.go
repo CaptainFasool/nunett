@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OracleClient interface {
 	ValidateFundingReq(ctx context.Context, in *FundingRequest, opts ...grpc.CallOption) (*FundingResponse, error)
-	ValidateWithdrawReq(ctx context.Context, in *WithdrawRequest, opts ...grpc.CallOption) (*WithdrawResponse, error)
+	ValidateRewardReq(ctx context.Context, in *RewardRequest, opts ...grpc.CallOption) (*RewardResponse, error)
 }
 
 type oracleClient struct {
@@ -43,9 +43,9 @@ func (c *oracleClient) ValidateFundingReq(ctx context.Context, in *FundingReques
 	return out, nil
 }
 
-func (c *oracleClient) ValidateWithdrawReq(ctx context.Context, in *WithdrawRequest, opts ...grpc.CallOption) (*WithdrawResponse, error) {
-	out := new(WithdrawResponse)
-	err := c.cc.Invoke(ctx, "/oracle.Oracle/ValidateWithdrawReq", in, out, opts...)
+func (c *oracleClient) ValidateRewardReq(ctx context.Context, in *RewardRequest, opts ...grpc.CallOption) (*RewardResponse, error) {
+	out := new(RewardResponse)
+	err := c.cc.Invoke(ctx, "/oracle.Oracle/ValidateRewardReq", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (c *oracleClient) ValidateWithdrawReq(ctx context.Context, in *WithdrawRequ
 // for forward compatibility
 type OracleServer interface {
 	ValidateFundingReq(context.Context, *FundingRequest) (*FundingResponse, error)
-	ValidateWithdrawReq(context.Context, *WithdrawRequest) (*WithdrawResponse, error)
+	ValidateRewardReq(context.Context, *RewardRequest) (*RewardResponse, error)
 	mustEmbedUnimplementedOracleServer()
 }
 
@@ -68,8 +68,8 @@ type UnimplementedOracleServer struct {
 func (UnimplementedOracleServer) ValidateFundingReq(context.Context, *FundingRequest) (*FundingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ValidateFundingReq not implemented")
 }
-func (UnimplementedOracleServer) ValidateWithdrawReq(context.Context, *WithdrawRequest) (*WithdrawResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ValidateWithdrawReq not implemented")
+func (UnimplementedOracleServer) ValidateRewardReq(context.Context, *RewardRequest) (*RewardResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ValidateRewardReq not implemented")
 }
 func (UnimplementedOracleServer) mustEmbedUnimplementedOracleServer() {}
 
@@ -102,20 +102,20 @@ func _Oracle_ValidateFundingReq_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Oracle_ValidateWithdrawReq_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WithdrawRequest)
+func _Oracle_ValidateRewardReq_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RewardRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OracleServer).ValidateWithdrawReq(ctx, in)
+		return srv.(OracleServer).ValidateRewardReq(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/oracle.Oracle/ValidateWithdrawReq",
+		FullMethod: "/oracle.Oracle/ValidateRewardReq",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OracleServer).ValidateWithdrawReq(ctx, req.(*WithdrawRequest))
+		return srv.(OracleServer).ValidateRewardReq(ctx, req.(*RewardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -132,8 +132,8 @@ var Oracle_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Oracle_ValidateFundingReq_Handler,
 		},
 		{
-			MethodName: "ValidateWithdrawReq",
-			Handler:    _Oracle_ValidateWithdrawReq_Handler,
+			MethodName: "ValidateRewardReq",
+			Handler:    _Oracle_ValidateRewardReq_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

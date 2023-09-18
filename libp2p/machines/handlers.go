@@ -28,8 +28,10 @@ type wsMessage struct {
 type fundingRespToSPD struct {
 	ComputeProviderAddr string  `json:"compute_provider_addr"`
 	EstimatedPrice      float64 `json:"estimated_price"`
-	Signature           string  `json:"signature"`
-	OracleMessage       string  `json:"oracle_message"`
+	MetadataHash        string  `json:"metadata_hash"`
+	WithdrawHash        string  `json:"withdraw_hash"`
+	RefundHash          string  `json:"refund_hash"`
+	DistributeHash      string  `json:"distribute_hash"`
 }
 
 var depreqWsConn *internal.WebSocketConnection
@@ -89,6 +91,8 @@ func HandleRequestService(c *gin.Context) {
 
 	// check if the pricing matched
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
+	depReq.EstimatedNTX = estimatedNtx
+
 	zlog.Sugar().Infof("estimated ntx price %v", estimatedNtx)
 	if estimatedNtx > float64(depReq.MaxNtx) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "nunet estimation price is greater than client price"})
@@ -164,12 +168,22 @@ func HandleRequestService(c *gin.Context) {
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Info("sending fund contract request to oracle")
-	fcr, err := oracle.FundContractRequest()
+	oracleResp, err := oracle.FundContractRequest(&oracle.FundingRequest{
+		ServiceProviderAddr: depReq.RequesterWalletAddress,
+		ComputeProviderAddr: computeProvider.TokenomicsAddress,
+		EstimatedPrice:      int64(estimatedNtx),
+	})
 	if err != nil {
 		zlog.Info("sending fund contract request to oracle failed")
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "cannot connect to oracle"})
 		return
 	}
+
+	// Seding hashes to CP's DMS in Deployment Request
+	depReq.MetadataHash = oracleResp.MetadataHash
+	depReq.WithdrawHash = oracleResp.WithdrawHash
+	depReq.RefundHash = oracleResp.RefundHash
+	depReq.DistributeHash = oracleResp.DistributeHash
 
 	// Marshal struct to JSON
 	depReqBytes, _ := json.Marshal(depReq)
@@ -186,13 +200,16 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
-	// oracle outputs: compute provider user address, estimated price, signature, oracle message
+	// oracle outputs: estimated price, metadata hash, withdraw hash, refund hash, distribute hash
 	resp := fundingRespToSPD{
 		ComputeProviderAddr: computeProvider.TokenomicsAddress,
 		EstimatedPrice:      estimatedNtx,
-		Signature:           fcr.Signature,
-		OracleMessage:       fcr.OracleMessage,
+		MetadataHash:        oracleResp.MetadataHash,
+		WithdrawHash:        oracleResp.WithdrawHash,
+		RefundHash:          oracleResp.RefundHash,
+		DistributeHash:      oracleResp.DistributeHash,
 	}
+	zlog.Sugar().Debugf("%s", resp)
 	c.JSON(200, resp)
 	go outgoingDepReqWebsock()
 }

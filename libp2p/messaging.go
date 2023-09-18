@@ -208,6 +208,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 				if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
 					zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
 				}
+				db.DB.Save(&service) // saving every service in SP's DMS, so SP able to call Oracle's WithdrawTokenRequest endpoint(refund or distribute action)
 				return
 			} else if strings.EqualFold(string(service.JobStatus), "running") {
 				depRespMessage := models.DeploymentResponse{}
