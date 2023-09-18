@@ -13,6 +13,11 @@ type DeploymentRequest struct {
 	TxHash                 string    `json:"tx_hash"`
 	ServiceType            string    `json:"service_type"`
 	Timestamp              time.Time `json:"timestamp"`
+	EstimatedNTX           float64   `json:"estimated_ntx,omitempty"`
+	MetadataHash           string    `json:"metadata_hash,omitempty"`
+	WithdrawHash           string    `json:"withdraw_hash,omitempty"`
+	RefundHash             string    `json:"refund_hash,omitempty"`
+	DistributeHash         string    `json:"distribute_hash,omitempty"`
 	Params                 struct {
 		ImageID         string   `json:"image_id"`
 		ModelURL        string   `json:"model_url"`

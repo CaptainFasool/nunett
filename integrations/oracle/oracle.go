@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -49,11 +48,11 @@ func getOracleTlsCredentials(address string) credentials.TransportCredentials {
 }
 
 // WithdrawTokenRequest acts as a middleman between withdraw endpoint handler and Oracle to withdraw token
-func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
+func WithdrawTokenRequest(rewardReq *RewardRequest) (*RewardResponse, error) {
 	address := getAddress()
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(getOracleTlsCredentials(address)))
 	if err != nil {
-		return WithdrawResponse{}, err
+		return &RewardResponse{}, err
 	}
 
 	defer conn.Close()
@@ -63,37 +62,34 @@ func WithdrawTokenRequest(service models.Services) (WithdrawResponse, error) {
 
 	oracleClient := NewOracleClient(conn)
 
-	withdrawReq := WithdrawRequest{
-		JobStatus:            service.JobStatus,
-		JobDuration:          service.JobDuration,
-		EstimatedJobDuration: service.EstimatedJobDuration,
-		LogPath:              service.LogURL,
-	}
-
 	zlog.Sugar().Infof("sending withdraw request to oracle")
-	res, err := oracleClient.ValidateWithdrawReq(ctx, &withdrawReq)
+	res, err := oracleClient.ValidateRewardReq(ctx, rewardReq)
 	if err != nil {
 		zlog.Sugar().Infof("withdraw request failed %v", err)
-		return WithdrawResponse{}, err
+		return &RewardResponse{}, err
 	}
 
-	withdrawRes := WithdrawResponse{
-		Signature:     res.GetSignature(),
-		OracleMessage: res.GetOracleMessage(),
-		RewardType:    res.GetRewardType(),
+	rewardRes := &RewardResponse{
+		RewardType:        res.GetRewardType(),
+		SignatureDatum:    res.GetSignatureDatum(),
+		MessageHashDatum:  res.GetMessageHashDatum(),
+		Datum:             res.GetDatum(),
+		SignatureAction:   res.GetSignatureAction(),
+		MessageHashAction: res.GetMessageHashAction(),
+		Action:            res.GetAction(),
 	}
 
-	zlog.Sugar().Infof("withdraw response from oracle: %v", withdrawRes)
-	return withdrawRes, nil
+	zlog.Sugar().Infof("withdraw response from oracle: %v", rewardRes)
+	return rewardRes, nil
 }
 
 // FundContractRequest is called from the HandleRequestService to cummunicate Oracle for
-// Signature and OracleMessage
-func FundContractRequest() (FundingResponse, error) {
+// MetadataHash, WithdrawHash, RefundHash, DistributeHash
+func FundContractRequest(fundingReq *FundingRequest) (*FundingResponse, error) {
 	address := getAddress()
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(getOracleTlsCredentials(address)))
 	if err != nil {
-		return FundingResponse{}, err
+		return &FundingResponse{}, err
 	}
 
 	defer conn.Close()
@@ -104,15 +100,17 @@ func FundContractRequest() (FundingResponse, error) {
 	oracleClient := NewOracleClient(conn)
 
 	zlog.Sugar().Infof("sending funding request to oracle")
-	res, err := oracleClient.ValidateFundingReq(ctx, &FundingRequest{})
+	res, err := oracleClient.ValidateFundingReq(ctx, fundingReq)
 	if err != nil {
 		zlog.Sugar().Infof("funding request failed %v", err)
-		return FundingResponse{}, err
+		return &FundingResponse{}, err
 	}
 
-	fundingRes := FundingResponse{
-		Signature:     res.GetSignature(),
-		OracleMessage: res.GetOracleMessage(),
+	fundingRes := &FundingResponse{
+		MetadataHash:   res.GetMetadataHash(),
+		WithdrawHash:   res.GetWithdrawHash(),
+		RefundHash:     res.GetRefundHash(),
+		DistributeHash: res.GetDistributeHash(),
 	}
 
 	zlog.Sugar().Infof("funding response from oracle: %v", fundingRes)

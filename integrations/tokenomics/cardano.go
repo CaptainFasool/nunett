@@ -19,9 +19,13 @@ type ClaimCardanoTokenBody struct {
 	TxHash                 string `json:"tx_hash"`
 }
 type rewardRespToCPD struct {
-	Signature     string `json:"signature,omitempty"`
-	OracleMessage string `json:"oracle_message,omitempty"`
-	RewardType    string `json:"reward_type,omitempty"`
+	RewardType        string `json:"reward_type,omitempty"`
+	SignatureDatum    string `json:"signature_datum,omitempty"`
+	MessageHashDatum  string `json:"message_hash_datum,omitempty"`
+	Datum             string `json:"datum,omitempty"`
+	SignatureAction   string `json:"signature_action,omitempty"`
+	MessageHashAction string `json:"message_hash_action,omitempty"`
+	Action            string `json:"action,omitempty"`
 }
 
 // GetJobTxHashes  godoc
@@ -83,16 +87,30 @@ func HandleRequestReward(c *gin.Context) {
 	}
 
 	// Send the service data to oracle for examination
-	oracleResp, err := oracle.WithdrawTokenRequest(service)
+	oracleResp, err := oracle.WithdrawTokenRequest(&oracle.RewardRequest{
+		JobStatus:            service.JobStatus,
+		JobDuration:          service.JobDuration,
+		EstimatedJobDuration: service.EstimatedJobDuration,
+		LogPath:              service.LogURL,
+		EstimatedPrice:       service.EstimatedNTX,
+		MetadataHash:         service.MetadataHash,
+		WithdrawHash:         service.WithdrawHash,
+		RefundHash:           service.RefundHash,
+		DistributeHash:       service.DistributeHash,
+	})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "connetction to oracle failed"})
 		return
 	}
 
 	resp := rewardRespToCPD{
-		Signature:     oracleResp.Signature,
-		OracleMessage: oracleResp.OracleMessage,
-		RewardType:    oracleResp.RewardType,
+		RewardType:        oracleResp.RewardType,
+		SignatureDatum:    oracleResp.SignatureDatum,
+		MessageHashDatum:  oracleResp.MessageHashDatum,
+		Datum:             oracleResp.Datum,
+		SignatureAction:   oracleResp.SignatureAction,
+		MessageHashAction: oracleResp.MessageHashAction,
+		Action:            oracleResp.Action,
 	}
 
 	c.JSON(200, resp)
@@ -113,11 +131,6 @@ func HandleSendStatus(c *gin.Context) {
 		return
 	}
 
-	var requestTracker models.RequestTracker
-	res := db.DB.Where("id = ?", 1).Find(&requestTracker)
-	if res.Error != nil {
-		zlog.Error(res.Error.Error())
-	}
 	if body.TransactionType == "withdraw" && body.TransactionStatus == "success" {
 		zlog.Sugar().Infof("withdraw transaction successful - deleting from services")
 		// Delete the entry
@@ -125,11 +138,6 @@ func HandleSendStatus(c *gin.Context) {
 			zlog.Sugar().Errorln(err)
 		}
 	}
-
-	serviceStatus := body.TransactionType + " with " + body.TransactionStatus
-
-	requestTracker.Status = serviceStatus
-	db.DB.Save(&requestTracker)
 
 	c.JSON(200, gin.H{"message": fmt.Sprintf("transaction status %s acknowledged", body.TransactionStatus)})
 }

@@ -524,13 +524,19 @@ const docTemplate = `{
                 "compute_provider_addr": {
                     "type": "string"
                 },
+                "distribute_hash": {
+                    "type": "string"
+                },
                 "estimated_price": {
                     "type": "number"
                 },
-                "oracle_message": {
+                "metadata_hash": {
                     "type": "string"
                 },
-                "signature": {
+                "refund_hash": {
+                    "type": "string"
+                },
+                "withdraw_hash": {
                     "type": "string"
                 }
             }
@@ -596,8 +602,17 @@ const docTemplate = `{
                         }
                     }
                 },
+                "distribute_hash": {
+                    "type": "string"
+                },
+                "estimated_ntx": {
+                    "type": "number"
+                },
                 "max_ntx": {
                     "type": "integer"
+                },
+                "metadata_hash": {
+                    "type": "string"
                 },
                 "params": {
                     "type": "object",
@@ -635,6 +650,9 @@ const docTemplate = `{
                         }
                     }
                 },
+                "refund_hash": {
+                    "type": "string"
+                },
                 "service_type": {
                     "type": "string"
                 },
@@ -659,6 +677,9 @@ const docTemplate = `{
                     }
                 },
                 "tx_hash": {
+                    "type": "string"
+                },
+                "withdraw_hash": {
                     "type": "string"
                 }
             }
@@ -778,13 +799,25 @@ const docTemplate = `{
         "tokenomics.rewardRespToCPD": {
             "type": "object",
             "properties": {
-                "oracle_message": {
+                "action": {
+                    "type": "string"
+                },
+                "datum": {
+                    "type": "string"
+                },
+                "message_hash_action": {
+                    "type": "string"
+                },
+                "message_hash_datum": {
                     "type": "string"
                 },
                 "reward_type": {
                     "type": "string"
                 },
-                "signature": {
+                "signature_action": {
+                    "type": "string"
+                },
+                "signature_datum": {
                     "type": "string"
                 }
             }
@@ -794,7 +827,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.125",
+	Version:          "0.4.126",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

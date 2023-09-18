@@ -64,6 +64,11 @@ type Services struct {
 	ImageID              string
 	LogURL               string
 	LastLogFetch         time.Time
+	EstimatedNTX         int64
+	MetadataHash         string
+	WithdrawHash         string
+	RefundHash           string
+	DistributeHash       string
 	// TODO: Add ContainerType field
 
 }
