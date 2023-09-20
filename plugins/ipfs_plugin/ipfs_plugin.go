@@ -41,27 +41,30 @@ var (
 	muIPFSPlugin sync.Mutex
 )
 
-func NewIPFSPlugin() *IPFSPlugin {
+func NewIPFSPlugin(ctx context.Context) *IPFSPlugin {
 	muIPFSPlugin.Lock()
 	defer muIPFSPlugin.Unlock()
 
 	if ipfsPlugin != nil {
 		return ipfsPlugin
 	}
+	ctx, cancel := context.WithCancel(ctx)
 
-	p := &IPFSPlugin{}
-	p.ctx, p.cancel = context.WithCancel(context.Background())
+	ipfsPlugin = &IPFSPlugin{
+		ctx:    ctx,
+		cancel: cancel,
+		addr:   loopbackIP,
+		port:   "31001",
+		info: models.PluginInfo{
+			Name: "ipfs-plugin",
+			ResourcesUsage: models.Resources{
+				TotCpuHz: 1000,
+				Ram:      4000,
+			},
+		},
+	}
 
-	p.addr = loopbackIP
-	p.port = "31001"
-
-	i := models.PluginInfo{}
-	i.Name = "ipfs-plugin"
-	i.ResourcesUsage.TotCpuHz = 1000
-	i.ResourcesUsage.Ram = 4000
-
-	p.info = i
-	return p
+	return ipfsPlugin
 }
 
 // Run deals with the startup of IPFS-Plugin through exec.Command()
@@ -69,7 +72,8 @@ func NewIPFSPlugin() *IPFSPlugin {
 func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels) {
 	zlog.Sugar().Debug("Starting ", p.info.Name)
 	executablePath := fmt.Sprintf("%v/%v", config.GetConfig().General.PluginsPath, p.info.Name)
-	cmd := exec.Command(executablePath)
+	portFlag := fmt.Sprintf("--port %v", p.port)
+	cmd := exec.Command(executablePath, portFlag)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
