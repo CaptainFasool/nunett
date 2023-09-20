@@ -13,10 +13,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const (
-	port = "31001"
-)
-
 var (
 	gRPCClient pb.IPFSClient
 	conn       *grpc.ClientConn

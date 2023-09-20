@@ -34,6 +34,7 @@ type IPFSPlugin struct {
 const (
 	loopbackIP      = "127.0.0.1"
 	pubsubTopicName = "cid_distribution"
+	port            = "31001"
 )
 
 var (
@@ -54,7 +55,7 @@ func NewIPFSPlugin(ctx context.Context) *IPFSPlugin {
 		ctx:    ctx,
 		cancel: cancel,
 		addr:   loopbackIP,
-		port:   "31001",
+		port:   port,
 		info: models.PluginInfo{
 			Name: "ipfs-plugin",
 			ResourcesUsage: models.Resources{
