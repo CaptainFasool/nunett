@@ -1,6 +1,7 @@
 package plugins_startup
 
 import (
+	"context"
 	"fmt"
 
 	"gitlab.com/nunet/device-management-service/models"
@@ -76,7 +77,7 @@ func getMetadataPlugins(readMetadataFile ReadMetadataFileFunc) ([]string, error)
 func GetPluginType(pluginName string) (plugins_management.Plugin, error) {
 	switch pluginName {
 	case "ipfs-plugin":
-		return ipfs_plugin.NewIPFSPlugin(), nil
+		return ipfs_plugin.NewIPFSPlugin(context.Background()), nil
 	default:
 		return nil, fmt.Errorf("Plugin name wrong or not implemented on DMS side: %v", pluginName)
 	}

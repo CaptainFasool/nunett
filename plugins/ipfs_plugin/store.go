@@ -31,7 +31,7 @@ func UseSnapshotsFeatIPFS(jobID string, scheduleSec int) {
 
 func UseOutputFeatIPFS(jobID string) error {
 	// Store Data
-	ipfsPlug := NewIPFSPlugin()
+	ipfsPlug := NewIPFSPlugin(context.Background())
 	storeResponse, err := ipfsPlug.storeOutputIPFS(jobID)
 	if err != nil {
 		zlog.Sugar().Error(err)
@@ -107,7 +107,7 @@ func pinBasedOnCidRPC(cid string) error {
 	if err != nil {
 		if errStatus, ok := status.FromError(err); ok {
 			return fmt.Errorf(
-				"(%v) Something went wrong pinning data based on CID, Error message: %w",
+				"(%v) Something went wrong pinning data based on CID, Error message: %v",
 				errStatus.Code(), errStatus.Message())
 		} else {
 			return fmt.Errorf("Error calling gRPC server of IPFS-Plugin, Error: %w", err)
