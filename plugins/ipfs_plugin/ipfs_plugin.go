@@ -73,8 +73,7 @@ func NewIPFSPlugin(ctx context.Context) *IPFSPlugin {
 func (p *IPFSPlugin) Run(pluginsManager *plugins_management.PluginsInfoChannels) {
 	zlog.Sugar().Debug("Starting ", p.info.Name)
 	executablePath := fmt.Sprintf("%v/%v", config.GetConfig().General.PluginsPath, p.info.Name)
-	portFlag := fmt.Sprintf("--port %v", p.port)
-	cmd := exec.Command(executablePath, portFlag)
+	cmd := exec.Command(executablePath, "--port", p.port)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
