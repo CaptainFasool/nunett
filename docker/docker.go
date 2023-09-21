@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -18,7 +17,6 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -30,8 +28,8 @@ import (
 )
 
 var (
-	vcpuToMicroseconds float64       = 100000
-	logUpdateInterval  time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
+	cpuPeriod         int64         = 100000
+	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
 )
 
 func freeUsedResources() {
@@ -46,33 +44,6 @@ func freeUsedResources() {
 	}
 	elk.DeviceResourceChange(freeResource.TotCpuHz, freeResource.Ram)
 	libp2p.UpdateKadDHT()
-}
-
-func mhzPerCore() (float64, error) {
-	cpus, err := cpu.Info()
-	if err != nil {
-		zlog.Sugar().Errorf("failed to get cpu info: %v", err)
-		return 0, err
-	}
-	return cpus[0].Mhz, nil
-}
-
-func round(num float64) int {
-	return int(num + math.Copysign(0.5, num))
-}
-
-func toFixed(num float64, precision int) float64 {
-	output := math.Pow(10, float64(precision))
-	return float64(round(num*output)) / output
-}
-
-func mhzToVCPU(cpuInMhz int) (float64, error) {
-	mhz, err := mhzPerCore()
-	if err != nil {
-		return 0, err
-	}
-	vcpu := float64(cpuInMhz) / mhz
-	return toFixed(vcpu, 2), nil
 }
 
 func groupExists(groupName string) bool {
@@ -101,19 +72,15 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		Cmd:   []string{modelURL, packages},
 	}
 	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
-	VCPU, err := mhzToVCPU(depReq.Constraints.CPU)
-	if err != nil {
-		zlog.Sugar().Errorf("Error converting MHz to VCPU: %v", err)
-		depRes := models.DeploymentResponse{Success: false, Content: "Problem with CPU Constraints. Unable to process request."}
-		resCh <- depRes
-		return
-	}
+	cpuConstraintInMHz := int64(depReq.Constraints.CPU)
+	cpuQuota := cpuConstraintInMHz * 1000 // in kHz
 
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
 			Memory:         memoryMbToBytes,
-			CPUQuota:       int64(VCPU * vcpuToMicroseconds),
+			CPUQuota:       cpuQuota,
+			CPUPeriod:      cpuPeriod,
 		},
 	}
 
@@ -126,8 +93,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 				"/dev/dri:/dev/dri",
 			},
 			Resources: container.Resources{
-				Memory:   memoryMbToBytes,
-				CPUQuota: int64(VCPU * vcpuToMicroseconds),
+				Memory:    memoryMbToBytes,
+				CPUQuota:  cpuQuota,
+				CPUPeriod: cpuPeriod,
 				Devices: []container.DeviceMapping{
 					{
 						PathOnHost:        "/dev/kfd",
