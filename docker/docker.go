@@ -498,7 +498,7 @@ func fetchOnboardedResources() (cpuQuota, memoryMax int64, err error) {
 	proportion := metadata.Reserved.CPU / metadata.Resource.CPUMax
 	// Quota=100000 * Proportion
 	cpuQuota = int64(cpuPeriod * proportion)
-	memoryMax = metadata.Resource.MemoryMax
+	memoryMax = metadata.Reserved.Memory
 
 	return cpuQuota, memoryMax, nil
 }
