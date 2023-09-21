@@ -23,6 +23,7 @@ import (
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/onboarding"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
 	"go.uber.org/zap"
 )
@@ -71,14 +72,24 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		Image: imageName,
 		Cmd:   []string{modelURL, packages},
 	}
-	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
-	cpuConstraintInMHz := int64(depReq.Constraints.CPU)
-	cpuQuota := cpuConstraintInMHz * 1000 // in kHz
+
+	// Get onboarded resources
+	cpuQuota, memoryMax, err := fetchOnboardedResources()
+	if err != nil {
+		zlog.Sugar().Errorf("Error fetching onboarded resources: %v", err)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with onboarded resources. Unable to process request."}
+		resCh <- depRes
+		return
+	}
+
+	// memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
+	// cpuConstraintInMHz := int64(depReq.Constraints.CPU)
+	// cpuQuota := cpuConstraintInMHz * 1000 // in kHz
 
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
-			Memory:         memoryMbToBytes,
+			Memory:         memoryMax,
 			CPUQuota:       cpuQuota,
 			CPUPeriod:      cpuPeriod,
 		},
@@ -93,7 +104,7 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 				"/dev/dri:/dev/dri",
 			},
 			Resources: container.Resources{
-				Memory:    memoryMbToBytes,
+				Memory:    memoryMax,
 				CPUQuota:  cpuQuota,
 				CPUPeriod: cpuPeriod,
 				Devices: []container.DeviceMapping{
@@ -481,4 +492,22 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	// Send back createdLog.RawUrl
 	res.Content = createdLog.RawUrl
 	return res
+}
+
+func fetchOnboardedResources() (cpuQuota, memoryMax int64, err error) {
+	// call 'nunet info' command internally and get the reserved_cpu, cpu_max and reserved ram
+	metadata, err := onboarding.FetchMetadata()
+	if err != nil {
+		zlog.Sugar().Errorf("Error fetching metadata: %v", err)
+		// will return 0, 0, err
+		return
+	}
+
+	// Proportion=reserved.cpu/resource.cpu_max
+	proportion := metadata.Reserved.CPU / metadata.Resource.CPUMax
+	// Quota=100000 * Proportion
+	cpuQuota = int64(cpuPeriod * proportion)
+	memoryMax = metadata.Resource.MemoryMax
+
+	return cpuQuota, memoryMax, nil
 }
