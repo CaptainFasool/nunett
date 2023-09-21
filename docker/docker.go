@@ -140,15 +140,6 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		return
 	}
 
-	// Check if we have enough free resources before running Container
-	if (depReq.Constraints.RAM > freeRes.Ram) ||
-		(depReq.Constraints.CPU > freeRes.TotCpuHz) {
-		zlog.Sugar().Errorf("Not enough resources available to deploy container")
-		depRes := models.DeploymentResponse{Success: false, Content: "Problem with resources for deployment. Unable to process request."}
-		resCh <- depRes
-		return
-	}
-
 	resp, err := dc.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
 
 	if err != nil {
