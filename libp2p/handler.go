@@ -17,6 +17,8 @@ import (
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"gitlab.com/nunet/device-management-service/models"
 	"go.uber.org/zap"
@@ -253,7 +255,7 @@ func StartChatHandler(c *gin.Context) {
 
 	p, err := peer.Decode(peerID)
 	if err != nil {
-		zlog.Sugar().Errorf("Could not decode string ID to peerID:", err)
+		zlog.Sugar().Errorf("could not decode string ID to peerID: %v", err)
 		c.AbortWithStatusJSON(400, gin.H{"error": "Could not decode string ID to peerID"})
 		return
 	}
@@ -363,9 +365,7 @@ func DumpDHT(c *gin.Context) {
 				zlog.ErrorContext(c.Request.Context(), fmt.Sprintf("Coultn't retrieve dht content for peer: %s", peer.String()), zap.Error(err))
 			}
 		}
-		if peer == p2p.Host.ID() {
-			continue
-		}
+
 		if Data, ok := peerData.(models.PeerData); ok {
 			dhtContent = append(dhtContent, models.PeerData(Data))
 		}
@@ -607,4 +607,141 @@ func DumpKademliaDHT(c *gin.Context) {
 	}
 
 	c.JSON(200, dhtContent)
+}
+
+// ListFileRequestsHandler  godoc
+// @Summary      List file transfer requests
+// @Description  Get a list of file transfer requests from peers
+// @Tags         file
+// @Produce      json
+// @Success      200
+// @Router       /peers/file [get]
+func ListFileRequestsHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/file"))
+
+	fileRequests, err := incomingFileTransferRequests()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, fileRequests)
+}
+
+// ClearFileTransferRequestseHandler  godoc
+// @Summary      Clear file transfer requests
+// @Description  Clear file transfer request streams from peers
+// @Tags         file
+// @Produce      json
+// @Success      200
+// @Router       /peers/file/clear [get]
+func ClearFileTransferRequestseHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/file/clear"))
+
+	if err := clearIncomingFileRequests(); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound File Transfer Requests."})
+}
+
+// InitiateFileTransferHandler  godoc
+// @Summary      Send a file to a peer
+// @Description  Initiate file transfer to a peer. filePath and peerID are required arguments.
+// @Tags         file
+// @Success      200
+// @Router       /peers/file/send [get]
+func InitiateFileTransferHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/file/send"))
+
+	peerID := c.Query("peerID")
+
+	if len(peerID) == 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peerID not provided"})
+		return
+	}
+	if peerID == p2p.Host.ID().String() {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peerID can not be self peerID"})
+		return
+	}
+
+	p, err := peer.Decode(peerID)
+	if err != nil {
+		zlog.Sugar().Errorf("could not decode string ID to peerID: %v", err)
+		c.AbortWithStatusJSON(400, gin.H{"error": "Could not decode string ID to peerID"})
+		return
+	}
+
+	filePath := c.Query("filePath")
+	if len(filePath) == 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": "filePath not provided"})
+		return
+	}
+
+	// upgrade to websocket and steam transfer progress
+	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to set websocket upgrade: %+v\n", err)
+		return
+	}
+	conn := internal.WebSocketConnection{Conn: ws}
+	clients[conn] = peerID
+
+	transferChan, err := sendFileToPeer(c, p, filePath)
+	if err != nil {
+		zlog.Sugar().Errorf("error: couldn't send file to peer - %v", err)
+		ws.WriteJSON(gin.H{"error": err.Error()})
+		ws.Close()
+		return
+	}
+
+	ws.WriteJSON(gin.H{"message": "File Transfer Initiated. Transfer will start when peer accepts it."})
+	for p := range transferChan {
+		ws.WriteJSON(gin.H{
+			"remaining_time": fmt.Sprintf("%v seconds", p.Remaining().Round(time.Second)),
+			"percentage":     fmt.Sprintf("%.2f %%", p.Percent()),
+			"size":           fmt.Sprintf("%.2f MB", p.N()/1048576),
+		})
+	}
+	ws.WriteMessage(1, []byte("transfer complete"))
+	ws.Close()
+
+}
+
+// AcceptFileTransferHandler  godoc
+// @Summary      Accept incoming file transfer
+// @Description  Accept an incoming file transfer. Incoming file transfre stream id is a required parameter.
+// @Tags         file
+// @Success      200
+// @Router       /peers/file/accept [get]
+func AcceptFileTransferHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/peers/file/accept"))
+
+	streamReqID := c.Query("streamID")
+	if streamReqID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "Stream ID not provided"})
+		return
+	}
+
+	streamID, err := strconv.Atoi(streamReqID)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Invalid Stream ID: %v", streamReqID)})
+		return
+	}
+
+	if streamID != 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Unknown Stream ID: %v", streamID)})
+		return
+	}
+
+	err = acceptFileTransfer()
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
+		return
+	}
 }

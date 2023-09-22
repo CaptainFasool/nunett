@@ -21,6 +21,10 @@ Types of changes
 
 -->
 
+## [0.4.127](#296)
+
+### Added
+- File transfer between peers (#147 -> #196)
 ## [0.4.126](nunet/ml-on-gpu/ml-on-gpu-webapp/-/issues/41#note_1490827796#41)
 
 ### Changed 
