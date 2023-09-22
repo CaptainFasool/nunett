@@ -211,7 +211,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.126
+  version: 0.4.127
 paths:
   /dht:
     get:
@@ -396,6 +396,48 @@ paths:
       summary: Return list of peers which have sent a dht update
       tags:
       - p2p
+  /peers/file:
+    get:
+      description: Get a list of file transfer requests from peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: List file transfer requests
+      tags:
+      - file
+  /peers/file/accept:
+    get:
+      description: Accept an incoming file transfer. Incoming file transfre stream
+        id is a required parameter.
+      responses:
+        "200":
+          description: OK
+      summary: Accept incoming file transfer
+      tags:
+      - file
+  /peers/file/clear:
+    get:
+      description: Clear file transfer request streams from peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Clear file transfer requests
+      tags:
+      - file
+  /peers/file/send:
+    get:
+      description: Initiate file transfer to a peer. filePath and peerID are required
+        arguments.
+      responses:
+        "200":
+          description: OK
+      summary: Send a file to a peer
+      tags:
+      - file
   /peers/kad-dht:
     get:
       description: Gets a list of peers the libp2p node has received a dht update

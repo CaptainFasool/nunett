@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.126"
+        "version": "0.4.127"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -283,6 +283,68 @@
                         "schema": {
                             "type": "string"
                         }
+                    }
+                }
+            }
+        },
+        "/peers/file": {
+            "get": {
+                "description": "Get a list of file transfer requests from peers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "file"
+                ],
+                "summary": "List file transfer requests",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/peers/file/accept": {
+            "get": {
+                "description": "Accept an incoming file transfer. Incoming file transfre stream id is a required parameter.",
+                "tags": [
+                    "file"
+                ],
+                "summary": "Accept incoming file transfer",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/peers/file/clear": {
+            "get": {
+                "description": "Clear file transfer request streams from peers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "file"
+                ],
+                "summary": "Clear file transfer requests",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/peers/file/send": {
+            "get": {
+                "description": "Initiate file transfer to a peer. filePath and peerID are required arguments.",
+                "tags": [
+                    "file"
+                ],
+                "summary": "Send a file to a peer",
+                "responses": {
+                    "200": {
+                        "description": "OK"
                     }
                 }
             }
