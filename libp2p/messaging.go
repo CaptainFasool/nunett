@@ -160,7 +160,8 @@ func DeploymentUpdateListener(stream network.Stream) {
 			zlog.Sugar().Info("stream closed")
 			return
 		}
-		resp, err := readData(r)
+		resp, err := readString(r)
+
 		if err == io.EOF {
 			zlog.Sugar().Debug("Stream closed with EOF, ending read loop")
 			return
@@ -208,6 +209,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 				if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
 					zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
 				}
+				db.DB.Save(&service) // saving every service in SP's DMS, so SP able to call Oracle's WithdrawTokenRequest endpoint(refund or distribute action)
 				return
 			} else if strings.EqualFold(string(service.JobStatus), "running") {
 				depRespMessage := models.DeploymentResponse{}
@@ -417,7 +419,26 @@ func ClearIncomingChatRequests() error {
 	return nil
 }
 
-func readData(r *bufio.Reader) (string, error) {
+func readData(r *bufio.Reader, data []byte) (int, error) {
+	n, err := io.ReadFull(r, data)
+	return n, err
+}
+
+func writeData(w *bufio.Writer, data []byte) (int, error) {
+	n, err := w.Write(data)
+	if err != nil {
+		zlog.Sugar().Errorf("failed to write to buffer: %v", err)
+		return 0, err
+	}
+	err = w.Flush()
+	if err != nil {
+		zlog.Sugar().Errorf("failed to flush buffer: %v", err)
+		return 0, err
+	}
+	return n, nil
+}
+
+func readString(r *bufio.Reader) (string, error) {
 	str, err := r.ReadString('\n')
 	if err != nil {
 		return "", err
@@ -432,19 +453,21 @@ func readData(r *bufio.Reader) (string, error) {
 	return str, nil
 }
 
-func writeData(w *bufio.Writer, msg string) {
+func writeString(w *bufio.Writer, msg string) (int, error) {
+
 	zlog.Sugar().Debugf("writing raw data to stream: %s", msg)
 
-	_, err := w.WriteString(fmt.Sprintf("%s", msg))
+	n, err := w.WriteString(fmt.Sprintf("%s\n", msg))
 	if err != nil {
-		// XXX: need to handle unsent messages better - retry, notify upstream or clean up
 		zlog.Sugar().Errorf("failed to write to buffer: %v", err)
+		return 0, err
 	}
 	err = w.Flush()
 	if err != nil {
-		// XXX: need to handle unsent messages better - retry, notify upstream or clean up
 		zlog.Sugar().Errorf("failed to flush buffer: %v", err)
+		return 0, err
 	}
+	return n, nil
 }
 
 func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stream, w *bufio.Writer) {
@@ -465,9 +488,8 @@ func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stre
 		if err != nil {
 			zlog.Sugar().Errorf("Error Reading From Websocket Connection.  - %v", err)
 			panic(err)
-		}
-		if string(msg) != "\n" {
-			writeData(w, string(msg))
+		} else {
+			writeString(w, string(msg))
 		}
 	}
 }
@@ -486,7 +508,7 @@ func StreamReadSockWrite(conn *internal.WebSocketConnection, stream network.Stre
 	}()
 
 	for {
-		reply, err := readData(r)
+		reply, err := readString(r)
 		if err != nil {
 			panic(err)
 		}

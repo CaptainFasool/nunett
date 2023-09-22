@@ -21,6 +21,20 @@ Types of changes
 
 -->
 
+## [0.4.127](#296)
+
+### Added
+- File transfer between peers (#147 -> #196)
+## [0.4.126](nunet/ml-on-gpu/ml-on-gpu-webapp/-/issues/41#note_1490827796#41)
+
+### Changed 
+- Request-reward endpoint to return the new parameters from oracle.
+- Request-service endpoint to return the hashes from oracle.
+### Deprecated
+- `signature` and `oracle_message` parameters.
+### Added 
+- oracle paramters for `withdrawReq` and `fundingReq`
+
 # [0.4.125](#287)
 ### Fixed
 - Filter correct job/services executed on machine with tx hash for request reward

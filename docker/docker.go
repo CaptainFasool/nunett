@@ -91,9 +91,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		gpuOpts.Set("all") // TODO find a way to use GPU and CPU
 	}
 	imageName := depReq.Params.ImageID
-    if chosenGPUVendor == gpuinfo.AMD {
-        imageName += "-amd"
-    }
+	if chosenGPUVendor == gpuinfo.AMD {
+		imageName += "-amd"
+	}
 	modelURL := depReq.Params.ModelURL
 	packages := strings.Join(depReq.Params.Packages, " ")
 	containerConfig := &container.Config{
@@ -473,6 +473,11 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	service.JobDuration = 5           // these are dummy data, implementation pending
 	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
 	service.TxHash = depReq.TxHash
+	service.EstimatedNTX = int64(depReq.EstimatedNTX)
+	service.MetadataHash = depReq.MetadataHash
+	service.WithdrawHash = depReq.WithdrawHash
+	service.RefundHash = depReq.RefundHash
+	service.DistributeHash = depReq.DistributeHash
 
 	// create logbin here and pass it to RunContainer to update logs
 	createdLog, err := newLogBin(

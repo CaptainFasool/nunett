@@ -4,11 +4,15 @@ definitions:
     properties:
       compute_provider_addr:
         type: string
+      distribute_hash:
+        type: string
       estimated_price:
         type: number
-      oracle_message:
+      metadata_hash:
         type: string
-      signature:
+      refund_hash:
+        type: string
+      withdraw_hash:
         type: string
     type: object
   models.BlockchainAddressPrivKey:
@@ -51,8 +55,14 @@ definitions:
           vram:
             type: integer
         type: object
+      distribute_hash:
+        type: string
+      estimated_ntx:
+        type: number
       max_ntx:
         type: integer
+      metadata_hash:
+        type: string
       params:
         properties:
           image_id:
@@ -78,6 +88,8 @@ definitions:
             description: Public key of compute provider
             type: string
         type: object
+      refund_hash:
+        type: string
       service_type:
         type: string
       timestamp:
@@ -94,6 +106,8 @@ definitions:
             type: string
         type: object
       tx_hash:
+        type: string
+      withdraw_hash:
         type: string
     type: object
   models.Metadata:
@@ -170,11 +184,19 @@ definitions:
     type: object
   tokenomics.rewardRespToCPD:
     properties:
-      oracle_message:
+      action:
+        type: string
+      datum:
+        type: string
+      message_hash_action:
+        type: string
+      message_hash_datum:
         type: string
       reward_type:
         type: string
-      signature:
+      signature_action:
+        type: string
+      signature_datum:
         type: string
     type: object
 host: localhost:9999
@@ -189,7 +211,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.125
+  version: 0.4.127
 paths:
   /dht:
     get:
@@ -374,6 +396,48 @@ paths:
       summary: Return list of peers which have sent a dht update
       tags:
       - p2p
+  /peers/file:
+    get:
+      description: Get a list of file transfer requests from peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: List file transfer requests
+      tags:
+      - file
+  /peers/file/accept:
+    get:
+      description: Accept an incoming file transfer. Incoming file transfre stream
+        id is a required parameter.
+      responses:
+        "200":
+          description: OK
+      summary: Accept incoming file transfer
+      tags:
+      - file
+  /peers/file/clear:
+    get:
+      description: Clear file transfer request streams from peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Clear file transfer requests
+      tags:
+      - file
+  /peers/file/send:
+    get:
+      description: Initiate file transfer to a peer. filePath and peerID are required
+        arguments.
+      responses:
+        "200":
+          description: OK
+      summary: Send a file to a peer
+      tags:
+      - file
   /peers/kad-dht:
     get:
       description: Gets a list of peers the libp2p node has received a dht update
