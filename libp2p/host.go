@@ -105,6 +105,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 	host.SetStreamHandler(protocol.ID(FileTransferProtocolID), fileStreamHandler)
+	host.SetStreamHandler(protocol.ID(SubnetProtocolID), subnetStreamHandler)
 
 	p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())

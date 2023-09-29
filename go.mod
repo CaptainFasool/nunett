@@ -189,6 +189,7 @@ require (
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelsql v0.1.21 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelutil v0.1.21 // indirect
+	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
@@ -228,7 +229,9 @@ require (
 	github.com/jaypipes/ghw v0.12.0
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/shoenig/go-m1cpu v0.1.6
+	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.17.0
 	github.com/uptrace/opentelemetry-go-extra/otelzap v0.1.21
+	github.com/vishvananda/netlink v1.1.0
 )

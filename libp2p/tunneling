@@ -1,0 +1,153 @@
+// package subnet
+// 
+// // Setup reverse lookup hash map for authentication.
+// // Important for ignoring peers that are not within the VPN
+// // Not necessary depending on how we build the structs
+// RevLookup = make(map[string]string, len(cfg.Peers))
+// for ip, id := range cfg.Peers {
+// 	RevLookup[id.ID] = ip
+// }
+// 
+// // Create TUN interface
+// tunDev, err = tun.New(
+// 	cfg.Interface.Name,
+// 	tun.Address(cfg.Interface.Address),
+// 	tun.MTU(1420),
+// )
+// 
+// // Create P2P Node
+// // Can we do this before the TUN interface creation? I hope so
+// host, dht, err := p2p.CreateNode(
+// 	ctx,
+// 	cfg.Interface.PrivateKey,
+// 	port,
+// 	streamHandler, // create streamHandler to deal with the Tunneling
+// )
+// // streamHandler seems to write all packets coming from the libp2p stream
+// // to the TUN interface
+// 
+// // Setup Peer Table for Quick Packet --> Dest ID lookup
+// // Not necessary depending on the struct that we build
+// peerTable := make(map[string]peer.ID)
+// for ip, id := range cfg.Peers {
+// 	peerTable[ip], err = peer.Decode(id.ID)
+// 	checkErr(err)
+// }
+// 
+// // P2P Discovery with VPN participant peers Map
+// 
+// // p2p.Discover goal is to keep the known peers connected
+// // and restabilish connection and case of loosing it
+// go p2p.Discover(ctx, host, dht, peerTable)
+// 
+// // prettyDiscovery goal is mainly to validate if the peer
+// // can handle the defined stream's protocol communication
+// go prettyDiscovery(ctx, host, peerTable)
+// 
+// // Activate TUN interface to be ready to receive/send packets
+// // tun.New() just created, it didn't make active.
+// err = tunDev.Up()
+// 
+// // The following is responsible for SENDING packet to other peers
+// // tunDev.Iface.Read() is reading all the packets coming to the TUN
+// // interface, so if I do `ping 10.0.0.1`, the Iface.Read() will read
+// // the packets that I'm trying to send to someone. As you can see,
+// // `dst` will get the destination address before writing to the libp2p stream
+// activeStreams = make(map[string]network.Stream)
+// var packet = make([]byte, 1420)
+// for {
+//     // ping 10.0.0.1
+// 	// Read in a packet from the tun interface.
+// 	plen, err := tunDev.Iface.Read(packet)
+// 	if err != nil {
+// 		log.Println(err)
+// 		continue
+// 	}
+// 
+// 	// Decode the packet's destination address
+// 	dst := net.IPv4(packet[16], packet[17], packet[18], packet[19]).String()
+// 
+// 	// Check if we already have an open connection to the destination peer.
+// 	stream, ok := activeStreams[dst]
+// 	if ok {
+// 		// Write out the packet's length to the libp2p stream to ensure
+// 		// we know the full size of the packet at the other end.
+// 		err = binary.Write(stream, binary.LittleEndian, uint16(plen))
+// 		if err == nil {
+// 			// Write the packet out to the libp2p stream.
+// 			// If everyting succeeds continue on to the next packet.
+// 			_, err = stream.Write(packet[:plen])
+// 			if err == nil {
+// 				continue
+// 			}
+// 		}
+// 		// If we encounter an error when writing to a stream we should
+// 		// close that stream and delete it from the active stream map.
+// 		stream.Close()
+// 		delete(activeStreams, dst)
+// 	}
+// 
+// 	// Check if the destination of the packet is a known peer to
+// 	// the interface.
+// 	if peer, ok := peerTable[dst]; ok {
+// 		stream, err = host.NewStream(ctx, peer, p2p.Protocol)
+// 		if err != nil {
+// 			continue
+// 		}
+// 		// Write packet length
+// 		err = binary.Write(stream, binary.LittleEndian, uint16(plen))
+// 		if err != nil {
+// 			stream.Close()
+// 			continue
+// 		}
+// 		// Write the packet
+// 		_, err = stream.Write(packet[:plen])
+// 		if err != nil {
+// 			stream.Close()
+// 			continue
+// 		}
+// 
+// 		// If all succeeds when writing the packet to the stream
+// 		// we should reuse this stream by adding it active streams map.
+// 		activeStreams[dst] = stream
+// 	}
+// }
+// 
+// 
+// // The following is the packets that we receive from the libp2p stream and
+// // we send them to the TUN interface
+// // It is the stream handler used in the creation of the libp2p host.
+// // It's responsible for estabilishing a stream based on a protocol X which
+// // both peers must agree.
+// func streamHandler(stream network.Stream) {
+// 	// If the remote node ID isn't in the list of known nodes don't respond.
+// 	if _, ok := RevLookup[stream.Conn().RemotePeer().Pretty()]; !ok {
+// 		stream.Reset()
+// 		return
+// 	}
+// 	var packet = make([]byte, 1420)
+// 	var packetSize = make([]byte, 2)
+// 	for {
+// 		// Read the incoming packet's size as a binary value.
+// 		_, err := stream.Read(packetSize)
+// 		if err != nil {
+// 			stream.Close()
+// 			return
+// 		}
+// 
+// 		// Decode the incoming packet's size from binary.
+// 		size := binary.LittleEndian.Uint16(packetSize)
+// 
+// 		// Read in the packet until completion.
+// 		var plen uint16 = 0
+// 		for plen < size {
+// 			tmp, err := stream.Read(packet[plen:size])
+// 			plen += uint16(tmp)
+// 			if err != nil {
+// 				stream.Close()
+// 				return
+// 			}
+// 		}
+// 		tunDev.Iface.Write(packet[:size])
+// 	}
+// }
