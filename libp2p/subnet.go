@@ -67,6 +67,7 @@ func JoinHandler(c *gin.Context) {
 	}
 
 	fmt.Printf("Received params: %+v\n", params)
+
 	activeSubnet = &Subnet{
 		ctx,
 		cancel,
@@ -196,12 +197,12 @@ func JoinHandler(c *gin.Context) {
 // @Summary      Removes a TUN interface
 // @Description  Removes a TUN interface named dms-tun
 // @Tags         file
-// @Accept       json
-// @Produce      json
 // @Success      200
 // @Router       /network/subnet/down [post]
 func DownHandler(c *gin.Context) {
-	activeSubnet.cancel()
+	if activeSubnet != nil {
+		activeSubnet.cancel()
+	}
 	err := tun.Delete("dms-tun")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -215,11 +216,13 @@ func DownHandler(c *gin.Context) {
 func subnetStreamHandler(stream network.Stream) {
 	// If tunneling device was not iniated yet, just close the stream
 	if tunDev == nil {
+		zlog.Sugar().Errorf("tunDev was not iniated")
 		stream.Reset()
 		return
 	}
 	// If the remote node ID isn't in the list of known nodes don't respond.
 	if _, ok := revLookup[stream.Conn().RemotePeer().Pretty()]; !ok {
+		zlog.Sugar().Errorf("peer not on the routing table")
 		stream.Reset()
 		return
 	}
@@ -229,6 +232,7 @@ func subnetStreamHandler(stream network.Stream) {
 		// Read the incoming packet's size as a binary value.
 		_, err := stream.Read(packetSize)
 		if err != nil {
+			zlog.Sugar().Errorf("error reading size packet from stream: %v", err)
 			stream.Close()
 			return
 		}
@@ -242,6 +246,7 @@ func subnetStreamHandler(stream network.Stream) {
 			tmp, err := stream.Read(packet[plen:size])
 			plen += uint16(tmp)
 			if err != nil {
+				zlog.Sugar().Errorf("error reading packet's data from stream: %v", err)
 				stream.Close()
 				return
 			}
