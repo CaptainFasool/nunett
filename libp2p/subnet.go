@@ -57,7 +57,7 @@ var (
 // @Success      200
 // @Router       /network/subnet/join [post]
 func JoinHandler(c *gin.Context) {
-	ctx, cancel := context.WithCancel(c.Request.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	var params JoinSubnetParams
 
 	if err := c.BindJSON(&params); err != nil {
@@ -131,6 +131,7 @@ func JoinHandler(c *gin.Context) {
 					stream.Close()
 					delete(activeStreams, dst)
 				}
+				return
 			default:
 				// ping 10.0.0.1
 				// Read in a packet from the tun interface.
