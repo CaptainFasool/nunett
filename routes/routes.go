@@ -102,6 +102,11 @@ func SetupRouter() *gin.Engine {
 		// peer.GET("/log", internal.HandleWebSocket)
 	}
 
+	net := v1.Group("/network")
+	{
+		net.POST("/subnet/join", libp2p.JoinHandler)
+	}
+
 	return router
 }
 
