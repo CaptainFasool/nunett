@@ -17,8 +17,18 @@ import (
 type Subnet struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-
 	SubnetConfig
+
+	// iface is the tun device used to pass packets between
+	// Hyprspace and the user's machine.
+	tunDev *tun.TUN
+
+	// revLookup allow quick lookups of an incoming stream
+	// for security before accepting or responding to any data.
+	revLookup map[string]string
+
+	// activeStreams is a map of active streams to a peer
+	activeStreams map[string]network.Stream
 }
 
 type SubnetConfig struct {
@@ -35,18 +45,7 @@ type JoinSubnetParams struct {
 	Subnet SubnetConfig
 }
 
-var (
-	// iface is the tun device used to pass packets between
-	// Hyprspace and the user's machine.
-	tunDev *tun.TUN
-	// revLookup allow quick lookups of an incoming stream
-	// for security before accepting or responding to any data.
-	revLookup map[string]string
-	// activeStreams is a map of active streams to a peer
-	activeStreams map[string]network.Stream
-
-	activeSubnet *Subnet
-)
+var subnet *Subnet
 
 // JoinHandler godoc
 // @Summary      Joins a subnet
@@ -67,12 +66,6 @@ func JoinHandler(c *gin.Context) {
 
 	fmt.Printf("Received params: %+v\n", params)
 
-	activeSubnet = &Subnet{
-		ctx,
-		cancel,
-		params.Subnet,
-	}
-
 	// Create TUN interface
 	tunDev, err := tun.New(
 		"dms-tun",
@@ -85,7 +78,7 @@ func JoinHandler(c *gin.Context) {
 	}
 
 	var peersID []peer.ID
-	revLookup = make(map[string]string, len(params.Subnet.Peers))
+	revLookup := make(map[string]string, len(params.Subnet.Peers))
 	peerTable := make(map[string]peer.ID)
 	for _, p := range params.Subnet.Peers {
 		pID, err := peer.Decode(p.ID)
@@ -120,12 +113,20 @@ func JoinHandler(c *gin.Context) {
 	// interface, so if I do `ping 10.0.0.1`, the Iface.Read() will read
 	// the packets that I'm trying to send to someone. As you can see,
 	// `dst` will get the destination address before writing to the libp2p stream
-	activeStreams = make(map[string]network.Stream)
+	activeStreams := make(map[string]network.Stream)
 	var packet = make([]byte, 1420)
+	subnet = &Subnet{
+		ctx,
+		cancel,
+		params.Subnet,
+		tunDev,
+		revLookup,
+		activeStreams,
+	}
 	go func() {
 		for {
 			select {
-			case <-activeSubnet.ctx.Done():
+			case <-subnet.ctx.Done():
 				zlog.Sugar().Error("Closing all subnet streams if any")
 				for dst, stream := range activeStreams {
 					stream.Close()
@@ -141,6 +142,8 @@ func JoinHandler(c *gin.Context) {
 						"Error reading packet from TUN interface: %v", err)
 					continue
 				}
+
+				// TODO: check if there is anything at all within the packet
 
 				// Decode the packet's destination address
 				dst := net.IPv4(packet[16], packet[17], packet[18], packet[19]).String()
@@ -216,8 +219,8 @@ func JoinHandler(c *gin.Context) {
 // @Success      200
 // @Router       /network/subnet/down [post]
 func DownHandler(c *gin.Context) {
-	if activeSubnet != nil {
-		activeSubnet.cancel()
+	if subnet != nil {
+		subnet.cancel()
 	}
 	err := tun.Delete("dms-tun")
 	if err != nil {
@@ -230,14 +233,19 @@ func DownHandler(c *gin.Context) {
 // subnetStreamHandler handles all incoming packets for streams
 // following the protocol SubnetProtocolID
 func subnetStreamHandler(stream network.Stream) {
+	if subnet == nil {
+		zlog.Sugar().Errorf("no subnet found")
+		stream.Reset()
+		return
+	}
 	// If tunneling device was not iniated yet, just close the stream
-	if tunDev == nil {
+	if subnet.tunDev == nil {
 		zlog.Sugar().Errorf("tunDev was not iniated")
 		stream.Reset()
 		return
 	}
 	// If the remote node ID isn't in the list of known nodes don't respond.
-	if _, ok := revLookup[stream.Conn().RemotePeer().Pretty()]; !ok {
+	if _, ok := subnet.revLookup[stream.Conn().RemotePeer().Pretty()]; !ok {
 		zlog.Sugar().Errorf("peer not on the routing table")
 		stream.Reset()
 		return
@@ -269,6 +277,6 @@ func subnetStreamHandler(stream network.Stream) {
 			}
 		}
 		zlog.Sugar().Info("Writing packet to Tunneling interface")
-		tunDev.Iface.Write(packet[:size])
+		subnet.tunDev.Iface.Write(packet[:size])
 	}
 }
