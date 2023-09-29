@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 
@@ -127,6 +126,7 @@ func JoinHandler(c *gin.Context) {
 		for {
 			select {
 			case <-activeSubnet.ctx.Done():
+				zlog.Sugar().Error("Closing all subnet streams if any")
 				for dst, stream := range activeStreams {
 					stream.Close()
 					delete(activeStreams, dst)
@@ -136,12 +136,14 @@ func JoinHandler(c *gin.Context) {
 				// Read in a packet from the tun interface.
 				plen, err := tunDev.Iface.Read(packet)
 				if err != nil {
-					log.Println(err)
+					zlog.Sugar().Errorf(
+						"Error reading packet from TUN interface: %v", err)
 					continue
 				}
 
 				// Decode the packet's destination address
 				dst := net.IPv4(packet[16], packet[17], packet[18], packet[19]).String()
+				zlog.Sugar().Infof("Send packet to destination peer: %v", dst)
 
 				// Check if we already have an open connection to the destination peer.
 				stream, ok := activeStreams[dst]
@@ -154,11 +156,15 @@ func JoinHandler(c *gin.Context) {
 						// If everyting succeeds continue on to the next packet.
 						_, err = stream.Write(packet[:plen])
 						if err == nil {
+							zlog.Sugar().Infof(
+								"Successfully sent packet to: %v", dst)
 							continue
 						}
 					}
 					// If we encounter an error when writing to a stream we should
 					// close that stream and delete it from the active stream map.
+					zlog.Sugar().Errorf(
+						"Error writing to libp2p stream from tunneling: %v", err)
 					stream.Close()
 					delete(activeStreams, dst)
 				}
@@ -166,22 +172,31 @@ func JoinHandler(c *gin.Context) {
 				// Check if the destination of the packet is a known peer to
 				// the interface.
 				if peer, ok := peerTable[dst]; ok {
+					zlog.Sugar().Infof(
+						"Didn't have an active stream with peer %v, creating one", dst)
 					stream, err = h.NewStream(ctx, peer, SubnetProtocolID)
 					if err != nil {
+						zlog.Sugar().Errorf(
+							"Error creating stream with peer: %v", dst)
 						continue
 					}
 					// Write packet length
 					err = binary.Write(stream, binary.LittleEndian, uint16(plen))
 					if err != nil {
+						zlog.Sugar().Error("Error writing packet size")
 						stream.Close()
 						continue
 					}
 					// Write the packet
 					_, err = stream.Write(packet[:plen])
 					if err != nil {
+						zlog.Sugar().Errorf(
+							"Error writing to libp2p stream from tunneling: %v", err)
 						stream.Close()
 						continue
 					}
+					zlog.Sugar().Infof(
+						"Successfully sent packet to: %v", dst)
 
 					// If all succeeds when writing the packet to the stream
 					// we should reuse this stream by adding it active streams map.
@@ -230,6 +245,7 @@ func subnetStreamHandler(stream network.Stream) {
 	var packetSize = make([]byte, 2)
 	for {
 		// Read the incoming packet's size as a binary value.
+		zlog.Sugar().Info("Receiving packet from libp2p stream")
 		_, err := stream.Read(packetSize)
 		if err != nil {
 			zlog.Sugar().Errorf("error reading size packet from stream: %v", err)
@@ -251,6 +267,7 @@ func subnetStreamHandler(stream network.Stream) {
 				return
 			}
 		}
+		zlog.Sugar().Info("Writing packet to Tunneling interface")
 		tunDev.Iface.Write(packet[:size])
 	}
 }
