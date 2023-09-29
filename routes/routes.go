@@ -105,6 +105,7 @@ func SetupRouter() *gin.Engine {
 	net := v1.Group("/network")
 	{
 		net.POST("/subnet/join", libp2p.JoinHandler)
+		net.POST("/subnet/down", libp2p.DownHandler)
 	}
 
 	return router
