@@ -147,7 +147,7 @@ func JoinHandler(c *gin.Context) {
 
 				// Decode the packet's destination address
 				dst := net.IPv4(packet[16], packet[17], packet[18], packet[19]).String()
-				zlog.Sugar().Infof("Send packet to destination peer: %v", dst)
+				zlog.Sugar().Debugf("Send packet to destination peer: %v", dst)
 
 				// Check if we already have an open connection to the destination peer.
 				stream, ok := activeStreams[dst]
@@ -160,7 +160,7 @@ func JoinHandler(c *gin.Context) {
 						// If everyting succeeds continue on to the next packet.
 						_, err = stream.Write(packet[:plen])
 						if err == nil {
-							zlog.Sugar().Infof(
+							zlog.Sugar().Debugf(
 								"Successfully sent packet to: %v", dst)
 							continue
 						}
@@ -176,7 +176,7 @@ func JoinHandler(c *gin.Context) {
 				// Check if the destination of the packet is a known peer to
 				// the interface.
 				if peer, ok := peerTable[dst]; ok {
-					zlog.Sugar().Infof(
+					zlog.Sugar().Debugf(
 						"Didn't have an active stream with peer %v, creating one", dst)
 					stream, err = h.NewStream(ctx, peer, SubnetProtocolID)
 					if err != nil {
@@ -199,7 +199,7 @@ func JoinHandler(c *gin.Context) {
 						stream.Close()
 						continue
 					}
-					zlog.Sugar().Infof(
+					zlog.Sugar().Debugf(
 						"Successfully sent packet to: %v", dst)
 
 					// If all succeeds when writing the packet to the stream
@@ -254,7 +254,7 @@ func subnetStreamHandler(stream network.Stream) {
 	var packetSize = make([]byte, 2)
 	for {
 		// Read the incoming packet's size as a binary value.
-		zlog.Sugar().Info("Receiving packet from libp2p stream")
+		zlog.Sugar().Debug("Receiving packet from libp2p stream")
 		_, err := stream.Read(packetSize)
 		if err != nil {
 			zlog.Sugar().Errorf("error reading size packet from stream: %v", err)
@@ -276,7 +276,7 @@ func subnetStreamHandler(stream network.Stream) {
 				return
 			}
 		}
-		zlog.Sugar().Info("Writing packet to Tunneling interface")
+		zlog.Sugar().Debug("Writing packet to Tunneling interface")
 		subnet.tunDev.Iface.Write(packet[:size])
 	}
 }
