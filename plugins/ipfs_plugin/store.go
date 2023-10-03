@@ -92,7 +92,7 @@ func pinBasedOnCidRPC(cid string) error {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
 	storeReq := pb.PinByCIDRequest{
