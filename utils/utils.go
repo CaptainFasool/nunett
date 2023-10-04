@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	gonet "github.com/shirou/gopsutil/net"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
@@ -176,7 +178,7 @@ func RegisterLogbin(uuid string, peer_id string) (string, error) {
 func GetLogbinToken() (string, error) {
 	var logbinAuth models.LogBinAuth
 	result := db.DB.Find(&logbinAuth)
-	if result.Error != nil{
+	if result.Error != nil {
 		zlog.Sugar().Errorf("unable to find logbin auth record in DB: %v", result.Error)
 		return "", result.Error
 	}
@@ -214,5 +216,72 @@ func IsOnboarded() (bool, error) {
 func ReadyForElastic() bool {
 	elasticToken := models.ElasticToken{}
 	db.DB.Find(&elasticToken)
-	return elasticToken.NodeId != "" && elasticToken.ChannelName != "" 
+	return elasticToken.NodeId != "" && elasticToken.ChannelName != ""
+}
+
+func PromptYesNo(prompt string) bool {
+	reader := bufio.NewReader(os.Stdin)
+
+	verifyInput := func(input string) bool {
+		lowerInput := strings.ToLower(input)
+		return lowerInput == "y" || lowerInput == "yes" || lowerInput == "n" || lowerInput == "no"
+	}
+
+	for {
+		fmt.Print(prompt + ": ")
+		response, err := reader.ReadString('\n')
+
+		if err != nil {
+			fmt.Println("Error reading from buffer:", err)
+			return false
+		}
+
+		response = strings.TrimSpace(response)
+
+		if verifyInput(response) {
+			lowerResponse := strings.ToLower(response)
+			return lowerResponse == "y" || lowerResponse == "yes"
+		} else {
+			fmt.Println("Invalid input. Please enter 'y' or 'n'")
+		}
+	}
+}
+
+func CheckWSL() (bool, error) {
+	file, err := os.Open("/proc/version")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "Microsoft") || strings.Contains(line, "WSL") {
+			return true, nil
+		}
+	}
+
+	if scanner.Err() != nil {
+		return false, scanner.Err()
+	}
+
+	return false, nil
+}
+
+func ListenDMSPort() (bool, error) {
+	port := config.GetConfig().Rest.Port
+
+	conns, err := gonet.Connections("all")
+	if err != nil {
+		return false, err
+	}
+
+	for _, conn := range conns {
+		if conn.Status == "LISTEN" && uint32(port) == conn.Laddr.Port {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

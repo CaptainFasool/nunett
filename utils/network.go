@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -45,6 +46,11 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json")
+
+	if c != nil {
+		req.Header = c.Request.Header.Clone()
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -82,4 +88,19 @@ func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, e
 		// return
 		panic(err)
 	}
+}
+
+func ResponseBody(c *gin.Context, methodType, internalEndpoint string, body []byte) (responseBody []byte, errMsg error) {
+	resp, err := MakeInternalRequest(c, methodType, internalEndpoint, body)
+	if err != nil {
+		return nil, fmt.Errorf("unable to make internal request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read response body: %v", err)
+	}
+
+	return respBody, nil
 }

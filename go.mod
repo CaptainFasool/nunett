@@ -9,7 +9,6 @@ require (
 	github.com/fivebinaries/go-cardano-serialization v0.0.0-20220907134105-ec9b85086588
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/google/go-github v17.0.0+incompatible
 	github.com/gorilla/websocket v1.5.0
 	github.com/libp2p/go-libp2p v0.27.1
 	github.com/libp2p/go-libp2p-kad-dht v0.22.0
@@ -58,6 +57,7 @@ require (
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
+	github.com/coreos/pkg v0.0.0-20230601102743-20bbbf26f4d8 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
@@ -98,7 +98,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20230405160723-4a4c7d95572b // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
@@ -149,6 +148,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/miekg/dns v1.1.53 // indirect
@@ -194,6 +194,7 @@ require (
 	github.com/quic-go/quic-go v0.33.0 // indirect
 	github.com/quic-go/webtransport-go v0.5.2 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
@@ -244,10 +245,13 @@ require (
 require (
 	github.com/KyleBanks/dockerstats v0.0.0-20180213183355-b5fec062e953
 	github.com/NVIDIA/go-nvml v0.12.0-1
+	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
+	github.com/coreos/go-systemd v0.0.0-20181012123002-c6f51f82210d
 	github.com/elastic/go-elasticsearch/v8 v8.8.0
 	github.com/google/uuid v1.3.1
 	github.com/jaypipes/ghw v0.10.0
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/uptrace/opentelemetry-go-extra/otelzap v0.1.21
