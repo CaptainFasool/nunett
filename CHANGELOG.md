@@ -21,6 +21,15 @@ Types of changes
 
 -->
 
+
+## [0.4.128](#220)
+
+### Added
+- Port the commands to Go: peer list, peer self, onboard, info, capacity, wallet new, resource-config, log
+- Change pattern of commands to APP VERB NOUN
+- Add --dht flag for list peers command
+- Format output of show capacity command in YAML manner (suitable to change)
+
 ## [0.4.127](#296)
 
 ### Added
