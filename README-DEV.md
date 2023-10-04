@@ -12,7 +12,7 @@ sh <(curl -sL https://inst.dms.nunet.io)
 The cleanest way to setup development environment is to build a deb package out of this repository and let the installer do the work for you.
 
 ```
-sudo apt install build-essential curl jq iproute2
+sudo apt install build-essential curl jq iproute2 libsystemd-dev
 ```
 
 ### Prerequisites
@@ -21,7 +21,7 @@ To build the deb, you'd be required to install these two packages:
 
 ```
 sudo snap install go
-sudo apt install build-essential
+sudo apt install build-essential libsystemd-dev
 ```
 
 ### Build, Install & Setup Dev Env

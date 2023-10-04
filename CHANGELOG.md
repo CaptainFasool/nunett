@@ -22,6 +22,14 @@ Types of changes
 -->
 
 
+## [0.4.129](#278)
+
+### Added
+- Create WebSocket client for handling communication with server
+- Add start chat, join chat, clear chat and list chat commands
+- Make openStream struct exportable and reuse it for listing chats
+- Fix typo in welcome message when starting a chat
+- Add libsystemd-dev as build/dev dependency
 ## [0.4.128](#220)
 
 ### Added

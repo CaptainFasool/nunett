@@ -10,6 +10,8 @@ import (
 )
 
 func init() {
+	rootCmd.AddCommand(chatCmd)
+	rootCmd.AddCommand(shellCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(peerCmd)
 	rootCmd.AddCommand(onboardCmd)

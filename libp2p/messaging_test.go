@@ -37,7 +37,7 @@ func TestChat(t *testing.T) {
 	}
 
 	// 0 chat requests expected now
-	incomingReq, err := incomingChatRequests()
+	incomingReq, err := IncomingChatRequests()
 	assert.Nil(t, incomingReq)
 	assert.Equal(t, "No Incoming Message Stream.", err.Error())
 
@@ -86,7 +86,7 @@ func TestChat(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// 1 chat requests expected now
-	incomingReq, err = incomingChatRequests()
+	incomingReq, err = IncomingChatRequests()
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(incomingReq))
 
