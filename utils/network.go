@@ -5,30 +5,41 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/internal/config"
 )
 
-// GetInternalBaseURL is a helper method to allow calls to any resources
-func GetInternalBaseURL(internalEndpoint string) (string, error) {
-	if internalEndpoint == "" {
-		return "", fmt.Errorf("internalEndpoint cannot be empty")
+// InternalAPIURL is a helper method to compose API URLs
+func InternalAPIURL(protocol, endpoint, query string) (string, error) {
+	if protocol == "" || endpoint == "" {
+		return "", fmt.Errorf("protocol and endpoint values must be specified")
 	}
 
-	endpoint := fmt.Sprintf(
-		"http://localhost:%d%s",
-		config.GetConfig().Rest.Port,
-		internalEndpoint,
-	)
+	if protocol != "http" && protocol != "ws" {
+		return "", fmt.Errorf("invalid protocol: %s", protocol)
+	}
 
-	return endpoint, nil
+	port := config.GetConfig().Rest.Port
+	if port == 0 {
+		return "", fmt.Errorf("port is not configured")
+	}
+
+	serverURL := url.URL{
+		Scheme:   protocol,
+		Host:     fmt.Sprintf("localhost:%d", port),
+		Path:     endpoint,
+		RawQuery: query,
+	}
+
+	return serverURL.String(), nil
 }
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
 func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) (*http.Response, error) {
-	endpoint, err := GetInternalBaseURL(internalEndpoint)
+	endpoint, err := InternalAPIURL("http", internalEndpoint, "")
 	if err != nil {
 		return nil, err
 	}

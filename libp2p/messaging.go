@@ -49,11 +49,11 @@ var inboundChatStreams []network.Stream
 var inboundDepReqStream network.Stream
 var outboundDepReqStream network.Stream
 
-type openStream struct {
-	ID         int
-	StreamID   string
-	TimeOpened string
-	FromPeer   string
+type OpenStream struct {
+	ID         int    `json:"id"`
+	StreamID   string `json:"stream_id"`
+	FromPeer   string `json:"from_peer"`
+	TimeOpened string `json:"time_opened"`
 }
 
 func depReqStreamHandler(stream network.Stream) {
@@ -395,14 +395,14 @@ func chatStreamHandler(stream network.Stream) {
 	}
 }
 
-func incomingChatRequests() ([]openStream, error) {
+func IncomingChatRequests() ([]OpenStream, error) {
 	if len(inboundChatStreams) == 0 {
 		return nil, fmt.Errorf("no incoming message stream")
 	}
 
-	var out []openStream
+	var out []OpenStream
 	for idx := 0; idx < len(inboundChatStreams); idx++ {
-		out = append(out, openStream{
+		out = append(out, OpenStream{
 			ID:         idx,
 			StreamID:   inboundChatStreams[idx].ID(),
 			FromPeer:   inboundChatStreams[idx].Conn().RemotePeer().String(),
@@ -411,7 +411,7 @@ func incomingChatRequests() ([]openStream, error) {
 	return out, nil
 }
 
-func clearIncomingChatRequests() error {
+func ClearIncomingChatRequests() error {
 	if len(inboundChatStreams) == 0 {
 		return fmt.Errorf("no inbound message streams")
 	}
@@ -443,10 +443,13 @@ func readString(r *bufio.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	zlog.Sugar().Debugf("received raw data from stream: %s", str)
+
 	if str == "\n" {
 		return "", nil
 	}
+
+	zlog.Sugar().Debugf("received raw data from stream: %s", str)
+
 	return str, nil
 }
 
@@ -485,7 +488,9 @@ func SockReadStreamWrite(conn *internal.WebSocketConnection, stream network.Stre
 		if err != nil {
 			zlog.Sugar().Errorf("Error Reading From Websocket Connection.  - %v", err)
 			panic(err)
-		} else {
+		}
+
+		if string(msg) != "\n" {
 			writeString(w, string(msg))
 		}
 	}
@@ -508,9 +513,11 @@ func StreamReadSockWrite(conn *internal.WebSocketConnection, stream network.Stre
 		reply, err := readString(r)
 		if err != nil {
 			panic(err)
-		} else if reply == "" {
-			// do nothing
-		} else {
+		}
+
+		reply = strings.TrimSuffix(reply, "\n")
+
+		if reply != "" {
 			conn.Conn.WriteMessage(websocket.TextMessage, []byte("Peer: "+reply))
 		}
 	}
