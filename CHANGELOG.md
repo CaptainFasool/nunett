@@ -52,6 +52,10 @@ Types of changes
 ### Added 
 - oracle paramters for `withdrawReq` and `fundingReq`
 
+# [0.4.125.1](#306)
+### Fixed
+- increase the threshold to use all onboarded resources
+- prohibit saying no enough resources
 # [0.4.125](#287)
 ### Fixed
 - Filter correct job/services executed on machine with tx hash for request reward

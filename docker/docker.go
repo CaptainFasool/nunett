@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -18,20 +17,20 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/shirou/gopsutil/cpu"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/onboarding"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
 	"go.uber.org/zap"
 )
 
 var (
-	vcpuToMicroseconds float64       = 100000
-	logUpdateInterval  time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
+	cpuPeriod         int64         = 100000
+	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
 )
 
 func freeUsedResources() {
@@ -46,33 +45,6 @@ func freeUsedResources() {
 	}
 	elk.DeviceResourceChange(freeResource.TotCpuHz, freeResource.Ram)
 	libp2p.UpdateKadDHT()
-}
-
-func mhzPerCore() (float64, error) {
-	cpus, err := cpu.Info()
-	if err != nil {
-		zlog.Sugar().Errorf("failed to get cpu info: %v", err)
-		return 0, err
-	}
-	return cpus[0].Mhz, nil
-}
-
-func round(num float64) int {
-	return int(num + math.Copysign(0.5, num))
-}
-
-func toFixed(num float64, precision int) float64 {
-	output := math.Pow(10, float64(precision))
-	return float64(round(num*output)) / output
-}
-
-func mhzToVCPU(cpuInMhz int) (float64, error) {
-	mhz, err := mhzPerCore()
-	if err != nil {
-		return 0, err
-	}
-	vcpu := float64(cpuInMhz) / mhz
-	return toFixed(vcpu, 2), nil
 }
 
 func groupExists(groupName string) bool {
@@ -100,11 +72,11 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		Image: imageName,
 		Cmd:   []string{modelURL, packages},
 	}
-	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
-	VCPU, err := mhzToVCPU(depReq.Constraints.CPU)
+	// Get onboarded resources
+	cpuQuota, memoryMax, err := fetchOnboardedResources()
 	if err != nil {
-		zlog.Sugar().Errorf("Error converting MHz to VCPU: %v", err)
-		depRes := models.DeploymentResponse{Success: false, Content: "Problem with CPU Constraints. Unable to process request."}
+		zlog.Sugar().Errorf("Error fetching onboarded resources: %v", err)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with onboarded resources. Unable to process request."}
 		resCh <- depRes
 		return
 	}
@@ -112,8 +84,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
-			Memory:         memoryMbToBytes,
-			CPUQuota:       int64(VCPU * vcpuToMicroseconds),
+			Memory:         memoryMax,
+			CPUQuota:       cpuQuota,
+			CPUPeriod:      cpuPeriod,
 		},
 	}
 
@@ -126,8 +99,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 				"/dev/dri:/dev/dri",
 			},
 			Resources: container.Resources{
-				Memory:   memoryMbToBytes,
-				CPUQuota: int64(VCPU * vcpuToMicroseconds),
+				Memory:    memoryMax,
+				CPUQuota:  cpuQuota,
+				CPUPeriod: cpuPeriod,
 				Devices: []container.DeviceMapping{
 					{
 						PathOnHost:        "/dev/kfd",
@@ -157,15 +131,6 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	if res := db.DB.Find(&freeRes); res.RowsAffected == 0 {
 		zlog.Sugar().Errorf("Record not found!")
 		depRes := models.DeploymentResponse{Success: false, Content: "Problem with Free Resources. Unable to process request."}
-		resCh <- depRes
-		return
-	}
-
-	// Check if we have enough free resources before running Container
-	if (depReq.Constraints.RAM > freeRes.Ram) ||
-		(depReq.Constraints.CPU > freeRes.TotCpuHz) {
-		zlog.Sugar().Errorf("Not enough resources available to deploy container")
-		depRes := models.DeploymentResponse{Success: false, Content: "Problem with resources for deployment. Unable to process request."}
 		resCh <- depRes
 		return
 	}
@@ -513,4 +478,23 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	// Send back createdLog.RawUrl
 	res.Content = createdLog.RawUrl
 	return res
+}
+
+// fetchOnboardedResources returns cpuQuota and memoryMax (in bytes) onboarded to nunet
+func fetchOnboardedResources() (cpuQuota, memoryMax int64, err error) {
+	// call 'nunet info' command internally and get the reserved_cpu, cpu_max and reserved ram
+	metadata, err := onboarding.FetchMetadata()
+	if err != nil {
+		zlog.Sugar().Errorf("Error fetching metadata: %v", err)
+		// will return 0, 0, err
+		return
+	}
+
+	// Proportion=reserved.cpu/resource.cpu_max
+	proportion := metadata.Reserved.CPU / metadata.Resource.CPUMax
+	// Quota=100000 * Proportion
+	cpuQuota = int64(cpuPeriod * proportion)
+	memoryMax = metadata.Reserved.Memory * 1024 * 1024 // convert to bytes
+
+	return cpuQuota, memoryMax, nil
 }

@@ -2,6 +2,7 @@ package onboarding
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -34,26 +35,13 @@ var AFS *afero.Afero = &afero.Afero{Fs: FS}
 //	@Success		200	{object}	models.Metadata
 //	@Router			/onboarding/metadata [get]
 func GetMetadata(c *gin.Context) {
-	// check if the request has any body data
-	// if it has return that body  and skip the below code
-	// just for the test cases
-	// read the info
-	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
+	metadata, err := FetchMetadata()
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": "metadata.json does not exists or not readable"})
+			gin.H{"error": err.Error()})
 		return
 	}
-
-	// deserialize to json
-	var metadata models.MetadataV2
-	err = json.Unmarshal(content, &metadata)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": "unable to parse metadata.json"})
-		return
-	}
-
 	c.JSON(http.StatusOK, metadata)
 }
 
@@ -432,4 +420,21 @@ func validateCapacityForNunet(capacityForNunet models.CapacityForNunet) error {
 	}
 
 	return nil
+}
+
+// FetchMetadata reads metadataV2.json file and returns a models.MetadataV2 struct
+func FetchMetadata() (*models.MetadataV2, error) {
+	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
+	if err != nil {
+		return nil, errors.New("unable to read metadata.json")
+	}
+
+	// deserialize to json
+	var metadata models.MetadataV2
+	err = json.Unmarshal(content, &metadata)
+	if err != nil {
+		return nil, errors.New("unable to parse metadata.json")
+	}
+
+	return &metadata, nil
 }

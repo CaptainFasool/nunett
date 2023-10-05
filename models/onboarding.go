@@ -27,6 +27,9 @@ type Provisioned struct {
 }
 
 // Metadata has an older version of schema for metadata.json.
+//
+// Deprecated: This Metadata was used in nunet-adapter time.
+// Use MetadataV2 instead.
 type Metadata struct {
 	Name     string `json:"name,omitempty"`
 	Resource struct {
