@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -202,69 +201,6 @@ func PingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResul
 	pingResult.Error = nil
 
 	return pingResult
-}
-
-type PubSub struct {
-	Host  host.Host
-	Ps    *pubsub.PubSub
-	Topic *pubsub.Topic
-	Sub   *pubsub.Subscription
-}
-
-func PubSubInit(node host.Host) *PubSub {
-	return &PubSub{Host: node}
-}
-
-var Pbsb PubSub
-
-// NewPubSub creates a new PubSub instance.
-func NewGossipPubSub(ctx context.Context, host host.Host) (*pubsub.PubSub, error) {
-	Pbsb := *PubSubInit(host)
-	ps, err := pubsub.NewGossipSub(ctx, host)
-	if err != nil {
-		zlog.Sugar().Errorf("Failed to create gossipsub: %v", err)
-		return nil, err
-	}
-	Pbsb.Ps = ps
-	return ps, nil
-}
-
-// JoinTopic joins the given topic, subscribes to the topic.
-func (ps *PubSub) JoinTopic(topicName string) error {
-	tp, err := ps.Ps.Join(topicName)
-	if err != nil {
-		zlog.Sugar().Errorf("Failed to join topic: %v", err)
-		return err
-	}
-	sub, err := tp.Subscribe()
-	if err != nil {
-		zlog.Sugar().Errorf("Failed to subscribe to topic: %v", err)
-		return err
-	}
-	ps.Topic = tp
-	ps.Sub = sub
-	return nil
-}
-
-// Publish publishes the given message to the topic.
-func (ps *PubSub) Publish(msg any) error {
-	msgBytes, err := json.Marshal(msg)
-	if err != nil {
-		zlog.Sugar().Errorf("Failed to marshal message: %v", err)
-		return err
-	}
-	err = ps.Topic.Publish(context.Background(), msgBytes)
-	if err != nil {
-		zlog.Sugar().Errorf("Failed to publish message: %v", err)
-		return err
-	}
-
-	return nil
-}
-
-// Unsubscribe unsubscribes from the topic subscription.
-func (ps *PubSub) Unsubscribe() {
-	ps.Sub.Cancel()
 }
 
 type blankValidator struct{}
