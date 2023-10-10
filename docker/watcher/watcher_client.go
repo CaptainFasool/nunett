@@ -25,7 +25,10 @@ import (
 	"context"
 	"log"
 	"net"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"os"
@@ -34,14 +37,35 @@ import (
 	"github.com/docker/docker/client"
 )
 
+func init() {
+	// Create a channel to receive OS signals
+	sigs := make(chan os.Signal, 1)
+
+	// Notify the channel for SIGINT
+	signal.Notify(sigs, syscall.SIGINT)
+
+	go func() {
+		// Block until a signal is received.
+		<-sigs
+		// Do nothing (or you can log that SIGINT is received but ignored)
+	}()
+}
+
 const (
 	heartbeatTimeout = 20 * time.Second
 )
 
 var lastHeartbeatReceived time.Time
+var heartbeatMutex sync.Mutex
+
+func updateHeartbeatTime(t time.Time) {
+	heartbeatMutex.Lock()
+	defer heartbeatMutex.Unlock()
+	lastHeartbeatReceived = t
+}
 
 func WatchForHeartbeats() {
-	lastHeartbeatReceived = time.Now() // initialize with the current time
+	updateHeartbeatTime(time.Now())
 
 	conn, err := net.Dial("tcp", "localhost"+port)
 	if err != nil {
@@ -53,14 +77,16 @@ func WatchForHeartbeats() {
 
 	buffer := make([]byte, 128)
 	for {
-		_, err := conn.Read(buffer)
+		n, err := conn.Read(buffer)
 		if err != nil {
 			log.Println("Error reading heartbeat:", err)
-			continue
+			return
 		}
 
-		// Update the time of the last received heartbeat
-		lastHeartbeatReceived = time.Now()
+		if string(buffer[:n]) == "heartbeat" {
+			log.Println("Heartbeat received from server")
+			updateHeartbeatTime(time.Now())
+		}
 	}
 }
 
@@ -88,16 +114,23 @@ func cleanup() {
 	}
 
 	for _, container := range containers {
+		log.Printf("Inspecting container with name: %s", container.Names[0]) // Debugging line
 		if matchesNamingConvention(container.Names[0]) {
+			log.Printf("Attempting to stop container: %s", container.Names[0]) // Debugging line
 			// Stop the container
 			if err := cli.ContainerStop(ctx, container.ID, nil); err != nil {
 				log.Printf("Failed to stop container %s: %v", container.ID, err)
+			} else {
+				log.Printf("Successfully stopped container %s", container.ID) // Debugging line
 			}
+
+			log.Printf("Attempting to remove container: %s", container.Names[0]) // Debugging line
 			// Remove the container
 			if err := cli.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{}); err != nil {
 				log.Printf("Failed to remove container %s: %v", container.ID, err)
+			} else {
+				log.Printf("Successfully removed container %s", container.ID) // Debugging line
 			}
-			log.Printf("Stopped and removed container %s", container.ID)
 		}
 	}
 
@@ -107,6 +140,7 @@ func cleanup() {
 
 // This function checks if a given container name matches our naming convention.
 func matchesNamingConvention(name string) bool {
+	name = strings.TrimPrefix(name, "/")
 	return strings.HasPrefix(name, "DMS_")
 }
 

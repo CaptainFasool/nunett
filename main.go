@@ -24,7 +24,6 @@ func main() {
 	// Start the watcher client to monitor the DMS heartbeats
 	go watcher.StartServerAndClient()
 	go watcher.WatchForHeartbeats()
-
 	db.ConnectDatabase()
 	cmd.Execute()
 }
