@@ -32,6 +32,11 @@ var (
 	cpuPeriod         int64         = 100000
 	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
 )
+var dmsUniqueIdentifier string
+
+func init() {
+	dmsUniqueIdentifier = time.Now().Format("20060102150405") // YYYYMMDDHHMMSS format
+}
 
 func freeUsedResources() {
 	// update the available resources table
@@ -68,9 +73,11 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	}
 	modelURL := depReq.Params.ModelURL
 	packages := strings.Join(depReq.Params.Packages, " ")
+	containerName := fmt.Sprintf("DMS_%s_%s", dmsUniqueIdentifier, depReq.TxHash) // Using TxHash as a unique identifier for the job
 	containerConfig := &container.Config{
-		Image: imageName,
-		Cmd:   []string{modelURL, packages},
+		Image:    imageName,
+		Cmd:      []string{modelURL, packages},
+		Hostname: containerName,
 	}
 	// Get onboarded resources
 	cpuQuota, memoryMax, err := fetchOnboardedResources()
