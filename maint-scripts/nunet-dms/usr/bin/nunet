@@ -44,6 +44,7 @@ usage() {
     echo "  shell               Send commands and receive answers to a vm instance via DMS"
     echo "  peer                Interact with currently visible peers"
     echo "  chat                Start,Join or List Chat Requests"
+    echo "  device               Pause the device for job deployments"
     echo "  log                 Returns the path of an archive containing all log files"
     echo -e "  version             Current DMS Version \n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
@@ -153,6 +154,27 @@ chat_join_usage() {
     exit
 }
 
+device_usage() {
+    echo -e "Usage: $SELF_NAME device COMMAND \n"
+    echo -e "Manage device status (online/offline).\n"
+    echo "Commands:"
+    echo -e "  status         Get current device status."
+    echo -e "  set            Set device status.\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+device_set_usage() {
+    echo -e "Usage: $SELF_NAME device set STATUS\n"
+    echo -e "Set device to online or offline.\n"
+    echo "Status Options:"
+    echo -e "  online         Set device to online - able to receive incoming jobs."
+    echo -e "  offline        Set device to offline - unable to receive incoming jobs.\n"
+    echo "Options:"
+    echo -e "    -h, --help              This Menu\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
 resource_config_usage() {
     echo -e "Usage: $SELF_NAME config [-mcvp] \n"
     echo -e "Change the configuration of onboarded device for make available on nunet.\n"
@@ -164,6 +186,78 @@ resource_config_usage() {
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
+
+device() {
+    if [[ ${#@} -lt 1 ]] ; then
+        device_usage
+    fi
+
+    args=($@)
+    subcmd=$1
+
+    devicesubcmds=("status" "set") # list of sub-sub-commands for device sub-command
+
+    if [[ " ${devicesubcmds[*]} " =~ " ${subcmd} " ]] ; then
+       device_$subcmd ${args[@]:1}
+    else
+        printf "${BAD_C}Command doesn't exist. Only 'device (status|set)'.${NORMAL_C}\n"
+        device_usage
+    fi
+}
+
+
+device_status() {
+    if [[ ${#@} -gt 0 ]]; then
+        case $1 in
+            "-h" | "--help")
+                pause_usage
+                ;;
+            *)
+                printf "${BAD_C}The 'pause' command does not accept arguments. ${NORMAL_C}\n"
+                pause_usage
+                ;;
+        esac
+        exit
+    fi
+
+    DEVICE_STATUS_RESPONSE=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/device/status)
+    error_msg=$(echo $DEVICE_STATUS_RESPONSE | jq '. | select(.error != null) | .error' 2>/dev/null)
+
+    if [[ -z "$error_msg" ]] ; then
+        current_device_status=$(echo $DEVICE_STATUS_RESPONSE | jq .online)
+        if [[ $current_device_status == "true" ]] ; then
+            printf "Status=${GOOD_C}Online${NORMAL_C}\n"
+        else
+            printf "Status=${INFO_C}Offline${NORMAL_C}\n"
+        fi
+    else
+        printf "${BAD_C}Error while trying to pause the device: $error_msg ${NORMAL_C}\n"
+    fi
+}
+
+device_set() {
+    if [[ ${#@} -lt 1 ]] ; then
+        device_set_usage
+    fi
+
+    if [[ $1 == "-h" || $1 == "--help" ]] ; then
+        device_set_usage
+    fi
+
+     if [[ $1 == "online" || $1 == "offline" ]] ; then
+        [ $1 == "online" ] && NEW_DEVICE_STATUS=true || NEW_DEVICE_STATUS=false
+        DEVICE_SET_RESPONSE=$(curl -s -X POST -d "{\"is_available\" : $NEW_DEVICE_STATUS}" $DMS_HOST:$DMS_PORT/api/v1/device/status)
+        error_msg=$(echo $DEVICE_SET_RESPONSE | jq '. | select(.error != null) | .error' 2>/dev/null)
+
+        if [[ -z "$error_msg" ]] ; then
+            success_msg=$(echo $DEVICE_SET_RESPONSE | jq -r '. | select(.message != null) | .message' 2>/dev/null)
+            printf "${GOOD_C}$success_msg${NORMAL_C}\n"
+        else
+            printf "${BAD_C}Error while trying to set the device status: $error_msg ${NORMAL_C}\n"
+        fi
+    fi
+}
+
 
 gpu_status() {
     if ! command -v nvidia-smi > /dev/null && ! command -v rocm-smi > /dev/null; then
@@ -1273,7 +1367,7 @@ check_dms_run() {
 }
 
 
-cmds=("capacity" "wallet" "onboard" "offboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version" "default-depreq-peer")
+cmds=("capacity" "wallet" "onboard" "offboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version" "default-depreq-peer" "device")
 
 if [ $# -eq  0 ] ; then
     usage

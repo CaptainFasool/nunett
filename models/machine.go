@@ -110,6 +110,7 @@ type resources struct {
 
 type PeerData struct {
 	PeerID               string        `json:"peer_id"`
+	IsAvailable          bool          `json:"is_available"`
 	HasGpu               bool          `json:"has_gpu"`
 	AllowCardano         bool          `json:"allow_cardano"`
 	GpuInfo              []Gpu         `json:"gpu_info"`

@@ -26,6 +26,7 @@ func SetUpRouter() *gin.Engine {
 		onboardingRoute.GET("/provisioned", onboarding.ProvisionedCapacity)
 		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
 	}
+
 	return router
 }
 
