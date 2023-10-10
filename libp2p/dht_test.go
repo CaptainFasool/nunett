@@ -23,6 +23,22 @@ func TestBootstrap(t *testing.T) {
 
 }
 
+func TestPeersWithAvailability(t *testing.T) {
+	var peers []models.PeerData
+	var peer1, peer2, peer3 models.PeerData
+
+	peer1.IsAvailable = true
+	peer2.IsAvailable = true
+	peer3.IsAvailable = false
+
+	peers = append(peers, peer1, peer2, peer3)
+	res := PeersWithAvailability(peers)
+
+	assert.Equal(t, 2, len(res), "Expected 2 available peers but got a different count")
+	assert.True(t, res[0].IsAvailable, "Expected the first peer to be available")
+	assert.True(t, res[1].IsAvailable, "Expected the second peer to be available")
+}
+
 func TestPeersWithCardanoAllowed(t *testing.T) {
 	var peers []models.PeerData
 	var peer1, peer2, peer3 models.PeerData

@@ -17,6 +17,8 @@ import (
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
+	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -25,6 +27,98 @@ import (
 )
 
 var clients = make(map[internal.WebSocketConnection]string)
+
+// DeviceStatusHandler  godoc
+//
+// @Summary		    Retrieve device status
+// @Description	    Retrieve device status whether paused/offline (unable to receive job deployments) or online
+// @Tags			device
+// @Produce		    json
+// @Success		    200	{string}	string
+// @Router			/device/status [get]
+func DeviceStatusHandler(c *gin.Context) {
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+
+	// Fetch the raw peer data
+	peerDataRaw, err := p2p.Host.Peerstore().Get(p2p.Host.ID(), "peer_info")
+	if err != nil {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Couldn't retrieve data - error: %v - Try again in a few minutes", err)})
+		return
+	}
+
+	peerData, ok := peerDataRaw.(models.PeerData)
+	if !ok {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Failed to type assert peer data for peer: %s", p2p.Host.ID().String())})
+		return
+	}
+
+	c.JSON(200, gin.H{"online": peerData.IsAvailable})
+}
+
+// DeviceStatusChangeHandler  godoc
+//
+// @Summary		    Change device status between online/offline
+// @Description	    Change device status to online (able to receive jobs) or offline (unable to receive jobs).
+// @Tags			device
+// @Produce		    json
+// @Success		    200	{string}	string
+// @Router			/device/status [post]
+func DeviceStatusChangeHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/device/pause"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Pause job onboarding", span)
+
+	if p2p.Host == nil {
+		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+		return
+	}
+
+	// Fetch the raw peer data
+	peerDataRaw, err := p2p.Host.Peerstore().Get(p2p.Host.ID(), "peer_info")
+	if err != nil {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Couldn't retrieve data - error: %v - Try again in a few minutes", err)})
+		return
+	}
+
+	peerData, ok := peerDataRaw.(models.PeerData)
+	if !ok {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Failed to type assert peer data for peer: %s", p2p.Host.ID().String())})
+		return
+	}
+
+	var deviceStatus struct {
+		IsAvailable bool `json:"is_available"`
+	}
+
+	if c.Request.ContentLength == 0 {
+		c.JSON(500, gin.H{"error": "no data provided"})
+		return
+	}
+	if err := c.ShouldBindJSON(&deviceStatus); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	if peerData.IsAvailable == deviceStatus.IsAvailable {
+		c.JSON(500, gin.H{"error": "no change in device status"})
+		return
+	}
+
+	peerData.IsAvailable = deviceStatus.IsAvailable
+	p2p.Host.Peerstore().Put(p2p.Host.ID(), "peer_info", peerData)
+
+	UpdateKadDHT()
+
+	if deviceStatus.IsAvailable {
+		c.JSON(200, gin.H{"message": "Device status successfully changed to online"})
+	} else {
+		c.JSON(200, gin.H{"message": "Device status successfully changed to offline"})
+	}
+}
 
 // ListPeers  godoc
 //
@@ -60,6 +154,7 @@ func ListPeers(c *gin.Context) {
 }
 
 // ListPeers  godoc
+// ssss
 //
 //	@Summary		Return list of peers which have sent a dht update
 //	@Description	Gets a list of peers the libp2p node has received a dht update from

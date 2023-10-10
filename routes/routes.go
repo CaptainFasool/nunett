@@ -35,6 +35,12 @@ func SetupRouter() *gin.Engine {
 		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
 	}
 
+	device := v1.Group("/device")
+	{
+		device.GET("/status", libp2p.DeviceStatusHandler)
+		device.POST("/status", libp2p.DeviceStatusChangeHandler)
+	}
+
 	virtualmachine := v1.Group("/vm")
 	{
 		virtualmachine.POST("/start-default", firecracker.StartDefault)
