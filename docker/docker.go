@@ -18,13 +18,13 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
 	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
+	"gitlab.com/nunet/device-management-service/telemetry"
 	"go.uber.org/zap"
 )
 
@@ -35,9 +35,9 @@ var (
 
 func freeUsedResources() {
 	// update the available resources table
-	err := telemetry.CalcFreeResources()
+	err := telemetry.CalcFreeResAndUpdateDB()
 	if err != nil {
-		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
 	}
 	freeResource, err := telemetry.GetFreeResources()
 	if err != nil {
@@ -195,7 +195,14 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	}
 	// TODO: Update service based on passed pk
 
-	telemetry.CalcFreeResources()
+	err = telemetry.CalcFreeResAndUpdateDB()
+	if err != nil {
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with free resources calculation. Unable to process request."}
+		resCh <- depRes
+		return
+	}
+
 	libp2p.UpdateKadDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
