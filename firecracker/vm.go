@@ -15,10 +15,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -154,8 +154,12 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 
 	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
-	telemetry.CalcFreeResources()
-	_, err := telemetry.GetFreeResources()
+	err := telemetry.CalcFreeResAndUpdateDB()
+	if err != nil {
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+	}
+
+	_, err = telemetry.GetFreeResources()
 	if err != nil {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}
@@ -180,8 +184,12 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 
 	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
-	telemetry.CalcFreeResources()
-	_, err := telemetry.GetFreeResources()
+	err := telemetry.CalcFreeResAndUpdateDB()
+	if err != nil {
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+	}
+
+	_, err = telemetry.GetFreeResources()
 	if err != nil {
 		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
 	}

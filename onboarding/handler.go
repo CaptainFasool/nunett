@@ -12,12 +12,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/spf13/afero"
@@ -251,7 +251,12 @@ func Onboard(c *gin.Context) {
 	}
 	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
 
-	telemetry.CalcFreeResources()
+	err = telemetry.CalcFreeResAndUpdateDB()
+	if err != nil {
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		// Should we return http error also?
+	}
+
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 
 	_, err = heartbeat.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)
@@ -334,7 +339,13 @@ func ResourceConfig(c *gin.Context) {
 		return
 	}
 	klogger.Logger.Info("device resource changed")
-	telemetry.CalcFreeResources()
+
+	err = telemetry.CalcFreeResAndUpdateDB()
+	if err != nil {
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		// Should we return http error also?
+	}
+
 	c.JSON(http.StatusOK, metadata)
 }
 
@@ -389,7 +400,6 @@ func Offboard(c *gin.Context) {
 		}
 	}
 
-	telemetry.DeleteCalcFreeResources()
 	err = libp2p.ShutdownNode()
 	if err != nil && !force {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to properly shutdown the node"})

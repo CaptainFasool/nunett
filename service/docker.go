@@ -159,7 +159,14 @@ func (dj *DockerJob) Run(
 
 	// service.ResourceRequirements = int(resourceRequirements.ID)
 
-	// telemetry.CalcFreeResources()
+	// err = telemetry.CalcFreeResAndUpdateDB()
+	// if err != nil {
+	// 	zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+	// 	depRes := models.DeploymentResponse{Success: false, Content: "Problem with free resources calculation. Unable to process request."}
+	// 	resCh <- depRes
+	// 	return
+	// }
+
 	// freeResource, err := telemetry.GetFreeResources()
 	// if err != nil {
 	// 	dj.log.Sugar().Errorf("Error getting freeResources: %v", err)

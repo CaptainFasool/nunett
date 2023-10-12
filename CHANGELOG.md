@@ -21,7 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.131](#249)
 
+### Changed
+- Changed the telemetry/ folder from firecracker/ to the repository's root.
+- Created some functions to abstract the additions/subtractions of resource usage and available resources.
+- Unit/Integration tests for most of the functions of Telemetry package, the main one being calcFreeResources()
 ## [0.4.130](#9)
 
 ### Added
