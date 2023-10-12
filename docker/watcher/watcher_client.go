@@ -25,10 +25,8 @@ import (
 	"context"
 	"log"
 	"net"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"os"
@@ -36,20 +34,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
-
-func init() {
-	// Create a channel to receive OS signals
-	sigs := make(chan os.Signal, 1)
-
-	// Notify the channel for SIGINT
-	signal.Notify(sigs, syscall.SIGINT)
-
-	go func() {
-		// Block until a signal is received.
-		<-sigs
-		// Do nothing (or you can log that SIGINT is received but ignored)
-	}()
-}
 
 const (
 	heartbeatTimeout = 20 * time.Second

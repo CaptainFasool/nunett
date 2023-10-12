@@ -4,7 +4,6 @@ import (
 	"log"
 	"net"
 	"os/exec"
-	"syscall"
 	"time"
 )
 
@@ -55,18 +54,14 @@ func handleConnection(c net.Conn) {
 }
 
 func startWatcherClient() {
-	cmd := exec.Command("go", "run", "./docker/watcher/watcher_client.go")
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
-
-	// Redirecting standard output and error to /dev/null
-	cmd.Stdout = nil
-	cmd.Stderr = nil
+	// This shell command runs the watcher_client in the background and redirects both its
+	// standard output and standard error to watcher_client.log.
+	cmdStr := "nohup go run ./docker/watcher/watcher_client.go > watcher_client.log 2>&1 &"
+	cmd := exec.Command("sh", "-c", cmdStr)
 
 	err := cmd.Start()
 	if err != nil {
 		log.Fatalf("Error starting the watcher: %s", err)
 	}
-	log.Println("Watcher process started with PID:", cmd.Process.Pid)
+	log.Println("Watcher process started.")
 }
