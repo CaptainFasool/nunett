@@ -22,6 +22,11 @@ Types of changes
 -->
 
 
+## [0.4.130](#9)
+
+### Added
+- Allow setting device status (online/offline)
+- Rest endpoints and CLI commands to set device status
 ## [0.4.129](#278)
 
 ### Added

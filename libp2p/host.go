@@ -109,6 +109,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
 		peerInfo := models.PeerData{}
 		peerInfo.PeerID = host.ID().String()
+		peerInfo.IsAvailable = true
 		peerInfo.AllowCardano = metadata2.AllowCardano
 		peerInfo.TokenomicsAddress = metadata2.PublicKey
 		if len(metadata2.GpuInfo) == 0 {
