@@ -10,7 +10,7 @@ import (
 const (
 	heartbeatInterval = 5 * time.Second
 	port              = ":9898"
-	watchdogBinary    = "./watchdog/watchdog"
+	watchdogBinary    = "./docker/watcher/watchdog/watchdog"
 )
 
 // StartWatcherAndInvokeWatchdog starts the watcher server and invokes the watchdog.
