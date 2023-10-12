@@ -21,9 +21,10 @@ import (
 // @host		localhost:9999
 // @BasePath	/api/v1
 func main() {
-	// Start the watcher client to monitor the DMS heartbeats
-	go watcher.StartServerAndClient()
-	go watcher.WatchForHeartbeats()
+	// Start the watcher which will also invoke the watchdog
+	go watcher.StartWatcherAndInvokeWatchdog()
+
 	db.ConnectDatabase()
+
 	cmd.Execute()
 }

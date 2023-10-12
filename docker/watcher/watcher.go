@@ -10,11 +10,13 @@ import (
 const (
 	heartbeatInterval = 5 * time.Second
 	port              = ":9898"
+	watchdogBinary    = "./watchdog/watchdog"
 )
 
-func StartServerAndClient() {
+// StartWatcherAndInvokeWatchdog starts the watcher server and invokes the watchdog.
+func StartWatcherAndInvokeWatchdog() {
 	go startServer()
-	startWatcherClient()
+	invokeWatchdog()
 }
 
 func startServer() {
@@ -53,15 +55,12 @@ func handleConnection(c net.Conn) {
 	}
 }
 
-func startWatcherClient() {
-	// This shell command runs the watcher_client in the background and redirects both its
-	// standard output and standard error to watcher_client.log.
-	cmdStr := "nohup go run ./docker/watcher/watcher_client.go > watcher_client.log 2>&1 &"
-	cmd := exec.Command("sh", "-c", cmdStr)
+func invokeWatchdog() {
+	cmd := exec.Command(watchdogBinary)
 
 	err := cmd.Start()
 	if err != nil {
-		log.Fatalf("Error starting the watcher: %s", err)
+		log.Fatalf("Error starting the watchdog: %s", err)
 	}
-	log.Println("Watcher process started.")
+	log.Println("Watchdog process started.")
 }
