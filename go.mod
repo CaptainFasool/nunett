@@ -222,9 +222,10 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20181012123002-c6f51f82210d
 	github.com/elastic/go-elasticsearch/v8 v8.8.0
 	github.com/google/uuid v1.3.1
-	github.com/jaypipes/ghw v0.10.0
+	github.com/jaypipes/ghw v0.12.0
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/shoenig/go-m1cpu v0.1.6
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/uptrace/opentelemetry-go-extra/otelzap v0.1.21

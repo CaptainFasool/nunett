@@ -21,6 +21,13 @@ Types of changes
 
 -->
 
+## [0.4.132](#273)
+
+### Changed
+- Support Darwin arm64 and amd64 builds
+- Makefile for building
+- Separate GPU detection for linux/darwin , arm64/amd64
+- No GPU detection support for Darwin
 ## [0.4.131](#249)
 
 ### Changed

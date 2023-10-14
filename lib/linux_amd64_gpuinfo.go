@@ -1,4 +1,6 @@
-package gpuinfo
+//go:build linux && amd64
+
+package library
 
 import (
 	"fmt"
@@ -9,20 +11,31 @@ import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
-type GPUVendor int
-
-const (
-	Unknown GPUVendor = iota
-	NVIDIA
-	AMD
-)
-
 type GPUInfo struct {
 	GPUName     string
 	TotalMemory uint64
 	UsedMemory  uint64
 	FreeMemory  uint64
 	Vendor      GPUVendor
+}
+
+func GetGPUInfo() ([][]GPUInfo, error) {
+	var gpu_infos [][]GPUInfo
+	amd_gpus, err := GetAMDGPUInfo()
+	if err != nil {
+		zlog.Sugar().Errorf("AMD GPU/Driver not found: %v", err)
+		return nil, err
+	}
+	gpu_infos[0] = amd_gpus
+
+	nvidia_gpus, err := GetNVIDIAGPUInfo()
+	if err != nil {
+		zlog.Sugar().Errorf("NVIDIA GPU/Driver not found: %v", err)
+		return nil, err
+	}
+	gpu_infos[1] = nvidia_gpus
+
+	return gpu_infos, nil
 }
 
 func GetAMDGPUInfo() ([]GPUInfo, error) {

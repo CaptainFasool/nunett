@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -20,10 +21,10 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
+	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
-	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
 	"gitlab.com/nunet/device-management-service/telemetry"
 	"go.uber.org/zap"
 )
@@ -47,6 +48,33 @@ func freeUsedResources() {
 	libp2p.UpdateKadDHT()
 }
 
+func mhzPerCore() (float64, error) {
+	// cpus, err := cpu.Info()
+	// if err != nil {
+	// 	zlog.Sugar().Errorf("failed to get cpu info: %v", err)
+	// 	return 0, err
+	// }
+	return library.Hz_per_cpu(), nil
+}
+
+func round(num float64) int {
+	return int(num + math.Copysign(0.5, num))
+}
+
+func toFixed(num float64, precision int) float64 {
+	output := math.Pow(10, float64(precision))
+	return float64(round(num*output)) / output
+}
+
+func mhzToVCPU(cpuInMhz int) (float64, error) {
+	mhz, err := mhzPerCore()
+	if err != nil {
+		return 0, err
+	}
+	vcpu := float64(cpuInMhz) / mhz
+	return toFixed(vcpu, 2), nil
+}
+
 func groupExists(groupName string) bool {
 	_, err := user.LookupGroup(groupName)
 	return err == nil
@@ -55,7 +83,7 @@ func groupExists(groupName string) bool {
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
 // log update every logUpdateDuration.
-func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdLog LogbinResponse, resCh chan<- models.DeploymentResponse, servicePK uint, chosenGPUVendor gpuinfo.GPUVendor) {
+func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdLog LogbinResponse, resCh chan<- models.DeploymentResponse, servicePK uint, chosenGPUVendor library.GPUVendor) {
 	zlog.Info("Entering RunContainer")
 	machine_type := depReq.Params.MachineType
 	gpuOpts := opts.GpuOpts{}
@@ -63,7 +91,7 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		gpuOpts.Set("all") // TODO find a way to use GPU and CPU
 	}
 	imageName := depReq.Params.ImageID
-	if chosenGPUVendor == gpuinfo.AMD {
+	if chosenGPUVendor == library.AMD {
 		imageName += "-amd"
 	}
 	modelURL := depReq.Params.ModelURL
@@ -92,7 +120,7 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 
 	hostConfigAMDGPU := container.HostConfig{}
 
-	if chosenGPUVendor == gpuinfo.AMD {
+	if chosenGPUVendor == library.AMD {
 		hostConfigAMDGPU = container.HostConfig{
 			Binds: []string{
 				"/dev/kfd:/dev/kfd",
@@ -379,28 +407,36 @@ func calculateResourceUsage(input string) float64 {
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, delete container, send log to the requester
 func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) models.DeploymentResponse {
-	var chosenGPUVendor gpuinfo.GPUVendor
+	var chosenGPUVendor library.GPUVendor
 	if depReq.Params.MachineType == "gpu" {
 		// Finding the GPU with the highest free VRAM regardless of vendor type
 		// Get AMD GPU info
-		amdGPUs, err := gpuinfo.GetAMDGPUInfo()
+		// var gpu_infos [][]library.GPUInfo
+		gpu_infos, err := library.GetGPUInfo()
 		if err != nil {
-			zlog.Sugar().Errorf("AMD GPU/Driver not found: %v", err)
+			zlog.Sugar().Errorf("GPU/Driver not found: %v", err)
 		}
+		amdGPUs := gpu_infos[0]
+		nvidiaGPUs := gpu_infos[1]
 
-		// Get NVIDIA GPU info
-		nvidiaGPUs, err := gpuinfo.GetNVIDIAGPUInfo()
-		if err != nil {
-			zlog.Sugar().Errorf("NVIDIA GPU/Driver not found: %v", err)
-			// return here and not above for AMD because we need to have at least one GPU
-			return models.DeploymentResponse{Success: false, Content: "Unable to get GPU info."}
-		}
+		// amdGPUs, err := library.GetAMDGPUInfo()
+		// if err != nil {
+		// 	zlog.Sugar().Errorf("AMD GPU/Driver not found: %v", err)
+		// }
+
+		// // Get NVIDIA GPU info
+		// nvidiaGPUs, err := gpuinfo.GetNVIDIAGPUInfo()
+		// if err != nil {
+		// 	zlog.Sugar().Errorf("NVIDIA GPU/Driver not found: %v", err)
+		// 	// return here and not above for AMD because we need to have at least one GPU
+		// 	return models.DeploymentResponse{Success: false, Content: "Unable to get GPU info."}
+		// }
 
 		// Combine AMD and NVIDIA GPU info
 		allGPUs := append(amdGPUs, nvidiaGPUs...)
 
 		// Find the GPU with the highest free VRAM
-		var maxFreeVRAMGPU gpuinfo.GPUInfo
+		var maxFreeVRAMGPU library.GPUInfo
 		maxFreeVRAM := uint64(0)
 		for _, gpu := range allGPUs {
 			if gpu.FreeMemory > maxFreeVRAM {
@@ -409,10 +445,10 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 			}
 		}
 
-		if maxFreeVRAMGPU.Vendor == gpuinfo.NVIDIA {
-			chosenGPUVendor = gpuinfo.NVIDIA
-		} else if maxFreeVRAMGPU.Vendor == gpuinfo.AMD {
-			chosenGPUVendor = gpuinfo.AMD
+		if maxFreeVRAMGPU.Vendor == library.NVIDIA {
+			chosenGPUVendor = library.NVIDIA
+		} else if maxFreeVRAMGPU.Vendor == library.AMD {
+			chosenGPUVendor = library.AMD
 		} else {
 			fmt.Println("Unknown GPU vendor")
 			// return here because we need to have at least one GPU
@@ -428,7 +464,7 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	}
 	// Pull the image
 	imageName := depReq.Params.ImageID
-	if chosenGPUVendor == gpuinfo.AMD {
+	if chosenGPUVendor == library.AMD {
 		imageName += "-amd"
 	}
 	err := PullImage(ctx, imageName)
