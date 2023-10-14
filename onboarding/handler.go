@@ -15,6 +15,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
+	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/telemetry"
@@ -54,12 +55,12 @@ func GetMetadata(c *gin.Context) {
 //	@Success		200	{object}	models.Provisioned
 //	@Router			/onboarding/provisioned [get]
 func ProvisionedCapacity(c *gin.Context) {
-	totalProvisioned := GetTotalProvisioned()
+	totalProvisioned := library.GetTotalProvisioned()
 	totalPJ, err := json.Marshal(totalProvisioned)
 	if err != nil {
 		zlog.Sugar().ErrorfContext(c.Request.Context(), "couldn't marshal totalProvisioned to json: %v", string(totalPJ))
 	}
-	c.JSON(http.StatusOK, GetTotalProvisioned())
+	c.JSON(http.StatusOK, library.GetTotalProvisioned())
 }
 
 // CreatePaymentAddress      godoc
@@ -150,9 +151,9 @@ func Onboard(c *gin.Context) {
 
 	currentTime := time.Now().Unix()
 
-	totalCpu := GetTotalProvisioned().CPU
-	totalMem := GetTotalProvisioned().Memory
-	numCores := GetTotalProvisioned().NumCores
+	totalCpu := library.GetTotalProvisioned().CPU
+	totalMem := library.GetTotalProvisioned().Memory
+	numCores := library.GetTotalProvisioned().NumCores
 
 	// create metadata
 	var metadata models.MetadataV2
@@ -186,7 +187,7 @@ func Onboard(c *gin.Context) {
 		metadata.AllowCardano = true
 	}
 
-	gpu_info, err := Check_gpu()
+	gpu_info, err := library.Check_gpu()
 	if err != nil {
 		zlog.Sugar().Errorf("Unable to detect GPU: %v ", err.Error())
 	}
@@ -223,11 +224,11 @@ func Onboard(c *gin.Context) {
 	available_resources := models.AvailableResources{
 		TotCpuHz:  int(capacityForNunet.CPU),
 		CpuNo:     int(numCores),
-		CpuHz:     hz_per_cpu(),
+		CpuHz:     library.Hz_per_cpu(),
 		PriceCpu:  0, // TODO: Get price of CPU
 		Ram:       int(capacityForNunet.Memory),
 		PriceRam:  0, // TODO: Get price of RAM
-		Vcpu:      int(math.Floor((float64(capacityForNunet.CPU)) / hz_per_cpu())),
+		Vcpu:      int(math.Floor((float64(capacityForNunet.CPU)) / library.Hz_per_cpu())),
 		Disk:      0,
 		PriceDisk: 0,
 	}
@@ -418,8 +419,8 @@ func fileExists(filename string) bool {
 }
 
 func validateCapacityForNunet(capacityForNunet models.CapacityForNunet) error {
-	totalCpu := GetTotalProvisioned().CPU
-	totalMem := GetTotalProvisioned().Memory
+	totalCpu := library.GetTotalProvisioned().CPU
+	totalMem := library.GetTotalProvisioned().Memory
 
 	if capacityForNunet.CPU > int64(totalCpu*9/10) || capacityForNunet.CPU < int64(totalCpu/10) {
 		return fmt.Errorf("CPU should be between 10%% and 90%% of the available CPU (%d and %d)", int64(totalCpu/10), int64(totalCpu*9/10))

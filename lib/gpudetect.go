@@ -1,4 +1,4 @@
-package gpudetect
+package library
 
 import (
 	"strings"

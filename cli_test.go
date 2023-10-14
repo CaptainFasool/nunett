@@ -16,6 +16,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
+	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
@@ -251,7 +252,7 @@ func (s *MyTestSuite) TestNunetInfoNoMetadataCLI() {
 }
 
 func (s *MyTestSuite) TestNunetInfoCLICPU() {
-	gpu, _ := onboarding.Check_gpu()
+	gpu, _ := library.Check_gpu()
 	if len(gpu) == 0 {
 		expectedJsonString := `{
 		"name": "TestMachineData",
@@ -292,7 +293,7 @@ func (s *MyTestSuite) TestNunetInfoCLICPU() {
 }
 
 func (s *MyTestSuite) TestNunetInfoCLIGPU() {
-	gpu, _ := onboarding.Check_gpu()
+	gpu, _ := library.Check_gpu()
 	if len(gpu) > 0 {
 		expectedJsonString := `{
 		"name": "TestMachineData",
