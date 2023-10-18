@@ -21,6 +21,10 @@ Types of changes
 
 -->
 
+## [0.4.133](#314)
+
+### Fixed
+- GPU detection on job start (#314)
 ## [0.4.132](#273)
 
 ### Changed

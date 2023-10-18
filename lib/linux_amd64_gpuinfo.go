@@ -20,17 +20,16 @@ type GPUInfo struct {
 }
 
 func GetGPUInfo() ([][]GPUInfo, error) {
-	var gpu_infos [][]GPUInfo
+	gpu_infos := make([][]GPUInfo, 2)
 	amd_gpus, err := GetAMDGPUInfo()
 	if err != nil {
-		zlog.Sugar().Errorf("AMD GPU/Driver not found: %v", err)
-		return nil, err
+		zlog.Sugar().Warnf("AMD GPU not found: %v", err)
 	}
 	gpu_infos[0] = amd_gpus
 
 	nvidia_gpus, err := GetNVIDIAGPUInfo()
-	if err != nil {
-		zlog.Sugar().Errorf("NVIDIA GPU/Driver not found: %v", err)
+	if err != nil && amd_gpus == nil {
+		zlog.Sugar().Errorf("NVIDIA GPU not found: %v", err)
 		return nil, err
 	}
 	gpu_infos[1] = nvidia_gpus
