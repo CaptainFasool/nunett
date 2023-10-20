@@ -1,12 +1,14 @@
 package docker
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 
@@ -18,6 +20,8 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
@@ -26,6 +30,7 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
 	"gitlab.com/nunet/device-management-service/telemetry"
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.uber.org/zap"
 )
 
@@ -163,6 +168,31 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		return
 	}
 
+	// Check if we have enough free resources before running Container
+	if (depReq.Constraints.RAM > freeRes.Ram) ||
+		(depReq.Constraints.CPU > freeRes.TotCpuHz) {
+		zlog.Sugar().Errorf("Not enough resources available to deploy container")
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with resources for deployment. Unable to process request."}
+		resCh <- depRes
+		return
+	}
+
+	// if resuming a job, bind the volume together
+	if depReq.Params.ResumeJob.Resume {
+		hostPath := filepath.Join(config.GetConfig().General.MetadataPath, "progress")
+		containerPath := "/workspace"
+		volumeBinding := fmt.Sprintf("%s:%s", hostPath, containerPath)
+
+		// preserve other binds from AMD host config
+		if chosenGPUVendor == library.AMD {
+			hostConfig.Binds = append(hostConfig.Binds, volumeBinding)
+		} else {
+			hostConfig = &container.HostConfig{
+				Binds: []string{volumeBinding},
+			}
+		}
+	}
+
 	resp, err := dc.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
 
 	if err != nil {
@@ -221,7 +251,6 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		resCh <- depRes
 		return
 	}
-	// TODO: Update service based on passed pk
 
 	err = telemetry.CalcFreeResAndUpdateDB()
 	if err != nil {
@@ -238,6 +267,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 
 	tick := time.NewTicker(logUpdateInterval)
 	defer tick.Stop()
+
+	containerTimeout := time.NewTimer(time.Duration(depReq.Constraints.Time) * time.Minute)
+	defer containerTimeout.Stop()
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	maxUsedRAM, maxUsedCPU, networkBwUsed := 0.0, 0.0, 0.0
@@ -289,7 +321,7 @@ outerLoop:
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
 
-			duration := time.Now().Sub(service.CreatedAt)
+			duration := time.Since(service.CreatedAt)
 			timeTaken := duration.Seconds()
 			averageNetBw := networkBwUsed / timeTaken
 
@@ -355,7 +387,14 @@ outerLoop:
 			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
-			db.DB.Save(requestTracker)
+
+			createTarballAndChecksum(dc, resp.ID, requestTracker.CallID)
+		case <-containerTimeout.C:
+			// We've hit a case where container has to be forcefully stopped due to timeout
+			zlog.Info("[container running] entering fourth case; container timeout")
+			beforeContainerTimeout(dc, resp.ID, requestTracker.CallID, depReq.Params.LocalNodeID)
+			dc.ContainerStop(ctx, resp.ID, nil)
+
 		}
 	}
 }
@@ -405,7 +444,7 @@ func calculateResourceUsage(input string) float64 {
 }
 
 // HandleDeployment does following docker based actions in the sequence:
-// Pull image, run container, get logs, delete container, send log to the requester
+// Pull image, run container, get logs, send log to the requester
 func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) models.DeploymentResponse {
 	var chosenGPUVendor library.GPUVendor
 	if depReq.Params.MachineType == "gpu" {
@@ -521,6 +560,88 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	// Send back createdLog.RawUrl
 	res.Content = createdLog.RawUrl
 	return res
+}
+
+// createTarballAndChecksum takes containerID and job id and creates a tarball
+// of the container along with sha256sum of the tarball.
+func createTarballAndChecksum(dc *client.Client, containerID string, callID int64) {
+	ctx := context.Background()
+	// create a tar of /workspace dir; which is where the image stores it's ML progress
+	tarStream, _, err := dc.CopyFromContainer(ctx, containerID, "/workspace")
+	if err != nil {
+		zlog.Sugar().Fatalf("Error getting tar stream:", err)
+	}
+	defer tarStream.Close()
+
+	// save the tarball to the designated place on host machine
+	checkpointPath := fmt.Sprintf("%s/checkpoints", config.GetConfig().General.MetadataPath)
+	// make sure the checkpointPath is an existing directory.
+	utils.CreateDirectoryIfNotExists(checkpointPath)
+
+	// use unique "job id" name for the tarball
+	tarOnHostPath := filepath.Join(checkpointPath, fmt.Sprintf("%d.tar.gz", callID))
+	tarballFile, err := os.Create(tarOnHostPath)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error creating tarball file:", err)
+	}
+	defer tarballFile.Close()
+
+	// Create a gzip writer for the tarball file
+	gzipWriter := gzip.NewWriter(tarballFile)
+	defer gzipWriter.Close()
+
+	// Copy the tar stream to the gzip writer (compressing it)
+	_, err = io.Copy(gzipWriter, tarStream)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error copying tar stream to tarball file:", err)
+	}
+
+	zlog.Debug("Tarball of the home directory created successfully.")
+
+	// Calculate the SHA-256 checksum of the tar.gz file
+	sha256Checksum, err := utils.CalculateSHA256Checksum(tarOnHostPath)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error calculating SHA-256 checksum:", err)
+	}
+
+	// Write the checksum to a .sha256.txt file
+	sha256FilePath := fmt.Sprintf("%s.sha256.txt", tarOnHostPath)
+	sha256File, err := os.Create(sha256FilePath)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error creating SHA-256 checksum file:", err)
+	}
+	defer sha256File.Close()
+
+	_, err = sha256File.WriteString(sha256Checksum)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error writing SHA-256 checksum:", err)
+	}
+
+	zlog.Debug("SHA-256 checksum written to .sha256.txt file.")
+}
+
+func sendBackupToSPD(containerID string, callID int64, spNodeID string) {
+	// send the tarball to SPD
+	checkpointPath := fmt.Sprintf("%s/checkpoints", config.GetConfig().General.MetadataPath)
+	tarOnHostPath := filepath.Join(checkpointPath, fmt.Sprintf("%d.tar.gz", callID))
+	spPeerID, err := peer.Decode(spNodeID)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error decoding spNodeID:", err)
+	}
+
+	// Send checksum file
+	checksumFile := fmt.Sprintf("%s.sha256.txt", tarOnHostPath)
+	libp2p.SendFileToPeer(context.Background(), spPeerID, checksumFile)
+	// Send tar file
+	libp2p.SendFileToPeer(context.Background(), spPeerID, tarOnHostPath)
+}
+
+// beforeContainerTimeout is a event handler which deals with initiating the
+// sending of final checkpoint to service provider (sp).
+func beforeContainerTimeout(dc *client.Client, containerID string, callID int64, spNodeID string) {
+	zlog.Debug("Sending final checkpoint to SPD")
+	createTarballAndChecksum(dc, containerID, callID)
+	sendBackupToSPD(containerID, callID, spNodeID)
 }
 
 // fetchOnboardedResources returns cpuQuota and memoryMax (in bytes) onboarded to nunet

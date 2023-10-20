@@ -3,6 +3,8 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -217,6 +219,39 @@ func ReadyForElastic() bool {
 	elasticToken := models.ElasticToken{}
 	db.DB.Find(&elasticToken)
 	return elasticToken.NodeId != "" && elasticToken.ChannelName != ""
+}
+
+// CreateDirectoryIfNotExists creates a directory if it does not exist
+func CreateDirectoryIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err := os.MkdirAll(path, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CalculateSHA256Checksum calculates the SHA256 checksum of a file
+func CalculateSHA256Checksum(filePath string) (string, error) {
+	// Open the file for reading
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	// Create a new SHA-256 hash
+	hash := sha256.New()
+
+	// Copy the file's contents into the hash object
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	// Calculate the checksum and return it as a hexadecimal string
+	checksum := hex.EncodeToString(hash.Sum(nil))
+	return checksum, nil
 }
 
 func PromptYesNo(prompt string) bool {

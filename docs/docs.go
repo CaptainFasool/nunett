@@ -747,6 +747,21 @@ const docTemplate = `{
                         "public_key": {
                             "description": "Public key of compute provider",
                             "type": "string"
+                        },
+                        "resume_job": {
+                            "type": "object",
+                            "properties": {
+                                "progress_file": {
+                                    "description": "TODO: Need to be actual file contents, not path/string",
+                                    "type": "string"
+                                },
+                                "progress_file_checksum": {
+                                    "type": "string"
+                                },
+                                "resume": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 },
@@ -927,7 +942,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.133",
+	Version:          "0.4.134",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

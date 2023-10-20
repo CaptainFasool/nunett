@@ -19,8 +19,13 @@ type DeploymentRequest struct {
 	RefundHash             string    `json:"refund_hash,omitempty"`
 	DistributeHash         string    `json:"distribute_hash,omitempty"`
 	Params                 struct {
-		ImageID         string   `json:"image_id"`
-		ModelURL        string   `json:"model_url"`
+		ImageID   string `json:"image_id"`
+		ModelURL  string `json:"model_url"`
+		ResumeJob struct {
+			Resume               bool   `json:"resume"`
+			ProgressFile         string `json:"progress_file"` // TODO: Need to be actual file contents, not path/string
+			ProgressFileChecksum string `json:"progress_file_checksum"`
+		} `json:"resume_job"`
 		Packages        []string `json:"packages"`
 		RemoteNodeID    string   `json:"node_id"`          // NodeID of compute provider (machine to deploy the job on)
 		RemotePublicKey string   `json:"public_key"`       // Public key of compute provider

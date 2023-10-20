@@ -47,7 +47,7 @@ const (
 
 var inboundChatStreams []network.Stream
 var inboundDepReqStream network.Stream
-var outboundDepReqStream network.Stream
+var OutboundDepReqStream network.Stream
 
 type OpenStream struct {
 	ID         int    `json:"id"`
@@ -149,7 +149,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 			zlog.Sugar().Errorf("connection error: closing stream and websocket %v", r)
 			if stream != nil {
 				stream.Close()
-				outboundDepReqStream = nil
+				OutboundDepReqStream = nil
 			}
 		}
 	}()
@@ -201,7 +201,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 				// job finished, closing stream
 				if stream != nil {
 					stream.Close()
-					outboundDepReqStream = nil
+					OutboundDepReqStream = nil
 				}
 				zlog.Sugar().Infof("Deployed job finished. Deleting DepReqFlat record (id=%d) from DB", depReqFlat.ID)
 				// XXX: Needs to be modified to take multiple deployment requests from same service provider
@@ -331,7 +331,7 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 	zlog.InfoContext(ctx, "Creating a new depReq!")
 
 	// limit to 1 request
-	if outboundDepReqStream != nil {
+	if OutboundDepReqStream != nil {
 		return nil, fmt.Errorf("couldn't create deployment request. a request already in progress")
 	}
 
@@ -340,7 +340,7 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 		return nil, fmt.Errorf("couldn't decode input peer-id '%s', : %v", depReq.Params.RemoteNodeID, err)
 	}
 
-	outboundDepReqStream, err := GetP2P().Host.NewStream(ctx, peerID, protocol.ID(DepReqProtocolID))
+	OutboundDepReqStream, err = GetP2P().Host.NewStream(ctx, peerID, protocol.ID(DepReqProtocolID))
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create deployment request stream: %v", err)
 	}
@@ -350,7 +350,7 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 		return nil, fmt.Errorf("couldn't convert deployment request to json: %v", err)
 	}
 
-	w := bufio.NewWriter(outboundDepReqStream)
+	w := bufio.NewWriter(OutboundDepReqStream)
 
 	zlog.Sugar().DebugfContext(ctx, "deployment request: %s", string(msg))
 
@@ -363,7 +363,7 @@ func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest)
 		return nil, fmt.Errorf("couldn't flush deployment request to stream: %v", err)
 	}
 
-	return outboundDepReqStream, nil
+	return OutboundDepReqStream, nil
 }
 
 func chatStreamHandler(stream network.Stream) {
@@ -524,7 +524,7 @@ func StreamReadSockWrite(conn *internal.WebSocketConnection, stream network.Stre
 }
 
 func IsDepReqStreamOpen() bool {
-	return outboundDepReqStream != nil
+	return OutboundDepReqStream != nil
 }
 
 func IsDepRespStreamOpen() bool {

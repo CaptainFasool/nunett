@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
@@ -61,6 +62,30 @@ func DeploymentWorker() {
 				sendDeploymentResponse(false, "Unknown service type.")
 			}
 		}
+	}
+}
+
+// FileTransferWorker continuously listens to the file transfer queue and
+// filters which files to accept.
+func FileTransferWorker() {
+	for msg := range libp2p.FileTransferQueue {
+		// implement your own logic which files should be accepted
+		// Check 1: The sender peer must be the same peer with whom deployment request stream is open
+		// if no stream is open, reject the file
+		if msg.Sender != libp2p.OutboundDepReqStream.Conn().RemotePeer() {
+			zlog.Sugar().Errorf("File Transfer Request from %s rejected. No deployment request stream open.", msg.Sender)
+			continue
+		}
+
+		// Check 2: The file must end with tar.gz or tar.gz.sha256.txt
+		if !(strings.HasSuffix(msg.File.Name, "tar.gz") || strings.HasSuffix(msg.File.Name, "tar.gz.sha256.txt")) {
+			zlog.Sugar().Errorf("File Transfer Request from %s rejected. File type not supported (%s).", msg.Sender, msg.File.Name)
+			continue
+		}
+
+		// accept the file
+		zlog.Sugar().Infof("File Transfer Request of %s from %s accepted.", msg.File.Name, msg.Sender)
+		go libp2p.AcceptFileTransfer()
 	}
 }
 
