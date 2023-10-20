@@ -21,6 +21,16 @@ Types of changes
 
 -->
 
+## [0.4.134](#126)
+
+### Added
+- add timeout for container, use parameter from dep req
+- handle new fields from SPD regarding resuming
+- save tar.gz of /workspace directory in container every logUpdateInterval
+- add volume binding before starting a resuming container (extracted tar.gz -> /workspace)
+- add event handler at timeout to archive & send the final progress tarball
+- send sha256 checksum along with tarball to SPD
+
 ## [0.4.133](#314)
 
 ### Fixed

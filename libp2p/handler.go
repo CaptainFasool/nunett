@@ -786,7 +786,7 @@ func InitiateFileTransferHandler(c *gin.Context) {
 	conn := internal.WebSocketConnection{Conn: ws}
 	clients[conn] = peerID
 
-	transferChan, err := sendFileToPeer(c, p, filePath)
+	transferChan, err := SendFileToPeer(c, p, filePath)
 	if err != nil {
 		zlog.Sugar().Errorf("error: couldn't send file to peer - %v", err)
 		ws.WriteJSON(gin.H{"error": err.Error()})
@@ -834,7 +834,7 @@ func AcceptFileTransferHandler(c *gin.Context) {
 		return
 	}
 
-	err = acceptFileTransfer()
+	err = AcceptFileTransfer()
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
 		return

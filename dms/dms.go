@@ -35,6 +35,8 @@ func Run() {
 
 	go messaging.DeploymentWorker()
 
+	go messaging.FileTransferWorker()
+
 	heartbeat.Done = make(chan bool)
 	go heartbeat.Heartbeat()
 	// wait for server to start properly before sending requests below

@@ -68,6 +68,8 @@ var (
 	stopDiscovery  = make(chan bool)
 	stopDHTUpdate  = make(chan bool)
 	stopDHTCleanup = make(chan bool)
+
+	FileTransferQueue = make(chan IncomingFileTransfer)
 )
 
 func init() {

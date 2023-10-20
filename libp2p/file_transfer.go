@@ -81,6 +81,8 @@ func fileStreamHandler(stream network.Stream) {
 	incomingFileTransfer.Time = time.Now()
 	incomingFileTransfer.Sender = stream.Conn().RemotePeer()
 	incomingFileTransfer.SenderPublicKey = stream.Conn().RemotePublicKey()
+
+	FileTransferQueue <- incomingFileTransfer
 }
 
 func incomingFileTransferRequests() (string, error) {
@@ -171,7 +173,8 @@ func StreamReadFileWrite(file *os.File, stream network.Stream, r *bufio.Reader) 
 	incomingFileTransfer.InboundFileStream = nil
 }
 
-func sendFileToPeer(ctx context.Context, peerID peer.ID, filePath string) (<-chan utils.IOProgress, error) {
+// SendFileToPeer takes a libp2p peer id and a file path and sends the file to the peer.
+func SendFileToPeer(ctx context.Context, peerID peer.ID, filePath string) (<-chan utils.IOProgress, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open file: %v", err)
@@ -249,7 +252,8 @@ func sendFileToPeer(ctx context.Context, peerID peer.ID, filePath string) (<-cha
 	}
 }
 
-func acceptFileTransfer() error {
+// AcceptFile takes an IncomingFileTransfer and accepts the file transfer.
+func AcceptFileTransfer() error {
 	var storagePath = config.GetConfig().General.DataDir
 	_, err := os.Stat(storagePath)
 	if err != nil {
