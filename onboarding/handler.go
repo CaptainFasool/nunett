@@ -165,7 +165,7 @@ func Onboard(c *gin.Context) {
 	metadata.Resource.CPUMax = int64(totalCpu)
 
 	// validate the public (payment) address
-	if err := ValidateAddress(capacityForNunet.PaymentAddress); err != nil {
+	if err := utils.ValidateAddress(capacityForNunet.PaymentAddress); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

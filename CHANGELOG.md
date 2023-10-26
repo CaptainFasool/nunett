@@ -21,6 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.135](#308)
+
+### Added
+- Wallet address self validation on startup
+- CP wallet address validation before job deployment request
+
 ## [0.4.134](#126)
 
 ### Added

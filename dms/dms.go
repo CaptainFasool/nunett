@@ -3,11 +3,12 @@ package dms
 import (
 	"context"
 	"fmt"
-	"sync"
+	"os"
 	"time"
 
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker"
+	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
@@ -23,15 +24,12 @@ import (
 func Run() {
 	config.LoadConfig()
 
-	wg := new(sync.WaitGroup)
-	wg.Add(1)
-
 	db.ConnectDatabase()
 
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
 
-	go startServer(wg)
+	go startServer()
 
 	go messaging.DeploymentWorker()
 
@@ -50,12 +48,21 @@ func Run() {
 	if libp2p.GetP2P().Host != nil {
 		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
 	}
-	wg.Wait()
+
+	// wait for SIGINT or SIGTERM
+	select {
+	case sig := <-internal.ShutdownChan:
+		fmt.Printf("Shutting down after getting a %v...", sig)
+
+		// add actual cleanup code here
+		fmt.Println("Cleaning up before shutting down")
+
+		// exit
+		os.Exit(0)
+	}
 }
 
-func startServer(wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func startServer() {
 	router := routes.SetupRouter()
 	// router.Use(otelgin.Middleware(tracing.MachineName))
 

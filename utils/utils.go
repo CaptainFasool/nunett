@@ -188,17 +188,17 @@ func GetLogbinToken() (string, error) {
 }
 
 // ReadMetadata returns metadata from metadataV2.json file
-func ReadMetadataFile() (models.MetadataV2, error) {
+func ReadMetadataFile() (*models.MetadataV2, error) {
 	metadataF, err := os.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
-		return models.MetadataV2{}, err
+		return &models.MetadataV2{}, err
 	}
 	var metadata models.MetadataV2
 	err = json.Unmarshal(metadataF, &metadata)
 	if err != nil {
-		return models.MetadataV2{}, err
+		return &models.MetadataV2{}, err
 	}
-	return metadata, nil
+	return &metadata, nil
 }
 
 func IsOnboarded() (bool, error) {
