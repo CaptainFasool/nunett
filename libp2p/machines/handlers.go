@@ -16,6 +16,7 @@ import (
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -121,6 +122,13 @@ func HandleRequestService(c *gin.Context) {
 	var onlinePeer models.PeerData
 	var rtt time.Duration = 1000000000000000000
 	for _, node := range filteredPeers {
+		// check if tokenomics address is valid, if not, skip
+		if err = utils.ValidateAddress(node.TokenomicsAddress); err != nil {
+			zlog.Sugar().Errorf("invalid tokenomics address: %v", err)
+			zlog.Sugar().Error("skipping peer due to invalid tokenomics address")
+			continue
+		}
+
 		targetPeer, err := peer.Decode(node.PeerID)
 		if err != nil {
 			zlog.Sugar().Errorf("Error decoding peer ID: %v", err)

@@ -144,7 +144,7 @@ For onboarding, check:
 		os.Exit(1)
 	}
 
-	availableData := setAvailableData(&metadata)
+	availableData := setAvailableData(metadata)
 	table.Append(availableData)
 }
 
@@ -169,6 +169,6 @@ For onboarding, check:
 		os.Exit(1)
 	}
 
-	onboardedData := setOnboardedData(&metadata)
+	onboardedData := setOnboardedData(metadata)
 	table.Append(onboardedData)
 }
