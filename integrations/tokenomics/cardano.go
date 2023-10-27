@@ -65,16 +65,19 @@ func GetJobTxHashes(c *gin.Context) {
 //	@Success		200		{object}	rewardRespToCPD
 //	@Router			/transactions/request-reward [post]
 func HandleRequestReward(c *gin.Context) {
-	body := ClaimCardanoTokenBody{}
-	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+	var payload ClaimCardanoTokenBody
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		c.Abort()
 		return
 	}
+
 	// At some point, management dashboard should send container ID to identify
 	// against which container we are requesting reward
-	service := models.Services{TxHash: body.TxHash}
+	service := models.Services{TxHash: payload.TxHash}
 	// SELECTs the first record; first record which is not marked as delete
-	if err := db.DB.Where("tx_hash = ?", body.TxHash).Find(&service).Error; err != nil {
+	if err := db.DB.Where("tx_hash = ?", payload.TxHash).Find(&service).Error; err != nil {
 		zlog.Sugar().Errorln(err)
 		c.JSON(404, gin.H{"error": "unknown tx hash"})
 		return
@@ -87,7 +90,7 @@ func HandleRequestReward(c *gin.Context) {
 	}
 
 	// Send the service data to oracle for examination
-	oracleResp, err := oracle.WithdrawTokenRequest(&oracle.RewardRequest{
+	oracleResp, err := oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
 		JobStatus:            service.JobStatus,
 		JobDuration:          service.JobDuration,
 		EstimatedJobDuration: service.EstimatedJobDuration,
