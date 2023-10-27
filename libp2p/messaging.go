@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"strings"
+	"time"
 
+	"github.com/cardano-community/koios-go-client/v3"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -45,6 +48,8 @@ const (
 	JobCompleted = "job-completed"
 )
 
+var txHashPropogrationTime = 60 // seconds
+
 var inboundChatStreams []network.Stream
 var inboundDepReqStream network.Stream
 var OutboundDepReqStream network.Stream
@@ -54,6 +59,25 @@ type OpenStream struct {
 	StreamID   string `json:"stream_id"`
 	FromPeer   string `json:"from_peer"`
 	TimeOpened string `json:"time_opened"`
+}
+
+func writeToStream(stream network.Stream, msg string, failReason string) {
+	w := bufio.NewWriter(stream)
+
+	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
+	if err != nil {
+		zlog.Sugar().Errorf("failed to write to stream after %s - %v", failReason, err)
+	}
+
+	err = w.Flush()
+	if err != nil {
+		zlog.Sugar().Errorf("failed to flush stream after %s - %v", failReason, err)
+	}
+
+	err = stream.Close()
+	if err != nil {
+		zlog.Sugar().Errorf("failed to close stream after %s - %v", failReason, err)
+	}
 }
 
 func depReqStreamHandler(stream network.Stream) {
@@ -83,21 +107,9 @@ func depReqStreamHandler(stream network.Stream) {
 			stream.Close()
 			return
 		}
-		w := bufio.NewWriter(stream)
-		_, err = w.WriteString(fmt.Sprintf("%s\n", depUpdateJson))
-		if err != nil {
-			zlog.Sugar().Errorf("fialed to write to stream after DepReq open stream length exceeded - %v", err)
-		}
 
-		err = w.Flush()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to flush stream after DepReq open stream length exceeded - %v", err)
-		}
+		writeToStream(stream, string(depUpdateJson), "DepReq open stream length exceeded")
 
-		err = stream.Close()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to close stream after DepReq open stream length exceeded - %v", err)
-		}
 		return
 	}
 
@@ -109,21 +121,7 @@ func depReqStreamHandler(stream network.Stream) {
 	str, err := r.ReadString('\n')
 	if err != nil {
 		zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
-		w := bufio.NewWriter(stream)
-		_, err := w.WriteString("Unable to read DepReq. Closing Stream.\n")
-		if err != nil {
-			zlog.Sugar().Errorf("fialed to write to stream after unable to read DepReq - %v", err)
-		}
-
-		err = w.Flush()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to flush stream after unable to read DepReq - %v", err)
-		}
-
-		err = stream.Close()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to close stream after unable to read DepReq - %v", err)
-		}
+		writeToStream(stream, "Unable to read DepReq. Closing Stream.", "unable to read depReq")
 		return
 	}
 
@@ -138,8 +136,37 @@ func depReqStreamHandler(stream network.Stream) {
 		// XXX : might be best to propagate context through depReq/depResp to encompass everything done starting with a single depReq
 		DeploymentUpdate(MsgDepResp, "Unable to decode deployment request", true)
 	} else {
-		DepReqQueue <- depreqMessage
+		// check if txhash is valid, but before that, we need to wait for txHashPropogrationTime
+		zlog.Sugar().Info("going to sleep for %d seconds while waiting for tx to propogate to other nodes", txHashPropogrationTime)
+		time.Sleep(time.Duration(txHashPropogrationTime) * time.Second)
+
+		doesHaveValidTxHash := checkTxValidity(depreqMessage.TxHash)
+		if doesHaveValidTxHash {
+			DepReqQueue <- depreqMessage
+		} else {
+			DeploymentUpdate(MsgDepResp, "Invalid TxHash", true)
+		}
 	}
+}
+
+// checkTxValidity checks if transation really exists on the blockchain and not
+// just some arbitrary value
+func checkTxValidity(txHash string) (valid bool) {
+	client, err := koios.New(koios.Host(koios.PreProdHost))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	txInfo, err := client.GetTxInfo(context.Background(), koios.TxHash(txHash), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if txInfo.StatusCode == 200 {
+		valid = true
+	}
+
+	return valid
 }
 
 // DeploymentUpdateListener listens for deployment response and service running status.
@@ -371,21 +398,7 @@ func chatStreamHandler(stream network.Stream) {
 
 	// limit to 3 streams
 	if len(inboundChatStreams) >= 3 {
-		w := bufio.NewWriter(stream)
-		_, err := w.WriteString("Unable to Accept Chat Request. Closing.\n")
-		if err != nil {
-			zlog.Sugar().Errorf("failed to write to stream after open chat stream length exceeded - %v", err)
-		}
-
-		err = w.Flush()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to flush buffer after open chat stream length exceeded - %v", err)
-		}
-
-		err = stream.Close()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to close stream after open chat stream length exceeded - %v", err)
-		}
+		writeToStream(stream, "Unable to Accept Chat Request. Closing.", "open chat stream length exceeded")
 		return
 	}
 
