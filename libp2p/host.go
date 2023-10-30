@@ -55,7 +55,21 @@ func GetP2P() DMSp2p {
 }
 
 func CheckOnboarding() {
-	// Checks for saved metadata and create a new host
+	// Check 1: Check if payment address is valid
+	metadata, err := utils.ReadMetadataFile()
+	if err != nil {
+		zlog.Sugar().Errorf("unable to read metadata.json: %v", err)
+		return
+	}
+
+	err = utils.ValidateAddress(metadata.PublicKey)
+	if err != nil {
+		zlog.Sugar().Errorf("the payment address %s is not valid", metadata.PublicKey)
+		zlog.Sugar().Error("exiting DMS")
+		os.Exit(1)
+	}
+
+	// Check 2: Check for saved metadata and create a new host
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
 	if result.Error != nil {

@@ -40,7 +40,7 @@ For onboarding, check:
 }
 
 // custom formatter for printing metadata YAML-like
-func printMetadata(metadata models.MetadataV2) {
+func printMetadata(metadata *models.MetadataV2) {
 	fmt.Println("metadata:")
 
 	if metadata.Name != "" {

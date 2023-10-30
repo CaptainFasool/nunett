@@ -47,8 +47,16 @@ func getOracleTlsCredentials(address string) credentials.TransportCredentials {
 	return creds
 }
 
+type OracleInterface interface {
+	WithdrawTokenRequest(req *RewardRequest) (*RewardResponse, error)
+}
+
+var Oracle OracleInterface = &nunetOracle{}
+
+type nunetOracle struct{}
+
 // WithdrawTokenRequest acts as a middleman between withdraw endpoint handler and Oracle to withdraw token
-func WithdrawTokenRequest(rewardReq *RewardRequest) (*RewardResponse, error) {
+func (a *nunetOracle) WithdrawTokenRequest(rewardReq *RewardRequest) (*RewardResponse, error) {
 	address := getAddress()
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(getOracleTlsCredentials(address)))
 	if err != nil {
