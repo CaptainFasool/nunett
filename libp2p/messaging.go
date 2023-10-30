@@ -142,8 +142,10 @@ func depReqStreamHandler(stream network.Stream) {
 
 		doesHaveValidTxHash := checkTxValidity(depreqMessage.TxHash)
 		if doesHaveValidTxHash {
+			zlog.Sugar().Infof("tx_hash for %s is valid, proceeding with deployment", depreqMessage.TxHash)
 			DepReqQueue <- depreqMessage
 		} else {
+			zlog.Sugar().Infof("tx_hash for %s is invalid or timed out. Stopping deployment process", depreqMessage.TxHash)
 			DeploymentUpdate(MsgDepResp, "Invalid TxHash", true)
 		}
 	}
@@ -159,7 +161,7 @@ func checkTxValidity(txHash string) (valid bool) {
 
 	txInfo, err := client.GetTxInfo(context.Background(), koios.TxHash(txHash), nil)
 	if err != nil {
-		log.Fatal(err)
+		zlog.Sugar().Infof("%v", err)
 	}
 
 	if txInfo.StatusCode == 200 {
