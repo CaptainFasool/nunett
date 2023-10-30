@@ -137,7 +137,7 @@ func depReqStreamHandler(stream network.Stream) {
 		DeploymentUpdate(MsgDepResp, "Unable to decode deployment request", true)
 	} else {
 		// check if txhash is valid, but before that, we need to wait for txHashPropogrationTime
-		zlog.Sugar().Info("going to sleep for %d seconds while waiting for tx to propogate to other nodes", txHashPropogrationTime)
+		zlog.Sugar().Infof("going to sleep for %d seconds while waiting for tx to propogate to other nodes", txHashPropogrationTime)
 		time.Sleep(time.Duration(txHashPropogrationTime) * time.Second)
 
 		doesHaveValidTxHash := checkTxValidity(depreqMessage.TxHash)
