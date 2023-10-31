@@ -68,7 +68,7 @@ For onboarding, check:
 func getDHTPeers() ([]string, error) {
 	var dhtSlice []string
 
-	bodyDht, err := utils.ResponseBody(nil, "GET", "/api/v1/peers/dht", nil)
+	bodyDht, err := utils.ResponseBody(nil, "GET", "/api/v1/peers/dht", "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get response body: %v", err)
 	}
@@ -95,7 +95,7 @@ func getDHTPeers() ([]string, error) {
 func getBootstrapPeers() ([]string, error) {
 	var bootSlice []string
 
-	bodyBoot, err := utils.ResponseBody(nil, "GET", "/api/v1/peers", nil)
+	bodyBoot, err := utils.ResponseBody(nil, "GET", "/api/v1/peers", "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get response body: %v", err)
 	}

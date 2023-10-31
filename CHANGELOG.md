@@ -21,6 +21,17 @@ Types of changes
 
 -->
 
+## [0.4.138](#292)
+
+### Added
+- Command gpu and sub-commands status, capacity and onboard
+- Port onboard-ml and offboard commands from bash script
+- Add scripts for driver and container runtime installation inside maint-scripts
+
+### Changed
+- Update InternalAPIURL and MakeInternalRequest utility functions to support queries
+- Move String method inside gpudetect package
+
 ## [0.4.137](#309)
 
 ### Added

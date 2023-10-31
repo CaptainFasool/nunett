@@ -31,7 +31,7 @@ For onboarding, check:
 			os.Exit(1)
 		}
 
-		body, err := utils.ResponseBody(nil, "GET", "/api/v1/peers/self", nil)
+		body, err := utils.ResponseBody(nil, "GET", "/api/v1/peers/self", "", nil)
 		if err != nil {
 			fmt.Println("Error getting response body:", err)
 			os.Exit(1)

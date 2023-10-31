@@ -67,7 +67,7 @@ For onboarding, check:
 			os.Exit(1)
 		}
 
-		body, err := utils.ResponseBody(nil, "POST", "/api/v1/onboarding/onboard", onboardJson)
+		body, err := utils.ResponseBody(nil, "POST", "/api/v1/onboarding/onboard", "", onboardJson)
 		if err != nil {
 			fmt.Println("Error getting response body:", err)
 			os.Exit(1)

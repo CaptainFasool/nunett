@@ -139,14 +139,3 @@ func GetNVIDIAGPUInfo() ([]GPUInfo, error) {
 
 	return gpuInfos, nil
 }
-
-func (v GPUVendor) String() string {
-	switch v {
-	case NVIDIA:
-		return "NVIDIA"
-	case AMD:
-		return "AMD"
-	default:
-		return "Unknown"
-	}
-}
