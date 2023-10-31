@@ -4,7 +4,9 @@ definitions:
     properties:
       compute_provider_addr:
         type: string
-      distribute_hash:
+      distribute_50_hash:
+        type: string
+      distribute_75_hash:
         type: string
       estimated_price:
         type: number
@@ -29,6 +31,7 @@ definitions:
       transaction_status:
         type: string
       transaction_type:
+        description: No need of this param maybe be deprecated in future
         type: string
       tx_hash:
         type: string
@@ -55,10 +58,10 @@ definitions:
           vram:
             type: integer
         type: object
-      distribute_hash:
+      distribute_50_hash:
         type: string
-      estimated_ntx:
-        type: number
+      distribute_75_hash:
+        type: string
       max_ntx:
         type: integer
       metadata_hash:
@@ -189,12 +192,16 @@ definitions:
     properties:
       date_time:
         type: string
+      transaction_type:
+        type: string
       tx_hash:
         type: string
     type: object
   tokenomics.rewardRespToCPD:
     properties:
       action:
+        type: string
+      compute_provider_addr:
         type: string
       datum:
         type: string
@@ -203,6 +210,8 @@ definitions:
       message_hash_datum:
         type: string
       reward_type:
+        type: string
+      service_provider_addr:
         type: string
       signature_action:
         type: string
@@ -221,7 +230,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.136
+  version: 0.4.137
 paths:
   /device/status:
     get:

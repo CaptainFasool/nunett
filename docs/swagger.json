@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.136"
+        "version": "0.4.137"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -618,7 +618,10 @@
                 "compute_provider_addr": {
                     "type": "string"
                 },
-                "distribute_hash": {
+                "distribute_50_hash": {
+                    "type": "string"
+                },
+                "distribute_75_hash": {
                     "type": "string"
                 },
                 "estimated_price": {
@@ -656,6 +659,7 @@
                     "type": "string"
                 },
                 "transaction_type": {
+                    "description": "No need of this param maybe be deprecated in future",
                     "type": "string"
                 },
                 "tx_hash": {
@@ -696,11 +700,11 @@
                         }
                     }
                 },
-                "distribute_hash": {
+                "distribute_50_hash": {
                     "type": "string"
                 },
-                "estimated_ntx": {
-                    "type": "number"
+                "distribute_75_hash": {
+                    "type": "string"
                 },
                 "max_ntx": {
                     "type": "integer"
@@ -900,6 +904,9 @@
                 "date_time": {
                     "type": "string"
                 },
+                "transaction_type": {
+                    "type": "string"
+                },
                 "tx_hash": {
                     "type": "string"
                 }
@@ -909,6 +916,9 @@
             "type": "object",
             "properties": {
                 "action": {
+                    "type": "string"
+                },
+                "compute_provider_addr": {
                     "type": "string"
                 },
                 "datum": {
@@ -921,6 +931,9 @@
                     "type": "string"
                 },
                 "reward_type": {
+                    "type": "string"
+                },
+                "service_provider_addr": {
                     "type": "string"
                 },
                 "signature_action": {

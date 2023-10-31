@@ -61,6 +61,7 @@ type AvailableResources struct {
 type Services struct {
 	gorm.Model
 	TxHash               string
+	TransactionType      string // transaction type can be running, done, withdraw, refund and distribute
 	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
 	JobDuration          int64  // job duration in minutes
 	EstimatedJobDuration int64  // job duration in minutes
@@ -70,11 +71,19 @@ type Services struct {
 	ImageID              string
 	LogURL               string
 	LastLogFetch         time.Time
-	EstimatedNTX         int64
+	ServiceProviderAddr  string
+	ComputeProviderAddr  string
 	MetadataHash         string
 	WithdrawHash         string
-	RefundHash           string
-	DistributeHash       string
+	RefundHash           string // saving hashes for call the `/request-reward` endpoint by SPD
+	Distribute_50Hash    string
+	Distribute_75Hash    string
+	SignatureDatum       string
+	MessageHashDatum     string
+	Datum                string
+	SignatureAction      string // saving signatures for removing redundancy of calling Oracle
+	MessageHashAction    string
+	Action               string
 	// TODO: Add ContainerType field
 
 }
