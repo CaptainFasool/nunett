@@ -10,6 +10,9 @@ import (
 )
 
 func init() {
+	rootCmd.AddCommand(gpuCmd)
+	rootCmd.AddCommand(offboardCmd)
+	rootCmd.AddCommand(onboardMLCmd)
 	rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(shellCmd)
 	rootCmd.AddCommand(runCmd)

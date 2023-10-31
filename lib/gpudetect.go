@@ -14,6 +14,19 @@ const (
 	AMD
 )
 
+func (g GPUVendor) String() string {
+	switch g {
+	case Unknown:
+		return "Unknown"
+	case NVIDIA:
+		return "NVIDIA"
+	case AMD:
+		return "AMD"
+	default:
+		return "Unknown"
+	}
+}
+
 func DetectGPUVendors() ([]GPUVendor, error) {
 	var vendors []GPUVendor
 	gpu, err := ghw.GPU()

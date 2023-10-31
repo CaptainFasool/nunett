@@ -59,6 +59,7 @@ require (
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/dustin/go-humanize v1.0.1
 	github.com/elastic/elastic-transport-go/v8 v8.0.0-20230329154755-1a3c63de0db6 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
@@ -151,6 +152,7 @@ require (
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
@@ -225,7 +227,6 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/jaypipes/ghw v0.12.0
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
-	github.com/olekukonko/tablewriter v0.0.5
 	github.com/shoenig/go-m1cpu v0.1.6
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.17.0

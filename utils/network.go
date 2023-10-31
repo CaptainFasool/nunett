@@ -38,8 +38,8 @@ func InternalAPIURL(protocol, endpoint, query string) (string, error) {
 }
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
-func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) (*http.Response, error) {
-	endpoint, err := InternalAPIURL("http", internalEndpoint, "")
+func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint, query string, body []byte) (*http.Response, error) {
+	endpoint, err := InternalAPIURL("http", internalEndpoint, query)
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +101,8 @@ func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, e
 	}
 }
 
-func ResponseBody(c *gin.Context, methodType, internalEndpoint string, body []byte) (responseBody []byte, errMsg error) {
-	resp, err := MakeInternalRequest(c, methodType, internalEndpoint, body)
+func ResponseBody(c *gin.Context, methodType, internalEndpoint, query string, body []byte) (responseBody []byte, errMsg error) {
+	resp, err := MakeInternalRequest(c, methodType, internalEndpoint, query, body)
 	if err != nil {
 		return nil, fmt.Errorf("unable to make internal request: %v", err)
 	}
