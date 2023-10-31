@@ -33,7 +33,7 @@ type DockerJob struct {
 	dc           *client.Client
 }
 
-// NewJob creates a new job, let it be docker conatiner or something else.
+// NewJob creates a new job, let it be docker container or something else.
 func NewDockerJob(depReq *models.DeploymentRequest) *DockerJob {
 	return &DockerJob{
 		depReq:       depReq,

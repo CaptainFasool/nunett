@@ -44,7 +44,7 @@ var chatListCmd = &cobra.Command{
 }
 
 func getIncomingChatList() ([]libp2p.OpenStream, error) {
-	chatList, err := utils.ResponseBody(nil, "GET", "/api/v1/peers/chat", nil)
+	chatList, err := utils.ResponseBody(nil, "GET", "/api/v1/peers/chat", "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get response body: %v", err)
 	}

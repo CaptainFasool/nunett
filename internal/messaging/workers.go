@@ -124,7 +124,7 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	}
 	jsonBody, _ := json.Marshal(startDefaultBody)
 
-	resp, err := utils.MakeInternalRequest(&gin.Context{}, "POST", "/api/v1/vm/start-default", jsonBody)
+	resp, err := utils.MakeInternalRequest(&gin.Context{}, "POST", "/api/v1/vm/start-default", "", jsonBody)
 	if err != nil {
 		zlog.Error(err.Error())
 	}
