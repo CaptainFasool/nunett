@@ -209,7 +209,13 @@ func DeploymentUpdateListener(stream network.Stream) {
 				if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
 					zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
 				}
-				db.DB.Save(&service) // saving every service in SP's DMS, so SP able to call Oracle's WithdrawTokenRequest endpoint(refund or distribute action)
+
+				// update service info into SP's DMS for claim Reward by SP user
+				result := db.DB.Model(&models.Services{}).Where("tx_hash = ?", service.TxHash).Select("*").Updates(service)
+				if result.Error != nil {
+					zlog.Sugar().Errorf("Unable to update service info on SP side: %v", result.Error.Error())
+				}
+
 				return
 			} else if strings.EqualFold(string(service.JobStatus), "running") {
 				depRespMessage := models.DeploymentResponse{}
@@ -225,6 +231,12 @@ func DeploymentUpdateListener(stream network.Stream) {
 			depReqFlat.JobStatus = service.JobStatus
 			if err := db.DB.Save(&depReqFlat).Error; err != nil {
 				zlog.Sugar().Errorf("unable to update job status on finish. %v", err)
+			}
+
+			// update service info into SP's DMS for claim Reward by SP user
+			result := db.DB.Model(&models.Services{}).Where("tx_hash = ?", service.TxHash).Select("*").Updates(service)
+			if result.Error != nil {
+				zlog.Sugar().Errorf("Unable to update service info on SP side: %v", result.Error.Error())
 			}
 		case MsgDepResp:
 			zlog.Sugar().Debugf("received deployment response: %s", resp)

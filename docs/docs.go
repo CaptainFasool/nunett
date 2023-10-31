@@ -624,7 +624,10 @@ const docTemplate = `{
                 "compute_provider_addr": {
                     "type": "string"
                 },
-                "distribute_hash": {
+                "distribute_50_hash": {
+                    "type": "string"
+                },
+                "distribute_75_hash": {
                     "type": "string"
                 },
                 "estimated_price": {
@@ -662,6 +665,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "transaction_type": {
+                    "description": "No need of this param maybe be deprecated in future",
                     "type": "string"
                 },
                 "tx_hash": {
@@ -702,11 +706,11 @@ const docTemplate = `{
                         }
                     }
                 },
-                "distribute_hash": {
+                "distribute_50_hash": {
                     "type": "string"
                 },
-                "estimated_ntx": {
-                    "type": "number"
+                "distribute_75_hash": {
+                    "type": "string"
                 },
                 "max_ntx": {
                     "type": "integer"
@@ -906,6 +910,9 @@ const docTemplate = `{
                 "date_time": {
                     "type": "string"
                 },
+                "transaction_type": {
+                    "type": "string"
+                },
                 "tx_hash": {
                     "type": "string"
                 }
@@ -915,6 +922,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "action": {
+                    "type": "string"
+                },
+                "compute_provider_addr": {
                     "type": "string"
                 },
                 "datum": {
@@ -927,6 +937,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "reward_type": {
+                    "type": "string"
+                },
+                "service_provider_addr": {
                     "type": "string"
                 },
                 "signature_action": {
@@ -942,7 +955,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.136",
+	Version:          "0.4.137",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

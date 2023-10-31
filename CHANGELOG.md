@@ -21,6 +21,15 @@ Types of changes
 
 -->
 
+## [0.4.137](#309)
+
+### Added
+- Added wallet addresses in request-reward endpoint to return dashboards
+- Added parameters of  in request-reward endpoint to return dashboards
+- Calculated time execution of job container
+
+### Changed
+- Changed the transactions endpoints to filter them on dashboards
 ## [0.4.136](#283)
 
 ### Added

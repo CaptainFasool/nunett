@@ -115,10 +115,11 @@ func FundContractRequest(fundingReq *FundingRequest) (*FundingResponse, error) {
 	}
 
 	fundingRes := &FundingResponse{
-		MetadataHash:   res.GetMetadataHash(),
-		WithdrawHash:   res.GetWithdrawHash(),
-		RefundHash:     res.GetRefundHash(),
-		DistributeHash: res.GetDistributeHash(),
+		MetadataHash:      res.GetMetadataHash(),
+		WithdrawHash:      res.GetWithdrawHash(),
+		RefundHash:        res.GetRefundHash(),
+		Distribute_50Hash: res.GetDistribute_50Hash(),
+		Distribute_75Hash: res.GetDistribute_75Hash(),
 	}
 
 	zlog.Sugar().Infof("funding response from oracle: %v", fundingRes)

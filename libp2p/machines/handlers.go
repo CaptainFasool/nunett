@@ -32,7 +32,8 @@ type fundingRespToSPD struct {
 	MetadataHash        string  `json:"metadata_hash"`
 	WithdrawHash        string  `json:"withdraw_hash"`
 	RefundHash          string  `json:"refund_hash"`
-	DistributeHash      string  `json:"distribute_hash"`
+	Distribute_50Hash   string  `json:"distribute_50_hash"`
+	Distribute_75Hash   string  `json:"distribute_75_hash"`
 }
 
 var depreqWsConn *internal.WebSocketConnection
@@ -92,7 +93,6 @@ func HandleRequestService(c *gin.Context) {
 
 	// check if the pricing matched
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
-	depReq.EstimatedNTX = estimatedNtx
 
 	zlog.Sugar().Infof("estimated ntx price %v", estimatedNtx)
 	if estimatedNtx > float64(depReq.MaxNtx) {
@@ -191,7 +191,8 @@ func HandleRequestService(c *gin.Context) {
 	depReq.MetadataHash = oracleResp.MetadataHash
 	depReq.WithdrawHash = oracleResp.WithdrawHash
 	depReq.RefundHash = oracleResp.RefundHash
-	depReq.DistributeHash = oracleResp.DistributeHash
+	depReq.Distribute_50Hash = oracleResp.Distribute_50Hash
+	depReq.Distribute_75Hash = oracleResp.Distribute_75Hash
 
 	// Marshal struct to JSON
 	depReqBytes, _ := json.Marshal(depReq)
@@ -215,7 +216,8 @@ func HandleRequestService(c *gin.Context) {
 		MetadataHash:        oracleResp.MetadataHash,
 		WithdrawHash:        oracleResp.WithdrawHash,
 		RefundHash:          oracleResp.RefundHash,
-		DistributeHash:      oracleResp.DistributeHash,
+		Distribute_50Hash:   oracleResp.Distribute_50Hash,
+		Distribute_75Hash:   oracleResp.Distribute_75Hash,
 	}
 	zlog.Sugar().Debugf("%s", resp)
 	c.JSON(200, resp)
@@ -447,6 +449,7 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	// load depReq from the database
 	var depReqFlat models.DeploymentRequestFlat
 	var depReq models.DeploymentRequest
+	var service models.Services
 
 	// SELECTs the first record; first record which is not marked as delete
 	if err := db.DB.First(&depReqFlat).Error; err != nil {
@@ -467,6 +470,19 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
 	zlog.Sugar().Debugf("deployment request: %v", depReq)
+
+	// Saving service info in SP side
+	service.TxHash = txHash
+	service.MetadataHash = depReq.MetadataHash
+	service.WithdrawHash = depReq.WithdrawHash
+	service.RefundHash = depReq.RefundHash
+	service.Distribute_50Hash = depReq.Distribute_50Hash
+	service.Distribute_75Hash = depReq.Distribute_75Hash
+	service.TransactionType = "refund"
+
+	if err := db.DB.Create(&service).Error; err != nil {
+		zlog.Sugar().Errorf("couldn't save service on SP side: %v", err)
+	}
 
 	// notify websocket client about the
 	submitted := map[string]string{"action": libp2p.JobSubmitted}
