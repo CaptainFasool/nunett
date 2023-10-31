@@ -13,11 +13,11 @@ type DeploymentRequest struct {
 	TxHash                 string    `json:"tx_hash"`
 	ServiceType            string    `json:"service_type"`
 	Timestamp              time.Time `json:"timestamp"`
-	EstimatedNTX           float64   `json:"estimated_ntx,omitempty"`
 	MetadataHash           string    `json:"metadata_hash,omitempty"`
 	WithdrawHash           string    `json:"withdraw_hash,omitempty"`
 	RefundHash             string    `json:"refund_hash,omitempty"`
-	DistributeHash         string    `json:"distribute_hash,omitempty"`
+	Distribute_50Hash      string    `json:"distribute_50_hash"`
+	Distribute_75Hash      string    `json:"distribute_75_hash"`
 	Params                 struct {
 		ImageID   string `json:"image_id"`
 		ModelURL  string `json:"model_url"`
@@ -67,7 +67,7 @@ type DeploymentRequestFlat struct {
 }
 
 type BlockchainTxStatus struct {
-	TransactionType   string `json:"transaction_type"`
+	TransactionType   string `json:"transaction_type"` // No need of this param maybe be deprecated in future
 	TransactionStatus string `json:"transaction_status"`
 	TxHash            string `json:"tx_hash"`
 }

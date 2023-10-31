@@ -23,6 +23,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	library "gitlab.com/nunet/device-management-service/lib"
@@ -311,6 +312,18 @@ outerLoop:
 				requestTracker.Status = libp2p.ContainerJobFinishedWithErrors
 			}
 
+			duration := time.Now().Sub(service.CreatedAt)
+			jobDuration := duration.Minutes()
+			service.JobDuration = int64(jobDuration)
+
+			oracleResp := getSignaturesFromOracle(service) // saving the signatures into DB, received from Oracle + wallet server
+			service.TransactionType = oracleResp.RewardType
+			service.SignatureDatum = oracleResp.SignatureDatum
+			service.MessageHashDatum = oracleResp.MessageHashDatum
+			service.Datum = oracleResp.Datum
+			service.SignatureAction = oracleResp.SignatureAction
+			service.MessageHashAction = oracleResp.MessageHashAction
+			service.Action = oracleResp.Action
 			db.DB.Save(&service)
 
 			// Send service status update
@@ -321,7 +334,6 @@ outerLoop:
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
 
-			duration := time.Since(service.CreatedAt)
 			timeTaken := duration.Seconds()
 			averageNetBw := networkBwUsed / timeTaken
 
@@ -443,6 +455,25 @@ func calculateResourceUsage(input string) float64 {
 	}
 }
 
+func getSignaturesFromOracle(service models.Services) (oracleResp *oracle.RewardResponse) {
+	oracleResp, err := oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
+		JobStatus:            service.JobStatus,
+		JobDuration:          service.JobDuration,
+		EstimatedJobDuration: service.EstimatedJobDuration,
+		LogPath:              service.LogURL,
+		MetadataHash:         service.MetadataHash,
+		WithdrawHash:         service.WithdrawHash,
+		RefundHash:           service.RefundHash,
+		Distribute_50Hash:    service.Distribute_50Hash,
+		Distribute_75Hash:    service.Distribute_75Hash,
+	})
+	if err != nil {
+		zlog.Sugar().Errorf("connetction to oracle failed : %v", err)
+	}
+
+	return oracleResp
+}
+
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, send log to the requester
 func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) models.DeploymentResponse {
@@ -512,19 +543,26 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 		return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}
 	}
 
+	metadata, err := utils.ReadMetadataFile()
+	if err != nil {
+		zlog.Sugar().Errorf("couldn't read metadata: %v", err)
+	}
+
 	// create a service and pass the primary key to the RunContainer to update ContainerID
 	var service models.Services
 	service.ImageID = imageName
 	service.ServiceName = imageName
 	service.JobStatus = "running"
-	service.JobDuration = 5           // these are dummy data, implementation pending
-	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
+	service.JobDuration = 0
+	service.EstimatedJobDuration = int64(depReq.Constraints.Time)
 	service.TxHash = depReq.TxHash
-	service.EstimatedNTX = int64(depReq.EstimatedNTX)
 	service.MetadataHash = depReq.MetadataHash
 	service.WithdrawHash = depReq.WithdrawHash
 	service.RefundHash = depReq.RefundHash
-	service.DistributeHash = depReq.DistributeHash
+	service.Distribute_50Hash = depReq.Distribute_50Hash
+	service.Distribute_75Hash = depReq.Distribute_75Hash
+	service.ServiceProviderAddr = depReq.RequesterWalletAddress
+	service.ComputeProviderAddr = metadata.PublicKey
 
 	// create logbin here and pass it to RunContainer to update logs
 	createdLog, err := newLogBin(
