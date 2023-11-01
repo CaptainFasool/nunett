@@ -13,6 +13,7 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
+    fmt.Printf("Database Path: %s/nunet.db \n", config.GetConfig().General.MetadataPath)
 	database, err := gorm.Open(sqlite.Open(fmt.Sprintf("%s/nunet.db", config.GetConfig().General.MetadataPath)), &gorm.Config{})
 
 	if err != nil {

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 ## @file        nunet
 ## @authors     Dagim Sisay <dagim@nunet.io>, Avimanyu Bandyopadhyay <avimanyu.bandyopadhyay@nunet.io>
@@ -14,7 +14,7 @@ NORMAL_C='\033[0m'
 SELF_NAME=$(basename $0)
 
 DMS_HOST=localhost
-DMS_PORT=9999
+#DMS_PORT=9999
 
 # WSL Checker
 
@@ -638,7 +638,7 @@ onboard() {
         printf "${BAD_C}CPU should be between 10%% and 90%% of the available CPU ($((N_AVAILABLE_CPU/10)) and $((N_AVAILABLE_CPU*9/10))) ${NORMAL_C}\n"
         printf "${INFO_C}Check available resource with 'nunet capacity --available --pretty'${NORMAL_C}\n"
         exit
-    elif [[ "$N_ONBOARD_CHAN" != "nunet-test" && "$N_ONBOARD_CHAN" != "nunet-staging" && "$N_ONBOARD_CHAN" != "nunet-team" && "$N_ONBOARD_CHAN" != "nunet-edge" ]] ; then
+    elif [[ "$N_ONBOARD_CHAN" != "nunet-local" && "$N_ONBOARD_CHAN" != "nunet-test" && "$N_ONBOARD_CHAN" != "nunet-staging" && "$N_ONBOARD_CHAN" != "nunet-team" && "$N_ONBOARD_CHAN" != "nunet-edge" ]] ; then
         printf "${BAD_C}NuNet Channel should be 'nunet-test' or 'nunet-staging' not $N_ONBOARD_CHAN ${NORMAL_C}\n"
         exit
     else

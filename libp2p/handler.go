@@ -134,6 +134,8 @@ func ListPeers(c *gin.Context) {
 		return
 	}
 	klogger.Logger.Info("List peers executed by " + p2p.Host.ID().String())
+
+    fmt.Printf("Peers: %s \n", p2p.peers)
 	if p2p.peers == nil {
 		c.JSON(500, gin.H{"error": "Peers haven't yet been fetched."})
 		klogger.Logger.Error("Peers haven't yet been fetched.")

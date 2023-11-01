@@ -9,6 +9,7 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+    insecure "google.golang.org/grpc/credentials/insecure"
 )
 
 func getAddress() string {
@@ -21,19 +22,24 @@ func getAddress() string {
 		nunetTestAddr    string = "oracle-test.test.nunet.io:20052"
 		nunetEdgeAddr    string = "oracle-edge.dev.nunet.io:30052"
 		nunetTeamAddr    string = "oracle-team.dev.nunet.io:40052"
+        nunetLocalAddr   string = "localhost:50052"
 	)
 
-	if channelName == "nunet-staging" {
-		addr = nunetStagingAddr
-	} else if channelName == "nunet-test" {
-		addr = nunetTestAddr
-	} else if channelName == "nunet-edge" {
-		addr = nunetEdgeAddr
-	} else if channelName == "nunet-team" {
-		addr = nunetTeamAddr
-	} else {
-		addr = nunetTeamAddr
-	}
+
+    switch channelName {
+        case "nunet-staging":
+            addr = nunetStagingAddr
+        case "nunet-test":
+            addr = nunetTestAddr
+        case "nunet-edge":
+            addr = nunetEdgeAddr
+        case "nunet-team":
+            addr = nunetTeamAddr
+        case "nunet-local":
+            addr = nunetLocalAddr
+        default:
+            addr = nunetLocalAddr
+    }
 
 	return addr
 }
@@ -41,7 +47,7 @@ func getAddress() string {
 func getOracleTlsCredentials(address string) credentials.TransportCredentials {
 	serverName := strings.Split(address, ":")[0]
 	creds := credentials.NewTLS(&tls.Config{
-		InsecureSkipVerify: false,
+		InsecureSkipVerify: true,
 		ServerName:         serverName,
 	})
 	return creds
@@ -58,7 +64,7 @@ type nunetOracle struct{}
 // WithdrawTokenRequest acts as a middleman between withdraw endpoint handler and Oracle to withdraw token
 func (a *nunetOracle) WithdrawTokenRequest(rewardReq *RewardRequest) (*RewardResponse, error) {
 	address := getAddress()
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(getOracleTlsCredentials(address)))
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return &RewardResponse{}, err
 	}
@@ -95,7 +101,7 @@ func (a *nunetOracle) WithdrawTokenRequest(rewardReq *RewardRequest) (*RewardRes
 // MetadataHash, WithdrawHash, RefundHash, DistributeHash
 func FundContractRequest(fundingReq *FundingRequest) (*FundingResponse, error) {
 	address := getAddress()
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(getOracleTlsCredentials(address)))
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return &FundingResponse{}, err
 	}

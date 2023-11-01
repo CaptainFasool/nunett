@@ -196,7 +196,8 @@ func Onboard(c *gin.Context) {
 	if capacityForNunet.Channel != "nunet-staging" &&
 		capacityForNunet.Channel != "nunet-test" &&
 		capacityForNunet.Channel != "nunet-team" &&
-		capacityForNunet.Channel != "nunet-edge" {
+		capacityForNunet.Channel != "nunet-edge" &&
+        capacityForNunet.Channel != "nunet-local" {
 		c.JSON(http.StatusBadRequest,
 			gin.H{"error": "channel name not supported! nunet-test, nunet-edge, nunet-team and nunet-staging are supported at the moment"})
 		return

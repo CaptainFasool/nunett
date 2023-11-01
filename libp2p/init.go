@@ -44,6 +44,9 @@ const (
 
 	// Prod Rendezvous
 	ProdRendezvous = "nunet"
+
+    // Local Rendezvous
+    LocalRendezvous = "nunet-local"
 )
 
 var (
