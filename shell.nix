@@ -11,5 +11,6 @@ with pkgs;
 mkShell {
   buildInputs = [
     def.run-tx-validation-test
+    systemd
   ];
 }
