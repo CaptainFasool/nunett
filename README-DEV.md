@@ -184,6 +184,10 @@ Check if both can discover each other.
 
 Change DMS backend URL from the SPD/CPD side and start with the testing.
 
+## Run Security Test Suite
+
+This command will run the Security Test suite:
+`go test -ldflags="-extldflags=-Wl,-z,lazy" -run=TestSecurity`
 
 ## License
 
