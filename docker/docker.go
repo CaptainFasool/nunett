@@ -405,7 +405,7 @@ outerLoop:
 			// We've hit a case where container has to be forcefully stopped due to timeout
 			zlog.Info("[container running] entering fourth case; container timeout")
 			beforeContainerTimeout(dc, resp.ID, requestTracker.CallID, depReq.Params.LocalNodeID)
-			dc.ContainerStop(ctx, resp.ID, nil)
+			dc.ContainerStop(ctx, resp.ID, container.StopOptions{})
 
 		}
 	}
