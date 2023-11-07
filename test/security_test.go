@@ -90,6 +90,46 @@ func (s *TestHarness) TestTxHashValidation() {
 	}
 }
 
+func (s *TestHarness) TestImageSecurity() {
+    spClient, err := CreateServiceProviderTestingClient()
+    s.Nil(err, "Failed to create testing client");
+
+    var req models.DeploymentRequest
+    req.TxHash = "notavalidhash"
+    req.RequesterWalletAddress = "addr_test1qrrysjx7gg6e2h8qvsqc29lg37yttq6cnww72637sdgfm7c58xcwszypj5fz8mmdvkv2a7wew2tthvvftj02gdeaf4vsc849la"
+    req.MaxNtx = 2
+    req.Blockchain = "Cardano"
+    req.ServiceType = "ml-training-cpu"
+    req.Timestamp = time.Now()
+	req.Params.MachineType = "cpu"
+	req.Params.ModelURL = "https://gist.github.com/luigy/d63eec5cb33d9f789969fafe04ee3ae9"
+	req.Params.ImageID = "registry.hub.docker.com/library/busybox"
+	req.Params.RemoteNodeID = "invalidremoteid"
+	req.Params.LocalNodeID = "invalidlocalid"
+	req.Params.LocalPublicKey = "invalidpublickey"
+	req.Constraints.Complexity = "Low"
+	req.Constraints.CPU = 1500
+	req.Constraints.RAM = 2000
+	req.Constraints.Vram = 2000
+	req.Constraints.Power = 170
+	req.Constraints.Time = 1
+
+    spClient.SendDeploymentRequest(req)
+
+    firstUpdate, err := spClient.GetNextDeploymentUpdate()
+
+    s.Nil(err, "Failed to get first deployment update")
+    s.NotEqual(libp2p.MsgJobStatus, firstUpdate.MsgType, "Malicious SP sent an potentially malicious container but the CP started the job");
+
+    if firstUpdate.MsgType == libp2p.MsgJobStatus {
+      secondUpdate, err := spClient.GetNextDeploymentUpdate()
+      s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't recieve a response for our request");
+      s.Nil(err, "Failed to get second update")
+      s.Equal(false, secondUpdate.Response.Success, "We just sent a malicious container")
+    }
+
+}
+
 func GenerateTestKeyPair() (crypto.PrivKey, error) {
 	priv, _, err := crypto.GenerateKeyPair(
 		crypto.Ed25519, // Ed25519 are nice short
