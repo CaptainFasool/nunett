@@ -130,6 +130,45 @@ func (s *TestHarness) TestImageSecurity() {
 
 }
 
+func (s *TestHarness) TestPayloadSecurity() {
+	spClient, err := CreateServiceProviderTestingClient()
+	s.Nil(err, "Failed to create testing client");
+
+	var req models.DeploymentRequest
+	req.TxHash = "notavalidhash"
+	req.RequesterWalletAddress = "addr_test1qrrysjx7gg6e2h8qvsqc29lg37yttq6cnww72637sdgfm7c58xcwszypj5fz8mmdvkv2a7wew2tthvvftj02gdeaf4vsc849la"
+	req.MaxNtx = 2
+	req.Blockchain = "Cardano"
+	req.ServiceType = "ml-training-cpu"
+	req.Timestamp = time.Now()
+	req.Params.MachineType = "cpu"
+	req.Params.ModelURL = "https://gist.github.com/cidkidnix/1a9245b464fc8d05e95778dc5fb6255c"
+	req.Params.ImageID = "registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu"
+	req.Params.RemoteNodeID = "invalidremoteid"
+	req.Params.LocalNodeID = "invalidlocalid"
+	req.Params.LocalPublicKey = "invalidpublickey"
+	req.Constraints.Complexity = "Low"
+	req.Constraints.CPU = 1500
+	req.Constraints.RAM = 2000
+	req.Constraints.Vram = 2000
+	req.Constraints.Power = 170
+	req.Constraints.Time = 1
+
+	spClient.SendDeploymentRequest(req)
+
+	firstUpdate, err := spClient.GetNextDeploymentUpdate()
+	s.Nil(err, "Failed to get first deployment update")
+	s.NotEqual(libp2p.MsgJobStatus, firstUpdate.MsgType, "Malicious SP send a malicious job")
+
+	// If we have received a message a job is running, lets also confirm that the DeploymentRequest is successful as well
+	if firstUpdate.MsgType == libp2p.MsgJobStatus {
+		secondUpdate, err := spClient.GetNextDeploymentUpdate()
+		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
+		s.Nil(err, "Failed to get second deployment update")
+		s.Equal(false, secondUpdate.Response.Success, "Malicious SP sent a malicious job but the CP confirmed deployment success")
+	}
+}
+
 func GenerateTestKeyPair() (crypto.PrivKey, error) {
 	priv, _, err := crypto.GenerateKeyPair(
 		crypto.Ed25519, // Ed25519 are nice short
