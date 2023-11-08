@@ -76,6 +76,15 @@ func RandomString(n int) string {
 	return sb.String()
 }
 
+// MakeListOfDictKeys makes a list which elements are keys of a dict
+func MakeListOfDictKeys[K comparable, V any](dict map[K]V) []K {
+	var keys []K
+	for k := range dict {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // GetChannelName returns the channel name from the metadata file
 func GetChannelName() string {
 	metadata, err := ReadMetadataFile()

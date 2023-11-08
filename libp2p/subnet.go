@@ -1,38 +1,50 @@
 package libp2p
 
 import (
+	"bufio"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
 
 	tun "gitlab.com/nunet/device-management-service/network/tunneling"
+	"gitlab.com/nunet/device-management-service/utils"
 
-	"github.com/gin-gonic/gin"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+)
+
+const (
+	msgSubnetCreationInvite = "SubnetCreationInvite"
 )
 
 type Subnet struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	SubnetConfig
 
 	// iface is the tun device used to pass packets between
 	// Hyprspace and the user's machine.
 	tunDev *tun.TUN
 
-	// revLookup allow quick lookups of an incoming stream
-	// for security before accepting or responding to any data.
-	revLookup map[string]string
+	// routingTable is the map of participant peers of the subnet
+	// and their subnet addresses (key: peer.ID, value: <peerSubnetIP>)
+	routingTable subnetTable
+
+	// reverseRoutingTable being key: <peerSubnetIP>
+	reversedRoutingTable reversedSubnetTable
 
 	// activeStreams is a map of active streams to a peer
+	// (key: <peerSubnetIP>, value: network.Stream)
 	activeStreams map[string]network.Stream
 }
 
-type SubnetConfig struct {
-	Peers []Peer
+type subnetTable map[peer.ID]string
+type reversedSubnetTable map[string]peer.ID
+
+type subnetMessage struct {
+	msgType string
+	msg     string
 }
 
 type Peer struct {
@@ -40,72 +52,61 @@ type Peer struct {
 	Addr string
 }
 
-type JoinSubnetParams struct {
-	Addr   string
-	Subnet SubnetConfig
+type CreateAndInviteParams struct {
+	PeersIDs []string
 }
 
-var subnet *Subnet
+func NewSubnet(ctx context.Context, cancel context.CancelFunc) *Subnet {
+	return &Subnet{
+		ctx:           ctx,
+		cancel:        cancel,
+		tunDev:        nil,
+		routingTable:  make(map[peer.ID]string),
+		activeStreams: make(map[string]network.Stream),
+	}
+}
 
-// JoinHandler godoc
-// @Summary      Joins a subnet
-// @Description  Joins a subnet given a list of peers
-// @Tags         file
-// @Accept       json
-// @Produce      json
-// @Success      200
-// @Router       /network/subnet/join [post]
-func JoinHandler(c *gin.Context) {
-	ctx, cancel := context.WithCancel(context.Background())
-	var params JoinSubnetParams
+// CreateSubnetAndInvite setup a routing table, assigning IP addresses to given peers,
+// send a message of type (msgSubnetCreationInvite) to each peer with the routing
+// table. The client must get the routing table and use it to join the subnet.
+func (s *Subnet) CreateSubnetAndInvite(peersIDs []string) error {
+	host := GetP2P().Host
+	peersIDs = append(peersIDs, host.ID().String())
 
-	if err := c.BindJSON(&params); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	var err error
+	s.routingTable, err = setupRoutingTable(peersIDs)
+	s.reversedRoutingTable = reverseRoutingTable(s.routingTable)
+	if err != nil {
+		return fmt.Errorf(
+			"Couldn't setup routing table: %w", err)
 	}
 
-	fmt.Printf("Received params: %+v\n", params)
+	for peerID, _ := range s.routingTable {
+		err := s.invitePeerToSubnet(peerID)
+		if err != nil {
+			return fmt.Errorf(
+				"Couldn't invite peer %s to subnet; Error: %w",
+				peerID.String(), err)
+		}
+	}
 
 	// Create TUN interface
 	tunDev, err := tun.New(
 		"dms-tun",
-		tun.Address(params.Addr),
+		tun.Address(s.routingTable[host.ID()]),
 		tun.MTU(1420),
 	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	var peersID []peer.ID
-	revLookup := make(map[string]string, len(params.Subnet.Peers))
-	peerTable := make(map[string]peer.ID)
-	for _, p := range params.Subnet.Peers {
-		pID, err := peer.Decode(p.ID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		// Necessary data structures for some functions
-		revLookup[p.ID] = p.Addr
-		peersID = append(peersID, pID)
-		peerTable[p.Addr] = pID
-	}
-
-	h := GetP2P().Host
-	idht := GetP2P().DHT
 
 	// Find and create connection with peers within Subnet
-	go dialPeersContinuously(ctx, h, idht, peersID)
-
-	// TODO: check if peer support protocol creating and closing stream
+	decodedPeersIDs := utils.MakeListOfDictKeys(s.routingTable)
+	go dialPeersContinuously(s.ctx, host,
+		GetP2P().DHT, decodedPeersIDs)
 
 	// Activate TUN interface to be ready to receive/send packets
 	// tun.New() just created, it didn't make active.
 	err = tunDev.Up()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return fmt.Errorf("Couldn't activate TUN interface: %w", err)
 	}
 
 	// The following is responsible for SENDING packet to other peers
@@ -113,25 +114,22 @@ func JoinHandler(c *gin.Context) {
 	// interface, so if I do `ping 10.0.0.1`, the Iface.Read() will read
 	// the packets that I'm trying to send to someone. As you can see,
 	// `dst` will get the destination address before writing to the libp2p stream
-	activeStreams := make(map[string]network.Stream)
 	var packet = make([]byte, 1420)
-	subnet = &Subnet{
-		ctx,
-		cancel,
-		params.Subnet,
-		tunDev,
-		revLookup,
-		activeStreams,
-	}
 	go func() {
 		for {
 			select {
 			case <-subnet.ctx.Done():
 				zlog.Sugar().Error("Closing all subnet streams if any")
-				for dst, stream := range activeStreams {
+				for dst, stream := range s.activeStreams {
 					stream.Close()
-					delete(activeStreams, dst)
+					delete(s.activeStreams, dst)
 				}
+
+				if err := s.tunDev.SetDownAndDelete(); err != nil {
+					zlog.Sugar().Errorf(
+						"Error closing and deleting TUN interface: %v", err)
+				}
+
 				return
 			default:
 				// ping 10.0.0.1
@@ -142,7 +140,6 @@ func JoinHandler(c *gin.Context) {
 						"Error reading packet from TUN interface: %v", err)
 					continue
 				}
-
 				// TODO: check if there is anything at all within the packet
 
 				// Decode the packet's destination address
@@ -150,7 +147,7 @@ func JoinHandler(c *gin.Context) {
 				zlog.Sugar().Debugf("Send packet to destination peer: %v", dst)
 
 				// Check if we already have an open connection to the destination peer.
-				stream, ok := activeStreams[dst]
+				stream, ok := s.activeStreams[dst]
 				if ok {
 					// Write out the packet's length to the libp2p stream to ensure
 					// we know the full size of the packet at the other end.
@@ -170,15 +167,15 @@ func JoinHandler(c *gin.Context) {
 					zlog.Sugar().Errorf(
 						"Error writing to libp2p stream from tunneling: %v", err)
 					stream.Close()
-					delete(activeStreams, dst)
+					delete(s.activeStreams, dst)
 				}
 
 				// Check if the destination of the packet is a known peer to
 				// the interface.
-				if peer, ok := peerTable[dst]; ok {
+				if peer, ok := s.reversedRoutingTable[dst]; ok {
 					zlog.Sugar().Debugf(
 						"Didn't have an active stream with peer %v, creating one", dst)
-					stream, err = h.NewStream(ctx, peer, SubnetProtocolID)
+					stream, err = host.NewStream(s.ctx, peer, SubnetProtocolID)
 					if err != nil {
 						zlog.Sugar().Errorf(
 							"Error creating stream with peer: %v", dst)
@@ -204,79 +201,84 @@ func JoinHandler(c *gin.Context) {
 
 					// If all succeeds when writing the packet to the stream
 					// we should reuse this stream by adding it active streams map.
-					activeStreams[dst] = stream
+					s.activeStreams[dst] = stream
 				}
 			}
 		}
 	}()
-	c.JSON(200, gin.H{"message": "Successfully started subnet"})
+
+	return nil
 }
 
-// DownHandler godoc
-// @Summary      Removes a TUN interface
-// @Description  Removes a TUN interface named dms-tun
-// @Tags         file
-// @Success      200
-// @Router       /network/subnet/down [post]
-func DownHandler(c *gin.Context) {
-	if subnet != nil {
-		subnet.cancel()
-	}
-	err := tun.Delete("dms-tun")
+func (s *Subnet) invitePeerToSubnet(peerID peer.ID) error {
+	zlog.Sugar().Debugf("Creating stream with peer %s to subnet",
+		peerID.String())
+	stream, err := GetP2P().Host.NewStream(s.ctx, peerID, SubnetProtocolID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return fmt.Errorf(
+			"Couldn't create stream with peer %s, Error: %w",
+			peerID, err)
 	}
-	c.JSON(200, gin.H{"message": "dms-tun interface was deleted successfully"})
+
+	zlog.Sugar().Debugf("Created stream with peer %s to subnet", peerID.String())
+	routingTableJson, err := json.Marshal(s.routingTable)
+	if err != nil {
+		stream.Close()
+		return fmt.Errorf("failed to marshal routing table, Error: %w", err)
+	}
+
+	subnetMsg := subnetMessage{
+		msgType: msgSubnetCreationInvite,
+		msg:     string(routingTableJson),
+	}
+
+	subnetMsgJson, err := json.Marshal(subnetMsg)
+	if err != nil {
+		stream.Close()
+		return fmt.Errorf("failed to marshal subnet message, Error: %w", err)
+	}
+
+	zlog.Sugar().Debugf("Sending message %s to peer %s",
+		subnetMsgJson, peerID.String())
+	w := bufio.NewWriter(stream)
+	_, err = w.WriteString(fmt.Sprintf("%s\n", subnetMsgJson))
+	if err != nil {
+		stream.Close()
+		return fmt.Errorf(
+			"Couldn't write message: %v to stream. Error: %w",
+			msgSubnetCreationInvite, err)
+	}
+	err = w.Flush()
+	if err != nil {
+		stream.Close()
+		return fmt.Errorf(
+			"Couldn't flush message: %v to stream. Error: %w",
+			msgSubnetCreationInvite, err)
+	}
+	s.activeStreams[s.routingTable[peerID]] = stream
+	return nil
 }
 
-// subnetStreamHandler handles all incoming packets for streams
-// following the protocol SubnetProtocolID
-func subnetStreamHandler(stream network.Stream) {
-	if subnet == nil {
-		zlog.Sugar().Errorf("no subnet found")
-		stream.Reset()
-		return
-	}
-	// If tunneling device was not iniated yet, just close the stream
-	if subnet.tunDev == nil {
-		zlog.Sugar().Errorf("tunDev was not iniated")
-		stream.Reset()
-		return
-	}
-	// If the remote node ID isn't in the list of known nodes don't respond.
-	if _, ok := subnet.revLookup[stream.Conn().RemotePeer().Pretty()]; !ok {
-		zlog.Sugar().Errorf("peer not on the routing table")
-		stream.Reset()
-		return
-	}
-	var packet = make([]byte, 1420)
-	var packetSize = make([]byte, 2)
-	for {
-		// Read the incoming packet's size as a binary value.
-		zlog.Sugar().Debug("Receiving packet from libp2p stream")
-		_, err := stream.Read(packetSize)
+func setupRoutingTable(peersIDs []string) (subnetTable, error) {
+	var routingTable = make(map[peer.ID]string)
+
+	for idx, peerID := range peersIDs {
+		decodedPID, err := peer.Decode(peerID)
 		if err != nil {
-			zlog.Sugar().Errorf("error reading size packet from stream: %v", err)
-			stream.Close()
-			return
+			return nil, fmt.Errorf(
+				"Couldn't decode input peerID '%s', Error: %w",
+				peerID, err)
 		}
 
-		// Decode the incoming packet's size from binary.
-		size := binary.LittleEndian.Uint16(packetSize)
-
-		// Read in the packet until completion.
-		var plen uint16 = 0
-		for plen < size {
-			tmp, err := stream.Read(packet[plen:size])
-			plen += uint16(tmp)
-			if err != nil {
-				zlog.Sugar().Errorf("error reading packet's data from stream: %v", err)
-				stream.Close()
-				return
-			}
-		}
-		zlog.Sugar().Debug("Writing packet to Tunneling interface")
-		subnet.tunDev.Iface.Write(packet[:size])
+		routingTable[decodedPID] = fmt.Sprintf("10.0.0.%d", idx)
 	}
+	return routingTable, nil
+}
+
+func reverseRoutingTable(routingTable subnetTable) reversedSubnetTable {
+	var reversedRoutingTable = make(reversedSubnetTable)
+	for peerID, subnetAddr := range routingTable {
+		reversedRoutingTable[subnetAddr] = peerID
+	}
+	return reversedRoutingTable
 }
