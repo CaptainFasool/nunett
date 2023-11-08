@@ -411,6 +411,26 @@ outerLoop:
 	}
 }
 
+// StopAndRemoveContainer stops and removes a container given its ID
+func StopAndRemoveContainer(ctx context.Context, containerID string) error {
+	if err := dc.ContainerStop(ctx, containerID, nil); err != nil {
+		zlog.Sugar().Errorf("Unable to stop container %s: %s", containerID, err)
+		return err
+	}
+
+	removeOptions := types.ContainerRemoveOptions{
+		RemoveVolumes: true,
+		Force:         true,
+	}
+
+	if err := dc.ContainerRemove(ctx, containerID, removeOptions); err != nil {
+		zlog.Sugar().Errorf("Unable to remove container %s: %s", containerID, err)
+		return err
+	}
+
+	return nil
+}
+
 // PullImage is a wrapper around Docker SDK's function with same name.
 func PullImage(ctx context.Context, imageName string) error {
 	out, err := dc.ImagePull(ctx, imageName, types.ImagePullOptions{})

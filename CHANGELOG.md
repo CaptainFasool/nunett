@@ -21,6 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.139](#292)
+
+### Added
+- Function `StopAndRemoveContainer` in the docker package
+- Logger for the dms package
+- Function `SanityCheck` that checks and kills lingering containers and correct available resources on dms start
 ## [0.4.138](#292)
 
 ### Added
