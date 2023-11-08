@@ -25,6 +25,7 @@ func Run() {
 	config.LoadConfig()
 
 	db.ConnectDatabase()
+	SanityCheck(db.DB)
 
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
