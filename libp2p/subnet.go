@@ -43,8 +43,8 @@ type subnetTable map[peer.ID]string
 type reversedSubnetTable map[string]peer.ID
 
 type subnetMessage struct {
-	msgType string
-	msg     string
+	MsgType string
+	Msg     string
 }
 
 type Peer struct {
@@ -228,8 +228,8 @@ func (s *Subnet) invitePeerToSubnet(peerID peer.ID) error {
 	}
 
 	subnetMsg := subnetMessage{
-		msgType: msgSubnetCreationInvite,
-		msg:     string(routingTableJson),
+		MsgType: msgSubnetCreationInvite,
+		Msg:     string(routingTableJson),
 	}
 
 	subnetMsgJson, err := json.Marshal(subnetMsg)
