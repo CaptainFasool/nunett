@@ -1,4 +1,4 @@
-variables: 
+variables:
   # https://hub.docker.com/r/alpine/git/tags
   GIT_VERSION: v2.30.1
   BUILD_DISABLED: "yes"
@@ -6,7 +6,7 @@ variables:
 include:
   project: nunet/nunet-infra
   file: ci/templates/Auto-DevOps.gitlab-ci.yml
-  ref: develop
+  ref: 29e2a1ea1178483a83f8bbae186c461fa2248164
 
 image: registry.gitlab.com/nunet/device-management-service/nunet-dms-builder:0.3
 
@@ -47,9 +47,9 @@ Deploy DMS:
     - cd "${CI_COMMIT_SHA}"
 
     - git checkout -B ${CI_COMMIT_BRANCH}
-    
+
     - git add .
-    
+
     - |-
       CHANGES=$(git status --porcelain | wc -l)
 
@@ -58,8 +58,8 @@ Deploy DMS:
 
         git commit -m "${COMMIT_MESSAGE}"
 
-        git push -f origin "${CI_COMMIT_BRANCH}"  
-      
+        git push -f origin "${CI_COMMIT_BRANCH}"
+
       fi
 
   before_script:
@@ -98,9 +98,9 @@ Deploy:
     - pip install ansible ansible-lint jmespath docker
     - ansible-galaxy role install geerlingguy.docker geerlingguy.pip
   image: python:3
-  script: 
+  script:
     - ansible --version
     - DMS_VERSION=$(cat main.go | grep @version | awk {'print $3'})
-    - ansible-playbook -i $ANSIBLE_INVENTORY -e dms_version=$DMS_VERSION maint-scripts/deploy/playbook.yaml 
+    - ansible-playbook -i $ANSIBLE_INVENTORY -e dms_version=$DMS_VERSION maint-scripts/deploy/playbook.yaml
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "staging"
