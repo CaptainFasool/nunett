@@ -172,7 +172,6 @@ func HandleRequestService(c *gin.Context) {
 	}
 
 	depReq.Params.RemotePublicKey = string(computeProviderPubKey)
-	zlog.Sugar().Debugf("compute provider public key: %s", string(computeProviderPubKey))
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Info("sending fund contract request to oracle")
@@ -469,7 +468,7 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	depReq.TraceInfo.TraceFlags = span.SpanContext().TraceFlags().String()
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
-	zlog.Sugar().Debugf("deployment request: %v", depReq)
+	zlog.Sugar().Debugf("deployment request: %+v", depReq)
 
 	// Saving service info in SP side
 	service.TxHash = txHash

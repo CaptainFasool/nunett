@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -16,6 +17,7 @@ import (
 	"gitlab.com/nunet/device-management-service/internal"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -45,6 +47,10 @@ const (
 	JobCompleted = "job-completed"
 )
 
+var txHashPropogrationTime = 60 // seconds
+var txHashConfirmationNum = 5 // min number of confirmations
+var txhashConfirmationTimeout = 5 // minutes
+
 var inboundChatStreams []network.Stream
 var inboundDepReqStream network.Stream
 var OutboundDepReqStream network.Stream
@@ -54,6 +60,25 @@ type OpenStream struct {
 	StreamID   string `json:"stream_id"`
 	FromPeer   string `json:"from_peer"`
 	TimeOpened string `json:"time_opened"`
+}
+
+func writeToStream(stream network.Stream, msg string, failReason string) {
+	w := bufio.NewWriter(stream)
+
+	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
+	if err != nil {
+		zlog.Sugar().Errorf("failed to write to stream after %s - %v", failReason, err)
+	}
+
+	err = w.Flush()
+	if err != nil {
+		zlog.Sugar().Errorf("failed to flush stream after %s - %v", failReason, err)
+	}
+
+	err = stream.Close()
+	if err != nil {
+		zlog.Sugar().Errorf("failed to close stream after %s - %v", failReason, err)
+	}
 }
 
 func depReqStreamHandler(stream network.Stream) {
@@ -83,21 +108,9 @@ func depReqStreamHandler(stream network.Stream) {
 			stream.Close()
 			return
 		}
-		w := bufio.NewWriter(stream)
-		_, err = w.WriteString(fmt.Sprintf("%s\n", depUpdateJson))
-		if err != nil {
-			zlog.Sugar().Errorf("fialed to write to stream after DepReq open stream length exceeded - %v", err)
-		}
 
-		err = w.Flush()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to flush stream after DepReq open stream length exceeded - %v", err)
-		}
+		writeToStream(stream, string(depUpdateJson), "DepReq open stream length exceeded")
 
-		err = stream.Close()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to close stream after DepReq open stream length exceeded - %v", err)
-		}
 		return
 	}
 
@@ -109,21 +122,7 @@ func depReqStreamHandler(stream network.Stream) {
 	str, err := r.ReadString('\n')
 	if err != nil {
 		zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
-		w := bufio.NewWriter(stream)
-		_, err := w.WriteString("Unable to read DepReq. Closing Stream.\n")
-		if err != nil {
-			zlog.Sugar().Errorf("fialed to write to stream after unable to read DepReq - %v", err)
-		}
-
-		err = w.Flush()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to flush stream after unable to read DepReq - %v", err)
-		}
-
-		err = stream.Close()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to close stream after unable to read DepReq - %v", err)
-		}
+		writeToStream(stream, "Unable to read DepReq. Closing Stream.", "unable to read depReq")
 		return
 	}
 
@@ -136,10 +135,56 @@ func depReqStreamHandler(stream network.Stream) {
 	if err != nil {
 		zlog.ErrorContext(ctx, fmt.Sprintf("unable to decode deployment request: %v", err))
 		// XXX : might be best to propagate context through depReq/depResp to encompass everything done starting with a single depReq
-		DeploymentUpdate(MsgDepResp, "Unable to decode deployment request", true)
+		depRes := models.DeploymentResponse{Success: false, Content: "Unable to decode deployment request"}
+		depResBytes, _ := json.Marshal(depRes)
+		DeploymentUpdate(MsgDepResp, string(depResBytes), true)
 	} else {
-		DepReqQueue <- depreqMessage
+		// check if txhash is valid
+		err := checkTxHash(depreqMessage.TxHash)
+		if err == nil {
+			zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
+			DepReqQueue <- depreqMessage
+		} else {
+			zlog.Sugar().Infof("tx_hash %q is invalid or timed out. Stopping deployment process", depreqMessage.TxHash)
+			depRes := models.DeploymentResponse{Success: false, Content: "Invalid TxHash"}
+			depResBytes, _ := json.Marshal(depRes)
+			DeploymentUpdate(MsgDepResp, string(depResBytes), true)
+		}
 	}
+}
+
+func checkTxHash(txHash string) error {
+	// sleep for a minute because it takes time for the tx to be visible
+	zlog.Sugar().Infof("waiting %s seconds before checking on tx Hash", txHashPropogrationTime)
+	time.Sleep(time.Duration(txHashPropogrationTime) * time.Second)
+
+	txReceiver, err := utils.GetTxReceiver(txHash, utils.KoiosPreProd)
+	if err != nil {
+		return fmt.Errorf("unable to get tx receivers")
+	}
+
+	zlog.Sugar().Infof("tx receiver: %q", txReceiver)
+	metadata, err := utils.ReadMetadataFile()
+	if err != nil {
+		return fmt.Errorf("unable to read metadata file")
+	}
+
+	payment_cred, err := utils.GetAddressPaymentCredential(metadata.PublicKey)
+	if err != nil {
+		return fmt.Errorf("unable to get payment credential")
+	}
+
+	zlog.Sugar().Infof("self payment_cred=%q", payment_cred)
+
+	if payment_cred != txReceiver {
+		return fmt.Errorf("invalid TxHash")
+	}
+
+	err = utils.WaitForTxConfirmation(txHashConfirmationNum, time.Duration(txhashConfirmationTimeout)*time.Minute, txHash, utils.KoiosPreProd)
+	if err != nil {
+		return fmt.Errorf("invalid TxHash")
+	}
+	return nil
 }
 
 // DeploymentUpdateListener listens for deployment response and service running status.
@@ -383,21 +428,7 @@ func chatStreamHandler(stream network.Stream) {
 
 	// limit to 3 streams
 	if len(inboundChatStreams) >= 3 {
-		w := bufio.NewWriter(stream)
-		_, err := w.WriteString("Unable to Accept Chat Request. Closing.\n")
-		if err != nil {
-			zlog.Sugar().Errorf("failed to write to stream after open chat stream length exceeded - %v", err)
-		}
-
-		err = w.Flush()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to flush buffer after open chat stream length exceeded - %v", err)
-		}
-
-		err = stream.Close()
-		if err != nil {
-			zlog.Sugar().Errorf("failed to close stream after open chat stream length exceeded - %v", err)
-		}
+		writeToStream(stream, "Unable to Accept Chat Request. Closing.", "open chat stream length exceeded")
 		return
 	}
 

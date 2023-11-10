@@ -232,3 +232,5 @@ require (
 	github.com/spf13/viper v1.17.0
 	github.com/uptrace/opentelemetry-go-extra/otelzap v0.1.21
 )
+
+require github.com/cosmos/btcutil v1.0.5
