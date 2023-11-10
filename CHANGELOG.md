@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.140](#292)
+
+### Added
+- TxHash validation by CP on depReq receive before running job
+
 ## [0.4.139](#292)
 
 ### Added
