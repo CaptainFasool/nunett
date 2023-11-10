@@ -85,7 +85,6 @@ func NewSubnet(ctx context.Context, cancel context.CancelFunc, peersIDs []string
 
 	if len(routingTable) != 0 {
 		// Find and create connection with peers within Subnet
-		// TODO: do not dial itself
 		decodedPeersIDs := utils.MakeListOfDictKeys(routingTable)
 		go dialPeersContinuously(ctx, host,
 			GetP2P().DHT, decodedPeersIDs)
@@ -121,7 +120,6 @@ func JoinSubnet(ctx context.Context, cancel context.CancelFunc, routingTable sub
 	host := GetP2P().Host
 	if len(routingTable) != 0 {
 		// Find and create connection with peers within Subnet
-		// TODO: do not dial itself
 		decodedPeersIDs := utils.MakeListOfDictKeys(routingTable)
 		go dialPeersContinuously(ctx, host,
 			GetP2P().DHT, decodedPeersIDs)
@@ -241,8 +239,12 @@ func (s *Subnet) redirectSentPacketsToDst() {
 // invitePeersToSubnet sends a message of type (msgSubnetCreationInvite) to each
 // given peer
 func (s *Subnet) invitePeersToSubnet(peersIDs []string) {
-	// TODO: do not invite itself
 	for _, peerID := range peersIDs {
+
+		if peerID == GetP2P().Host.ID().String() {
+			continue
+		}
+
 		err := s.invitePeerToSubnet(peerID)
 		if err != nil {
 			zlog.Sugar().Errorf(
@@ -257,7 +259,10 @@ func (s *Subnet) invitePeersToSubnet(peersIDs []string) {
 // table and use it to join the subnet as it's the only necessary information
 // to join the subnet in a secure manner
 func (s *Subnet) invitePeerToSubnet(peerID string) error {
-	// TODO: do not invite itself
+	if peerID == GetP2P().Host.ID().String() {
+		return fmt.Errorf("Host peer can not invite itself to the subnet")
+	}
+
 	decodedPID, err := peer.Decode(peerID)
 	if err != nil {
 		return fmt.Errorf(
