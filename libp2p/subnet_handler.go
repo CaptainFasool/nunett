@@ -2,6 +2,7 @@ package libp2p
 
 import (
 	"bufio"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"net/http"
@@ -23,15 +24,153 @@ var subnet *Subnet
 // @Success      200
 // @Router       /network/subnet/create-and-invite [post]
 func CreateAndInviteHandler(c *gin.Context) {
-	// ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	var params CreateAndInviteParams
 
 	if err := c.BindJSON(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	zlog.Sugar().Debugf("Received params: %+v\n", params)
+
+	subnet, err := NewSubnet(ctx, cancel, params.PeersIDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	subnet.invitePeersToSubnet(params.PeersIDs)
+	c.JSON(200, gin.H{"message": "Subnet was created successfully"})
+}
+
+// DownHandler godoc
+// @Summary      Removes a TUN interface
+// @Description  Removes a TUN interface named dms-tun
+// @Tags         file
+// @Success      200
+// @Router       /network/subnet/down [post]
+func DownHandler(c *gin.Context) {
+	if subnet != nil {
+		subnet.cancel()
+	}
+	err := subnet.tunDev.SetDownAndDelete()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"message": "dms-tun interface was deleted successfully"})
+}
+
+// subnetStreamHandler handles all incoming packets for streams
+// following the protocol SubnetProtocolID. It handles two types of messages:
+// 1. Subnet creation where there is no subnet yet; 2. Subnet internal messaging
+func subnetStreamHandler(stream network.Stream) {
+	if subnet != nil {
+		// TODO: return a response in case of failure/success when entering invited subnet
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		zlog.Sugar().Errorf("No subnet found, checking if it's a subnet invite message")
+		r := bufio.NewReader(stream)
+		//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
+		//      from/to the buffer. So far, all messages are sent with a \n at the end and the
+		//      reader looks for it as a delimiter. See also DeploymentResponse - w.WriteString
+		str, err := r.ReadString('\n')
+		if err != nil {
+			zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
+			w := bufio.NewWriter(stream)
+			_, err := w.WriteString("unable to read Subnet Message. Closing Stream.\n")
+			if err != nil {
+				zlog.Sugar().Errorf("failed to write to stream after unable to read Subnet Message - %v", err)
+			}
+
+			err = w.Flush()
+			if err != nil {
+				zlog.Sugar().Errorf("failed to flush stream after unable to read Subnet Message - %v", err)
+			}
+
+			err = stream.Close()
+			if err != nil {
+				zlog.Sugar().Errorf("failed to close stream after unable to read Subnet Message - %v", err)
+			}
+			stream.Reset()
+			return
+		}
+
+		zlog.Sugar().Debugf("[Subnet stream] message: %s", str)
+
+		subnetMsg := subnetMessage{}
+		err = json.Unmarshal([]byte(str), &subnetMsg)
+		if err != nil {
+			zlog.Sugar().Errorf("Unable to decode subnet message. Closing stream. Error: %v", err)
+			stream.Reset()
+			return
+		}
+
+		if subnetMsg.MsgType == msgSubnetCreationInvite {
+			zlog.Sugar().Debugf("Received subnet creation invite")
+			var routingTable *subnetTable
+			err := json.Unmarshal([]byte(subnetMsg.Msg), routingTable)
+			if err != nil {
+				zlog.Sugar().Errorf("Unable to decode subnet message. Closing stream. Error: %v", err)
+				stream.Reset()
+				return
+			}
+			subnet, err = JoinSubnet(ctx, cancel, *routingTable)
+			if err != nil {
+				zlog.Sugar().Errorf("Unable to join subnet. Closing stream. Error: %v", err)
+				stream.Reset()
+				return
+			}
+			zlog.Sugar().Info("Successfully joined subnet")
+			return
+		}
+
+		stream.Reset()
+		return
+	}
+
+	// If tunneling device was not iniated yet, just close the stream
+	if subnet.tunDev == nil {
+		zlog.Sugar().Errorf("tunDev was not iniated")
+		stream.Reset()
+		return
+	}
+	// If the remote node ID isn't in the list of known nodes don't respond.
+	if _, ok := subnet.routingTable[stream.Conn().RemotePeer()]; !ok {
+		zlog.Sugar().Errorf("Peer %s not on the routing table",
+			stream.Conn().RemotePeer().Pretty())
+		stream.Reset()
+		return
+	}
+	var packet = make([]byte, 1420)
+	var packetSize = make([]byte, 2)
+	for {
+		// Read the incoming packet's size as a binary value.
+		zlog.Sugar().Debug("[Subnet] Receiving packet from libp2p stream")
+		_, err := stream.Read(packetSize)
+		if err != nil {
+			zlog.Sugar().Errorf("[Subnet] error reading size packet from stream: %v", err)
+			stream.Close()
+			return
+		}
+
+		// Decode the incoming packet's size from binary.
+		size := binary.LittleEndian.Uint16(packetSize)
+
+		// Read in the packet until completion.
+		var plen uint16 = 0
+		for plen < size {
+			tmp, err := stream.Read(packet[plen:size])
+			plen += uint16(tmp)
+			if err != nil {
+				zlog.Sugar().Errorf("[Subnet] error reading packet's data from stream: %v", err)
+				stream.Close()
+				return
+			}
+		}
+		zlog.Sugar().Debug("Writing packet to Tunneling interface")
+		subnet.tunDev.Iface.Write(packet[:size])
+	}
 }
 
 // JoinHandler godoc
@@ -203,117 +342,3 @@ func CreateAndInviteHandler(c *gin.Context) {
 // 	}()
 // 	c.JSON(200, gin.H{"message": "Successfully started subnet"})
 // }
-
-// DownHandler godoc
-// @Summary      Removes a TUN interface
-// @Description  Removes a TUN interface named dms-tun
-// @Tags         file
-// @Success      200
-// @Router       /network/subnet/down [post]
-func DownHandler(c *gin.Context) {
-	if subnet != nil {
-		subnet.cancel()
-	}
-	err := subnet.tunDev.SetDownAndDelete()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"message": "dms-tun interface was deleted successfully"})
-}
-
-// subnetStreamHandler handles all incoming packets for streams
-// following the protocol SubnetProtocolID. It handles two types of messages:
-// 1. Subnet creation where there is no subnet yet; 2. Subnet internal messaging
-func subnetStreamHandler(stream network.Stream) {
-	if subnet != nil {
-		r := bufio.NewReader(stream)
-		//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
-		//      from/to the buffer. So far, all messages are sent with a \n at the end and the
-		//      reader looks for it as a delimiter. See also DeploymentResponse - w.WriteString
-		str, err := r.ReadString('\n')
-		if err != nil {
-			zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
-			w := bufio.NewWriter(stream)
-			_, err := w.WriteString("unable to read Subnet Message. Closing Stream.\n")
-			if err != nil {
-				zlog.Sugar().Errorf("failed to write to stream after unable to read Subnet Message - %v", err)
-			}
-
-			err = w.Flush()
-			if err != nil {
-				zlog.Sugar().Errorf("failed to flush stream after unable to read Subnet Message - %v", err)
-			}
-
-			err = stream.Close()
-			if err != nil {
-				zlog.Sugar().Errorf("failed to close stream after unable to read Subnet Message - %v", err)
-			}
-			stream.Reset()
-			return
-		}
-
-		zlog.Sugar().Debugf("[Subnet stream] message: %s", str)
-
-		subnetMsg := subnetMessage{}
-		err = json.Unmarshal([]byte(str), &subnetMsg)
-		if err != nil {
-			zlog.Sugar().Errorf("unable to decode subnet message: %v", err)
-			stream.Reset()
-			return
-		}
-
-		if subnetMsg.Type == msgSubnetCreationInvite {
-			// Create *Subnet object
-			// Create and activate tunneling interface
-			// start to redirecting packages to tun interface
-		}
-	}
-
-	if subnet == nil {
-		zlog.Sugar().Errorf("no subnet found")
-		stream.Reset()
-		return
-	}
-	// If tunneling device was not iniated yet, just close the stream
-	if subnet.tunDev == nil {
-		zlog.Sugar().Errorf("tunDev was not iniated")
-		stream.Reset()
-		return
-	}
-	// If the remote node ID isn't in the list of known nodes don't respond.
-	if _, ok := subnet.revLookup[stream.Conn().RemotePeer().String()]; !ok {
-		zlog.Sugar().Errorf("peer not on the routing table")
-		stream.Reset()
-		return
-	}
-	var packet = make([]byte, 1420)
-	var packetSize = make([]byte, 2)
-	for {
-		// Read the incoming packet's size as a binary value.
-		zlog.Sugar().Debug("Receiving packet from libp2p stream")
-		_, err := stream.Read(packetSize)
-		if err != nil {
-			zlog.Sugar().Errorf("error reading size packet from stream: %v", err)
-			stream.Close()
-			return
-		}
-
-		// Decode the incoming packet's size from binary.
-		size := binary.LittleEndian.Uint16(packetSize)
-
-		// Read in the packet until completion.
-		var plen uint16 = 0
-		for plen < size {
-			tmp, err := stream.Read(packet[plen:size])
-			plen += uint16(tmp)
-			if err != nil {
-				zlog.Sugar().Errorf("error reading packet's data from stream: %v", err)
-				stream.Close()
-				return
-			}
-		}
-		zlog.Sugar().Debug("Writing packet to Tunneling interface")
-		subnet.tunDev.Iface.Write(packet[:size])
-	}
-}
