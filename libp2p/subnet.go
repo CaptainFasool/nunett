@@ -24,8 +24,9 @@ type Subnet struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	// iface is the tun device used to pass packets between
-	// Hyprspace and the user's machine.
+	// tunDev is the tunneling interface used as a bridge between sent/received
+	// packets from host to dest. In practice, the real transport happens with
+	// libp2p streams
 	tunDev *tun.TUN
 
 	// routingTable is the map of participant peers of the subnet
