@@ -99,6 +99,9 @@ func dialPeersContinuously(ctx context.Context, h host.Host, idht *dht.IpfsDHT, 
 			return
 		case <-ticker.C:
 			for _, id := range peers {
+				if id == h.ID() {
+					continue
+				}
 				if err := findAndDialPeer(ctx, h, idht, id); err != nil {
 					zlog.Sugar().Debugf(
 						"Unexpected error when finding or dialing the peer %v, Error: %v",
