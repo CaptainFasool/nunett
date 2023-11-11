@@ -36,6 +36,7 @@ var commandChan = make(chan Command)
 var clients = make(map[WebSocketConnection]string)
 
 // HandleWebSocket godoc
+//
 //	@Summary		Sends a command to specific node and prints back response.
 //	@Description	Sends a command to specific node and prints back response.
 //	@Tags			peers
@@ -82,9 +83,7 @@ func ListenForWs(conn *WebSocketConnection) {
 
 	for {
 		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			// do nothing
-		} else {
+		if err == nil { // if NO error
 			// logic to send command and fetch the output
 			cmd.Command = string(msg)
 			commandChan <- cmd

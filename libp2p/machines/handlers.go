@@ -16,6 +16,7 @@ import (
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -28,8 +29,11 @@ type wsMessage struct {
 type fundingRespToSPD struct {
 	ComputeProviderAddr string  `json:"compute_provider_addr"`
 	EstimatedPrice      float64 `json:"estimated_price"`
-	Signature           string  `json:"signature"`
-	OracleMessage       string  `json:"oracle_message"`
+	MetadataHash        string  `json:"metadata_hash"`
+	WithdrawHash        string  `json:"withdraw_hash"`
+	RefundHash          string  `json:"refund_hash"`
+	Distribute_50Hash   string  `json:"distribute_50_hash"`
+	Distribute_75Hash   string  `json:"distribute_75_hash"`
 }
 
 var depreqWsConn *internal.WebSocketConnection
@@ -89,6 +93,7 @@ func HandleRequestService(c *gin.Context) {
 
 	// check if the pricing matched
 	estimatedNtx := CalculateStaticNtxGpu(depReq)
+
 	zlog.Sugar().Infof("estimated ntx price %v", estimatedNtx)
 	if estimatedNtx > float64(depReq.MaxNtx) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "nunet estimation price is greater than client price"})
@@ -107,6 +112,8 @@ func HandleRequestService(c *gin.Context) {
 		filteredPeers = FilterPeers(depReq, libp2p.GetP2P().Host)
 	}
 
+	zlog.Sugar().Infof("FILTERED PEERS: %+v", filteredPeers)
+
 	if len(filteredPeers) < 1 {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
 		return
@@ -115,6 +122,13 @@ func HandleRequestService(c *gin.Context) {
 	var onlinePeer models.PeerData
 	var rtt time.Duration = 1000000000000000000
 	for _, node := range filteredPeers {
+		// check if tokenomics address is valid, if not, skip
+		if err = utils.ValidateAddress(node.TokenomicsAddress); err != nil {
+			zlog.Sugar().Errorf("invalid tokenomics address: %v", err)
+			zlog.Sugar().Error("skipping peer due to invalid tokenomics address")
+			continue
+		}
+
 		targetPeer, err := peer.Decode(node.PeerID)
 		if err != nil {
 			zlog.Sugar().Errorf("Error decoding peer ID: %v", err)
@@ -158,16 +172,26 @@ func HandleRequestService(c *gin.Context) {
 	}
 
 	depReq.Params.RemotePublicKey = string(computeProviderPubKey)
-	zlog.Sugar().Debugf("compute provider public key: %s", string(computeProviderPubKey))
 
 	// oracle inputs: service provider user address, max tokens amount, type of blockchain (cardano or ethereum)
 	zlog.Info("sending fund contract request to oracle")
-	fcr, err := oracle.FundContractRequest()
+	oracleResp, err := oracle.FundContractRequest(&oracle.FundingRequest{
+		ServiceProviderAddr: depReq.RequesterWalletAddress,
+		ComputeProviderAddr: computeProvider.TokenomicsAddress,
+		EstimatedPrice:      int64(estimatedNtx),
+	})
 	if err != nil {
 		zlog.Info("sending fund contract request to oracle failed")
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "cannot connect to oracle"})
 		return
 	}
+
+	// Seding hashes to CP's DMS in Deployment Request
+	depReq.MetadataHash = oracleResp.MetadataHash
+	depReq.WithdrawHash = oracleResp.WithdrawHash
+	depReq.RefundHash = oracleResp.RefundHash
+	depReq.Distribute_50Hash = oracleResp.Distribute_50Hash
+	depReq.Distribute_75Hash = oracleResp.Distribute_75Hash
 
 	// Marshal struct to JSON
 	depReqBytes, _ := json.Marshal(depReq)
@@ -184,13 +208,17 @@ func HandleRequestService(c *gin.Context) {
 		return
 	}
 
-	// oracle outputs: compute provider user address, estimated price, signature, oracle message
+	// oracle outputs: estimated price, metadata hash, withdraw hash, refund hash, distribute hash
 	resp := fundingRespToSPD{
 		ComputeProviderAddr: computeProvider.TokenomicsAddress,
 		EstimatedPrice:      estimatedNtx,
-		Signature:           fcr.Signature,
-		OracleMessage:       fcr.OracleMessage,
+		MetadataHash:        oracleResp.MetadataHash,
+		WithdrawHash:        oracleResp.WithdrawHash,
+		RefundHash:          oracleResp.RefundHash,
+		Distribute_50Hash:   oracleResp.Distribute_50Hash,
+		Distribute_75Hash:   oracleResp.Distribute_75Hash,
 	}
+	zlog.Sugar().Debugf("%s", resp)
 	c.JSON(200, resp)
 	go outgoingDepReqWebsock()
 }
@@ -420,6 +448,7 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	// load depReq from the database
 	var depReqFlat models.DeploymentRequestFlat
 	var depReq models.DeploymentRequest
+	var service models.Services
 
 	// SELECTs the first record; first record which is not marked as delete
 	if err := db.DB.First(&depReqFlat).Error; err != nil {
@@ -439,7 +468,20 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	depReq.TraceInfo.TraceFlags = span.SpanContext().TraceFlags().String()
 	depReq.TraceInfo.TraceStates = span.SpanContext().TraceState().String()
 
-	zlog.Sugar().Debugf("deployment request: %v", depReq)
+	zlog.Sugar().Debugf("deployment request: %+v", depReq)
+
+	// Saving service info in SP side
+	service.TxHash = txHash
+	service.MetadataHash = depReq.MetadataHash
+	service.WithdrawHash = depReq.WithdrawHash
+	service.RefundHash = depReq.RefundHash
+	service.Distribute_50Hash = depReq.Distribute_50Hash
+	service.Distribute_75Hash = depReq.Distribute_75Hash
+	service.TransactionType = "refund"
+
+	if err := db.DB.Create(&service).Error; err != nil {
+		zlog.Sugar().Errorf("couldn't save service on SP side: %v", err)
+	}
 
 	// notify websocket client about the
 	submitted := map[string]string{"action": libp2p.JobSubmitted}

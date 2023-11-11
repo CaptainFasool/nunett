@@ -2,6 +2,7 @@ package onboarding
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -11,12 +12,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
+	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/spf13/afero"
@@ -34,26 +36,13 @@ var AFS *afero.Afero = &afero.Afero{Fs: FS}
 //	@Success		200	{object}	models.Metadata
 //	@Router			/onboarding/metadata [get]
 func GetMetadata(c *gin.Context) {
-	// check if the request has any body data
-	// if it has return that body  and skip the below code
-	// just for the test cases
-	// read the info
-	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
+	metadata, err := FetchMetadata()
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": "metadata.json does not exists or not readable"})
+			gin.H{"error": err.Error()})
 		return
 	}
-
-	// deserialize to json
-	var metadata models.MetadataV2
-	err = json.Unmarshal(content, &metadata)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": "unable to parse metadata.json"})
-		return
-	}
-
 	c.JSON(http.StatusOK, metadata)
 }
 
@@ -66,12 +55,12 @@ func GetMetadata(c *gin.Context) {
 //	@Success		200	{object}	models.Provisioned
 //	@Router			/onboarding/provisioned [get]
 func ProvisionedCapacity(c *gin.Context) {
-	totalProvisioned := GetTotalProvisioned()
+	totalProvisioned := library.GetTotalProvisioned()
 	totalPJ, err := json.Marshal(totalProvisioned)
 	if err != nil {
 		zlog.Sugar().ErrorfContext(c.Request.Context(), "couldn't marshal totalProvisioned to json: %v", string(totalPJ))
 	}
-	c.JSON(http.StatusOK, GetTotalProvisioned())
+	c.JSON(http.StatusOK, library.GetTotalProvisioned())
 }
 
 // CreatePaymentAddress      godoc
@@ -146,10 +135,8 @@ func Status(c *gin.Context) {
 func Onboard(c *gin.Context) {
 	// get capacity user want to rent to NuNet
 	capacityForNunet := models.CapacityForNunet{ServerMode: true}
-	c.BindJSON(&capacityForNunet)
-	// check if request body is empty
-	if c.Request.ContentLength == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "request body is empty"})
+	if err := c.BindJSON(&capacityForNunet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
 		return
 	}
 
@@ -164,9 +151,9 @@ func Onboard(c *gin.Context) {
 
 	currentTime := time.Now().Unix()
 
-	totalCpu := GetTotalProvisioned().CPU
-	totalMem := GetTotalProvisioned().Memory
-	numCores := GetTotalProvisioned().NumCores
+	totalCpu := library.GetTotalProvisioned().CPU
+	totalMem := library.GetTotalProvisioned().Memory
+	numCores := library.GetTotalProvisioned().NumCores
 
 	// create metadata
 	var metadata models.MetadataV2
@@ -177,18 +164,15 @@ func Onboard(c *gin.Context) {
 	metadata.Resource.TotalCore = int64(numCores)
 	metadata.Resource.CPUMax = int64(totalCpu)
 
-	c.BindJSON(&capacityForNunet)
-
 	// validate the public (payment) address
-	if err := ValidateAddress(capacityForNunet.PaymentAddress); err != nil {
+	if err := utils.ValidateAddress(capacityForNunet.PaymentAddress); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if (capacityForNunet.Memory > int64(totalMem)) &&
-		capacityForNunet.CPU > int64(totalCpu) {
-		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "wrong capacity provided"})
+	// validate dedicated capacity to NuNet (should be between 10% to 90%)
+	if err := validateCapacityForNunet(capacityForNunet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -203,7 +187,7 @@ func Onboard(c *gin.Context) {
 		metadata.AllowCardano = true
 	}
 
-	gpu_info, err := Check_gpu()
+	gpu_info, err := library.Check_gpu()
 	if err != nil {
 		zlog.Sugar().Errorf("Unable to detect GPU: %v ", err.Error())
 	}
@@ -240,11 +224,11 @@ func Onboard(c *gin.Context) {
 	available_resources := models.AvailableResources{
 		TotCpuHz:  int(capacityForNunet.CPU),
 		CpuNo:     int(numCores),
-		CpuHz:     hz_per_cpu(),
+		CpuHz:     library.Hz_per_cpu(),
 		PriceCpu:  0, // TODO: Get price of CPU
 		Ram:       int(capacityForNunet.Memory),
 		PriceRam:  0, // TODO: Get price of RAM
-		Vcpu:      int(math.Floor((float64(capacityForNunet.CPU)) / hz_per_cpu())),
+		Vcpu:      int(math.Floor((float64(capacityForNunet.CPU)) / library.Hz_per_cpu())),
 		Disk:      0,
 		PriceDisk: 0,
 	}
@@ -267,7 +251,13 @@ func Onboard(c *gin.Context) {
 		zlog.Panic(err.Error())
 	}
 	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
-	telemetry.CalcFreeResources()
+
+	err = telemetry.CalcFreeResAndUpdateDB()
+	if err != nil {
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		// Should we return http error also?
+	}
+
 	libp2p.RunNode(priv, capacityForNunet.ServerMode)
 
 	_, err = heartbeat.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)
@@ -309,9 +299,18 @@ func ResourceConfig(c *gin.Context) {
 		return
 	}
 
-	// read the request body
+	// reading the request body
 	capacityForNunet := models.CapacityForNunet{}
-	c.BindJSON(&capacityForNunet)
+	if err := c.BindJSON(&capacityForNunet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
+		return
+	}
+
+	// validate dedicated capacity to NuNet (should be between 10% to 90%)
+	if err := validateCapacityForNunet(capacityForNunet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	// read metadataV2.json file and update it with new resources
 	metadata, err := utils.ReadMetadataFile()
@@ -324,7 +323,10 @@ func ResourceConfig(c *gin.Context) {
 	// read the existing data and update it with new resources
 	var availableRes models.AvailableResources
 	if res := db.DB.WithContext(c.Request.Context()).First(&availableRes); res.RowsAffected == 0 {
-		zlog.Sugar().Errorf("availableRes table does not exist: %v", err)
+		zlog.Error("availableRes table does not exist")
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": "Could not proceed, please check have you onboarded your machine on Nunet"})
+		return
 	}
 	availableRes.TotCpuHz = int(capacityForNunet.CPU)
 	availableRes.Ram = int(capacityForNunet.Memory)
@@ -338,7 +340,13 @@ func ResourceConfig(c *gin.Context) {
 		return
 	}
 	klogger.Logger.Info("device resource changed")
-	telemetry.CalcFreeResources()
+
+	err = telemetry.CalcFreeResAndUpdateDB()
+	if err != nil {
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		// Should we return http error also?
+	}
+
 	c.JSON(http.StatusOK, metadata)
 }
 
@@ -393,7 +401,6 @@ func Offboard(c *gin.Context) {
 		}
 	}
 
-	telemetry.DeleteCalcFreeResources()
 	err = libp2p.ShutdownNode()
 	if err != nil && !force {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to properly shutdown the node"})
@@ -409,4 +416,36 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+func validateCapacityForNunet(capacityForNunet models.CapacityForNunet) error {
+	totalCpu := library.GetTotalProvisioned().CPU
+	totalMem := library.GetTotalProvisioned().Memory
+
+	if capacityForNunet.CPU > int64(totalCpu*9/10) || capacityForNunet.CPU < int64(totalCpu/10) {
+		return fmt.Errorf("CPU should be between 10%% and 90%% of the available CPU (%d and %d)", int64(totalCpu/10), int64(totalCpu*9/10))
+	}
+
+	if capacityForNunet.Memory > int64(totalMem*9/10) || capacityForNunet.Memory < int64(totalMem/10) {
+		return fmt.Errorf("memory should be between 10%% and 90%% of the available memory (%d and %d)", int64(totalMem/10), int64(totalMem*9/10))
+	}
+
+	return nil
+}
+
+// FetchMetadata reads metadataV2.json file and returns a models.MetadataV2 struct
+func FetchMetadata() (*models.MetadataV2, error) {
+	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
+	if err != nil {
+		return nil, errors.New("unable to read metadata.json")
+	}
+
+	// deserialize to json
+	var metadata models.MetadataV2
+	err = json.Unmarshal(content, &metadata)
+	if err != nil {
+		return nil, errors.New("unable to parse metadata.json")
+	}
+
+	return &metadata, nil
 }

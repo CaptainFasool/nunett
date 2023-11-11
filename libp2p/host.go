@@ -8,6 +8,7 @@ import (
 	"io"
 	mrand "math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -55,7 +56,21 @@ func GetP2P() DMSp2p {
 
 // To be elevated to DMS package
 func CheckOnboarding() {
-	// Checks for saved metadata and create a new host
+	// Check 1: Check if payment address is valid
+	metadata, err := utils.ReadMetadataFile()
+	if err != nil {
+		zlog.Sugar().Errorf("unable to read metadata.json: %v", err)
+		return
+	}
+
+	err = utils.ValidateAddress(metadata.PublicKey)
+	if err != nil {
+		zlog.Sugar().Errorf("the payment address %s is not valid", metadata.PublicKey)
+		zlog.Sugar().Error("exiting DMS")
+		os.Exit(1)
+	}
+
+	// Check 2: Check for saved metadata and create a new host
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
 	if result.Error != nil {
@@ -91,6 +106,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), PingHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), DepReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), ChatStreamHandler)
+	host.SetStreamHandler(protocol.ID(FileTransferProtocolID), fileStreamHandler)
 
 	p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
@@ -109,6 +125,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
 		peerInfo := models.PeerData{}
 		peerInfo.PeerID = host.ID().String()
+		peerInfo.IsAvailable = true
 		peerInfo.AllowCardano = metadata2.AllowCardano
 		peerInfo.TokenomicsAddress = metadata2.PublicKey
 		if len(metadata2.GpuInfo) == 0 {
@@ -231,12 +248,11 @@ func SaveNodeInfo(priv crypto.PrivKey, pub crypto.PubKey, serverMode bool) error
 	libp2pInfo.PublicKey, _ = crypto.MarshalPublicKey(pub)
 	libp2pInfo.ServerMode = serverMode
 
-	if res := db.DB.Find(&libp2pInfo); res.RowsAffected == 0 {
-		result := db.DB.Create(&libp2pInfo)
-		if result.Error != nil {
-			return result.Error
-		}
+	result := db.DB.Save(&libp2pInfo)
+	if result.Error != nil {
+		return result.Error
 	}
+
 	return nil
 }
 
@@ -336,7 +352,7 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 	var libp2pOpts []libp2p.Option
 	baseOpts := []dht.Option{
 		kadPrefix,
-		dht.NamespacedValidator("nunet-dht", blankValidator{}),
+		dht.NamespacedValidator(strings.ReplaceAll(customNamespace, "/", ""), blankValidator{}),
 		dht.Mode(dht.ModeServer),
 	}
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(

@@ -9,6 +9,7 @@ type Config struct {
 
 type General struct {
 	MetadataPath string `mapstructure:"metadata_path"`
+	DataDir      string `mapstructure:"data_dir"`
 	Debug        bool   `mapstructure:"debug"`
 }
 
@@ -23,5 +24,5 @@ type P2P struct {
 
 type Job struct {
 	LogUpdateInterval int    `mapstructure:"log_update_interval"` // in minutes
-	TargetPeer         string `mapstructure:"target_peer"`          // specific peer to send deployment requests to - XXX probably not a good idea. Remove after testing stage.
+	TargetPeer        string `mapstructure:"target_peer"`         // specific peer to send deployment requests to - XXX probably not a good idea. Remove after testing stage.
 }

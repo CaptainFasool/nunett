@@ -1,16 +1,18 @@
 package docker
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 
-	"runtime"
+	"os/user"
 	"strings"
 	"time"
 
@@ -18,27 +20,31 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/shirou/gopsutil/cpu"
+	"github.com/docker/docker/client"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/firecracker/telemetry"
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
+	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
+	"gitlab.com/nunet/device-management-service/onboarding"
+	"gitlab.com/nunet/device-management-service/telemetry"
+	"gitlab.com/nunet/device-management-service/utils"
 	"go.uber.org/zap"
 )
 
 var (
-	vcpuToMicroseconds float64       = 100000
-	logUpdateInterval  time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
+	cpuPeriod         int64         = 100000
+	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
 )
 
 func freeUsedResources() {
 	// update the available resources table
-	err := telemetry.CalcFreeResources()
+	err := telemetry.CalcFreeResAndUpdateDB()
 	if err != nil {
-		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
 	}
 	freeResource, err := telemetry.GetFreeResources()
 	if err != nil {
@@ -49,12 +55,12 @@ func freeUsedResources() {
 }
 
 func mhzPerCore() (float64, error) {
-	cpus, err := cpu.Info()
-	if err != nil {
-		zlog.Sugar().Errorf("failed to get cpu info: %v", err)
-		return 0, err
-	}
-	return cpus[0].Mhz, nil
+	// cpus, err := cpu.Info()
+	// if err != nil {
+	// 	zlog.Sugar().Errorf("failed to get cpu info: %v", err)
+	// 	return 0, err
+	// }
+	return library.Hz_per_cpu(), nil
 }
 
 func round(num float64) int {
@@ -75,28 +81,36 @@ func mhzToVCPU(cpuInMhz int) (float64, error) {
 	return toFixed(vcpu, 2), nil
 }
 
+func groupExists(groupName string) bool {
+	_, err := user.LookupGroup(groupName)
+	return err == nil
+}
+
 // RunContainer goes through the process of setting constraints,
 // specifying image name and cmd. It starts a container and posts
 // log update every logUpdateDuration.
-func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdLog LogbinResponse, resCh chan<- models.DeploymentResponse, servicePK uint, chosenGPUVendor gpuinfo.GPUVendor) {
+func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdLog LogbinResponse, resCh chan<- models.DeploymentResponse, servicePK uint, chosenGPUVendor library.GPUVendor) {
 	zlog.Info("Entering RunContainer")
 	machine_type := depReq.Params.MachineType
 	gpuOpts := opts.GpuOpts{}
 	if machine_type == "gpu" {
 		gpuOpts.Set("all") // TODO find a way to use GPU and CPU
 	}
+	imageName := depReq.Params.ImageID
+	if chosenGPUVendor == library.AMD {
+		imageName += "-amd"
+	}
 	modelURL := depReq.Params.ModelURL
 	packages := strings.Join(depReq.Params.Packages, " ")
 	containerConfig := &container.Config{
-		Image: depReq.Params.ImageID,
+		Image: imageName,
 		Cmd:   []string{modelURL, packages},
-		// Tty:          true,
 	}
-	memoryMbToBytes := int64(depReq.Constraints.RAM * 1024 * 1024)
-	VCPU, err := mhzToVCPU(depReq.Constraints.CPU)
+	// Get onboarded resources
+	cpuQuota, memoryMax, err := fetchOnboardedResources()
 	if err != nil {
-		zlog.Sugar().Errorf("Error converting MHz to VCPU: %v", err)
-		depRes := models.DeploymentResponse{Success: false, Content: "Problem with CPU Constraints. Unable to process request."}
+		zlog.Sugar().Errorf("Error fetching onboarded resources: %v", err)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with onboarded resources. Unable to process request."}
 		resCh <- depRes
 		return
 	}
@@ -104,22 +118,24 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
-			Memory:         memoryMbToBytes,
-			CPUQuota:       int64(VCPU * vcpuToMicroseconds),
+			Memory:         memoryMax,
+			CPUQuota:       cpuQuota,
+			CPUPeriod:      cpuPeriod,
 		},
 	}
 
 	hostConfigAMDGPU := container.HostConfig{}
 
-	if chosenGPUVendor == gpuinfo.AMD {
+	if chosenGPUVendor == library.AMD {
 		hostConfigAMDGPU = container.HostConfig{
 			Binds: []string{
 				"/dev/kfd:/dev/kfd",
 				"/dev/dri:/dev/dri",
 			},
 			Resources: container.Resources{
-				Memory:   memoryMbToBytes,
-				CPUQuota: int64(VCPU * vcpuToMicroseconds),
+				Memory:    memoryMax,
+				CPUQuota:  cpuQuota,
+				CPUPeriod: cpuPeriod,
 				Devices: []container.DeviceMapping{
 					{
 						PathOnHost:        "/dev/kfd",
@@ -136,7 +152,8 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 			GroupAdd: []string{"video"},
 		}
 
-		if runtime.GOOS != "ubuntu18.04" {
+		// For Ubuntu > 18.04
+		if groupExists("render") {
 			hostConfigAMDGPU.GroupAdd = append(hostConfigAMDGPU.GroupAdd, "render")
 		}
 
@@ -159,6 +176,22 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		depRes := models.DeploymentResponse{Success: false, Content: "Problem with resources for deployment. Unable to process request."}
 		resCh <- depRes
 		return
+	}
+
+	// if resuming a job, bind the volume together
+	if depReq.Params.ResumeJob.Resume {
+		hostPath := filepath.Join(config.GetConfig().General.MetadataPath, "progress")
+		containerPath := "/workspace"
+		volumeBinding := fmt.Sprintf("%s:%s", hostPath, containerPath)
+
+		// preserve other binds from AMD host config
+		if chosenGPUVendor == library.AMD {
+			hostConfig.Binds = append(hostConfig.Binds, volumeBinding)
+		} else {
+			hostConfig = &container.HostConfig{
+				Binds: []string{volumeBinding},
+			}
+		}
 	}
 
 	resp, err := dc.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
@@ -219,9 +252,15 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		resCh <- depRes
 		return
 	}
-	// TODO: Update service based on passed pk
 
-	telemetry.CalcFreeResources()
+	err = telemetry.CalcFreeResAndUpdateDB()
+	if err != nil {
+		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		depRes := models.DeploymentResponse{Success: false, Content: "Problem with free resources calculation. Unable to process request."}
+		resCh <- depRes
+		return
+	}
+
 	libp2p.UpdateKadDHT()
 
 	depRes := models.DeploymentResponse{Success: true}
@@ -229,6 +268,9 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 
 	tick := time.NewTicker(logUpdateInterval)
 	defer tick.Stop()
+
+	containerTimeout := time.NewTimer(time.Duration(depReq.Constraints.Time) * time.Minute)
+	defer containerTimeout.Stop()
 
 	statusCh, errCh := dc.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	maxUsedRAM, maxUsedCPU, networkBwUsed := 0.0, 0.0, 0.0
@@ -270,6 +312,18 @@ outerLoop:
 				requestTracker.Status = libp2p.ContainerJobFinishedWithErrors
 			}
 
+			duration := time.Now().Sub(service.CreatedAt)
+			jobDuration := duration.Minutes()
+			service.JobDuration = int64(jobDuration)
+
+			oracleResp := getSignaturesFromOracle(service) // saving the signatures into DB, received from Oracle + wallet server
+			service.TransactionType = oracleResp.RewardType
+			service.SignatureDatum = oracleResp.SignatureDatum
+			service.MessageHashDatum = oracleResp.MessageHashDatum
+			service.Datum = oracleResp.Datum
+			service.SignatureAction = oracleResp.SignatureAction
+			service.MessageHashAction = oracleResp.MessageHashAction
+			service.Action = oracleResp.Action
 			db.DB.Save(&service)
 
 			// Send service status update
@@ -280,7 +334,6 @@ outerLoop:
 			}
 			libp2p.DeploymentUpdate(libp2p.MsgJobStatus, string(serviceBytes), closeStream)
 
-			duration := time.Now().Sub(service.CreatedAt)
 			timeTaken := duration.Seconds()
 			averageNetBw := networkBwUsed / timeTaken
 
@@ -346,9 +399,36 @@ outerLoop:
 			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
-			db.DB.Save(requestTracker)
+
+			createTarballAndChecksum(dc, resp.ID, requestTracker.CallID)
+		case <-containerTimeout.C:
+			// We've hit a case where container has to be forcefully stopped due to timeout
+			zlog.Info("[container running] entering fourth case; container timeout")
+			beforeContainerTimeout(dc, resp.ID, requestTracker.CallID, depReq.Params.LocalNodeID)
+			dc.ContainerStop(ctx, resp.ID, nil)
+
 		}
 	}
+}
+
+// StopAndRemoveContainer stops and removes a container given its ID
+func StopAndRemoveContainer(ctx context.Context, containerID string) error {
+	if err := dc.ContainerStop(ctx, containerID, nil); err != nil {
+		zlog.Sugar().Errorf("Unable to stop container %s: %s", containerID, err)
+		return err
+	}
+
+	removeOptions := types.ContainerRemoveOptions{
+		RemoveVolumes: true,
+		Force:         true,
+	}
+
+	if err := dc.ContainerRemove(ctx, containerID, removeOptions); err != nil {
+		zlog.Sugar().Errorf("Unable to remove container %s: %s", containerID, err)
+		return err
+	}
+
+	return nil
 }
 
 // PullImage is a wrapper around Docker SDK's function with same name.
@@ -395,31 +475,58 @@ func calculateResourceUsage(input string) float64 {
 	}
 }
 
+func getSignaturesFromOracle(service models.Services) (oracleResp *oracle.RewardResponse) {
+	oracleResp, err := oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
+		JobStatus:            service.JobStatus,
+		JobDuration:          service.JobDuration,
+		EstimatedJobDuration: service.EstimatedJobDuration,
+		LogPath:              service.LogURL,
+		MetadataHash:         service.MetadataHash,
+		WithdrawHash:         service.WithdrawHash,
+		RefundHash:           service.RefundHash,
+		Distribute_50Hash:    service.Distribute_50Hash,
+		Distribute_75Hash:    service.Distribute_75Hash,
+	})
+	if err != nil {
+		zlog.Sugar().Errorf("connetction to oracle failed : %v", err)
+	}
+
+	return oracleResp
+}
+
 // HandleDeployment does following docker based actions in the sequence:
-// Pull image, run container, get logs, delete container, send log to the requester
+// Pull image, run container, get logs, send log to the requester
 func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) models.DeploymentResponse {
-	var chosenGPUVendor gpuinfo.GPUVendor
+	var chosenGPUVendor library.GPUVendor
 	if depReq.Params.MachineType == "gpu" {
 		// Finding the GPU with the highest free VRAM regardless of vendor type
 		// Get AMD GPU info
-		amdGPUs, err := gpuinfo.GetAMDGPUInfo()
+		// var gpu_infos [][]library.GPUInfo
+		gpu_infos, err := library.GetGPUInfo()
 		if err != nil {
-			zlog.Sugar().Errorf("AMD GPU/Driver not found: %v", err)
+			zlog.Sugar().Errorf("GPU/Driver not found: %v", err)
 		}
+		amdGPUs := gpu_infos[0]
+		nvidiaGPUs := gpu_infos[1]
 
-		// Get NVIDIA GPU info
-		nvidiaGPUs, err := gpuinfo.GetNVIDIAGPUInfo()
-		if err != nil {
-			zlog.Sugar().Errorf("NVIDIA GPU/Driver not found: %v", err)
-			// return here and not above for AMD because we need to have at least one GPU
-			return models.DeploymentResponse{Success: false, Content: "Unable to get GPU info."}
-		}
+		// amdGPUs, err := library.GetAMDGPUInfo()
+		// if err != nil {
+		// 	zlog.Sugar().Errorf("AMD GPU/Driver not found: %v", err)
+		// }
+
+		// // Get NVIDIA GPU info
+		// nvidiaGPUs, err := gpuinfo.GetNVIDIAGPUInfo()
+		// if err != nil {
+		// 	zlog.Sugar().Errorf("NVIDIA GPU/Driver not found: %v", err)
+		// 	// return here and not above for AMD because we need to have at least one GPU
+		// 	return models.DeploymentResponse{Success: false, Content: "Unable to get GPU info."}
+		// }
 
 		// Combine AMD and NVIDIA GPU info
 		allGPUs := append(amdGPUs, nvidiaGPUs...)
 
 		// Find the GPU with the highest free VRAM
-		var maxFreeVRAMGPU gpuinfo.GPUInfo
+		var maxFreeVRAMGPU library.GPUInfo
 		maxFreeVRAM := uint64(0)
 		for _, gpu := range allGPUs {
 			if gpu.FreeMemory > maxFreeVRAM {
@@ -428,10 +535,10 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 			}
 		}
 
-		if maxFreeVRAMGPU.Vendor == gpuinfo.NVIDIA {
-			chosenGPUVendor = gpuinfo.NVIDIA
-		} else if maxFreeVRAMGPU.Vendor == gpuinfo.AMD {
-			chosenGPUVendor = gpuinfo.AMD
+		if maxFreeVRAMGPU.Vendor == library.NVIDIA {
+			chosenGPUVendor = library.NVIDIA
+		} else if maxFreeVRAMGPU.Vendor == library.AMD {
+			chosenGPUVendor = library.AMD
 		} else {
 			fmt.Println("Unknown GPU vendor")
 			// return here because we need to have at least one GPU
@@ -447,7 +554,7 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	}
 	// Pull the image
 	imageName := depReq.Params.ImageID
-	if chosenGPUVendor == gpuinfo.AMD {
+	if chosenGPUVendor == library.AMD {
 		imageName += "-amd"
 	}
 	err := PullImage(ctx, imageName)
@@ -456,14 +563,26 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 		return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}
 	}
 
+	metadata, err := utils.ReadMetadataFile()
+	if err != nil {
+		zlog.Sugar().Errorf("couldn't read metadata: %v", err)
+	}
+
 	// create a service and pass the primary key to the RunContainer to update ContainerID
 	var service models.Services
-	service.ImageID = depReq.Params.ImageID
-	service.ServiceName = depReq.Params.ImageID
+	service.ImageID = imageName
+	service.ServiceName = imageName
 	service.JobStatus = "running"
-	service.JobDuration = 5           // these are dummy data, implementation pending
-	service.EstimatedJobDuration = 10 // these are dummy data, implementation pending
+	service.JobDuration = 0
+	service.EstimatedJobDuration = int64(depReq.Constraints.Time)
 	service.TxHash = depReq.TxHash
+	service.MetadataHash = depReq.MetadataHash
+	service.WithdrawHash = depReq.WithdrawHash
+	service.RefundHash = depReq.RefundHash
+	service.Distribute_50Hash = depReq.Distribute_50Hash
+	service.Distribute_75Hash = depReq.Distribute_75Hash
+	service.ServiceProviderAddr = depReq.RequesterWalletAddress
+	service.ComputeProviderAddr = metadata.PublicKey
 
 	// create logbin here and pass it to RunContainer to update logs
 	createdLog, err := newLogBin(
@@ -499,4 +618,105 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	// Send back createdLog.RawUrl
 	res.Content = createdLog.RawUrl
 	return res
+}
+
+// createTarballAndChecksum takes containerID and job id and creates a tarball
+// of the container along with sha256sum of the tarball.
+func createTarballAndChecksum(dc *client.Client, containerID string, callID int64) {
+	ctx := context.Background()
+	// create a tar of /workspace dir; which is where the image stores it's ML progress
+	tarStream, _, err := dc.CopyFromContainer(ctx, containerID, "/workspace")
+	if err != nil {
+		zlog.Sugar().Fatalf("Error getting tar stream:", err)
+	}
+	defer tarStream.Close()
+
+	// save the tarball to the designated place on host machine
+	checkpointPath := fmt.Sprintf("%s/checkpoints", config.GetConfig().General.MetadataPath)
+	// make sure the checkpointPath is an existing directory.
+	utils.CreateDirectoryIfNotExists(checkpointPath)
+
+	// use unique "job id" name for the tarball
+	tarOnHostPath := filepath.Join(checkpointPath, fmt.Sprintf("%d.tar.gz", callID))
+	tarballFile, err := os.Create(tarOnHostPath)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error creating tarball file:", err)
+	}
+	defer tarballFile.Close()
+
+	// Create a gzip writer for the tarball file
+	gzipWriter := gzip.NewWriter(tarballFile)
+	defer gzipWriter.Close()
+
+	// Copy the tar stream to the gzip writer (compressing it)
+	_, err = io.Copy(gzipWriter, tarStream)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error copying tar stream to tarball file:", err)
+	}
+
+	zlog.Debug("Tarball of the home directory created successfully.")
+
+	// Calculate the SHA-256 checksum of the tar.gz file
+	sha256Checksum, err := utils.CalculateSHA256Checksum(tarOnHostPath)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error calculating SHA-256 checksum:", err)
+	}
+
+	// Write the checksum to a .sha256.txt file
+	sha256FilePath := fmt.Sprintf("%s.sha256.txt", tarOnHostPath)
+	sha256File, err := os.Create(sha256FilePath)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error creating SHA-256 checksum file:", err)
+	}
+	defer sha256File.Close()
+
+	_, err = sha256File.WriteString(sha256Checksum)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error writing SHA-256 checksum:", err)
+	}
+
+	zlog.Debug("SHA-256 checksum written to .sha256.txt file.")
+}
+
+func sendBackupToSPD(containerID string, callID int64, spNodeID string) {
+	// send the tarball to SPD
+	checkpointPath := fmt.Sprintf("%s/checkpoints", config.GetConfig().General.MetadataPath)
+	tarOnHostPath := filepath.Join(checkpointPath, fmt.Sprintf("%d.tar.gz", callID))
+	spPeerID, err := peer.Decode(spNodeID)
+	if err != nil {
+		zlog.Sugar().Fatalf("Error decoding spNodeID:", err)
+	}
+
+	// Send checksum file
+	checksumFile := fmt.Sprintf("%s.sha256.txt", tarOnHostPath)
+	libp2p.SendFileToPeer(context.Background(), spPeerID, checksumFile)
+	// Send tar file
+	libp2p.SendFileToPeer(context.Background(), spPeerID, tarOnHostPath)
+}
+
+// beforeContainerTimeout is a event handler which deals with initiating the
+// sending of final checkpoint to service provider (sp).
+func beforeContainerTimeout(dc *client.Client, containerID string, callID int64, spNodeID string) {
+	zlog.Debug("Sending final checkpoint to SPD")
+	createTarballAndChecksum(dc, containerID, callID)
+	sendBackupToSPD(containerID, callID, spNodeID)
+}
+
+// fetchOnboardedResources returns cpuQuota and memoryMax (in bytes) onboarded to nunet
+func fetchOnboardedResources() (cpuQuota, memoryMax int64, err error) {
+	// call 'nunet info' command internally and get the reserved_cpu, cpu_max and reserved ram
+	metadata, err := onboarding.FetchMetadata()
+	if err != nil {
+		zlog.Sugar().Errorf("Error fetching metadata: %v", err)
+		// will return 0, 0, err
+		return
+	}
+
+	// Proportion=reserved.cpu/resource.cpu_max
+	proportion := metadata.Reserved.CPU / metadata.Resource.CPUMax
+	// Quota=100000 * Proportion
+	cpuQuota = int64(cpuPeriod * proportion)
+	memoryMax = metadata.Reserved.Memory * 1024 * 1024 // convert to bytes
+
+	return cpuQuota, memoryMax, nil
 }

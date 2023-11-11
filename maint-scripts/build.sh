@@ -40,7 +40,8 @@ do
     sed -i "s/Installed-Size:.*/Installed-Size: $DMS_INST_SIZE/g" $archDir/DEBIAN/control
 
     go version # redundant check of go version
-    env GOOS=linux GOARCH=$arch go build -o $archDir/usr/bin/nunet-dms -buildvcs=false
+    make linux_$arch
+    cp builds/dms_linux_$arch $archDir/usr/bin/nunet-dms
     ls -R $archDir/usr # to allow checking all files are where they're supposed to be
 
     gcc $projectRoot/maint-scripts/config_network.c -o $archDir/usr/bin/nunet-tap-config

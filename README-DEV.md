@@ -1,9 +1,3 @@
-**Table of Contents**:
-
-[TOC]
-
----
-
 Device Management Service, or DMS is the backend of all the clients which are available for compute or service provider. Currently they are SPD or Service Provider Dashboard and CPD aka Compute Provider Dashboard.
 
 Note: This README is intended for developers. For end users, please check our [Wiki section](https://gitlab.com/nunet/device-management-service/-/wikis/home).
@@ -18,7 +12,7 @@ sh <(curl -sL https://inst.dms.nunet.io)
 The cleanest way to setup development environment is to build a deb package out of this repository and let the installer do the work for you.
 
 ```
-sudo apt install build-essential curl jq iproute2
+sudo apt install build-essential curl jq iproute2 libsystemd-dev
 ```
 
 ### Prerequisites
@@ -27,7 +21,7 @@ To build the deb, you'd be required to install these two packages:
 
 ```
 sudo snap install go
-sudo apt install build-essential
+sudo apt install build-essential libsystemd-dev
 ```
 
 ### Build, Install & Setup Dev Env
@@ -189,7 +183,6 @@ Check if both can discover each other.
 **Step 5**:
 
 Change DMS backend URL from the SPD/CPD side and start with the testing.
-
 
 ## License
 

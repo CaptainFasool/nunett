@@ -20,6 +20,145 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+## [0.4.140](#292)
+
+### Added
+- TxHash validation by CP on depReq receive before running job
+
+## [0.4.139](#292)
+
+### Added
+- Function `StopAndRemoveContainer` in the docker package
+- Logger for the dms package
+- Function `SanityCheck` that checks and kills lingering containers and correct available resources on dms start
+## [0.4.138](#292)
+
+### Added
+- Command gpu and sub-commands status, capacity and onboard
+- Port onboard-ml and offboard commands from bash script
+- Add scripts for driver and container runtime installation inside maint-scripts
+
+### Changed
+- Update InternalAPIURL and MakeInternalRequest utility functions to support queries
+- Move String method inside gpudetect package
+
+## [0.4.137](#309)
+
+### Added
+- Added wallet addresses in request-reward endpoint to return dashboards
+- Added parameters of  in request-reward endpoint to return dashboards
+- Calculated time execution of job container
+
+### Changed
+- Changed the transactions endpoints to filter them on dashboards
+## [0.4.136](#283)
+
+### Added
+- Oracle mock to enable testing
+- Refactored HandleRequestReward function
+- Created Unit Tests & Mocks for routes
+## [0.4.135](#308)
+
+### Added
+- Wallet address self validation on startup
+- CP wallet address validation before job deployment request
+
+## [0.4.134](#126)
+
+### Added
+- add timeout for container, use parameter from dep req
+- handle new fields from SPD regarding resuming
+- save tar.gz of /workspace directory in container every logUpdateInterval
+- add volume binding before starting a resuming container (extracted tar.gz -> /workspace)
+- add event handler at timeout to archive & send the final progress tarball
+- send sha256 checksum along with tarball to SPD
+
+## [0.4.133](#314)
+
+### Fixed
+- GPU detection on job start (#314)
+## [0.4.132](#273)
+
+### Changed
+- Support Darwin arm64 and amd64 builds
+- Makefile for building
+- Separate GPU detection for linux/darwin , arm64/amd64
+- No GPU detection support for Darwin
+## [0.4.131](#249)
+
+### Changed
+- Changed the telemetry/ folder from firecracker/ to the repository's root.
+- Created some functions to abstract the additions/subtractions of resource usage and available resources.
+- Unit/Integration tests for most of the functions of Telemetry package, the main one being calcFreeResources()
+## [0.4.130](#9)
+
+### Added
+- Allow setting device status (online/offline)
+- Rest endpoints and CLI commands to set device status
+## [0.4.129](#278)
+
+### Added
+- Create WebSocket client for handling communication with server
+- Add start chat, join chat, clear chat and list chat commands
+- Make openStream struct exportable and reuse it for listing chats
+- Fix typo in welcome message when starting a chat
+- Add libsystemd-dev as build/dev dependency
+## [0.4.128](#220)
+
+### Added
+- Port the commands to Go: peer list, peer self, onboard, info, capacity, wallet new, resource-config, log
+- Change pattern of commands to APP VERB NOUN
+- Add --dht flag for list peers command
+- Format output of show capacity command in YAML manner (suitable to change)
+
+## [0.4.127](#296)
+
+### Added
+- File transfer between peers (#147 -> #196)
+## [0.4.126](nunet/ml-on-gpu/ml-on-gpu-webapp/-/issues/41#note_1490827796#41)
+
+### Changed 
+- Request-reward endpoint to return the new parameters from oracle.
+- Request-service endpoint to return the hashes from oracle.
+### Deprecated
+- `signature` and `oracle_message` parameters.
+### Added 
+- oracle paramters for `withdrawReq` and `fundingReq`
+
+# [0.4.125.1](#306)
+### Fixed
+- increase the threshold to use all onboarded resources
+- prohibit saying no enough resources
+# [0.4.125](#287)
+### Fixed
+- Filter correct job/services executed on machine with tx hash for request reward
+# [0.4.124](!212)
+### Fixed
+- Fixed a bug where the NVIDIA Container Runtime Installation would be skipped when onboarding on mining operating systems with NVIDIA GPUs
+- Fixed showing the AMD ROCm Kernel Driver detection
+- Fixed a bug where DMS tries to deploy NVIDIA GPU container after pulling AMD GPU image
+
+### Changed
+- Revised container runtime installation script and condition for adding the render group for AMD GPUs if it exists (Ubuntu > 18.04)
+- Set Service Names based on imageName to create distinct services for every image
+# [0.4.123](#284)
+### Fixed
+- Update timestamp when call service events are changed
+- Keep elastic tokens for different channels
+# [0.4.122](#282)
+### Fixed
+- Correct new elastic parameters on new token
+- Correctly save new keys for peer info on subsequent creation
+# [0.4.121](#281)
+### Fixed
+- Correct nodeid on processUsage telemetry
+# [0.4.120](!221)
+### Fixed
+- Added validation on Onboard API for dedicated capacity to NuNet
+- Removed redundancy of binding request data to JSON
+- Fix heartbeat invalid token issue
+- Update protocol versions due to depreq backward incompatibility
 # [0.4.119](#263)
 ### Removed
 - Removed RequestTracker table from DMS.

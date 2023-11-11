@@ -37,7 +37,7 @@ func TestChat(t *testing.T) {
 	}
 
 	// 0 chat requests expected now
-	incomingReq, err := incomingChatRequests()
+	incomingReq, err := IncomingChatRequests()
 	assert.Nil(t, incomingReq)
 	assert.Equal(t, "No Incoming Message Stream.", err.Error())
 
@@ -80,18 +80,18 @@ func TestChat(t *testing.T) {
 	}
 
 	w := bufio.NewWriter(stream)
-	writeData(w, "Hello, just testing\n")
+	writeString(w, "Hello, just testing\n")
 	w.Flush()
 
 	time.Sleep(time.Second)
 
 	// 1 chat requests expected now
-	incomingReq, err = incomingChatRequests()
+	incomingReq, err = IncomingChatRequests()
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(incomingReq))
 
 	r := bufio.NewReader(inboundChatStreams[0])
-	msg, err := readData(r)
+	msg, err := readString(r)
 	if err != nil {
 		t.Fatalf("Couldn't Read from Stream: %v", err)
 	}
@@ -166,12 +166,12 @@ func TestWrongFormatDepReq(t *testing.T) {
 	wrongDepReq := "hi"
 
 	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-	writeData(rw.Writer, fmt.Sprintf("%v\n", wrongDepReq))
+	writeString(rw.Writer, fmt.Sprintf("%v\n", wrongDepReq))
 	rw.Flush()
 
 	time.Sleep(2 * time.Second)
 
-	msg, err := readData(rw.Reader)
+	msg, err := readString(rw.Reader)
 	if err != nil {
 		t.Fatalf("Couldn't Read from Stream: %v", err)
 	}

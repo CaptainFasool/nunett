@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	gonet "github.com/shirou/gopsutil/net"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
@@ -22,6 +26,7 @@ var KernelFilePath = "/etc/nunet/vmlinux"
 var FilesystemURL = "https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4"
 var FilesystemPath = "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4"
 
+// DownloadFile downloads a file from a url and saves it to a filepath
 func DownloadFile(url string, filepath string) (err error) {
 	zlog.Sugar().Infof("Downloading file '", filepath, "' from '", url, "'")
 	file, err := os.Create(filepath)
@@ -44,6 +49,7 @@ func DownloadFile(url string, filepath string) (err error) {
 	return nil
 }
 
+// ReadHttpString GET request to http endpoint and return response as string
 func ReadHttpString(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -59,6 +65,7 @@ func ReadHttpString(url string) (string, error) {
 	return string(respBody), nil
 }
 
+// RandomString generates a random string of length n
 func RandomString(n int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	sb := strings.Builder{}
@@ -69,6 +76,7 @@ func RandomString(n int) string {
 	return sb.String()
 }
 
+// GetChannelName returns the channel name from the metadata file
 func GetChannelName() string {
 	metadata, err := ReadMetadataFile()
 	if err != nil || metadata.Network == "" {
@@ -85,6 +93,7 @@ func GetDashboard() string {
 	return metadata.Dashboard
 }
 
+// GenerateMachineUUID generates a machine uuid
 func GenerateMachineUUID() (string, error) {
 	var machine models.MachineUUID
 
@@ -97,6 +106,7 @@ func GenerateMachineUUID() (string, error) {
 	return machine.UUID, nil
 }
 
+// GetMachineUUID returns the machine uuid from the DB
 func GetMachineUUID() string {
 	var machine models.MachineUUID
 	uuid, err := GenerateMachineUUID()
@@ -114,6 +124,17 @@ func GetMachineUUID() string {
 
 }
 
+// SliceContains checks if a string exists in a slice
+func SliceContains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+// RegisterLogbin registers the device with logbin
 func RegisterLogbin(uuid string, peer_id string) (string, error) {
 	logbinAuthReq := struct {
 		PeerID      string `json:"peer_id"`
@@ -173,10 +194,11 @@ func RegisterLogbin(uuid string, peer_id string) (string, error) {
 	return logbinAuth.Token, nil
 }
 
+// GetLogbinToken returns the logbin token from the DB
 func GetLogbinToken() (string, error) {
 	var logbinAuth models.LogBinAuth
 	result := db.DB.Find(&logbinAuth)
-	if result.Error != nil{
+	if result.Error != nil {
 		zlog.Sugar().Errorf("unable to find logbin auth record in DB: %v", result.Error)
 		return "", result.Error
 	}
@@ -184,19 +206,20 @@ func GetLogbinToken() (string, error) {
 }
 
 // ReadMetadata returns metadata from metadataV2.json file
-func ReadMetadataFile() (models.MetadataV2, error) {
+func ReadMetadataFile() (*models.MetadataV2, error) {
 	metadataF, err := os.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
-		return models.MetadataV2{}, err
+		return &models.MetadataV2{}, err
 	}
 	var metadata models.MetadataV2
 	err = json.Unmarshal(metadataF, &metadata)
 	if err != nil {
-		return models.MetadataV2{}, err
+		return &models.MetadataV2{}, err
 	}
-	return metadata, nil
+	return &metadata, nil
 }
 
+// IsOnboarded checks if the device is onboarded
 func IsOnboarded() (bool, error) {
 	var libp2pInfo models.Libp2pInfo
 	_ = db.DB.Where("id = ?", 1).Find(&libp2pInfo)
@@ -209,4 +232,114 @@ func IsOnboarded() (bool, error) {
 	} else {
 		return false, err
 	}
+}
+
+// ReadyForElastic checks if the device is ready to send logs to elastic
+func ReadyForElastic() bool {
+	elasticToken := models.ElasticToken{}
+	db.DB.Find(&elasticToken)
+	return elasticToken.NodeId != "" && elasticToken.ChannelName != ""
+}
+
+// CreateDirectoryIfNotExists creates a directory if it does not exist
+func CreateDirectoryIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err := os.MkdirAll(path, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CalculateSHA256Checksum calculates the SHA256 checksum of a file
+func CalculateSHA256Checksum(filePath string) (string, error) {
+	// Open the file for reading
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	// Create a new SHA-256 hash
+	hash := sha256.New()
+
+	// Copy the file's contents into the hash object
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	// Calculate the checksum and return it as a hexadecimal string
+	checksum := hex.EncodeToString(hash.Sum(nil))
+	return checksum, nil
+}
+
+// PromptYesNo prompts the user on stdout for a yes or no response on stdin
+func PromptYesNo(prompt string) bool {
+	reader := bufio.NewReader(os.Stdin)
+
+	verifyInput := func(input string) bool {
+		lowerInput := strings.ToLower(input)
+		return lowerInput == "y" || lowerInput == "yes" || lowerInput == "n" || lowerInput == "no"
+	}
+
+	for {
+		fmt.Print(prompt + ": ")
+		response, err := reader.ReadString('\n')
+
+		if err != nil {
+			fmt.Println("Error reading from buffer:", err)
+			return false
+		}
+
+		response = strings.TrimSpace(response)
+
+		if verifyInput(response) {
+			lowerResponse := strings.ToLower(response)
+			return lowerResponse == "y" || lowerResponse == "yes"
+		} else {
+			fmt.Println("Invalid input. Please enter 'y' or 'n'")
+		}
+	}
+}
+
+// CheckWSL check if running in WSL
+func CheckWSL() (bool, error) {
+	file, err := os.Open("/proc/version")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "Microsoft") || strings.Contains(line, "WSL") {
+			return true, nil
+		}
+	}
+
+	if scanner.Err() != nil {
+		return false, scanner.Err()
+	}
+
+	return false, nil
+}
+
+// ListenDMSPort check if DMS port is being used
+func ListenDMSPort() (bool, error) {
+	port := config.GetConfig().Rest.Port
+
+	conns, err := gonet.Connections("all")
+	if err != nil {
+		return false, err
+	}
+
+	for _, conn := range conns {
+		if conn.Status == "LISTEN" && uint32(port) == conn.Laddr.Port {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

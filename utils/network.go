@@ -3,31 +3,43 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/internal/config"
 )
 
-// GetInternalBaseURL is a helper method to allow calls to any resources
-func GetInternalBaseURL(internalEndpoint string) (string, error) {
-	if internalEndpoint == "" {
-		return "", fmt.Errorf("internalEndpoint cannot be empty")
+// InternalAPIURL is a helper method to compose API URLs
+func InternalAPIURL(protocol, endpoint, query string) (string, error) {
+	if protocol == "" || endpoint == "" {
+		return "", fmt.Errorf("protocol and endpoint values must be specified")
 	}
 
-	endpoint := fmt.Sprintf(
-		"http://localhost:%d%s",
-		config.GetConfig().Rest.Port,
-		internalEndpoint,
-	)
+	if protocol != "http" && protocol != "ws" {
+		return "", fmt.Errorf("invalid protocol: %s", protocol)
+	}
 
-	return endpoint, nil
+	port := config.GetConfig().Rest.Port
+	if port == 0 {
+		return "", fmt.Errorf("port is not configured")
+	}
+
+	serverURL := url.URL{
+		Scheme:   protocol,
+		Host:     fmt.Sprintf("localhost:%d", port),
+		Path:     endpoint,
+		RawQuery: query,
+	}
+
+	return serverURL.String(), nil
 }
 
 // MakeInternalRequest is a helper method to make call to DMS's own API
-func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, body []byte) (*http.Response, error) {
-	endpoint, err := GetInternalBaseURL(internalEndpoint)
+func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint, query string, body []byte) (*http.Response, error) {
+	endpoint, err := InternalAPIURL("http", internalEndpoint, query)
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +57,11 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint string, bo
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json")
+
+	if c != nil {
+		req.Header = c.Request.Header.Clone()
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -82,4 +99,19 @@ func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, e
 		// return
 		panic(err)
 	}
+}
+
+func ResponseBody(c *gin.Context, methodType, internalEndpoint, query string, body []byte) (responseBody []byte, errMsg error) {
+	resp, err := MakeInternalRequest(c, methodType, internalEndpoint, query, body)
+	if err != nil {
+		return nil, fmt.Errorf("unable to make internal request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read response body: %v", err)
+	}
+
+	return respBody, nil
 }

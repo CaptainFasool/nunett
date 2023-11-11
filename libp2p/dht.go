@@ -196,7 +196,12 @@ func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) 
 				}()
 
 				var updates models.KadDHTMachineUpdate
-				var peerInfo models.PeerData
+
+				// XXX: default 'IsAvailable' set to true here because older DMSs
+				//      that don't have this parameter will by default have it as
+				//      false and that will make them unable to receive jobs.
+				//      NEEDS TO BE REMOVED ONCE MOST ARE UPDATED.
+				peerInfo := models.PeerData{IsAvailable: true}
 
 				// Add custom namespace to the key
 				namespacedKey := customNamespace + peer.ID.String()
@@ -257,6 +262,18 @@ func FetchAvailableResources(node host.Host) []models.FreeResources {
 	}
 
 	return availableResources
+}
+
+// Filter function which returns a slice of the PeerData struct containing peers that are available.
+func PeersWithAvailability(peers []models.PeerData) []models.PeerData {
+	var availablePeers []models.PeerData
+
+	for _, peer := range peers {
+		if peer.IsAvailable {
+			availablePeers = append(availablePeers, peer)
+		}
+	}
+	return availablePeers
 }
 
 // PeersWithCardanoAllowed is a filter function which returns a slice of
