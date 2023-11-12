@@ -21,32 +21,3 @@ import (
 func main() {
 	cmd.Execute()
 }
-
-// To be used when migrating to the refactored version of the code
-
-// func main() {
-// 	config.LoadConfig()
-
-// 	wg := new(sync.WaitGroup)
-// 	wg.Add(1)
-// 	dmsInstance := dms.NewDMS()
-
-// 	cleanup := tracing.InitTracer()
-// 	defer cleanup(context.Background())
-
-// 	go startServer(wg)
-
-// 	go messaging.DeploymentWorker()
-
-// 	heartbeat.Done = make(chan bool)
-// 	go heartbeat.Heartbeat()
-// 	// wait for server to start properly before sending requests below
-// 	time.Sleep(time.Second * 5)
-
-// 	// get managed VMs, assume previous run left some VM running
-// 	firecracker.RunPreviouslyRunningVMs()
-
-// 	// Recreate host with previous keys
-// 	dmsInstance.CheckOnboarding()
-// 	wg.Wait()
-// }

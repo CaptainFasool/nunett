@@ -62,7 +62,7 @@ type OpenStream struct {
 	TimeOpened string `json:"time_opened"`
 }
 
-func writeToStream(stream network.Stream, msg string, failReason string) {
+func closeStreamWithMsg(stream network.Stream, msg string, failReason string) {
 	w := bufio.NewWriter(stream)
 
 	_, err := w.WriteString(fmt.Sprintf("%s\n", msg))
@@ -75,9 +75,9 @@ func writeToStream(stream network.Stream, msg string, failReason string) {
 		zlog.Sugar().Errorf("failed to flush stream after %s - %v", failReason, err)
 	}
 
-	err = stream.Close()
+	err = stream.Reset()
 	if err != nil {
-		zlog.Sugar().Errorf("failed to close stream after %s - %v", failReason, err)
+		zlog.Sugar().Errorf("failed to reset stream after %s - %v", failReason, err)
 	}
 }
 
@@ -98,18 +98,18 @@ func DepReqStreamHandler(stream network.Stream) {
 		depResJson, err := json.Marshal(depRes)
 		if err != nil {
 			zlog.Sugar().Errorf("failed to marshal depRes - %v", err)
-			stream.Close()
+			stream.Reset()
 			return
 		}
 		depUpdate := models.DeploymentUpdate{MsgType: MsgDepResp, Msg: string(depResJson)}
 		depUpdateJson, err := json.Marshal(depUpdate)
 		if err != nil {
 			zlog.Sugar().Errorf("failed to marshal depUpdate - %v", err)
-			stream.Close()
+			stream.Reset()
 			return
 		}
 
-		writeToStream(stream, string(depUpdateJson), "DepReq open stream length exceeded")
+		closeStreamWithMsg(stream, string(depUpdateJson), "DepReq open stream length exceeded")
 
 		return
 	}
@@ -122,7 +122,7 @@ func DepReqStreamHandler(stream network.Stream) {
 	str, err := r.ReadString('\n')
 	if err != nil {
 		zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
-		writeToStream(stream, "Unable to read DepReq. Closing Stream.", "unable to read depReq")
+		closeStreamWithMsg(stream, "Unable to read DepReq. Closing Stream.", "unable to read depReq")
 		return
 	}
 
@@ -431,7 +431,7 @@ func ChatStreamHandler(stream network.Stream) {
 
 	// limit to 3 streams
 	if len(inboundChatStreams) >= 3 {
-		writeToStream(stream, "Unable to Accept Chat Request. Closing.", "open chat stream length exceeded")
+		closeStreamWithMsg(stream, "Unable to Accept Chat Request. Closing.", "open chat stream length exceeded")
 		return
 	}
 
