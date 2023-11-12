@@ -169,7 +169,8 @@ func fetchPeerStoreContents(node host.Host) []models.PeerData {
 func fetchKadDhtContents(ctxt context.Context, resultChan chan models.PeerData) {
 	zlog.Debug("Fetching DHT content for all peers")
 
-	fetchCtx, _ := context.WithTimeout(ctxt, time.Minute)
+	fetchCtx, cancel := context.WithTimeout(ctxt, time.Minute)
+	defer cancel()
 
 	go func() {
 		// Create a wait group to ensure all workers have finished
