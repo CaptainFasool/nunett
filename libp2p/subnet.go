@@ -233,10 +233,6 @@ func (s *Subnet) redirectSentPacketsToDst() {
 	}
 }
 
-// CreateSubnetAndInvite setup a routing table, assigning IP addresses to given peers,
-// send a message of type (msgSubnetCreationInvite) to each peer with the routing
-// table. The client must get the routing table and use it to join the subnet.
-
 // invitePeersToSubnet sends a message of type (msgSubnetCreationInvite) to each
 // given peer
 func (s *Subnet) invitePeersToSubnet(peersIDs []string) {
