@@ -673,6 +673,7 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	service.JobDuration = 0
 	service.EstimatedJobDuration = int64(depReq.Constraints.Time)
 	service.TxHash = depReq.TxHash
+	service.TransactionType = "running"
 	service.MetadataHash = depReq.MetadataHash
 	service.WithdrawHash = depReq.WithdrawHash
 	service.RefundHash = depReq.RefundHash

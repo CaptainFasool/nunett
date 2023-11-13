@@ -343,3 +343,21 @@ func ListenDMSPort() (bool, error) {
 
 	return false, nil
 }
+
+// SaveServiceInfo updates service info into SP's DMS for claim Reward by SP user
+func SaveServiceInfo(cpService models.Services) error {
+
+	var spService models.Services
+	err := db.DB.Model(&models.Services{}).Where("tx_hash = ?", cpService.TxHash).Find(&spService).Error
+	if err != nil {
+		return fmt.Errorf("Unable to find service on SP side: %v", err)
+	}
+	cpService.ID = spService.ID
+
+	result := db.DB.Model(&models.Services{}).Where("tx_hash = ?", cpService.TxHash).Updates(&cpService)
+	if result.Error != nil {
+		return fmt.Errorf("Unable to update service info on SP side: %v", result.Error.Error())
+	}
+
+	return nil
+}

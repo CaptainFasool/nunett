@@ -21,6 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.143](oracle#24)
+
+### Changed
+- Fixed unique constraint error while save service into SP's DMS.
+- Update transaction status to running.
+
 ## [0.4.142](#295)
 
 ### Added
