@@ -21,6 +21,20 @@ Types of changes
 
 -->
 
+## [0.4.141](#166)
+
+### Added
+- Temporary setter for DMSp2p
+- Routes tests
+
+### Changed
+- Allow db to be initiated on a mock fs
+
+### Fixed
+- Fix /transactions responses when tx don't exist
+- Fixed utils/network tests
+
+
 ## [0.4.140](#292)
 
 ### Added

@@ -1,23 +1,23 @@
 package utils
 
 import (
-	"io"
+	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 	"fmt"
+	"io"
+	"net/http"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"gitlab.com/nunet/device-management-service/internal/config"
 
 	"github.com/gin-gonic/gin"
 )
 
-type Info struct {
-	Version string `json: "version"`
-}
-
 func TestGetInternalBaseURL(t *testing.T) {
 	// Test with a valid internal endpoint
-	endpoint, err := GetInternalBaseURL("/swagger/doc.json")
+	endpoint, err := InternalAPIURL("http", "/swagger/doc.json", "")
 	if err != nil {
 		t.Errorf("Expected no error, but got %v", err)
 	}
@@ -28,64 +28,67 @@ func TestGetInternalBaseURL(t *testing.T) {
 	}
 
 	// Test with an empty internal endpoint
-	_, err = GetInternalBaseURL("")
-	if err == nil {
-		t.Errorf("Expected an error, but got none")
-	}
+	_, err = InternalAPIURL("", "", "")
+	assert.NotNil(t, err, "Expected an error, but got none")
 }
 
 func TestMakeInternalRequest(t *testing.T) {
+	ctx := context.Background()
 	// Test with a valid request
-	req := httptest.NewRequest("GET", "/swagger/doc.json", nil)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = req
-
-	resp, err := MakeInternalRequest(c, "GET", "/swagger/doc.json", nil)
-	if err != nil {
-		t.Errorf("Expected no error, but got %v", err)
+	type respType struct {
+		Data string `json:"data"`
 	}
+	mockEndpoint := "/test_endpoint"
+	mockResp := respType{Data: "the mock data"}
+	router := gin.Default()
+	router.GET(mockEndpoint, func(c *gin.Context) {
+		c.JSON(http.StatusOK, mockResp)
+	})
+
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", config.GetConfig().Rest.Port),
+		Handler: router,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Println("error: ", err)
+		}
+	}()
+
+	resp, err := MakeInternalRequest(nil, "GET", mockEndpoint, "", nil)
+	assert.Nil(t, err, fmt.Sprintf("Expected no error, but got %v", err))
+
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Errorf("Error reading response body: %v", err)
-	}
+	assert.Nil(t, err, fmt.Sprintf("Error reading response body: %v", err))
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "makeInternalRequest wasn't successful")
 
 	expectedContentType := "application/json; charset=utf-8"
-	if resp.Header.Get("Content-Type") != expectedContentType {
-		t.Errorf("Expected Content-Type header %s, but got %s", expectedContentType, resp.Header.Get("Content-Type"))
-	}
+	assert.Equal(
+		t,
+		expectedContentType,
+		resp.Header.Get("Content-Type"),
+		fmt.Sprintf(
+			"Expected Content-Type header %s, but got %s",
+			expectedContentType,
+			resp.Header.Get("Content-Type")))
 
-	var info Info
-	err = json.Unmarshal(body, &info)
-	if err != nil {
-		t.Errorf("Error unmarshaling response body: %v", err)
-	}
+	var dataStore respType
+	err = json.Unmarshal(body, &dataStore)
+	assert.Nil(t, err, fmt.Sprintf("Error unmarshaling response body: %v", err))
 
-	expectedInfo := "0.4.97"
-	fmt.Println(info)
-	if expectedInfo != info.Version {
-		t.Errorf("Expected key %s, but got %s", expectedInfo, info.Version)
-	}
+	// // Test with an invalid internal endpoint
+	resp, err = MakeInternalRequest(nil, "GET", "", "", nil)
+	assert.NotNil(t, err, "Expected an error, but got none")
+	assert.Nil(t, resp, fmt.Sprintf("Expected resp to be nil but go %+v instead", resp))
 
-	// Test with an invalid internal endpoint
-	req = httptest.NewRequest("GET", "/swagger/doc.json", nil)
-	w = httptest.NewRecorder()
-	c, _ = gin.CreateTestContext(w)
-	c.Request = req
-
-	resp, err = MakeInternalRequest(c, "GET", "", nil)
-	if err == nil {
-		t.Errorf("Expected an error, but got none")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("Expected status code %d, but got %d", http.StatusBadRequest, resp.StatusCode)
+	// shutdown server
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		fmt.Println("error:", err)
 	}
 }

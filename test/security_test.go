@@ -15,6 +15,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -110,7 +111,7 @@ func SetupDMSTestingConfiguration( tempDirectoryName string, port int ) {
 }
 
 func OnboardTestComputeProvider() {
-	db.ConnectDatabase()
+	db.ConnectDatabase(afero.NewOsFs())
 
 	availableResources := models.AvailableResources{
 		TotCpuHz:  int(2000000),

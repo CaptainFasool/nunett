@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 
+	"github.com/spf13/afero"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
@@ -12,8 +13,17 @@ import (
 
 var DB *gorm.DB
 
-func ConnectDatabase() {
-	database, err := gorm.Open(sqlite.Open(fmt.Sprintf("%s/nunet.db", config.GetConfig().General.MetadataPath)), &gorm.Config{})
+func ConnectDatabase(fs afero.Fs) {
+
+	dbPath := fmt.Sprintf("%s/nunet.db", config.GetConfig().General.MetadataPath)
+
+	// Check if the database file exists in the provided filesystem, and if not, create it
+	if exists, _ := afero.Exists(fs, dbPath); !exists {
+		afero.WriteFile(fs, dbPath, []byte{}, 0644)
+	}
+
+	// Open the SQLite database using the path from the filesystem
+	database, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 
 	if err != nil {
 		panic("Failed to connect to database!")
