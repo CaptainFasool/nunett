@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/afero"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -26,6 +27,8 @@ func Run() {
 	config.LoadConfig()
 
 	db.ConnectDatabase(afero.NewOsFs())
+
+	docker.StartCleanup()
 
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
