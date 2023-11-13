@@ -41,6 +41,8 @@ func setDefaultConfig() *viper.Viper {
 	})
 	v.SetDefault("job.log_update_interval", 2)
 	v.SetDefault("job.target_peer", "")
+	v.SetDefault("job.cleanup_interval", 3)
+
 	return v
 }
 

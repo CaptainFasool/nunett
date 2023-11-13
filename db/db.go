@@ -36,6 +36,7 @@ func ConnectDatabase(fs afero.Fs) {
 	database.AutoMigrate(&models.PeerInfo{})
 	database.AutoMigrate(&models.Services{})
 	database.AutoMigrate(&models.ServiceResourceRequirements{})
+	database.AutoMigrate(&models.ContainerImages{})
 	database.AutoMigrate(&models.RequestTracker{})
 	database.AutoMigrate(&models.Libp2pInfo{})
 	database.AutoMigrate(&models.DeploymentRequestFlat{})

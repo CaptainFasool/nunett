@@ -21,6 +21,13 @@ Types of changes
 
 -->
 
+## [0.4.142](#295)
+
+### Added
+- Keep a record of images pulled by DMS in the database to track dangling images
+- Utility functions in the docker package for search, remove and get containers using an image.
+- Added a daemon function to cleanup dangling images
+
 ## [0.4.141](#166)
 
 ### Added
