@@ -15,12 +15,24 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
+// TODOs:
+// - go routine to always keep routingTable and reversedRoutingTable in sync
+
+// - invitePeerToVPN() function considers that the peer is already within the routingTable,
+// that will not be always the case. Assign a new IP if the peer is not on the routing table yet
+
+// - change function name invitePeerToVPN() -> some other thing
+// There will probably not be a invite mechanism, peers which accepted this type of job, will
+// be necessarily accepting to enter in a vpn
+
+// - NewVPN must also accept callings without peerIDs
+
 const (
-	msgSubnetCreationInvite = "SubnetCreationInvite"
-	defaultTunIfaceName     = "dms-tun"
+	msgVPNCreationInvite = "VPNCreationInvite"
+	defaultTunIfaceName  = "dms-tun"
 )
 
-type Subnet struct {
+type VPN struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -29,22 +41,22 @@ type Subnet struct {
 	// libp2p streams
 	tunDev *tun.TUN
 
-	// routingTable is the map of participant peers of the subnet
-	// and their subnet addresses (key: peer.ID, value: <peerSubnetIP>)
-	routingTable subnetTable
+	// routingTable is the map of participant peers of the vpn
+	// and their vpn addresses (key: peer.ID, value: <peerVpnIP>)
+	routingTable vpnRouter
 
-	// reverseRoutingTable being key: <peerSubnetIP>
-	reversedRoutingTable reversedSubnetTable
+	// reverseRoutingTable being key: <peerVpnIP>
+	reversedRoutingTable reversedVPNRouter
 
 	// activeStreams is a map of active streams to a peer
-	// (key: <peerSubnetIP>, value: network.Stream)
+	// (key: <peerVpnIP>, value: network.Stream)
 	activeStreams map[string]network.Stream
 }
 
-type subnetTable map[peer.ID]string
-type reversedSubnetTable map[string]peer.ID
+type vpnRouter map[peer.ID]string
+type reversedVPNRouter map[string]peer.ID
 
-type subnetMessage struct {
+type vpnMessage struct {
 	MsgType string
 	Msg     string
 }
@@ -53,11 +65,11 @@ type CreateAndInviteParams struct {
 	PeersIDs []string
 }
 
-// NewSubnet creates a new subnet, setting up a routing table, assigning IP addresses
+// NewVPN creates a new vpn, setting up a routing table, assigning IP addresses
 // to all given peers. It also creates and activates the tunneling interface and
 // make countiounsly connection with peers in the routing table.
-func NewSubnet(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
-	*Subnet, error) {
+func NewVPN(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
+	*VPN, error) {
 
 	host := GetP2P().Host
 	peersIDs = append(peersIDs, host.ID().String())
@@ -75,7 +87,7 @@ func NewSubnet(ctx context.Context, cancel context.CancelFunc, peersIDs []string
 			"Couldn't create and activate the TUN interface: %w", err)
 	}
 
-	subnet := &Subnet{
+	vpn := &VPN{
 		ctx:                  ctx,
 		cancel:               cancel,
 		tunDev:               tunDev,
@@ -85,22 +97,22 @@ func NewSubnet(ctx context.Context, cancel context.CancelFunc, peersIDs []string
 	}
 
 	if len(routingTable) != 0 {
-		// Find and create connection with peers within Subnet
+		// Find and create connection with peers within VPN
 		decodedPeersIDs := utils.MakeListOfDictKeys(routingTable)
 		go dialPeersContinuously(ctx, host,
 			GetP2P().DHT, decodedPeersIDs)
 	}
 
-	go subnet.redirectSentPacketsToDst()
-	return subnet, nil
+	go vpn.redirectSentPacketsToDst()
+	return vpn, nil
 }
 
-// JoinSubnet joins an existing subnet given a routing table
-func JoinSubnet(ctx context.Context, cancel context.CancelFunc, routingTable subnetTable) (
-	*Subnet, error) {
+// JoinVPN joins an existing VPN given a routing table
+func JoinVPN(ctx context.Context, cancel context.CancelFunc, routingTable vpnRouter) (
+	*VPN, error) {
 	if len(routingTable) == 0 {
 		return nil, fmt.Errorf(
-			"Can't join an empty subnet")
+			"Can't join an empty vpn")
 	}
 
 	tunDev, err := createActivateTunIface(defaultTunIfaceName, routingTable)
@@ -109,7 +121,7 @@ func JoinSubnet(ctx context.Context, cancel context.CancelFunc, routingTable sub
 			"Couldn't create and activate the TUN interface: %w", err)
 	}
 
-	subnet := &Subnet{
+	vpn := &VPN{
 		ctx:                  ctx,
 		cancel:               cancel,
 		tunDev:               tunDev,
@@ -120,20 +132,20 @@ func JoinSubnet(ctx context.Context, cancel context.CancelFunc, routingTable sub
 
 	host := GetP2P().Host
 	if len(routingTable) != 0 {
-		// Find and create connection with peers within Subnet
+		// Find and create connection with peers within VPN
 		decodedPeersIDs := utils.MakeListOfDictKeys(routingTable)
 		go dialPeersContinuously(ctx, host,
 			GetP2P().DHT, decodedPeersIDs)
 	}
 
-	go subnet.redirectSentPacketsToDst()
-	return subnet, nil
+	go vpn.redirectSentPacketsToDst()
+	return vpn, nil
 
 }
 
 // redirectSentPacketsToDst redirects packages sent to the host's tunneling interface
 // to the destination through a libp2p stream
-func (s *Subnet) redirectSentPacketsToDst() {
+func (v *VPN) redirectSentPacketsToDst() {
 	// The following is responsible for SENDING packet to other peers
 	// tunDev.Iface.Read() is reading all the packets coming to the TUN
 	// interface, so if I do `ping 10.0.0.1`, the Iface.Read() will read
@@ -144,14 +156,14 @@ func (s *Subnet) redirectSentPacketsToDst() {
 
 	for {
 		select {
-		case <-subnet.ctx.Done():
-			zlog.Sugar().Error("Closing all subnet streams if any")
-			for dst, stream := range s.activeStreams {
+		case <-vpn.ctx.Done():
+			zlog.Sugar().Error("Closing all vpn streams if any")
+			for dst, stream := range v.activeStreams {
 				stream.Close()
-				delete(s.activeStreams, dst)
+				delete(v.activeStreams, dst)
 			}
 
-			if err := s.tunDev.SetDownAndDelete(); err != nil {
+			if err := v.tunDev.SetDownAndDelete(); err != nil {
 				zlog.Sugar().Errorf(
 					"Error closing and deleting TUN interface: %v", err)
 			}
@@ -160,7 +172,7 @@ func (s *Subnet) redirectSentPacketsToDst() {
 		default:
 			// ping 10.0.0.1
 			// Read in a packet from the tun interface.
-			plen, err := s.tunDev.Iface.Read(packet)
+			plen, err := v.tunDev.Iface.Read(packet)
 			if err != nil {
 				zlog.Sugar().Errorf(
 					"Error reading packet from TUN interface: %v", err)
@@ -173,7 +185,7 @@ func (s *Subnet) redirectSentPacketsToDst() {
 			zlog.Sugar().Debugf("Send packet to destination peer: %v", dst)
 
 			// Check if we already have an open connection to the destination peer.
-			stream, ok := s.activeStreams[dst]
+			stream, ok := v.activeStreams[dst]
 			if ok {
 				// Write out the packet's length to the libp2p stream to ensure
 				// we know the full size of the packet at the other end.
@@ -193,15 +205,15 @@ func (s *Subnet) redirectSentPacketsToDst() {
 				zlog.Sugar().Errorf(
 					"Error writing to libp2p stream from tunneling: %v", err)
 				stream.Close()
-				delete(s.activeStreams, dst)
+				delete(v.activeStreams, dst)
 			}
 
-			// Check if the destination of the packet is a known peer to
-			// the interface.
-			if peer, ok := s.reversedRoutingTable[dst]; ok {
+			// Check if the destination of the packet is a known peer within
+			// the routing table.
+			if peer, ok := v.reversedRoutingTable[dst]; ok {
 				zlog.Sugar().Debugf(
 					"Didn't have an active stream with peer %v, creating one", dst)
-				stream, err = host.NewStream(s.ctx, peer, SubnetProtocolID)
+				stream, err = host.NewStream(v.ctx, peer, VPNProtocolID)
 				if err != nil {
 					zlog.Sugar().Errorf(
 						"Error creating stream with peer: %v", dst)
@@ -225,39 +237,39 @@ func (s *Subnet) redirectSentPacketsToDst() {
 				zlog.Sugar().Debugf(
 					"Successfully sent packet to: %v", dst)
 
-				// If all succeeds when writing the packet to the stream
-				// we should reuse this stream by adding it active streams map.
-				s.activeStreams[dst] = stream
+				// if successfully creation and sent of packets, add to active activeStreams
+				// so that it can be reused latter
+				v.activeStreams[dst] = stream
 			}
 		}
 	}
 }
 
-// invitePeersToSubnet sends a message of type (msgSubnetCreationInvite) to each
+// invitePeersToVPN sends a message of type (msgVPNCreationInvite) to each
 // given peer
-func (s *Subnet) invitePeersToSubnet(peersIDs []string) {
+func (v *VPN) invitePeersToVPN(peersIDs []string) {
 	for _, peerID := range peersIDs {
 
 		if peerID == GetP2P().Host.ID().String() {
 			continue
 		}
 
-		err := s.invitePeerToSubnet(peerID)
+		err := v.invitePeerToVPN(peerID)
 		if err != nil {
 			zlog.Sugar().Errorf(
-				"Couldn't invite peer %s to subnet; Error: %w",
+				"Couldn't invite peer %s to vpn; Error: %w",
 				peerID, err)
 		}
 	}
 }
 
-// invitePeerToSubnet sends a message of type (msgSubnetCreationInvite) to
+// invitePeerToVPN sends a message of type (msgVPNCreationInvite) to
 // a given peer containing the routing table. The client must get the routing
-// table and use it to join the subnet as it's the only necessary information
-// to join the subnet in a secure manner
-func (s *Subnet) invitePeerToSubnet(peerID string) error {
+// table and use it to join the vpn as it's the only necessary information
+// to join the vpn in a secure manner
+func (v *VPN) invitePeerToVPN(peerID string) error {
 	if peerID == GetP2P().Host.ID().String() {
-		return fmt.Errorf("Host peer can not invite itself to the subnet")
+		return fmt.Errorf("Host peer can not invite itself to the vpn")
 	}
 
 	decodedPID, err := peer.Decode(peerID)
@@ -267,55 +279,55 @@ func (s *Subnet) invitePeerToSubnet(peerID string) error {
 			peerID, err)
 	}
 
-	zlog.Sugar().Debugf("Creating stream with peer %s to subnet",
+	zlog.Sugar().Debugf("Creating stream with peer %s to vpn",
 		peerID)
-	stream, err := GetP2P().Host.NewStream(s.ctx, decodedPID, SubnetProtocolID)
+	stream, err := GetP2P().Host.NewStream(v.ctx, decodedPID, VPNProtocolID)
 	if err != nil {
 		return fmt.Errorf(
 			"Couldn't create stream with peer %s, Error: %w",
 			peerID, err)
 	}
 
-	zlog.Sugar().Debugf("Created stream with peer %s to subnet", peerID)
-	routingTableJson, err := json.Marshal(s.routingTable)
+	zlog.Sugar().Debugf("Created stream with peer %s to vpn", peerID)
+	routingTableJson, err := json.Marshal(v.routingTable)
 	if err != nil {
 		stream.Close()
 		return fmt.Errorf("failed to marshal routing table, Error: %w", err)
 	}
 
-	subnetMsg := subnetMessage{
-		MsgType: msgSubnetCreationInvite,
+	vpnMsg := vpnMessage{
+		MsgType: msgVPNCreationInvite,
 		Msg:     string(routingTableJson),
 	}
 
-	subnetMsgJson, err := json.Marshal(subnetMsg)
+	vpnMsgJson, err := json.Marshal(vpnMsg)
 	if err != nil {
 		stream.Close()
-		return fmt.Errorf("failed to marshal subnet message, Error: %w", err)
+		return fmt.Errorf("failed to marshal vpn message, Error: %w", err)
 	}
 
 	zlog.Sugar().Debugf("Sending message %s to peer %s",
-		subnetMsgJson, peerID)
+		vpnMsgJson, peerID)
 	w := bufio.NewWriter(stream)
-	_, err = w.WriteString(fmt.Sprintf("%s\n", subnetMsgJson))
+	_, err = w.WriteString(fmt.Sprintf("%s\n", vpnMsgJson))
 	if err != nil {
 		stream.Close()
 		return fmt.Errorf(
 			"Couldn't write message: %v to stream. Error: %w",
-			msgSubnetCreationInvite, err)
+			msgVPNCreationInvite, err)
 	}
 	err = w.Flush()
 	if err != nil {
 		stream.Close()
 		return fmt.Errorf(
 			"Couldn't flush message: %v to stream. Error: %w",
-			msgSubnetCreationInvite, err)
+			msgVPNCreationInvite, err)
 	}
-	s.activeStreams[s.routingTable[decodedPID]] = stream
+	v.activeStreams[v.routingTable[decodedPID]] = stream
 	return nil
 }
 
-func setupRoutingTable(peersIDs []string) (subnetTable, error) {
+func setupRoutingTable(peersIDs []string) (vpnRouter, error) {
 	var routingTable = make(map[peer.ID]string)
 
 	for idx, peerID := range peersIDs {
@@ -331,15 +343,15 @@ func setupRoutingTable(peersIDs []string) (subnetTable, error) {
 	return routingTable, nil
 }
 
-func reverseRoutingTable(routingTable subnetTable) reversedSubnetTable {
-	var reversedRoutingTable = make(reversedSubnetTable)
-	for peerID, subnetAddr := range routingTable {
-		reversedRoutingTable[subnetAddr] = peerID
+func reverseRoutingTable(routingTable vpnRouter) reversedVPNRouter {
+	var reversedRoutingTable = make(reversedVPNRouter)
+	for peerID, vpnAddr := range routingTable {
+		reversedRoutingTable[vpnAddr] = peerID
 	}
 	return reversedRoutingTable
 }
 
-func createActivateTunIface(tunName string, routingTable subnetTable) (*tun.TUN, error) {
+func createActivateTunIface(tunName string, routingTable vpnRouter) (*tun.TUN, error) {
 	// Create TUN interface
 	tunDev, err := tun.New(
 		tunName,
