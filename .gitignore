@@ -13,3 +13,5 @@ maint-scripts/inventory.yaml
 # Docker files
 Dockerfile
 docker-compose.yml
+/test/tx.draft
+/test/tx.signed
