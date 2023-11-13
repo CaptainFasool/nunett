@@ -25,8 +25,8 @@ const (
 	// Stream Protocol for Ping
 	PingProtocolID = "/nunet/dms/ping/0.0.2"
 
-	// Stream Protocol for subnets
-	SubnetProtocolID = "/nunet/dms/subnet/0.0.1"
+	// Stream Protocol for vpns
+	VPNProtocolID = "/nunet/dms/vpn/0.0.1"
 
 	// namespaces
 	// Custom namespace for DHT protocol with version number

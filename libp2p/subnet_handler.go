@@ -11,18 +11,18 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 )
 
-// TODO: var subnets map[subnetID]*Subnet
-var subnet *Subnet
+// TODO: var vpns map[vpnID]*VPN
+var vpn *VPN
 
 // CreateAndInviteHandler godoc
-// @Summary      Creates a subnet inviting a list of peers
-// @Description  Given a list of peers, subnet addresses will be assigned
-// and the host will create a subnet and invite them to join
+// @Summary      Creates a vpn inviting a list of peers
+// @Description  Given a list of peers, vpn addresses will be assigned
+// and the host will create a vpn and invite them to join
 // @Tags         file
 // @Accept       json
 // @Produce      json
 // @Success      200
-// @Router       /network/subnet/create-and-invite [post]
+// @Router       /network/vpn/create-and-invite [post]
 func CreateAndInviteHandler(c *gin.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var params CreateAndInviteParams
@@ -33,14 +33,14 @@ func CreateAndInviteHandler(c *gin.Context) {
 	}
 	zlog.Sugar().Debugf("Received params: %+v\n", params)
 
-	subnet, err := NewSubnet(ctx, cancel, params.PeersIDs)
+	vpn, err := NewVPN(ctx, cancel, params.PeersIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	subnet.invitePeersToSubnet(params.PeersIDs)
-	c.JSON(200, gin.H{"message": "Subnet was created successfully"})
+	vpn.invitePeersToVPN(params.PeersIDs)
+	c.JSON(200, gin.H{"message": "VPN was created successfully"})
 }
 
 // DownHandler godoc
@@ -48,12 +48,12 @@ func CreateAndInviteHandler(c *gin.Context) {
 // @Description  Removes a TUN interface named dms-tun
 // @Tags         file
 // @Success      200
-// @Router       /network/subnet/down [post]
+// @Router       /network/vpn/down [post]
 func DownHandler(c *gin.Context) {
-	if subnet != nil {
-		subnet.cancel()
+	if vpn != nil {
+		vpn.cancel()
 	}
-	err := subnet.tunDev.SetDownAndDelete()
+	err := vpn.tunDev.SetDownAndDelete()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -61,15 +61,15 @@ func DownHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "dms-tun interface was deleted successfully"})
 }
 
-// subnetStreamHandler handles all incoming packets for streams
-// following the protocol SubnetProtocolID. It handles two types of messages:
-// 1. Subnet creation where there is no subnet yet; 2. Subnet internal messaging
-func subnetStreamHandler(stream network.Stream) {
-	if subnet != nil {
-		// TODO: return a response in case of failure/success when entering invited subnet
+// vpnStreamHandler handles all incoming packets for streams
+// following the protocol VPNProtocolID. It handles two types of messages:
+// 1. VPN creation where there is no vpn yet; 2. VPN internal messaging
+func vpnStreamHandler(stream network.Stream) {
+	if vpn != nil {
+		// TODO: return a response in case of failure/success when entering invited vpn
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
-		zlog.Sugar().Errorf("No subnet found, checking if it's a subnet invite message")
+		zlog.Sugar().Errorf("No vpn found, checking if it's a vpn invite message")
 		r := bufio.NewReader(stream)
 		//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
 		//      from/to the buffer. So far, all messages are sent with a \n at the end and the
@@ -78,50 +78,50 @@ func subnetStreamHandler(stream network.Stream) {
 		if err != nil {
 			zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
 			w := bufio.NewWriter(stream)
-			_, err := w.WriteString("unable to read Subnet Message. Closing Stream.\n")
+			_, err := w.WriteString("unable to read VPN Message. Closing Stream.\n")
 			if err != nil {
-				zlog.Sugar().Errorf("failed to write to stream after unable to read Subnet Message - %v", err)
+				zlog.Sugar().Errorf("failed to write to stream after unable to read VPN Message - %v", err)
 			}
 
 			err = w.Flush()
 			if err != nil {
-				zlog.Sugar().Errorf("failed to flush stream after unable to read Subnet Message - %v", err)
+				zlog.Sugar().Errorf("failed to flush stream after unable to read VPN Message - %v", err)
 			}
 
 			err = stream.Close()
 			if err != nil {
-				zlog.Sugar().Errorf("failed to close stream after unable to read Subnet Message - %v", err)
+				zlog.Sugar().Errorf("failed to close stream after unable to read VPN Message - %v", err)
 			}
 			stream.Reset()
 			return
 		}
 
-		zlog.Sugar().Debugf("[Subnet stream] message: %s", str)
+		zlog.Sugar().Debugf("[VPN stream] message: %s", str)
 
-		subnetMsg := subnetMessage{}
-		err = json.Unmarshal([]byte(str), &subnetMsg)
+		vpnMsg := vpnMessage{}
+		err = json.Unmarshal([]byte(str), &vpnMsg)
 		if err != nil {
-			zlog.Sugar().Errorf("Unable to decode subnet message. Closing stream. Error: %v", err)
+			zlog.Sugar().Errorf("Unable to decode vpn message. Closing stream. Error: %v", err)
 			stream.Reset()
 			return
 		}
 
-		if subnetMsg.MsgType == msgSubnetCreationInvite {
-			zlog.Sugar().Debugf("Received subnet creation invite")
-			var routingTable *subnetTable
-			err := json.Unmarshal([]byte(subnetMsg.Msg), routingTable)
+		if vpnMsg.MsgType == msgVPNCreationInvite {
+			zlog.Sugar().Debugf("Received vpn creation invite")
+			var routingTable *vpnRouter
+			err := json.Unmarshal([]byte(vpnMsg.Msg), routingTable)
 			if err != nil {
-				zlog.Sugar().Errorf("Unable to decode subnet message. Closing stream. Error: %v", err)
+				zlog.Sugar().Errorf("Unable to decode vpn message. Closing stream. Error: %v", err)
 				stream.Reset()
 				return
 			}
-			subnet, err = JoinSubnet(ctx, cancel, *routingTable)
+			vpn, err = JoinVPN(ctx, cancel, *routingTable)
 			if err != nil {
-				zlog.Sugar().Errorf("Unable to join subnet. Closing stream. Error: %v", err)
+				zlog.Sugar().Errorf("Unable to join vpn. Closing stream. Error: %v", err)
 				stream.Reset()
 				return
 			}
-			zlog.Sugar().Info("Successfully joined subnet")
+			zlog.Sugar().Info("Successfully joined vpn")
 			return
 		}
 
@@ -130,13 +130,13 @@ func subnetStreamHandler(stream network.Stream) {
 	}
 
 	// If tunneling device was not iniated yet, just close the stream
-	if subnet.tunDev == nil {
+	if vpn.tunDev == nil {
 		zlog.Sugar().Errorf("tunDev was not iniated")
 		stream.Reset()
 		return
 	}
 	// If the remote node ID isn't in the list of known nodes don't respond.
-	if _, ok := subnet.routingTable[stream.Conn().RemotePeer()]; !ok {
+	if _, ok := vpn.routingTable[stream.Conn().RemotePeer()]; !ok {
 		zlog.Sugar().Errorf("Peer %s not on the routing table",
 			stream.Conn().RemotePeer().Pretty())
 		stream.Reset()
@@ -146,10 +146,10 @@ func subnetStreamHandler(stream network.Stream) {
 	var packetSize = make([]byte, 2)
 	for {
 		// Read the incoming packet's size as a binary value.
-		zlog.Sugar().Debug("[Subnet] Receiving packet from libp2p stream")
+		zlog.Sugar().Debug("[VPN] Receiving packet from libp2p stream")
 		_, err := stream.Read(packetSize)
 		if err != nil {
-			zlog.Sugar().Errorf("[Subnet] error reading size packet from stream: %v", err)
+			zlog.Sugar().Errorf("[VPN] error reading size packet from stream: %v", err)
 			stream.Close()
 			return
 		}
@@ -163,27 +163,27 @@ func subnetStreamHandler(stream network.Stream) {
 			tmp, err := stream.Read(packet[plen:size])
 			plen += uint16(tmp)
 			if err != nil {
-				zlog.Sugar().Errorf("[Subnet] error reading packet's data from stream: %v", err)
+				zlog.Sugar().Errorf("[VPN] error reading packet's data from stream: %v", err)
 				stream.Close()
 				return
 			}
 		}
 		zlog.Sugar().Debug("Writing packet to Tunneling interface")
-		subnet.tunDev.Iface.Write(packet[:size])
+		vpn.tunDev.Iface.Write(packet[:size])
 	}
 }
 
 // JoinHandler godoc
-// @Summary      Joins a subnet
-// @Description  Joins a subnet given a list of peers
+// @Summary      Joins a vpn
+// @Description  Joins a vpn given a list of peers
 // @Tags         file
 // @Accept       json
 // @Produce      json
 // @Success      200
-// @Router       /network/subnet/join [post]
+// @Router       /network/vpn/join [post]
 // func JoinHandler(c *gin.Context) {
 // 	ctx, cancel := context.WithCancel(context.Background())
-// 	var params JoinSubnetParams
+// 	var params JoinVPNParams
 //
 // 	if err := c.BindJSON(&params); err != nil {
 // 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -209,9 +209,9 @@ func subnetStreamHandler(stream network.Stream) {
 // 	// peerTable map[peerAddress]peerID
 // 	// activeStreams map[peerAddress]stream
 // 	var peersID []peer.ID
-// 	revLookup := make(map[string]string, len(params.Subnet.Peers))
+// 	revLookup := make(map[string]string, len(params.VPN.Peers))
 // 	peerTable := make(map[string]peer.ID)
-// 	for _, p := range params.Subnet.Peers {
+// 	for _, p := range params.VPN.Peers {
 // 		pID, err := peer.Decode(p.ID)
 // 		if err != nil {
 // 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -226,7 +226,7 @@ func subnetStreamHandler(stream network.Stream) {
 // 	h := GetP2P().Host
 // 	idht := GetP2P().DHT
 //
-// 	// Find and create connection with peers within Subnet
+// 	// Find and create connection with peers within VPN
 // 	go dialPeersContinuously(ctx, h, idht, peersID)
 //
 // 	// TODO: check if peer support protocol creating and closing stream
@@ -246,10 +246,10 @@ func subnetStreamHandler(stream network.Stream) {
 // 	// `dst` will get the destination address before writing to the libp2p stream
 // 	activeStreams := make(map[string]network.Stream)
 // 	var packet = make([]byte, 1420)
-// 	subnet = &Subnet{
+// 	vpn = &VPN{
 // 		ctx,
 // 		cancel,
-// 		params.Subnet,
+// 		params.VPN,
 // 		tunDev,
 // 		revLookup,
 // 		activeStreams,
@@ -257,8 +257,8 @@ func subnetStreamHandler(stream network.Stream) {
 // 	go func() {
 // 		for {
 // 			select {
-// 			case <-subnet.ctx.Done():
-// 				zlog.Sugar().Error("Closing all subnet streams if any")
+// 			case <-vpn.ctx.Done():
+// 				zlog.Sugar().Error("Closing all vpn streams if any")
 // 				for dst, stream := range activeStreams {
 // 					stream.Close()
 // 					delete(activeStreams, dst)
@@ -309,7 +309,7 @@ func subnetStreamHandler(stream network.Stream) {
 // 				if peer, ok := peerTable[dst]; ok {
 // 					zlog.Sugar().Debugf(
 // 						"Didn't have an active stream with peer %v, creating one", dst)
-// 					stream, err = h.NewStream(ctx, peer, SubnetProtocolID)
+// 					stream, err = h.NewStream(ctx, peer, VPNProtocolID)
 // 					if err != nil {
 // 						zlog.Sugar().Errorf(
 // 							"Error creating stream with peer: %v", dst)
@@ -340,5 +340,5 @@ func subnetStreamHandler(stream network.Stream) {
 // 			}
 // 		}
 // 	}()
-// 	c.JSON(200, gin.H{"message": "Successfully started subnet"})
+// 	c.JSON(200, gin.H{"message": "Successfully started vpn"})
 // }
