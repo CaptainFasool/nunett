@@ -155,7 +155,7 @@ func depReqStreamHandler(stream network.Stream) {
 
 func checkTxHash(txHash string) error {
 	// sleep for a minute because it takes time for the tx to be visible
-	zlog.Sugar().Infof("waiting %s seconds before checking on tx Hash", txHashPropogrationTime)
+	zlog.Sugar().Infof("waiting %d seconds before checking on tx Hash", txHashPropogrationTime)
 	time.Sleep(time.Duration(txHashPropogrationTime) * time.Second)
 
 	txReceiver, err := utils.GetTxReceiver(txHash, utils.KoiosPreProd)
