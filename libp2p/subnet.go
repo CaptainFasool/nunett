@@ -16,7 +16,7 @@ import (
 )
 
 // TODOs:
-// - go routine to always keep routingTable and reversedRoutingTable in sync
+// - Get responses for invites
 
 // - invitePeerToVPN() function considers that the peer is already within the routingTable,
 // that will not be always the case. Assign a new IP if the peer is not on the routing table yet
@@ -44,9 +44,6 @@ type VPN struct {
 	// routingTable is the map of participant peers of the vpn
 	// and their vpn addresses (key: peer.ID, value: <peerVpnIP>)
 	routingTable vpnRouter
-
-	// reverseRoutingTable being key: <peerVpnIP>
-	reversedRoutingTable reversedVPNRouter
 
 	// activeStreams is a map of active streams to a peer
 	// (key: <peerVpnIP>, value: network.Stream)
@@ -79,7 +76,6 @@ func NewVPN(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
 		return nil, fmt.Errorf(
 			"Couldn't setup routing table: %w", err)
 	}
-	reversedRoutingTable := reverseRoutingTable(routingTable)
 
 	tunDev, err := createActivateTunIface(defaultTunIfaceName, routingTable)
 	if err != nil {
@@ -88,12 +84,11 @@ func NewVPN(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
 	}
 
 	vpn := &VPN{
-		ctx:                  ctx,
-		cancel:               cancel,
-		tunDev:               tunDev,
-		routingTable:         routingTable,
-		reversedRoutingTable: reversedRoutingTable,
-		activeStreams:        make(map[string]network.Stream),
+		ctx:           ctx,
+		cancel:        cancel,
+		tunDev:        tunDev,
+		routingTable:  routingTable,
+		activeStreams: make(map[string]network.Stream),
 	}
 
 	if len(routingTable) != 0 {
@@ -122,12 +117,11 @@ func JoinVPN(ctx context.Context, cancel context.CancelFunc, routingTable vpnRou
 	}
 
 	vpn := &VPN{
-		ctx:                  ctx,
-		cancel:               cancel,
-		tunDev:               tunDev,
-		routingTable:         routingTable,
-		reversedRoutingTable: reverseRoutingTable(routingTable),
-		activeStreams:        make(map[string]network.Stream),
+		ctx:           ctx,
+		cancel:        cancel,
+		tunDev:        tunDev,
+		routingTable:  routingTable,
+		activeStreams: make(map[string]network.Stream),
 	}
 
 	host := GetP2P().Host
@@ -210,7 +204,8 @@ func (v *VPN) redirectSentPacketsToDst() {
 
 			// Check if the destination of the packet is a known peer within
 			// the routing table.
-			if peer, ok := v.reversedRoutingTable[dst]; ok {
+			reversedRoutingTable := reverseRoutingTable(v.routingTable)
+			if peer, ok := reversedRoutingTable[dst]; ok {
 				zlog.Sugar().Debugf(
 					"Didn't have an active stream with peer %v, creating one", dst)
 				stream, err = host.NewStream(v.ctx, peer, VPNProtocolID)
