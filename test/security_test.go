@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
 	"bufio"
 	"math"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/cardano"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
@@ -87,6 +89,49 @@ func (s *TestHarness) TestTxHashValidation() {
 		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
 		s.Nil(err, "Failed to get second deployment update")
 		s.Equal(false, secondUpdate.Response.Success, "Malicious SP sent an invalid tx-hash but the CP confirmed deployment success")
+	}
+}
+
+func (s *TestHarness) TestEscrowPaymentValidation() {
+	spClient, err := CreateServiceProviderTestingClient()
+	s.Nil(err, "Failed to create testing client");
+
+	tx_hash := cardano.PayToScript(1)
+
+	log.Println("TX SUBMITTED ", tx_hash)
+
+	var req models.DeploymentRequest
+	req.TxHash = tx_hash
+	req.RequesterWalletAddress = cardano.TesterAddress
+	req.MaxNtx = 1000
+	req.Blockchain = "Cardano"
+	req.ServiceType = "ml-training-cpu"
+	req.Timestamp = time.Now()
+	req.Params.MachineType = "cpu"
+	req.Params.ModelURL = "https://gist.github.com/luigy/d63eec5cb33d9f789969fafe04ee3ae9"
+	req.Params.ImageID = "registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu"
+	req.Params.RemoteNodeID = "invalidremoteid"
+	req.Params.LocalNodeID = "invalidlocalid"
+	req.Params.LocalPublicKey = "invalidpublickey"
+	req.Constraints.Complexity = "Low"
+	req.Constraints.CPU = 1500
+	req.Constraints.RAM = 2000
+	req.Constraints.Vram = 2000
+	req.Constraints.Power = 170
+	req.Constraints.Time = 1
+
+	spClient.SendDeploymentRequest(req)
+
+	firstUpdate, err := spClient.GetNextDeploymentUpdate()
+	s.Nil(err, "Failed to get first deployment update")
+	s.NotEqual(libp2p.MsgJobStatus, firstUpdate.MsgType, "Malicious SP promised more NTX (1000) than available (1) the CP started the job")
+
+	// If we have received a message a job is running, lets also confirm that the DeploymentRequest is successful as well
+	if firstUpdate.MsgType == libp2p.MsgJobStatus {
+		secondUpdate, err := spClient.GetNextDeploymentUpdate()
+		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
+		s.Nil(err, "Failed to get second deployment update")
+		s.Equal(false, secondUpdate.Response.Success, "Malicious SP promised more NTX (1000) than available (1) yet the CP confirmed deployment success")
 	}
 }
 
