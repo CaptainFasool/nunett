@@ -11,6 +11,7 @@ import (
 var (
 	dc   *client.Client
 	zlog *logger.Logger
+	DoneCleanup chan bool
 )
 
 func init() {

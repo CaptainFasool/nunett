@@ -6,7 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/afero"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -24,7 +26,9 @@ import (
 func Run() {
 	config.LoadConfig()
 
-	db.ConnectDatabase()
+	db.ConnectDatabase(afero.NewOsFs())
+
+	docker.StartCleanup()
 
 	cleanup := tracing.InitTracer()
 	defer cleanup(context.Background())
@@ -46,7 +50,9 @@ func Run() {
 	// Recreate host with previous keys
 	libp2p.CheckOnboarding()
 	if libp2p.GetP2P().Host != nil {
+		SanityCheck(db.DB)
 		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+
 	}
 
 	// wait for SIGINT or SIGTERM

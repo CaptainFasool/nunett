@@ -26,6 +26,7 @@ var KernelFilePath = "/etc/nunet/vmlinux"
 var FilesystemURL = "https://d.nunet.io/fc/nunet-fc-ubuntu-20.04-0.ext4"
 var FilesystemPath = "/etc/nunet/nunet-fc-ubuntu-20.04-0.ext4"
 
+// DownloadFile downloads a file from a url and saves it to a filepath
 func DownloadFile(url string, filepath string) (err error) {
 	zlog.Sugar().Infof("Downloading file '", filepath, "' from '", url, "'")
 	file, err := os.Create(filepath)
@@ -48,6 +49,7 @@ func DownloadFile(url string, filepath string) (err error) {
 	return nil
 }
 
+// ReadHttpString GET request to http endpoint and return response as string
 func ReadHttpString(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -63,6 +65,7 @@ func ReadHttpString(url string) (string, error) {
 	return string(respBody), nil
 }
 
+// RandomString generates a random string of length n
 func RandomString(n int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	sb := strings.Builder{}
@@ -73,6 +76,7 @@ func RandomString(n int) string {
 	return sb.String()
 }
 
+// GetChannelName returns the channel name from the metadata file
 func GetChannelName() string {
 	metadata, err := ReadMetadataFile()
 	if err != nil || metadata.Network == "" {
@@ -89,6 +93,7 @@ func GetDashboard() string {
 	return metadata.Dashboard
 }
 
+// GenerateMachineUUID generates a machine uuid
 func GenerateMachineUUID() (string, error) {
 	var machine models.MachineUUID
 
@@ -101,6 +106,7 @@ func GenerateMachineUUID() (string, error) {
 	return machine.UUID, nil
 }
 
+// GetMachineUUID returns the machine uuid from the DB
 func GetMachineUUID() string {
 	var machine models.MachineUUID
 	uuid, err := GenerateMachineUUID()
@@ -118,6 +124,17 @@ func GetMachineUUID() string {
 
 }
 
+// SliceContains checks if a string exists in a slice
+func SliceContains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+// RegisterLogbin registers the device with logbin
 func RegisterLogbin(uuid string, peer_id string) (string, error) {
 	logbinAuthReq := struct {
 		PeerID      string `json:"peer_id"`
@@ -177,6 +194,7 @@ func RegisterLogbin(uuid string, peer_id string) (string, error) {
 	return logbinAuth.Token, nil
 }
 
+// GetLogbinToken returns the logbin token from the DB
 func GetLogbinToken() (string, error) {
 	var logbinAuth models.LogBinAuth
 	result := db.DB.Find(&logbinAuth)
@@ -201,6 +219,7 @@ func ReadMetadataFile() (*models.MetadataV2, error) {
 	return &metadata, nil
 }
 
+// IsOnboarded checks if the device is onboarded
 func IsOnboarded() (bool, error) {
 	var libp2pInfo models.Libp2pInfo
 	_ = db.DB.Where("id = ?", 1).Find(&libp2pInfo)
@@ -215,6 +234,7 @@ func IsOnboarded() (bool, error) {
 	}
 }
 
+// ReadyForElastic checks if the device is ready to send logs to elastic
 func ReadyForElastic() bool {
 	elasticToken := models.ElasticToken{}
 	db.DB.Find(&elasticToken)
@@ -254,6 +274,7 @@ func CalculateSHA256Checksum(filePath string) (string, error) {
 	return checksum, nil
 }
 
+// PromptYesNo prompts the user on stdout for a yes or no response on stdin
 func PromptYesNo(prompt string) bool {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -282,6 +303,7 @@ func PromptYesNo(prompt string) bool {
 	}
 }
 
+// CheckWSL check if running in WSL
 func CheckWSL() (bool, error) {
 	file, err := os.Open("/proc/version")
 	if err != nil {
@@ -304,6 +326,7 @@ func CheckWSL() (bool, error) {
 	return false, nil
 }
 
+// ListenDMSPort check if DMS port is being used
 func ListenDMSPort() (bool, error) {
 	port := config.GetConfig().Rest.Port
 
@@ -319,4 +342,22 @@ func ListenDMSPort() (bool, error) {
 	}
 
 	return false, nil
+}
+
+// SaveServiceInfo updates service info into SP's DMS for claim Reward by SP user
+func SaveServiceInfo(cpService models.Services) error {
+
+	var spService models.Services
+	err := db.DB.Model(&models.Services{}).Where("tx_hash = ?", cpService.TxHash).Find(&spService).Error
+	if err != nil {
+		return fmt.Errorf("Unable to find service on SP side: %v", err)
+	}
+	cpService.ID = spService.ID
+
+	result := db.DB.Model(&models.Services{}).Where("tx_hash = ?", cpService.TxHash).Updates(&cpService)
+	if result.Error != nil {
+		return fmt.Errorf("Unable to update service info on SP side: %v", result.Error.Error())
+	}
+
+	return nil
 }

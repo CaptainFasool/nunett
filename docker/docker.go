@@ -8,11 +8,10 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
-
-	"os/user"
 	"strings"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
@@ -195,7 +195,6 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	}
 
 	resp, err := dc.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
-
 	if err != nil {
 		zlog.Sugar().Errorf("Unable to create container: %v", err)
 		depRes := models.DeploymentResponse{Success: false, Content: "Problem with container. Unable to process request."}
@@ -411,16 +410,134 @@ outerLoop:
 	}
 }
 
+// SearchContianersByImage gets all containers given an imageID string.
+func SearchContianersByImage(ctx context.Context, imageID string) ([]types.Container, error) {
+	containers, err := dc.ContainerList(ctx, types.ContainerListOptions{
+		All: true, Filters: filters.NewArgs(filters.Arg("ancestor", imageID)),
+	})
+	if err != nil {
+		zlog.Sugar().Errorf("unable to find container with imageID : %v", imageID)
+	}
+
+	return containers, err
+}
+
+// SearchImagesByRefrence gets all container images given a reference string.
+// The refrence string should be a regex compilable pattern that will be searched
+// against image name (RepoTags) and digests.
+func SearchImagesByRefrence(ctx context.Context, reference string) ([]types.ImageSummary, error) {
+	var result []types.ImageSummary
+	images, err := dc.ImageList(ctx, types.ImageListOptions{})
+	if err != nil {
+		zlog.Sugar().Errorf("unable to find images with reference : %v", reference)
+	}
+	for _, image := range images {
+		refrenceRegex := regexp.MustCompile(reference)
+		match := false
+		for _, tag := range image.RepoTags {
+			if refrenceRegex.MatchString(tag) {
+				match = true
+			}
+		}
+		for _, digest := range image.RepoDigests {
+			if refrenceRegex.MatchString(digest) {
+				match = true
+			}
+		}
+		if match {
+			result = append(result, image)
+		}
+	}
+	return result, err
+}
+
+// StopAndRemoveContainer stops and removes a container given its ID
+func StopAndRemoveContainer(ctx context.Context, containerID string) error {
+	if err := dc.ContainerStop(ctx, containerID, nil); err != nil {
+		zlog.Sugar().Errorf("Unable to stop container %s: %s", containerID, err)
+		return err
+	}
+
+	removeOptions := types.ContainerRemoveOptions{
+		RemoveVolumes: true,
+		Force:         true,
+	}
+
+	if err := dc.ContainerRemove(ctx, containerID, removeOptions); err != nil {
+		zlog.Sugar().Errorf("Unable to remove container %s: %s", containerID, err)
+		return err
+	}
+
+	return nil
+}
+
 // PullImage is a wrapper around Docker SDK's function with same name.
 func PullImage(ctx context.Context, imageName string) error {
 	out, err := dc.ImagePull(ctx, imageName, types.ImagePullOptions{})
 	if err != nil {
-		return fmt.Errorf("unable to pull image: %v", err)
+		zlog.Sugar().Errorf("unable to pull image: %v", err)
+		return err
+	}
+
+	type Resp struct {
+		Status string `json:"status"`
 	}
 
 	defer out.Close()
-	io.Copy(os.Stdout, out)
+	d := json.NewDecoder(io.TeeReader(out, os.Stdout))
+
+	var resp *Resp
+	var digest string
+	newImage := false
+	for {
+		if err := d.Decode(&resp); err != nil {
+			if err == io.EOF {
+				break
+			}
+			zlog.Sugar().Errorf("unable pull image: %v", err)
+			return err
+		}
+		if strings.HasPrefix(resp.Status, "Digest") {
+			digest = strings.TrimPrefix(resp.Status, "Digest: ")
+		}
+		if strings.HasPrefix(resp.Status, "Status: Downloaded") {
+			newImage = true
+		}
+	}
+
+	if newImage {
+		images, err := SearchImagesByRefrence(ctx, fmt.Sprintf(".*\\@%v", digest))
+		if err != nil || len(images) <= 0 {
+			zlog.Sugar().Warnf("unable to find image: %v", imageName)
+			return err
+		}
+		image := images[0]
+		imageInfo := models.ContainerImages{ImageID: image.ID, ImageName: imageName, Digest: digest}
+		db.DB.Save(&imageInfo)
+	}
+
 	return nil
+}
+
+func GetContainersFromImage(ctx context.Context, imageID string) ([]types.Container, error) {
+	containers, err := dc.ContainerList(ctx, types.ContainerListOptions{
+		All: true,
+		Filters: filters.NewArgs(
+			filters.Arg("ancestor", imageID),
+		),
+	})
+	if err != nil {
+		zlog.Sugar().Errorf("unable to list containers that use the image: %v\n", imageID)
+	}
+	return containers, err
+}
+
+func RemoveImage(ctx context.Context, imageID string) error {
+	_, err := dc.ImageRemove(ctx, imageID, types.ImageRemoveOptions{})
+	if err != nil {
+		zlog.Sugar().Errorf("unable to remove image: %v\n", imageID)
+	}
+	return err
 }
 
 func cpuUsage(cpu float64, maxCPU float64) float64 {
@@ -556,6 +673,7 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	service.JobDuration = 0
 	service.EstimatedJobDuration = int64(depReq.Constraints.Time)
 	service.TxHash = depReq.TxHash
+	service.TransactionType = "running"
 	service.MetadataHash = depReq.MetadataHash
 	service.WithdrawHash = depReq.WithdrawHash
 	service.RefundHash = depReq.RefundHash
@@ -570,7 +688,8 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 			[]string{
 				depReq.Params.LocalNodeID[:10],
 				depReq.Params.RemoteNodeID[:10],
-				fmt.Sprintf("%d", time.Now().Unix())},
+				fmt.Sprintf("%d", time.Now().Unix()),
+			},
 			"_"))
 	if err != nil {
 		zlog.Sugar().Errorf("couldn't create log at logbin: %v", err)

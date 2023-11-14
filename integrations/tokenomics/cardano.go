@@ -75,11 +75,6 @@ func GetJobTxHashes(c *gin.Context) {
 			return
 		}
 
-		if len(services) == 0 {
-			c.JSON(404, gin.H{"error": "no job deployed to request reward for"})
-			return
-		}
-
 	} else {
 		services, err = getLimitedTransactions(sizeDone)
 		if err != nil {
@@ -95,6 +90,11 @@ func GetJobTxHashes(c *gin.Context) {
 			TransactionType: service.TransactionType,
 			DateTime:        service.CreatedAt.String(),
 		})
+	}
+
+	if len(txHashesResp) == 0 {
+		c.JSON(404, gin.H{"error": "no job deployed to request reward for"})
+		return
 	}
 
 	c.JSON(200, txHashesResp)

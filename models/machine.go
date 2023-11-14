@@ -96,6 +96,13 @@ type ServiceResourceRequirements struct {
 	HDD  int
 }
 
+type ContainerImages struct {
+	gorm.Model
+	ImageID   string
+	ImageName string
+	Digest    string
+}
+
 type Libp2pInfo struct {
 	ID         uint   `json:"id"`
 	PrivateKey []byte `json:"private_key"`

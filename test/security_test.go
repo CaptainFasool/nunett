@@ -1,27 +1,28 @@
 package main
 
 import (
-	"io/ioutil"
 	"bufio"
-	"math"
-	"fmt"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"math"
+	"os"
+	"sync"
 	"testing"
 	"time"
-	"sync"
-	"os"
-	"errors"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
-	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
-	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/crypto"
+	"gitlab.com/nunet/device-management-service/models"
 )
 
 type TestHarness struct {
@@ -36,7 +37,7 @@ func TestSecurity(t *testing.T) {
 }
 
 func (s *TestHarness) SetupSuite() {
-	SetupDMSTestingConfiguration("target", 9123);
+	SetupDMSTestingConfiguration("target", 0);
 	OnboardTestComputeProvider()
 	RunTestComputeProvider()
 
@@ -56,7 +57,7 @@ func (s *TestHarness) TestTxHashValidation() {
 	s.Nil(err, "Failed to create testing client");
 
 	var req models.DeploymentRequest
-	req.TxHash = "notavalidhash"
+	req.TxHash = "ce964014ea9c4b6ab884f82592846fde0c652a652db63f06dd549e78d9d78f86" // valid hash but not intended for CP wallet address
 	req.RequesterWalletAddress = "addr_test1qrrysjx7gg6e2h8qvsqc29lg37yttq6cnww72637sdgfm7c58xcwszypj5fz8mmdvkv2a7wew2tthvvftj02gdeaf4vsc849la"
 	req.MaxNtx = 2
 	req.Blockchain = "Cardano"
@@ -267,7 +268,7 @@ func SetupDMSTestingConfiguration( tempDirectoryName string, port int ) {
 }
 
 func OnboardTestComputeProvider() {
-	db.ConnectDatabase()
+	db.ConnectDatabase(afero.NewOsFs())
 
 	availableResources := models.AvailableResources{
 		TotCpuHz:  int(2000000),
@@ -326,7 +327,7 @@ type CPUpdate struct
 func CreateServiceProviderTestingClient() (SPTestClient, error) {
 	ctx := context.Background()
 
-	SetupDMSTestingConfiguration("client", 9000)
+	SetupDMSTestingConfiguration("client", 0)
 
 	pair, err := GenerateTestKeyPair()
 	host, dht, err := libp2p.NewHost(ctx, pair, false)
