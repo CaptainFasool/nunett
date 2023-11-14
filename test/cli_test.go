@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -54,7 +55,7 @@ func (s *MyTestSuite) SetupSuite() {
 	config.LoadConfig()
 	config.SetConfig("general.metadata_path", "/tmp/nunet.test/")
 
-	db.ConnectDatabase()
+	db.ConnectDatabase(afero.NewOsFs())
 
 	s.cleanup = tracing.InitTracer()
 

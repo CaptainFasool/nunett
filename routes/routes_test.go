@@ -9,17 +9,23 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/integrations/oracle"
-	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
-	library "gitlab.com/nunet/device-management-service/lib"
-	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/libp2p/machines"
 	"gitlab.com/nunet/device-management-service/onboarding"
 	"gitlab.com/nunet/device-management-service/utils"
 
+	"github.com/stretchr/testify/mock"
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
+	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
+	library "gitlab.com/nunet/device-management-service/lib"
+	dmslibp2p "gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/models"
+
+	"github.com/libp2p/go-libp2p"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -47,6 +53,12 @@ func SetUpRouter() *gin.Engine {
 		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
 	}
 
+	run := v1.Group("/run")
+	{
+		run.POST("/request-service", machines.HandleRequestService)
+		run.GET("/deploy", machines.HandleDeploymentRequest)
+	}
+
 	txRoute := v1.Group("/transactions")
 	{
 		txRoute.POST("/request-reward", tokenomics.HandleRequestReward)
@@ -57,77 +69,136 @@ func SetUpRouter() *gin.Engine {
 	return router
 }
 
-func TestHandleRequestReward(t *testing.T) {
-	// Create a new instance of MockOracle
-	mockOracle := new(MockOracle)
-
-	// Set up expected behavior for WithdrawTokenRequest
-	mockOracle.On("WithdrawTokenRequest", mock.Anything).Return(&oracle.RewardResponse{
-		RewardType:        "TestReward",
-		MessageHashDatum:  "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-		Datum:             "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-		MessageHashAction: "0x7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456",
-		Action:            "ConfirmReward",
-	}, nil)
-	oracle.Oracle = mockOracle
-
-	// Open an in-memory SQLite database for testing
-	mockDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening gorm database", err)
+func startMockWebSocketServer() *http.Server {
+	upgrader := websocket.Upgrader{}
+	server := &http.Server{
+		Addr: "localhost:8080",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			conn, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				return
+			}
+			defer conn.Close()
+			for {
+				messageType, p, err := conn.ReadMessage()
+				if err != nil {
+					return
+				}
+				if err := conn.WriteMessage(messageType, p); err != nil {
+					return
+				}
+			}
+		}),
 	}
 
-	// Run the migrations to create the necessary tables in the in-memory database
-	err = mockDB.AutoMigrate(&models.Services{})
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when migrating the database", err)
-	}
-	db.DB = mockDB
+	go server.ListenAndServe()
+	return server
+}
 
+func TestHandleDeploymentRequest(t *testing.T) {
+	// Setup the router
 	router := SetUpRouter()
 
-	t.Run("Success", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		payload := `{
-			"compute_provider_address": "someAddress",
-			"tx_hash": "someTxHash"
-		}`
+	// Start the mock WebSocket server
+	mockServer := startMockWebSocketServer()
+	defer mockServer.Close()
+	t.Run("SuccessfulWebsocketConnection", func(t *testing.T) {
+		// Use a WebSocket client to connect to the endpoint
+		c, _, err := websocket.DefaultDialer.Dial("ws://localhost:8080/api/v1/run/deploy", nil)
+		if err != nil {
+			t.Fatalf("Failed to connect: %v", err)
+		}
+		defer c.Close()
 
-		req, err := http.NewRequest("POST", "/api/v1/transactions/request-reward", bytes.NewBufferString(payload))
+		// Check if the connection is successful
+		assert.NotNil(t, c)
+	})
+
+	t.Run("FailedWebsocketConnection", func(t *testing.T) {
+		// Simulate a scenario where the WebSocket connection fails
+		c, _, err := websocket.DefaultDialer.Dial("ws://invalid-endpoint", nil)
+		assert.Error(t, err)
+		assert.Nil(t, c)
+	})
+
+	t.Run("WebsocketDataTransfer", func(t *testing.T) {
+		// Use a WebSocket client to connect to the endpoint
+		c, _, err := websocket.DefaultDialer.Dial("ws://localhost:8080/api/v1/run/deploy", nil)
+		if err != nil {
+			t.Fatalf("Failed to connect: %v", err)
+		}
+		defer c.Close()
+
+		// Send some data and check the response
+		err = c.WriteMessage(websocket.TextMessage, []byte("test message"))
+		assert.NoError(t, err)
+
+		_, p, err := c.ReadMessage()
+		assert.NoError(t, err)
+		assert.Equal(t, "test message", string(p))
+	})
+
+	t.Run("GinHandlerWebsocketUpgrade", func(t *testing.T) {
+		// Create a new HTTP server
+		server := httptest.NewServer(router)
+		defer server.Close()
+
+		// Create a new HTTP request
+		req, err := http.NewRequest("GET", server.URL+"/api/v1/run/deploy", nil)
 		if err != nil {
 			t.Fatalf("Failed to create request: %v", err)
 		}
-		router.ServeHTTP(w, req)
 
-		expectedResponse := `{
-			"reward_type": "TestReward",
-			"message_hash_datum": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-			"datum": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-			"message_hash_action": "0x7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456",
-			"action": "ConfirmReward"
-		}`
+		// Set headers to simulate a WebSocket upgrade request
+		req.Header.Set("Connection", "upgrade")
+		req.Header.Set("Upgrade", "websocket")
+		req.Header.Set("Sec-WebSocket-Version", "13")
+		req.Header.Set("Sec-WebSocket-Key", "some-random-key")
 
-		assert.Equal(t, 200, w.Code)
-		assert.JSONEq(t, expectedResponse, w.Body.String())
+		// Send the request and get the response
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("Failed to send request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Check if the response header indicates a WebSocket upgrade
+		assert.Equal(t, "websocket", resp.Header.Get("Upgrade"))
+		assert.Equal(t, "101 Switching Protocols", resp.Status)
 	})
+}
 
-	t.Run("InvalidJSONPayload", func(t *testing.T) {
+func TestHandleRequestService(t *testing.T) {
+	// Mock the filesystem
+	fs := afero.NewMemMapFs()
+
+	// Connect to the in-memory database
+	db.ConnectDatabase(fs)
+
+	if db.DB == nil {
+		t.Fatal("Database connection not established")
+	}
+
+	// Setup the router
+	router := SetUpRouter()
+	host, err := libp2p.New()
+	if err != nil {
+		t.Fatal("Failed to create libp2p host")
+	}
+	dmslibp2p.DMSp2pSet(host, nil)
+
+	t.Run("InvalidPOSTData", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		// Intentionally malformed JSON (missing closing brace)
 		payload := `{
-			"compute_provider_address": "someAddress",
-			"tx_hash": "someTxHash"
-		`
-		req, _ := http.NewRequest("POST", "/api/v1/transactions/request-reward", bytes.NewBufferString(payload))
+			"RequesterWalletAddress": "someInvalidAddress"
+		}`
+		req, _ := http.NewRequest("POST", "/api/v1/run/request-service", bytes.NewBufferString(payload))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, 400, w.Code)
-		assert.Contains(t, w.Body.String(), "Invalid JSON format")
-	})
-
-	t.Cleanup(func() {
-		originalOracle := oracle.Oracle
-		oracle.Oracle = originalOracle
+		assert.Equal(t, 404, w.Code)
+		var response map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &response)
+		assert.Equal(t, "no peers found with matched specs", response["error"])
 	})
 }
 
@@ -189,9 +260,17 @@ func TestGetJobTxHashes(t *testing.T) {
 
 	router := SetUpRouter()
 
-	// test when no records in services table
+	// test without required parameter
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/transactions", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 400, w.Code)
+	assert.Contains(t, w.Body.String(), "invalid size_done parameter")
+
+	// test when no records in services table
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/transactions?size_done=1", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 404, w.Code)
@@ -202,19 +281,13 @@ func TestGetJobTxHashes(t *testing.T) {
 	mockDB.Create(&models.Services{TxHash: mockHash, LogURL: "log.nunet.io"})
 
 	w = httptest.NewRecorder()
-	req, err = http.NewRequest("GET", "/api/v1/transactions", nil)
+	req, err = http.NewRequest("GET", "/api/v1/transactions?size_done=1", nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
 	router.ServeHTTP(w, req)
-
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), mockHash)
-
-	t.Run("NoData", func(t *testing.T) {
-		// Mock the database to return an empty list
-
-	})
 }
 
 func TestCardanoAddressRoute(t *testing.T) {

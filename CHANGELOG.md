@@ -21,6 +21,33 @@ Types of changes
 
 -->
 
+## [0.4.143](oracle#24)
+
+### Changed
+- Fixed unique constraint error while save service into SP's DMS.
+- Update transaction status to running.
+
+## [0.4.142](#295)
+
+### Added
+- Keep a record of images pulled by DMS in the database to track dangling images
+- Utility functions in the docker package for search, remove and get containers using an image.
+- Added a daemon function to cleanup dangling images
+
+## [0.4.141](#166)
+
+### Added
+- Temporary setter for DMSp2p
+- Routes tests
+
+### Changed
+- Allow db to be initiated on a mock fs
+
+### Fixed
+- Fix /transactions responses when tx don't exist
+- Fixed utils/network tests
+
+
 ## [0.4.140](#292)
 
 ### Added

@@ -156,7 +156,7 @@ func DepReqStreamHandler(stream network.Stream) {
 
 func checkTxHash(txHash string) error {
 	// sleep for a minute because it takes time for the tx to be visible
-	zlog.Sugar().Infof("waiting %s seconds before checking on tx Hash", txHashPropogrationTime)
+	zlog.Sugar().Infof("waiting %d seconds before checking on tx Hash", txHashPropogrationTime)
 	time.Sleep(time.Duration(txHashPropogrationTime) * time.Second)
 
 	txReceiver, err := utils.GetTxReceiver(txHash, utils.KoiosPreProd)
@@ -258,12 +258,10 @@ func DeploymentUpdateListener(stream network.Stream) {
 					zlog.Sugar().Errorf("unable to delete record (id=%d) after job finish: %v", depReqFlat.ID, err)
 				}
 
-				// update service info into SP's DMS for claim Reward by SP user
-				result := db.DB.Model(&models.Services{}).Where("tx_hash = ?", service.TxHash).Select("*").Updates(service)
-				if result.Error != nil {
-					zlog.Sugar().Errorf("Unable to update service info on SP side: %v", result.Error.Error())
+				err = utils.SaveServiceInfo(service)
+				if err != nil {
+					zlog.Sugar().Errorln(err)
 				}
-
 				return
 			} else if strings.EqualFold(string(service.JobStatus), "running") {
 				depRespMessage := models.DeploymentResponse{}
@@ -281,10 +279,9 @@ func DeploymentUpdateListener(stream network.Stream) {
 				zlog.Sugar().Errorf("unable to update job status on finish. %v", err)
 			}
 
-			// update service info into SP's DMS for claim Reward by SP user
-			result := db.DB.Model(&models.Services{}).Where("tx_hash = ?", service.TxHash).Select("*").Updates(service)
-			if result.Error != nil {
-				zlog.Sugar().Errorf("Unable to update service info on SP side: %v", result.Error.Error())
+			err = utils.SaveServiceInfo(service)
+			if err != nil {
+				zlog.Sugar().Errorln(err)
 			}
 		case MsgDepResp:
 			zlog.Sugar().Debugf("received deployment response: %s", resp)

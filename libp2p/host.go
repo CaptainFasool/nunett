@@ -46,6 +46,11 @@ func DMSp2pInit(node host.Host, dht *dht.IpfsDHT) *DMSp2p {
 	return &DMSp2p{Host: node, DHT: dht}
 }
 
+// XXX bad implementation - don't use. Temporary measure for routes_test calling HandleRequestService
+func DMSp2pSet(node host.Host, dht *dht.IpfsDHT) {
+	p2p = *DMSp2pInit(node, dht)
+}
+
 var p2p DMSp2p
 var FS afero.Fs = afero.NewOsFs()
 var AFS *afero.Afero = &afero.Afero{Fs: FS}
