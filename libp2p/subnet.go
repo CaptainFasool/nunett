@@ -1,7 +1,6 @@
 package libp2p
 
 import (
-	"bufio"
 	"context"
 	"encoding/binary"
 	"encoding/json"
@@ -33,6 +32,7 @@ import (
 
 const (
 	msgVPNCreationInvite = "VPNCreationInvite"
+	msgVPNInviteResponse = "VPNInviteResponse"
 	defaultTunIfaceName  = "dms-tun"
 )
 
@@ -60,6 +60,11 @@ type reversedVPNRouter map[string]peer.ID
 type vpnMessage struct {
 	MsgType string
 	Msg     string
+}
+
+type vpnInviteResponse struct {
+	Accepted bool
+	Reason   string
 }
 
 type CreateAndInviteParams struct {
@@ -314,21 +319,24 @@ func (v *VPN) invitePeerToVPN(peerID string) error {
 
 	zlog.Sugar().Debugf("Sending message %s to peer %s",
 		vpnMsgJson, peerID)
-	w := bufio.NewWriter(stream)
-	_, err = w.WriteString(fmt.Sprintf("%s\n", vpnMsgJson))
+
+	length := uint16(len(vpnMsgJson)) // get length of message
+	err = binary.Write(stream, binary.LittleEndian, &length)
+	if err != nil {
+		stream.Close()
+		return fmt.Errorf(
+			"Couldn't write message size to stream. Message: %s Error: %w",
+			msgVPNCreationInvite, err)
+	}
+
+	_, err = stream.Write(vpnMsgJson)
 	if err != nil {
 		stream.Close()
 		return fmt.Errorf(
 			"Couldn't write message: %v to stream. Error: %w",
 			msgVPNCreationInvite, err)
 	}
-	err = w.Flush()
-	if err != nil {
-		stream.Close()
-		return fmt.Errorf(
-			"Couldn't flush message: %v to stream. Error: %w",
-			msgVPNCreationInvite, err)
-	}
+
 	v.activeStreams[v.routingTable[decodedPID]] = stream
 	return nil
 }
