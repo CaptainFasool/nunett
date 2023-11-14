@@ -29,11 +29,13 @@ func CreateAndInviteHandler(c *gin.Context) {
 
 	if err := c.BindJSON(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		cancel()
 		return
 	}
 	zlog.Sugar().Debugf("Received params: %+v\n", params)
 
-	vpn, err := NewVPN(ctx, cancel, params.PeersIDs)
+	var err error
+	vpn, err = NewVPN(ctx, cancel, params.PeersIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
