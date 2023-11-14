@@ -336,7 +336,7 @@ func setupRoutingTable(peersIDs []string) (vpnRouter, error) {
 				peerID, err)
 		}
 
-		routingTable[decodedPID] = fmt.Sprintf("10.0.0.%d", idx)
+		routingTable[decodedPID] = fmt.Sprintf("10.0.0.%d/24", idx)
 	}
 	return routingTable, nil
 }
