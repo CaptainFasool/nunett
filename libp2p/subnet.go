@@ -263,7 +263,7 @@ func (v *VPN) invitePeersToVPN(peersIDs []string) {
 		err := v.invitePeerToVPN(peerID)
 		if err != nil {
 			zlog.Sugar().Errorf(
-				"Couldn't invite peer %s to vpn; Error: %w",
+				"Couldn't invite peer %s to vpn; Error: %v",
 				peerID, err)
 		}
 	}
