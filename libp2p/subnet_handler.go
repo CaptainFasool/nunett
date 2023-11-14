@@ -71,7 +71,7 @@ func vpnStreamHandler(stream network.Stream) {
 		// TODO: return a response in case of failure/success when entering invited vpn
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
-		zlog.Sugar().Errorf("No vpn found, checking if it's a vpn invite message")
+		zlog.Sugar().Debug("No vpn found, checking if it's a vpn invite message")
 		r := bufio.NewReader(stream)
 		//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
 		//      from/to the buffer. So far, all messages are sent with a \n at the end and the
@@ -121,6 +121,7 @@ func vpnStreamHandler(stream network.Stream) {
 			if err != nil {
 				zlog.Sugar().Errorf("Unable to join vpn. Closing stream. Error: %v", err)
 				stream.Reset()
+				cancel()
 				return
 			}
 			zlog.Sugar().Info("Successfully joined vpn")
