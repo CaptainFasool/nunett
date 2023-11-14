@@ -1,7 +1,6 @@
 package libp2p
 
 import (
-	"bufio"
 	"context"
 	"encoding/binary"
 	"encoding/json"
@@ -52,6 +51,8 @@ func CreateAndInviteHandler(c *gin.Context) {
 // @Success      200
 // @Router       /network/vpn/down [post]
 func DownHandler(c *gin.Context) {
+	// TODO: maybe instead of Down based on in-memory var, rely on
+	// a given tun interface name
 	if vpn != nil {
 		vpn.cancel()
 	}
@@ -68,43 +69,37 @@ func DownHandler(c *gin.Context) {
 // 1. VPN creation where there is no vpn yet; 2. VPN internal messaging
 func vpnStreamHandler(stream network.Stream) {
 	if vpn == nil {
-		// TODO: return a response in case of failure/success when entering invited vpn
+		zlog.Sugar().Debug("No vpn found, checking if it's a vpn invite message")
+
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
-		zlog.Sugar().Debug("No vpn found, checking if it's a vpn invite message")
-		r := bufio.NewReader(stream)
-		//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
-		//      from/to the buffer. So far, all messages are sent with a \n at the end and the
-		//      reader looks for it as a delimiter. See also DeploymentResponse - w.WriteString
-		str, err := r.ReadString('\n')
+
+		// First read the message size
+		var length uint16
+		err := binary.Read(stream, binary.LittleEndian, &length)
 		if err != nil {
-			zlog.Sugar().Errorf("failed to read from new stream buffer - %v", err)
-			w := bufio.NewWriter(stream)
-			_, err := w.WriteString("unable to read VPN Message. Closing Stream.\n")
-			if err != nil {
-				zlog.Sugar().Errorf("failed to write to stream after unable to read VPN Message - %v", err)
-			}
-
-			err = w.Flush()
-			if err != nil {
-				zlog.Sugar().Errorf("failed to flush stream after unable to read VPN Message - %v", err)
-			}
-
-			err = stream.Close()
-			if err != nil {
-				zlog.Sugar().Errorf("failed to close stream after unable to read VPN Message - %v", err)
-			}
-			stream.Reset()
+			stream.Close()
+			zlog.Sugar().Errorf("Couldn't read message size from stream. Error: %w", err)
 			return
 		}
 
-		zlog.Sugar().Debugf("[VPN stream] message: %s", str)
+		// Allocate enough space for the full message
+		vpnMsgJson := make([]byte, length)
 
-		vpnMsg := vpnMessage{}
-		err = json.Unmarshal([]byte(str), &vpnMsg)
+		// Read the message
+		_, err = stream.Read(vpnMsgJson)
 		if err != nil {
-			zlog.Sugar().Errorf("Unable to decode vpn message. Closing stream. Error: %v", err)
-			stream.Reset()
+			stream.Close()
+			zlog.Sugar().Errorf("Couldn't read message from stream. Error: %w", err)
+			return
+		}
+
+		// Unmarshal the JSON
+		vpnMsg := vpnMessage{}
+		err = json.Unmarshal(vpnMsgJson, &vpnMsg)
+		if err != nil {
+			stream.Close()
+			zlog.Sugar().Errorf("Couldn't unmarshal vpn message. Error: %w", err)
 			return
 		}
 
@@ -117,6 +112,7 @@ func vpnStreamHandler(stream network.Stream) {
 				stream.Reset()
 				return
 			}
+
 			vpn, err = JoinVPN(ctx, cancel, *routingTable)
 			if err != nil {
 				zlog.Sugar().Errorf("Unable to join vpn. Closing stream. Error: %v", err)
