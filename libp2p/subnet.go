@@ -89,7 +89,7 @@ func NewVPN(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
 			"Couldn't create and activate the TUN interface: %w", err)
 	}
 
-	vpn := &VPN{
+	vpn = &VPN{
 		ctx:           ctx,
 		cancel:        cancel,
 		tunDev:        tunDev,
@@ -105,7 +105,7 @@ func NewVPN(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
 			GetP2P().DHT, decodedPeersIDs)
 	}
 
-    zlog.Sugar().Debug("Redirecting sent packets to destination")
+	zlog.Sugar().Debug("Redirecting sent packets to destination")
 	go vpn.redirectSentPacketsToDst()
 	return vpn, nil
 }
@@ -179,7 +179,11 @@ func (v *VPN) redirectSentPacketsToDst() {
 					"Error reading packet from TUN interface: %v", err)
 				continue
 			}
-			// TODO: check if there is anything at all within the packet
+
+			// Check if there is anything at all within the packet
+			if plen == 0 {
+				continue
+			}
 
 			// Decode the packet's destination address
 			dst := net.IPv4(packet[16], packet[17], packet[18], packet[19]).String()
