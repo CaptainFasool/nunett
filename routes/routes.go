@@ -104,8 +104,8 @@ func SetupRouter() *gin.Engine {
 
 	net := v1.Group("/network")
 	{
-		net.POST("/subnet/create-and-invite", libp2p.CreateAndInviteHandler)
-		net.POST("/subnet/down", libp2p.DownHandler)
+		net.POST("/vpn/create-and-invite", libp2p.CreateAndInviteHandler)
+		net.POST("/vpn/down", libp2p.DownHandler)
 	}
 
 	return router
