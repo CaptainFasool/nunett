@@ -16,16 +16,20 @@ import (
 )
 
 // TODOs:
-// - Get responses for invites
+// - Get responses for invites. With a new type of Message named "msgVPNInviteResponse"
+// with the reason why it was refused
+
+// - Rethink type instatiation and possible VPN interface design
 
 // - invitePeerToVPN() function considers that the peer is already within the routingTable,
 // that will not be always the case. Assign a new IP if the peer is not on the routing table yet
+// (this will probably be framed as "addPeerToVPN()")
 
-// - change function name invitePeerToVPN() -> some other thing
-// There will probably not be a invite mechanism, peers which accepted this type of job, will
-// be necessarily accepting to enter in a vpn
+// - On the vpnStreamHandler side, we need to check if the invite is really coupled with a job
+// for security reasons (Attack vector: fake invites. Right now, peers are accepting any invite
+// with valid params)
 
-// - NewVPN must also accept callings without peerIDs
+// - Assign jobID to the vpnID
 
 const (
 	msgVPNCreationInvite = "VPNCreationInvite"
@@ -103,6 +107,7 @@ func NewVPN(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
 }
 
 // JoinVPN joins an existing VPN given a routing table
+// Note: this is the one which will be used when deploying jobs
 func JoinVPN(ctx context.Context, cancel context.CancelFunc, routingTable vpnRouter) (
 	*VPN, error) {
 	if len(routingTable) == 0 {
@@ -124,13 +129,11 @@ func JoinVPN(ctx context.Context, cancel context.CancelFunc, routingTable vpnRou
 		activeStreams: make(map[string]network.Stream),
 	}
 
+	// Find and create connection with peers within VPN
 	host := GetP2P().Host
-	if len(routingTable) != 0 {
-		// Find and create connection with peers within VPN
-		decodedPeersIDs := utils.MakeListOfDictKeys(routingTable)
-		go dialPeersContinuously(ctx, host,
-			GetP2P().DHT, decodedPeersIDs)
-	}
+	decodedPeersIDs := utils.MakeListOfDictKeys(routingTable)
+	go dialPeersContinuously(ctx, host,
+		GetP2P().DHT, decodedPeersIDs)
 
 	go vpn.redirectSentPacketsToDst()
 	return vpn, nil
