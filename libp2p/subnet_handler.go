@@ -67,7 +67,7 @@ func DownHandler(c *gin.Context) {
 // following the protocol VPNProtocolID. It handles two types of messages:
 // 1. VPN creation where there is no vpn yet; 2. VPN internal messaging
 func vpnStreamHandler(stream network.Stream) {
-	if vpn != nil {
+	if vpn == nil {
 		// TODO: return a response in case of failure/success when entering invited vpn
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
