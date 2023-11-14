@@ -75,11 +75,13 @@ func NewVPN(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
 	host := GetP2P().Host
 	peersIDs = append(peersIDs, host.ID().String())
 
+	zlog.Sugar().Infof("Setting up routing table for peers %v", peersIDs)
 	routingTable, err := setupRoutingTable(peersIDs)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Couldn't setup routing table: %w", err)
 	}
+	zlog.Sugar().Debugf("Routing table: %v", routingTable)
 
 	tunDev, err := createActivateTunIface(defaultTunIfaceName, routingTable)
 	if err != nil {
@@ -96,12 +98,14 @@ func NewVPN(ctx context.Context, cancel context.CancelFunc, peersIDs []string) (
 	}
 
 	if len(routingTable) != 0 {
+		zlog.Sugar().Debug("Dialing peers in the routing table")
 		// Find and create connection with peers within VPN
 		decodedPeersIDs := utils.MakeListOfDictKeys(routingTable)
 		go dialPeersContinuously(ctx, host,
 			GetP2P().DHT, decodedPeersIDs)
 	}
 
+    zlog.Sugar().Debug("Redirecting sent packets to destination")
 	go vpn.redirectSentPacketsToDst()
 	return vpn, nil
 }
@@ -350,6 +354,7 @@ func reverseRoutingTable(routingTable vpnRouter) reversedVPNRouter {
 }
 
 func createActivateTunIface(tunName string, routingTable vpnRouter) (*tun.TUN, error) {
+	zlog.Sugar().Debug("Creating TUN interface")
 	// Create TUN interface
 	tunDev, err := tun.New(
 		tunName,
@@ -359,7 +364,9 @@ func createActivateTunIface(tunName string, routingTable vpnRouter) (*tun.TUN, e
 	if err != nil {
 		return nil, fmt.Errorf("Couldn't create TUN interface: %w", err)
 	}
+	zlog.Sugar().Debug("TUN interface created")
 
+	zlog.Sugar().Debug("Activating TUN interface")
 	// Activate TUN interface to be ready to receive/send packets
 	// tun.New() just created, it didn't make active.
 	err = tunDev.Up()
@@ -370,6 +377,7 @@ func createActivateTunIface(tunName string, routingTable vpnRouter) (*tun.TUN, e
 		}
 		return nil, fmt.Errorf("Couldn't activate TUN interface: %w", err)
 	}
+	zlog.Sugar().Debug("Tunneling interface created and up")
 
 	return tunDev, nil
 }
