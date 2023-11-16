@@ -251,6 +251,9 @@ func (v *VPN) redirectSentPacketsToDst() {
 				// if successfully creation and sent of packets, add to active activeStreams
 				// so that it can be reused latter
 				v.activeStreams[dst] = stream
+			} else {
+				zlog.Sugar().Debugf("Peer dest %s not found in routing table: %v",
+					dst, v.routingTable)
 			}
 		}
 	}
@@ -352,7 +355,7 @@ func setupRoutingTable(peersIDs []string) (vpnRouter, error) {
 				peerID, err)
 		}
 
-		routingTable[decodedPID] = fmt.Sprintf("10.0.0.%d/24", idx)
+		routingTable[decodedPID] = fmt.Sprintf("10.0.0.%d", idx)
 	}
 	return routingTable, nil
 }
@@ -368,9 +371,10 @@ func reverseRoutingTable(routingTable vpnRouter) reversedVPNRouter {
 func createActivateTunIface(tunName string, routingTable vpnRouter) (*tun.TUN, error) {
 	zlog.Sugar().Debug("Creating TUN interface")
 	// Create TUN interface
+	hostAddr := routingTable[GetP2P().Host.ID()]
 	tunDev, err := tun.New(
 		tunName,
-		tun.Address(routingTable[GetP2P().Host.ID()]),
+		tun.Address(fmt.Sprintf("%s/24", hostAddr)),
 		tun.MTU(1420),
 	)
 	if err != nil {
@@ -392,4 +396,35 @@ func createActivateTunIface(tunName string, routingTable vpnRouter) (*tun.TUN, e
 	zlog.Sugar().Debug("Tunneling interface created and up")
 
 	return tunDev, nil
+}
+
+// MarshalJSON custom JSON marshaling for vpnRouter
+func (vr vpnRouter) MarshalJSON() ([]byte, error) {
+	temp := make(map[string]string)
+	for peerID, subnetAddr := range vr {
+		temp[peerID.String()] = subnetAddr
+	}
+	return json.Marshal(temp)
+}
+
+// UnmarshalJSON custom JSON unmarshaling for vpnRouter
+func (vr *vpnRouter) UnmarshalJSON(data []byte) error {
+	// Unmarshal into a map of strings to strings first
+	temp := make(map[string]string)
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	*vr = make(vpnRouter)
+	for peerID, subnetAddr := range temp {
+		// Convert the string back to peer.ID
+		decodedPID, err := peer.Decode(peerID)
+		if err != nil {
+			return fmt.Errorf(
+				"Couldn't decode input peerID '%s', Error: %w",
+				peerID, err)
+		}
+		(*vr)[decodedPID] = subnetAddr
+	}
+	return nil
 }
