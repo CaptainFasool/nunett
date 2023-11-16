@@ -105,8 +105,9 @@ func vpnStreamHandler(stream network.Stream) {
 
 		if vpnMsg.MsgType == msgVPNCreationInvite {
 			zlog.Sugar().Debugf("Received vpn creation invite")
-			var routingTable *vpnRouter
-			err := json.Unmarshal([]byte(vpnMsg.Msg), routingTable)
+			zlog.Sugar().Debugf("Routing table: %s", vpnMsg.Msg)
+			routingTable := &vpnRouter{}
+			err := json.Unmarshal([]byte(vpnMsg.Msg), &routingTable)
 			if err != nil {
 				zlog.Sugar().Errorf("Unable to decode vpn message. Closing stream. Error: %v", err)
 				stream.Reset()
@@ -121,11 +122,7 @@ func vpnStreamHandler(stream network.Stream) {
 				return
 			}
 			zlog.Sugar().Info("Successfully joined vpn")
-			return
 		}
-
-		stream.Reset()
-		return
 	}
 
 	// If tunneling device was not iniated yet, just close the stream
