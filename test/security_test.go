@@ -25,6 +25,9 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
+// This is a transaction hash that exists on preprpod that is for a different CP
+const OldValidTransactionHash = "ce964014ea9c4b6ab884f82592846fde0c652a652db63f06dd549e78d9d78f86"
+
 type TestHarness struct {
 	suite.Suite
 	sync.WaitGroup
@@ -52,23 +55,28 @@ func (s *TestHarness) TearDownSuite() {
 	os.RemoveAll("/tmp/nunet-client")
 }
 
-func (s *TestHarness) TestTxHashValidation() {
-	spClient, err := CreateServiceProviderTestingClient()
-	s.Nil(err, "Failed to create testing client");
-
+func DefaultDeploymentRequest(tx_hash string) models.DeploymentRequest {
 	var req models.DeploymentRequest
-	req.TxHash = "ce964014ea9c4b6ab884f82592846fde0c652a652db63f06dd549e78d9d78f86" // valid hash but not intended for CP wallet address
+	// Hash of a valid job that has a valid datum and payment, but that doesn't list this CP DMS's address as the chosen CP
+	req.TxHash = tx_hash
 	req.RequesterWalletAddress = "addr_test1qrrysjx7gg6e2h8qvsqc29lg37yttq6cnww72637sdgfm7c58xcwszypj5fz8mmdvkv2a7wew2tthvvftj02gdeaf4vsc849la"
 	req.MaxNtx = 2
 	req.Blockchain = "Cardano"
 	req.ServiceType = "ml-training-cpu"
 	req.Timestamp = time.Now()
 	req.Params.MachineType = "cpu"
+
+	// Simple Model URL
 	req.Params.ModelURL = "https://gist.github.com/luigy/d63eec5cb33d9f789969fafe04ee3ae9"
+
+	// Valid cpu image ID
 	req.Params.ImageID = "registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu"
+
 	req.Params.RemoteNodeID = "invalidremoteid"
 	req.Params.LocalNodeID = "invalidlocalid"
 	req.Params.LocalPublicKey = "invalidpublickey"
+
+	// Low complexity and constraints
 	req.Constraints.Complexity = "Low"
 	req.Constraints.CPU = 1500
 	req.Constraints.RAM = 2000
@@ -76,19 +84,68 @@ func (s *TestHarness) TestTxHashValidation() {
 	req.Constraints.Power = 170
 	req.Constraints.Time = 1
 
+	return req;
+}
+
+// Test if the the CP DMS will run a undervalued job
+func (s *TestHarness) TestTxUndervaluation() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	// Create a request with very high constraints but with the minimum NTX
+	req := DefaultDeploymentRequest(OldValidTransactionHash)
+	req.MaxNtx = 1;
+	req.Constraints.CPU = 1000000;
+	req.Constraints.RAM = 2000000;
+	req.Constraints.Vram = 2000000;
+	req.Constraints.Power = 20000000;
+	req.Constraints.Time = 10000000;
+
 	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("The CP DMS ran the job even though the requirements are too high for the payment")
+}
+
+// Convenience function to check for job failure and if the job runs respond with a custom error message.
+func ( spClient *SPTestClient ) AssertJobFail( job_ran_error string ) {
+	s := spClient.s
 
 	firstUpdate, err := spClient.GetNextDeploymentUpdate()
 	s.Nil(err, "Failed to get first deployment update")
-	s.NotEqual(libp2p.MsgJobStatus, firstUpdate.MsgType, "Malicious SP send an invalid tx-hash but the CP started the job")
+	s.NotEqual(libp2p.MsgJobStatus, firstUpdate.MsgType, job_ran_error)
 
 	// If we have received a message a job is running, lets also confirm that the DeploymentRequest is successful as well
 	if firstUpdate.MsgType == libp2p.MsgJobStatus {
 		secondUpdate, err := spClient.GetNextDeploymentUpdate()
 		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
 		s.Nil(err, "Failed to get second deployment update")
-		s.Equal(false, secondUpdate.Response.Success, "Malicious SP sent an invalid tx-hash but the CP confirmed deployment success")
+		s.Equal(false, secondUpdate.Response.Success, job_ran_error)
 	}
+}
+
+// Test that the CP DMS will not run a job with an invalid tx hash
+func (s *TestHarness) TestTxHashValidation() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := DefaultDeploymentRequest("invalidtxhash")
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent an invalid tx-hash but the CP confirmed deployment success")
+}
+
+// Test that the CP DMS will not run a job with a valid tx hash that does not have the correct amount of NTX
+func (s *TestHarness) TestTxNTXValidation() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := DefaultDeploymentRequest(OldValidTransactionHash)
+	req.MaxNtx = 1000000
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a valid transaction but decalred a higher payout to the DMS and the job ran success")
 }
 
 func GenerateTestKeyPair() (crypto.PrivKey, error) {
@@ -145,7 +202,7 @@ func RunTestComputeProvider() error {
 	go messaging.DeploymentWorker()
 
 	// Create a new key pair for Node Id Generation
-	pair, err := GenerateTestKeyPair();
+	pair, err := GenerateTestKeyPair()
 
 	runAsServer := true;
 	libp2p.RunNode(pair, runAsServer)
@@ -157,6 +214,7 @@ type SPTestClient struct
 {
 	reader *bufio.Reader
 	writer *bufio.Writer
+	s *TestHarness
 }
 
 // Convenience type for DeploymentUpdate with unmarshalled data
@@ -167,7 +225,7 @@ type CPUpdate struct
 	Services models.Services
 }
 
-func CreateServiceProviderTestingClient() (SPTestClient, error) {
+func CreateServiceProviderTestingClient( s *TestHarness ) (SPTestClient, error) {
 	ctx := context.Background()
 
 	SetupDMSTestingConfiguration("client", 0)
@@ -183,7 +241,7 @@ func CreateServiceProviderTestingClient() (SPTestClient, error) {
 	reader := bufio.NewReader(stream)
 	writer := bufio.NewWriter(stream)
 
-	return SPTestClient{reader,writer}, err
+	return SPTestClient{reader,writer,s}, err
 }
 
 func GetTestComputeProviderID() peer.ID {
