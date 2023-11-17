@@ -148,6 +148,18 @@ func (s *TestHarness) TestTxNTXValidation() {
 	spClient.AssertJobFail("Malicious SP sent a valid transaction but decalred a higher payout to the DMS and the job ran success")
 }
 
+func (s *TestHarness) TestModelValidation() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.ModelURL = "null"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent an invalid model url and CP still tried to run it")
+}
+
 func GenerateTestKeyPair() (crypto.PrivKey, error) {
 	priv, _, err := crypto.GenerateKeyPair(
 		crypto.Ed25519, // Ed25519 are nice short
