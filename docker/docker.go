@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
@@ -122,6 +123,39 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 			CPUQuota:       cpuQuota,
 			CPUPeriod:      cpuPeriod,
 		},
+	}
+
+	if depReq.Params.Container.PortToBind != "" {
+		natPortToBind, err := nat.NewPort("tcp", depReq.Params.Container.PortToBind)
+		if err != nil {
+			zlog.Sugar().Errorf("Error creating port to bind: %v", err)
+			depRes := models.DeploymentResponse{
+				Success: false,
+				Content: "Problem with port to bind. Unable to process request.",
+			}
+			resCh <- depRes
+			return
+		}
+
+		vpnAddr, err := libp2p.GetVPNAddrOfHost()
+		if err != nil {
+			zlog.Sugar().Errorf("Error getting VPN address: %v", err)
+			depRes := models.DeploymentResponse{
+				Success: false,
+				Content: "Problem with VPN address. Unable to process request.",
+			}
+			resCh <- depRes
+			return
+		}
+
+		hostConfig.PortBindings = nat.PortMap{
+			natPortToBind: []nat.PortBinding{
+				{
+					HostIP:   vpnAddr,
+					HostPort: depReq.Params.Container.PortToBind,
+				},
+			},
+		}
 	}
 
 	hostConfigAMDGPU := container.HostConfig{}

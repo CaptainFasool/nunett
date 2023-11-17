@@ -32,6 +32,10 @@ type DeploymentRequest struct {
 		LocalNodeID     string   `json:"local_node_id"`    // NodeID of service provider (machine triggering the job)
 		LocalPublicKey  string   `json:"local_public_key"` // Public key of service provider
 		MachineType     string   `json:"machine_type"`
+		Container       struct {
+			PortToBind     string `json:"port_to_bind"`
+			BindVPNAddress bool   `json:"bind_vpn_address"`
+		}
 	} `json:"params"`
 	Constraints struct {
 		Complexity string `json:"complexity"`
