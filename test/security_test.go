@@ -91,6 +91,45 @@ func (s *TestHarness) TestTxHashValidation() {
 	}
 }
 
+func (s *TestHarness) TestInvalidSP() {
+	spClient, err := CreateServiceProviderTestingClient()
+	s.Nil(err, "Failed to create testing client");
+
+	var req models.DeploymentRequest
+	req.TxHash = "ce964014ea9c4b6ab884f82592846fde0c652a652db63f06dd549e78d9d78f86" // valid hash but not intended for CP wallet address
+	req.RequesterWalletAddress = "invalidaddr"
+	req.MaxNtx = 2
+	req.Blockchain = "Cardano"
+	req.ServiceType = "ml-training-cpu"
+	req.Timestamp = time.Now()
+	req.Params.MachineType = "cpu"
+	req.Params.ModelURL = "https://gist.github.com/luigy/d63eec5cb33d9f789969fafe04ee3ae9"
+	req.Params.ImageID = "registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu"
+	req.Params.RemoteNodeID = "invalidremoteid"
+	req.Params.LocalNodeID = "invalidlocalid"
+	req.Params.LocalPublicKey = "invalidpublickey"
+	req.Constraints.Complexity = "Low"
+	req.Constraints.CPU = 1500
+	req.Constraints.RAM = 2000
+	req.Constraints.Vram = 2000
+	req.Constraints.Power = 170
+	req.Constraints.Time = 1
+
+	spClient.SendDeploymentRequest(req)
+
+	firstUpdate, err := spClient.GetNextDeploymentUpdate()
+	s.Nil(err, "Failed to get first deployment update")
+	s.NotEqual(libp2p.MsgJobStatus, firstUpdate.MsgType, "Malicious SP send an invalid tx-hash but the CP started the job")
+
+	// If we have received a message a job is running, lets also confirm that the DeploymentRequest is successful as well
+	if firstUpdate.MsgType == libp2p.MsgJobStatus {
+		secondUpdate, err := spClient.GetNextDeploymentUpdate()
+		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
+		s.Nil(err, "Failed to get second deployment update")
+		s.Equal(false, secondUpdate.Response.Success, "Malicious SP sent an invalid tx-hash but the CP confirmed deployment success")
+	}
+}
+
 func (s *TestHarness) TestImageSecurity() {
     spClient, err := CreateServiceProviderTestingClient()
     s.Nil(err, "Failed to create testing client");
