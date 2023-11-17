@@ -125,36 +125,28 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		},
 	}
 
-	if depReq.Params.Container.PortToBind != "" {
-		natPortToBind, err := nat.NewPort("tcp", depReq.Params.Container.PortToBind)
-		if err != nil {
-			zlog.Sugar().Errorf("Error creating port to bind: %v", err)
-			depRes := models.DeploymentResponse{
-				Success: false,
-				Content: "Problem with port to bind. Unable to process request.",
+	if depReq.Params.Container.MustBindPort {
+		if depReq.Params.Container.PortRange.Min != 0 {
+			err := bindPortsRange(hostConfig, depReq.Params.Container.PortRange.Min,
+				depReq.Params.Container.PortRange.Max)
+			if err != nil {
+				zlog.Sugar().Errorf("Error binding a range of ports to container: %v", err)
+				depRes := models.DeploymentResponse{
+					Success: false,
+					Content: "Problem binding range of ports to container. Unable to process request.",
+				}
+				resCh <- depRes
 			}
-			resCh <- depRes
-			return
-		}
-
-		vpnAddr, err := libp2p.GetVPNAddrOfHost()
-		if err != nil {
-			zlog.Sugar().Errorf("Error getting VPN address: %v", err)
-			depRes := models.DeploymentResponse{
-				Success: false,
-				Content: "Problem with VPN address. Unable to process request.",
+		} else {
+			err := bindUniquePort(hostConfig, depReq.Params.Container.PortToBind)
+			if err != nil {
+				zlog.Sugar().Errorf("Error binding a port to container: %v", err)
+				depRes := models.DeploymentResponse{
+					Success: false,
+					Content: "Problem binding port to container. Unable to process request.",
+				}
+				resCh <- depRes
 			}
-			resCh <- depRes
-			return
-		}
-
-		hostConfig.PortBindings = nat.PortMap{
-			natPortToBind: []nat.PortBinding{
-				{
-					HostIP:   vpnAddr,
-					HostPort: depReq.Params.Container.PortToBind,
-				},
-			},
 		}
 	}
 
@@ -852,4 +844,35 @@ func fetchOnboardedResources() (cpuQuota, memoryMax int64, err error) {
 	memoryMax = metadata.Reserved.Memory * 1024 * 1024 // convert to bytes
 
 	return cpuQuota, memoryMax, nil
+}
+
+// bindUniquePort binds an unique port to the container accordingly to Deployment Request
+func bindUniquePort(container *container.HostConfig, port int) error {
+	natPortToBind, err := nat.NewPort("tcp", strconv.Itoa(port))
+	if err != nil {
+		return fmt.Errorf("Error creating type Nat port to bind: %w", err)
+	}
+	vpnAddr, err := libp2p.GetVPNAddrOfHost()
+	if err != nil {
+		return fmt.Errorf("Error getting VPN address: %w", err)
+	}
+	portBinding := []nat.PortBinding{{HostIP: vpnAddr, HostPort: strconv.Itoa(port)}}
+
+	if container.PortBindings == nil {
+		container.PortBindings = nat.PortMap{}
+	}
+	container.PortBindings[natPortToBind] = portBinding
+
+	return nil
+}
+
+// bindPortsRange binds a range of ports to the container accordingly to Deployment Request
+func bindPortsRange(container *container.HostConfig, startPort, endPort int) error {
+	for port := startPort; port <= endPort; port++ {
+		err := bindUniquePort(container, port)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

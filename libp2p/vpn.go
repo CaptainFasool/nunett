@@ -368,6 +368,23 @@ func reverseRoutingTable(routingTable vpnRouter) reversedVPNRouter {
 	return reversedRoutingTable
 }
 
+// GetVPNAddrOfHost returns the vpn address of the host
+func GetVPNAddrOfHost() (string, error) {
+	if vpn == nil {
+		return "", fmt.Errorf("VPN not initialized")
+	}
+
+	if len(vpn.routingTable) == 0 {
+		return "", fmt.Errorf("Vpn routing table is empty")
+	}
+
+	if addr, ok := vpn.routingTable[GetP2P().Host.ID()]; ok {
+		return addr, nil
+	} else {
+		return "", fmt.Errorf("Host not found in routing table")
+	}
+}
+
 func createActivateTunIface(tunName string, routingTable vpnRouter) (*tun.TUN, error) {
 	zlog.Sugar().Debug("Creating TUN interface")
 	// Create TUN interface

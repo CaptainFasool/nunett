@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -47,8 +48,8 @@ const (
 	JobCompleted = "job-completed"
 )
 
-var txHashPropogrationTime = 60 // seconds
-var txHashConfirmationNum = 5 // min number of confirmations
+var txHashPropogrationTime = 60   // seconds
+var txHashConfirmationNum = 5     // min number of confirmations
 var txhashConfirmationTimeout = 5 // minutes
 
 var inboundChatStreams []network.Stream
@@ -60,6 +61,19 @@ type OpenStream struct {
 	StreamID   string `json:"stream_id"`
 	FromPeer   string `json:"from_peer"`
 	TimeOpened string `json:"time_opened"`
+}
+
+type InvalidDepReqError struct {
+	Param string
+	Err   error
+}
+
+func (e *InvalidDepReqError) Error() string {
+	return fmt.Sprintf("Invalid %s. Error: %v", e.Param, e.Err)
+}
+
+func (e *InvalidDepReqError) Unwrap() error {
+	return e.Err
 }
 
 func writeToStream(stream network.Stream, msg string, failReason string) {
@@ -139,18 +153,60 @@ func depReqStreamHandler(stream network.Stream) {
 		depResBytes, _ := json.Marshal(depRes)
 		DeploymentUpdate(MsgDepResp, string(depResBytes), true)
 	} else {
-		// check if txhash is valid
-		err := checkTxHash(depreqMessage.TxHash)
+		err := validateDeploymentRequest(depreqMessage)
 		if err == nil {
-			zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
+			zlog.Sugar().Infof("DeploymentRequest params were validated, proceeding with deployment")
 			DepReqQueue <- depreqMessage
 		} else {
-			zlog.Sugar().Infof("tx_hash %q is invalid or timed out. Stopping deployment process", depreqMessage.TxHash)
-			depRes := models.DeploymentResponse{Success: false, Content: "Invalid TxHash"}
-			depResBytes, _ := json.Marshal(depRes)
-			DeploymentUpdate(MsgDepResp, string(depResBytes), true)
+			var invReqErr *InvalidDepReqError
+			if errors.As(err, &invReqErr) {
+				zlog.Sugar().Infof(
+					"DeploymentRequest params were invalid. Parameter: %s. Error: %v",
+					invReqErr.Param, invReqErr.Err)
+				depRes := models.DeploymentResponse{
+					Success: false,
+					Content: fmt.Sprintf("invalid %s", invReqErr.Param),
+				}
+				depResBytes, _ := json.Marshal(depRes)
+				DeploymentUpdate(MsgDepResp, string(depResBytes), true)
+			} else {
+				// handle other kind of errors, or unknown errors
+				zlog.Sugar().Errorf(
+					"Unexpected error while validating DeploymentRequest params. Error: %v",
+					err)
+			}
 		}
 	}
+}
+
+// validateDeploymentRequest validates the deployment request parameters. It returns an
+// error and a string categorizing which parameter is invalid
+func validateDeploymentRequest(depReq models.DeploymentRequest) error {
+	if err := checkTxHash(depReq.TxHash); err != nil {
+		return &InvalidDepReqError{Param: "TxHash", Err: err}
+	}
+	if err := validateInputedPorts(
+		depReq.Params.Container.PortToBind,
+		depReq.Params.Container.PortRange.Min,
+		depReq.Params.Container.PortRange.Max,
+	); err != nil {
+		return &InvalidDepReqError{Param: "container ports", Err: err}
+	}
+
+	return nil
+}
+
+// validateInputedPorts checks if the inputed ports coming from the DeploymentRequest
+// are in a valid format
+func validateInputedPorts(uniquePort, portRangeMin, portRangeMax int) error {
+	if portRangeMin > portRangeMax {
+		return fmt.Errorf(
+			"portRangeMin must be less than or equal to portRangeMax")
+	} else if portRangeMin == 0 || portRangeMax == 0 {
+		return fmt.Errorf(
+			"portRangeMin and portRangeMax must be greater than 0")
+	}
+	return nil
 }
 
 func checkTxHash(txHash string) error {
