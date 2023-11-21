@@ -37,19 +37,19 @@ var gpuStatusCmd = &cobra.Command{
 			defer func() {
 				retNVML := nvml.Shutdown()
 				if retNVML != nvml.SUCCESS {
-					fmt.Println("Error: failed to shutdown nvml:", nvml.ErrorString(retNVML))
+					fmt.Fprintln(cmd.OutOrStderr(), "Error: failed to shutdown nvml:", nvml.ErrorString(retNVML))
 				}
 			}()
 
 			countNVML, retNVML := nvml.DeviceGetCount()
 			if retNVML != nvml.SUCCESS {
-				fmt.Println("Failed to count Nvidia devices:", nvml.ErrorString(retNVML))
+				fmt.Fprintln(cmd.OutOrStderr(), "Failed to count Nvidia devices:", nvml.ErrorString(retNVML))
 				// TODO: add prompt to continue with other GPU if one fails
 			}
 
 			countROCM, err := getCountAMD()
 			if err != nil {
-				fmt.Println("Failed to count AMD devices:", err)
+				fmt.Fprintln(cmd.OutOrStderr(), "Failed to count AMD devices:", err)
 			}
 
 			// slice of fixed lenght
@@ -78,65 +78,65 @@ var gpuStatusCmd = &cobra.Command{
 			for {
 				select {
 				case <-exit:
-					fmt.Println("signal: interrupt")
+					fmt.Fprintln(cmd.OutOrStdout(), "signal: interrupt")
 					return nil
 				default:
 					// clear screen (not reliable, maybe implement something ncurses-like for future)
 					fmt.Print("\033[H\033[2J")
 
-					fmt.Println("========== NuNet GPU Status ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== NuNet GPU Status ==========")
 
-					fmt.Println("========== GPU Utilization ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== GPU Utilization ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %d%%\n", n.index, n.name(), n.utilizationRate())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %d%%\n", n.index, n.name(), n.utilizationRate())
 					}
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %d%%\n", a.index, a.name(), a.utilizationRate())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %d%%\n", a.index, a.name(), a.utilizationRate())
 					}
 
-					fmt.Println("========== Memory Capacity ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Capacity ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().total))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().total))
 					}
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().total))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().total))
 					}
 
-					fmt.Println("========== Memory Used ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Used ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().used))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().used))
 					}
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().used))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().used))
 					}
 
-					fmt.Println("========== Memory Free ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Free ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().free))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().free))
 					}
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().free))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().free))
 					}
 
-					fmt.Println("========== Temperature ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Temperature ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %.0f°C\n", n.index, n.name(), n.temperature())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %.0f°C\n", n.index, n.name(), n.temperature())
 					}
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %.0f°C\n", a.index, a.name(), a.temperature())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %.0f°C\n", a.index, a.name(), a.temperature())
 					}
 
-					fmt.Println("========== Power Usage ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Power Usage ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %dW\n", n.index, n.name(), n.powerUsage())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %dW\n", n.index, n.name(), n.powerUsage())
 					}
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %dW\n", a.index, a.name(), a.powerUsage())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %dW\n", a.index, a.name(), a.powerUsage())
 					}
 
-					fmt.Println("")
-					fmt.Println("Press CTRL+C to exit...")
-					fmt.Println("Refreshing status in a few seconds...")
+					fmt.Fprintln(cmd.OutOrStdout(), "")
+					fmt.Fprintln(cmd.OutOrStdout(), "Press CTRL+C to exit...")
+					fmt.Fprintln(cmd.OutOrStdout(), "Refreshing status in a few seconds...")
 
 					time.Sleep(2 * time.Second)
 				}
@@ -144,18 +144,18 @@ var gpuStatusCmd = &cobra.Command{
 		} else if hasNVIDIA {
 			retNVML := nvml.Init()
 			if retNVML != nvml.SUCCESS {
-				fmt.Println("Failed to initialize NVML:", nvml.ErrorString(retNVML))
+				fmt.Fprintln(cmd.OutOrStderr(), "Failed to initialize NVML:", nvml.ErrorString(retNVML))
 			}
 			defer func() {
 				retNVML := nvml.Shutdown()
 				if retNVML != nvml.SUCCESS {
-					fmt.Println("Failed to shutdown NVML:", nvml.ErrorString(retNVML))
+					fmt.Fprintln(cmd.OutOrStderr(), "Failed to shutdown NVML:", nvml.ErrorString(retNVML))
 				}
 			}()
 
 			countNVML, retNVML := nvml.DeviceGetCount()
 			if retNVML != nvml.SUCCESS {
-				fmt.Println("Failed to count Nvidia devices:", nvml.ErrorString(retNVML))
+				fmt.Fprintln(cmd.OutOrStderr(), "Failed to count Nvidia devices:", nvml.ErrorString(retNVML))
 			}
 
 			nvidiaGPUs := make([]nvidiaGPU, countNVML)
@@ -174,41 +174,41 @@ var gpuStatusCmd = &cobra.Command{
 			for {
 				select {
 				case <-exit:
-					fmt.Println("signal: interrupt")
+					fmt.Fprintln(cmd.OutOrStdout(), "signal: interrupt")
 					return nil
 				default:
 					// clear screen (not reliable, maybe implement something ncurses-like for future)
 					fmt.Print("\033[H\033[2J")
 
-					fmt.Println("========== NuNet GPU Status ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== NuNet GPU Status ==========")
 
-					fmt.Println("========== GPU Utilization ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== GPU Utilization ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %d%%\n", n.index, n.name(), n.utilizationRate())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %d%%\n", n.index, n.name(), n.utilizationRate())
 					}
-					fmt.Println("========== Memory Capacity ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Capacity ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().total))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().total))
 					}
-					fmt.Println("========== Memory Used ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Used ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().used))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().used))
 					}
-					fmt.Println("========== Memory Free ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Free ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().free))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %s\n", n.index, n.name(), humanize.IBytes(n.memory().free))
 					}
-					fmt.Println("========== Temperature ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Temperature ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %.0f°C\n", n.index, n.name(), n.temperature())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %.0f°C\n", n.index, n.name(), n.temperature())
 					}
-					fmt.Println("========== Power Usage ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Power Usage ==========")
 					for _, n := range nvidiaGPUs {
-						fmt.Printf("%d %s: %dW\n", n.index, n.name(), n.powerUsage())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d %s: %dW\n", n.index, n.name(), n.powerUsage())
 					}
-					fmt.Println("")
-					fmt.Println("Press CTRL+C to exit...")
-					fmt.Println("Refreshing status in a few seconds...")
+					fmt.Fprintln(cmd.OutOrStdout(), "")
+					fmt.Fprintln(cmd.OutOrStdout(), "Press CTRL+C to exit...")
+					fmt.Fprintln(cmd.OutOrStdout(), "Refreshing status in a few seconds...")
 
 					time.Sleep(2 * time.Second)
 				}
@@ -216,7 +216,7 @@ var gpuStatusCmd = &cobra.Command{
 		} else if hasAMD {
 			countROCM, err := getCountAMD()
 			if err != nil {
-				fmt.Println("Failed to count AMD devices:", err)
+				fmt.Fprintln(cmd.OutOrStderr(), "Failed to count AMD devices:", err)
 			}
 
 			amdGPUs := make([]amdGPU, countROCM)
@@ -235,40 +235,40 @@ var gpuStatusCmd = &cobra.Command{
 			for {
 				select {
 				case <-exit:
-					fmt.Println("signal: interrupt")
+					fmt.Fprintln(cmd.OutOrStdout(), "signal: interrupt")
 					return nil
 				default:
 					// clear screen (not reliable, maybe implement something ncurses-like for future)
-					fmt.Print("\033[H\033[2J")
+					fmt.Print(cmd.OutOrStdout(), "\033[H\033[2J")
 
-					fmt.Println("========== NuNet GPU Status ==========")
-					fmt.Println("========== GPU Utilization ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== NuNet GPU Status ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== GPU Utilization ==========")
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %d%%\n", a.index, a.name(), a.utilizationRate())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %d%%\n", a.index, a.name(), a.utilizationRate())
 					}
-					fmt.Println("========== Memory Capacity ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Capacity ==========")
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().total))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().total))
 					}
-					fmt.Println("========== Memory Used ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Used ==========")
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().used))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().used))
 					}
-					fmt.Println("========== Memory Free ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Memory Free ==========")
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().free))
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %s\n", a.index, a.name(), humanize.IBytes(a.memory().free))
 					}
-					fmt.Println("========== Temperature ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Temperature ==========")
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %.0f°C\n", a.index, a.name(), a.temperature())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %.0f°C\n", a.index, a.name(), a.temperature())
 					}
-					fmt.Println("========== Power Usage ==========")
+					fmt.Fprintln(cmd.OutOrStdout(), "========== Power Usage ==========")
 					for _, a := range amdGPUs {
-						fmt.Printf("%d AMD %s: %dW\n", a.index, a.name(), a.powerUsage())
+						fmt.Fprintf(cmd.OutOrStdout(), "%d AMD %s: %dW\n", a.index, a.name(), a.powerUsage())
 					}
-					fmt.Println("")
-					fmt.Println("Press CTRL+C to exit...")
-					fmt.Println("Refreshing status in a few seconds...")
+					fmt.Fprintln(cmd.OutOrStdout(), "")
+					fmt.Fprintln(cmd.OutOrStdout(), "Press CTRL+C to exit...")
+					fmt.Fprintln(cmd.OutOrStdout(), "Refreshing status in a few seconds...")
 
 					time.Sleep(2 * time.Second)
 				}
@@ -276,8 +276,6 @@ var gpuStatusCmd = &cobra.Command{
 		} else {
 			return fmt.Errorf("no AMD or NVIDIA GPU(s) detected...")
 		}
-
-		return nil
 	},
 }
 

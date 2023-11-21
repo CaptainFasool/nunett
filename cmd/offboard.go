@@ -28,7 +28,7 @@ var offboardCmd = &cobra.Command{
 			return fmt.Errorf("looks like your machine is not onboarded")
 		}
 
-		fmt.Println("Warning: Offboarding will remove all your data and you will not be able to onboard again with the same identity")
+		fmt.Fprintln(cmd.OutOrStdout(), "Warning: Offboarding will remove all your data and you will not be able to onboard again with the same identity")
 		answer := utils.PromptYesNo("Are you sure you want to offboard? (y/N)")
 		if !answer {
 			return fmt.Errorf("offboard aborted by user")
@@ -44,7 +44,7 @@ var offboardCmd = &cobra.Command{
 					return fmt.Errorf("got error response from server: %w", errMsg)
 				} else if err == jsonparser.KeyPathNotFoundError { // if field "error" is NOT found
 					msg, _ := jsonparser.GetString(body, "message")
-					fmt.Println(msg)
+					fmt.Fprintln(cmd.OutOrStdout(), msg)
 				} else { // if another error occurred
 					return fmt.Errorf("could not parse string response: %w", err)
 				}
@@ -60,7 +60,7 @@ var offboardCmd = &cobra.Command{
 					return fmt.Errorf("got error response from server: %w", errMsg)
 				} else if err == jsonparser.KeyPathNotFoundError { // if field "error" is NOT found
 					msg, _ := jsonparser.GetString(body, "message")
-					fmt.Println(msg)
+					fmt.Fprintln(cmd.OutOrStdout(), msg)
 				} else { // if another error occurred
 					return fmt.Errorf("could not parse string response: %w", err)
 				}

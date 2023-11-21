@@ -82,7 +82,7 @@ var gpuCapacityCmd = &cobra.Command{
 			}
 
 			if !imageExists(images, cudaOpts.Image) {
-				err := pullImage(cli, ctx, cudaOpts.Image)
+				err := pullImage(ctx, cmd.OutOrStdout(), cli, cudaOpts.Image)
 				if err != nil {
 					return fmt.Errorf("failed to pull CUDA image %s: %w", cudaOpts.Image, err)
 				}
@@ -118,7 +118,7 @@ var gpuCapacityCmd = &cobra.Command{
 			}
 
 			if !imageExists(images, rocmOpts.Image) {
-				err := pullImage(cli, ctx, rocmOpts.Image)
+				err := pullImage(ctx, cmd.OutOrStdout(), cli, rocmOpts.Image)
 				if err != nil {
 					return fmt.Errorf("could not pull ROCm-HIP image %s: %w", rocmOpts.Image, err)
 				}
@@ -216,12 +216,12 @@ func imageExists(images []types.ImageSummary, imageName string) bool {
 	return false
 }
 
-func pullImage(cli *client.Client, ctx context.Context, imageName string) error {
+func pullImage(ctx context.Context, w io.Writer, cli *client.Client, image string) error {
 	ctxCancel, cancel := context.WithCancel(ctx)
 	defer cancel()
-	out, err := cli.ImagePull(ctxCancel, imageName, types.ImagePullOptions{})
+	out, err := cli.ImagePull(ctxCancel, image, types.ImagePullOptions{})
 	if err != nil {
-		return fmt.Errorf("unable to pull image %s: %v", imageName, err)
+		return fmt.Errorf("unable to pull image %s: %v", image, err)
 	}
 
 	// define interrupt to stop image pull
@@ -229,14 +229,14 @@ func pullImage(cli *client.Client, ctx context.Context, imageName string) error 
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-interrupt
-		fmt.Println("signal: interrupt")
+		fmt.Fprintln(w, "signal: interrupt")
 		cancel()
 	}()
 
-	fmt.Printf("Pulling image: %s\nThis may take some time...\n", imageName)
+	fmt.Fprint(w, "Pulling image: %s\nThis may take some time...\n", image)
 	defer out.Close()
 
-	io.Copy(os.Stdout, out)
+	io.Copy(w, out)
 
 	return nil
 }
