@@ -20,27 +20,23 @@ const (
 var gpuOnboardCmd = &cobra.Command{
 	Use:    "onboard",
 	Short:  "Install GPU drivers and Container Runtime",
-	Long:   ``,
 	PreRun: isDMSRunning(),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		wsl, err := utils.CheckWSL()
 		if err != nil {
-			fmt.Println("Error checking WSL:", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to check WSL: %w", err)
 		}
 
 		vendors, err := library.DetectGPUVendors()
 		if err != nil {
-			fmt.Println("Error detecting GPUs:", err)
-			os.Exit(1)
+			return fmt.Errorf("unable to detect GPU vendors: %w", err)
 		}
 
 		hasAMD := containsVendor(vendors, library.AMD)
 		hasNVIDIA := containsVendor(vendors, library.NVIDIA)
 
 		if !hasAMD && !hasNVIDIA {
-			fmt.Println(`No AMD or NVIDIA GPU(s) detected...`)
-			os.Exit(1)
+			return fmt.Errorf("no AMD or NVIDIA GPU(s) detected...")
 		}
 
 		if wsl {
@@ -49,18 +45,15 @@ var gpuOnboardCmd = &cobra.Command{
 			if hasNVIDIA {
 				err := promptContainer(containerPath)
 				if err != nil {
-					fmt.Println("Error during Container Runtime installation:", err)
-					os.Exit(1)
+					return fmt.Errorf("container runtime installation failed: %w", err)
 				}
 			} else {
-				fmt.Println("No NVIDIA GPU(s) detected...")
-				os.Exit(1)
+				return fmt.Errorf("no NVIDIA GPU(s) detected...")
 			}
 		} else {
 			mining, err := checkMiningOS()
 			if err != nil {
-				fmt.Println("Error checking Mining OS:", err)
-				os.Exit(1)
+				return fmt.Errorf("could not check Mining OS: %w", err)
 			}
 
 			if mining {
@@ -68,53 +61,47 @@ var gpuOnboardCmd = &cobra.Command{
 
 				err := promptContainer(containerPath)
 				if err != nil {
-					fmt.Println("Error during Container Runtime installation:", err)
-					os.Exit(1)
+					return fmt.Errorf("container runtime installation failed: %w", err)
 				}
 
-				os.Exit(0)
+				return nil
 			}
 
 			if hasNVIDIA {
 				NVIDIAGPUs, err := library.GetNVIDIAGPUInfo()
 				if err != nil {
-					fmt.Println("Error while fetching NVIDIA info:", err)
-					os.Exit(1)
+					return fmt.Errorf("could not fetch NVIDIA info: %w", err)
 				}
 
 				printGPUs(NVIDIAGPUs)
 
 				err = promptContainer(containerPath)
 				if err != nil {
-					fmt.Println("Error during Container Runtime installation:", err)
-					os.Exit(1)
+					return fmt.Errorf("container runtime installation failed: %w", err)
 				}
 
 				err = promptDriverInstallation(library.NVIDIA, nvidiaDriverPath)
 				if err != nil {
-					fmt.Println("Error during NVIDIA drivers installation:", err)
-					os.Exit(1)
+					return fmt.Errorf("NVIDIA drivers installation failed: %w", err)
 				}
 			}
 
 			if hasAMD {
 				AMDGPUs, err := library.GetAMDGPUInfo()
 				if err != nil {
-					fmt.Println("Error while fetching AMD info:", err)
-					os.Exit(1)
+					return fmt.Errorf("failed to fetch AMD info: %w", err)
 				}
 
 				printGPUs(AMDGPUs)
 
 				err = promptDriverInstallation(library.AMD, amdDriverPath)
 				if err != nil {
-					fmt.Println("Error during AMD drivers installation:", err)
-					os.Exit(1)
+					return fmt.Errorf("AMD drivers installation failed: %w", err)
 				}
 			}
-
-			os.Exit(0)
 		}
+
+		return nil
 	},
 }
 

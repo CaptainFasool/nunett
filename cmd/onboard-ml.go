@@ -13,9 +13,6 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func init() {
-}
-
 var imagesNVIDIA = []string{
 	"registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow",
 	"registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch",
@@ -29,21 +26,18 @@ var imagesAMD = []string{
 var onboardMLCmd = &cobra.Command{
 	Use:    "onboard-ml",
 	Short:  "Setup for Machine Learning with GPU",
-	Long:   ``,
 	PreRun: isDMSRunning(),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 
 		wsl, err := utils.CheckWSL()
 		if err != nil {
-			fmt.Println("Error checking WSL:", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to check WSL: %w", err)
 		}
 
 		vendors, err := library.DetectGPUVendors()
 		if err != nil {
-			fmt.Println("Error detecting GPUs:", err)
-			os.Exit(1)
+			return fmt.Errorf("unable to detect GPU vendors: %w", err)
 		}
 
 		// check for GPU vendors
@@ -51,20 +45,18 @@ var onboardMLCmd = &cobra.Command{
 		hasNVIDIA := containsVendor(vendors, library.NVIDIA)
 
 		if !hasAMD && !hasNVIDIA {
-			fmt.Println(`No AMD or NVIDIA GPU(s) detected...`)
+			fmt.Println("No AMD or NVIDIA GPU(s) detected...")
 			os.Exit(1)
 		}
 
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
-			fmt.Println("Error creating Docker client:", err)
-			os.Exit(1)
+			return fmt.Errorf("unable to create Docker client: %w", err)
 		}
 
 		imageList, err := cli.ImageList(ctx, types.ImageListOptions{})
 		if err != nil {
-			fmt.Println("Error listing Docker images:", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to list Docker images: %w", err)
 		}
 
 		if wsl {
@@ -74,18 +66,18 @@ var onboardMLCmd = &cobra.Command{
 		if hasNVIDIA {
 			err = pullMultipleImages(cli, ctx, imageList, imagesNVIDIA)
 			if err != nil {
-				fmt.Println("Error pulling NVIDIA images:", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to pull NVIDIA images: %w", err)
 			}
 		}
 
 		if hasAMD {
 			err = pullMultipleImages(cli, ctx, imageList, imagesAMD)
 			if err != nil {
-				fmt.Println("Error pulling AMD images:", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to pull AMD images: %w", err)
 			}
 		}
+
+		return nil
 	},
 }
 

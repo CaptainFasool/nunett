@@ -36,40 +36,32 @@ func init() {
 var gpuCapacityCmd = &cobra.Command{
 	Use:    "capacity",
 	Short:  "Check availability of NVIDIA/AMD GPUs",
-	Long:   ``,
 	PreRun: isDMSRunning(),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cuda, _ := cmd.Flags().GetBool("cuda-tensor")
 		rocm, _ := cmd.Flags().GetBool("rocm-hip")
 
 		if !cuda && !rocm {
-			fmt.Println(`Error: no flags specified
-
-For more help, check:
-    nunet gpu capacity --help`)
-			os.Exit(1)
+			return fmt.Errorf("no flags specified")
 		}
 
 		vendors, err := library.DetectGPUVendors()
 		if err != nil {
-			fmt.Println("Error detecting GPU vendors:", err)
-			os.Exit(1)
+			return fmt.Errorf("could not detect GPU vendors: %w", err)
 		}
 
 		hasAMD := containsVendor(vendors, library.AMD)
 		hasNVIDIA := containsVendor(vendors, library.NVIDIA)
 
 		if !hasAMD && !hasNVIDIA {
-			fmt.Println("No AMD or NVIDIA GPU(s) detected...")
-			os.Exit(1)
+			return fmt.Errorf("no AMD or NVIDIA GPU(s) detected...")
 		}
 
 		ctx := context.Background()
 
 		if cuda {
 			if !hasNVIDIA {
-				fmt.Println("No NVIDIA GPU(s) detected...")
-				os.Exit(1)
+				return fmt.Errorf("no NVIDIA GPU(s) detected...")
 			}
 
 			cudaOpts := ContainerOptions{
@@ -81,35 +73,30 @@ For more help, check:
 
 			cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 			if err != nil {
-				fmt.Println("Error creating Docker client:", err)
-				os.Exit(1)
+				return fmt.Errorf("unable to create Docker client: %w", err)
 			}
 
 			images, err := cli.ImageList(ctx, types.ImageListOptions{})
 			if err != nil {
-				fmt.Println("Error listing Docker images:", err)
-				os.Exit(1)
+				return fmt.Errorf("unable to list Docker images: %w", err)
 			}
 
 			if !imageExists(images, cudaOpts.Image) {
 				err := pullImage(cli, ctx, cudaOpts.Image)
 				if err != nil {
-					fmt.Println("Error pulling CUDA image:", err)
-					os.Exit(1)
+					return fmt.Errorf("failed to pull CUDA image %s: %w", cudaOpts.Image, err)
 				}
 			}
 
 			err = runDockerContainer(cli, ctx, cudaOpts)
 			if err != nil {
-				fmt.Println("Error running CUDA container:", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to run CUDA container: %w", err)
 			}
 		}
 
 		if rocm {
 			if !hasAMD {
-				fmt.Println("No AMD GPU(s) detected...")
-				os.Exit(1)
+				return fmt.Errorf("no AMD GPU(s) detected...")
 			}
 
 			rocmOpts := ContainerOptions{
@@ -122,30 +109,28 @@ For more help, check:
 
 			cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 			if err != nil {
-				fmt.Println("Error creating Docker client:", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create Docker client: %w", err)
 			}
 
 			images, err := cli.ImageList(ctx, types.ImageListOptions{})
 			if err != nil {
-				fmt.Println("Error listing images:", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to list Docker images: %w", err)
 			}
 
 			if !imageExists(images, rocmOpts.Image) {
 				err := pullImage(cli, ctx, rocmOpts.Image)
 				if err != nil {
-					fmt.Println("Error pulling ROCm-HIP image:", err)
-					os.Exit(1)
+					return fmt.Errorf("could not pull ROCm-HIP image %s: %w", rocmOpts.Image, err)
 				}
 			}
 
 			err = runDockerContainer(cli, ctx, rocmOpts)
 			if err != nil {
-				fmt.Println("Error running ROCm-HIP container:", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to run ROCm-HIP container: %w", err)
 			}
 		}
+
+		return nil
 	},
 }
 

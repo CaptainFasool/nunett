@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/buger/jsonparser"
 	"github.com/spf13/cobra"
@@ -18,71 +17,56 @@ func init() {
 var offboardCmd = &cobra.Command{
 	Use:    "offboard",
 	Short:  "Offboard the device from NuNet",
-	Long:   ``,
 	PreRun: isDMSRunning(),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		onboarded, err := utils.IsOnboarded()
 		if err != nil {
-			fmt.Println("Error checking onboard status:", err)
-			os.Exit(1)
+			return fmt.Errorf("could not check onboard status: %w", err)
 		}
 
 		if !onboarded {
-			fmt.Println(`Looks like your machine is not onboarded...
-
-For onboarding, check:
-    nunet onboard --help`)
-			os.Exit(1)
+			return fmt.Errorf("looks like your machine is not onboarded")
 		}
 
 		fmt.Println("Warning: Offboarding will remove all your data and you will not be able to onboard again with the same identity")
 		answer := utils.PromptYesNo("Are you sure you want to offboard? (y/N)")
 		if !answer {
-			fmt.Println("Exiting...")
-			os.Exit(1)
+			return fmt.Errorf("offboard aborted by user")
 		} else {
 			force, _ := cmd.Flags().GetBool("force")
 			if !force {
 				body, err := utils.ResponseBody(nil, "DELETE", "/api/v1/onboarding/offboard", "", nil)
 				if err != nil {
-					fmt.Println("Error getting response body:", err)
-					os.Exit(1)
+					return fmt.Errorf("unable to fetch response body: %w", err)
 				}
 
 				if errMsg, err := jsonparser.GetString(body, "error"); err == nil { // if field "error" IS found
-					fmt.Println("Error:", errMsg)
-					os.Exit(1)
+					return fmt.Errorf("got error response from server: %w", errMsg)
 				} else if err == jsonparser.KeyPathNotFoundError { // if field "error" is NOT found
 					msg, _ := jsonparser.GetString(body, "message")
 					fmt.Println(msg)
 				} else { // if another error occurred
-					fmt.Println("Error parsing response:", err)
-					os.Exit(1)
+					return fmt.Errorf("could not parse string response: %w", err)
 				}
-
-				os.Exit(0)
 			} else {
 				query := fmt.Sprintf("force=%t", force)
 
 				body, err := utils.ResponseBody(nil, "DELETE", "/api/v1/onboarding/offboard", query, nil)
 				if err != nil {
-					fmt.Println("Error getting response body:", err)
-					os.Exit(1)
+					return fmt.Errorf("unable to fetch response body: %w", err)
 				}
 
 				if errMsg, err := jsonparser.GetString(body, "error"); err == nil { // if field "error" IS found
-					fmt.Println("Error:", errMsg)
-					os.Exit(1)
+					return fmt.Errorf("got error response from server: %w", errMsg)
 				} else if err == jsonparser.KeyPathNotFoundError { // if field "error" is NOT found
 					msg, _ := jsonparser.GetString(body, "message")
 					fmt.Println(msg)
 				} else { // if another error occurred
-					fmt.Println("Error parsing response:", err)
-					os.Exit(1)
+					return fmt.Errorf("could not parse string response: %w", err)
 				}
-
-				os.Exit(0)
 			}
 		}
+
+		return nil
 	},
 }

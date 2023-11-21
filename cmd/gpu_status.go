@@ -15,19 +15,14 @@ import (
 	library "gitlab.com/nunet/device-management-service/lib"
 )
 
-func init() {
-}
-
 var gpuStatusCmd = &cobra.Command{
 	Use:    "status",
 	Short:  "Check GPU status in real time",
-	Long:   ``,
 	PreRun: isDMSRunning(),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		vendors, err := library.DetectGPUVendors()
 		if err != nil {
-			fmt.Println("Error trying to detect GPU(s):", err)
-			os.Exit(1)
+			return fmt.Errorf("unable to detect GPU vendors: %w", err)
 		}
 
 		hasAMD := containsVendor(vendors, library.AMD)
@@ -37,18 +32,19 @@ var gpuStatusCmd = &cobra.Command{
 			// NVML initialization
 			retNVML := nvml.Init()
 			if retNVML != nvml.SUCCESS {
-				fmt.Println("Failed to initialize NVML:", nvml.ErrorString(retNVML))
+				return fmt.Errorf("failed to initialize nvml: %s", nvml.ErrorString(retNVML))
 			}
 			defer func() {
 				retNVML := nvml.Shutdown()
 				if retNVML != nvml.SUCCESS {
-					fmt.Println("Failed to shutdown NVML:", nvml.ErrorString(retNVML))
+					fmt.Println("Error: failed to shutdown nvml:", nvml.ErrorString(retNVML))
 				}
 			}()
 
 			countNVML, retNVML := nvml.DeviceGetCount()
 			if retNVML != nvml.SUCCESS {
 				fmt.Println("Failed to count Nvidia devices:", nvml.ErrorString(retNVML))
+				// TODO: add prompt to continue with other GPU if one fails
 			}
 
 			countROCM, err := getCountAMD()
@@ -83,7 +79,7 @@ var gpuStatusCmd = &cobra.Command{
 				select {
 				case <-exit:
 					fmt.Println("signal: interrupt")
-					return
+					return nil
 				default:
 					// clear screen (not reliable, maybe implement something ncurses-like for future)
 					fmt.Print("\033[H\033[2J")
@@ -179,7 +175,7 @@ var gpuStatusCmd = &cobra.Command{
 				select {
 				case <-exit:
 					fmt.Println("signal: interrupt")
-					return
+					return nil
 				default:
 					// clear screen (not reliable, maybe implement something ncurses-like for future)
 					fmt.Print("\033[H\033[2J")
@@ -240,7 +236,7 @@ var gpuStatusCmd = &cobra.Command{
 				select {
 				case <-exit:
 					fmt.Println("signal: interrupt")
-					return
+					return nil
 				default:
 					// clear screen (not reliable, maybe implement something ncurses-like for future)
 					fmt.Print("\033[H\033[2J")
@@ -278,9 +274,10 @@ var gpuStatusCmd = &cobra.Command{
 				}
 			}
 		} else {
-			fmt.Println("No AMD or NVIDIA GPU(s) detected...")
-			os.Exit(1)
+			return fmt.Errorf("no AMD or NVIDIA GPU(s) detected...")
 		}
+
+		return nil
 	},
 }
 
