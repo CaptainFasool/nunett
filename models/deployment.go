@@ -33,13 +33,13 @@ type DeploymentRequest struct {
 		LocalPublicKey  string   `json:"local_public_key"` // Public key of service provider
 		MachineType     string   `json:"machine_type"`
 		Container       struct {
-			MustBindPort bool `json:"must_bind_port"` // set to true if binding ports
-			PortToBind   int  `json:"port_to_bind"`   // when binding to an unique port
-			PortRange    struct {
-				Min int `json:"min"`
-				Max int `json:"max"`
-			}
-			BindVPNAddress bool `json:"bind_vpn_address"`
+			MustBindPort bool `json:"must_bind_port"`
+
+			// PortBindingWithoutIP binds ports to container without specifying an IP address.
+			// The format is the same when using `docker run -p <port>:<port>`.
+			// It's also to bind a range of ports with `3030-4040:3030-4040`
+			PortBindingWithoutIP string `json:"port_binding_without_ip"`
+			BindVPNAddress       bool   `json:"bind_vpn_address"`
 		}
 	} `json:"params"`
 	Constraints struct {

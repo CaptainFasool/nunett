@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -182,30 +183,17 @@ func depReqStreamHandler(stream network.Stream) {
 // validateDeploymentRequest validates the deployment request parameters. It returns an
 // error and a string categorizing which parameter is invalid
 func validateDeploymentRequest(depReq models.DeploymentRequest) error {
+
 	if err := checkTxHash(depReq.TxHash); err != nil {
 		return &InvalidDepReqError{Param: "TxHash", Err: err}
 	}
-	if err := validateInputedPorts(
-		depReq.Params.Container.PortToBind,
-		depReq.Params.Container.PortRange.Min,
-		depReq.Params.Container.PortRange.Max,
-	); err != nil {
-		return &InvalidDepReqError{Param: "container ports", Err: err}
+
+	if _, _, err := nat.ParsePortSpecs([]string{
+		"%s:%s", depReq.Params.Container.PortBindingWithoutIP,
+	}); err != nil {
+		return &InvalidDepReqError{Param: "PortBindingWithoutIP", Err: err}
 	}
 
-	return nil
-}
-
-// validateInputedPorts checks if the inputed ports coming from the DeploymentRequest
-// are in a valid format
-func validateInputedPorts(uniquePort, portRangeMin, portRangeMax int) error {
-	if portRangeMin > portRangeMax {
-		return fmt.Errorf(
-			"portRangeMin must be less than or equal to portRangeMax")
-	} else if portRangeMin == 0 || portRangeMax == 0 {
-		return fmt.Errorf(
-			"portRangeMin and portRangeMax must be greater than 0")
-	}
 	return nil
 }
 
