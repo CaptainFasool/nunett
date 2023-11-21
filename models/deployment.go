@@ -33,8 +33,6 @@ type DeploymentRequest struct {
 		LocalPublicKey  string   `json:"local_public_key"` // Public key of service provider
 		MachineType     string   `json:"machine_type"`
 		Container       struct {
-			MustBindPort bool `json:"must_bind_port"`
-
 			// PortBindingWithoutIP binds ports to container without specifying an IP address.
 			// The format is the same when using `docker run -p <port>:<port>`.
 			// It's also to bind a range of ports with `3030-4040:3030-4040`

@@ -125,7 +125,7 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		},
 	}
 
-	if depReq.Params.Container.MustBindPort {
+	if depReq.Params.Container.PortBindingWithoutIP != "" {
 		vpnAddr, err := libp2p.GetVPNAddrOfHost()
 		if err != nil {
 			zlog.Sugar().Error("Error getting VPN address: %w", err)
