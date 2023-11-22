@@ -188,10 +188,12 @@ func validateDeploymentRequest(depReq models.DeploymentRequest) error {
 		return &InvalidDepReqError{Param: "TxHash", Err: err}
 	}
 
-	if _, _, err := nat.ParsePortSpecs([]string{
-		"%s:%s", depReq.Params.Container.PortBindingWithoutIP,
-	}); err != nil {
-		return &InvalidDepReqError{Param: "PortBindingWithoutIP", Err: err}
+	if depReq.Params.Container.PortBindingWithoutIP != "" {
+		if _, _, err := nat.ParsePortSpecs([]string{
+			"%s:%s", depReq.Params.Container.PortBindingWithoutIP,
+		}); err != nil {
+			return &InvalidDepReqError{Param: "PortBindingWithoutIP", Err: err}
+		}
 	}
 
 	return nil
