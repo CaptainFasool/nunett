@@ -107,6 +107,10 @@ func HandleRequestService(c *gin.Context) {
 		zlog.Debug("Going for target peer specified in config")
 		machines := libp2p.FetchMachines(libp2p.GetP2P().Host)
 		filteredPeers = libp2p.PeersWithMatchingSpec([]models.PeerData{machines[config.GetConfig().Job.TargetPeer]}, depReq)
+	} else if depReq.Params.RemoteNodeID != "" {
+		zlog.Sugar().Debugf("Going for target peer specified in deployment request: %s", depReq.Params.RemoteNodeID)
+		machines := libp2p.FetchMachines(libp2p.GetP2P().Host)
+		filteredPeers = libp2p.PeersWithMatchingSpec([]models.PeerData{machines[depReq.Params.RemoteNodeID]}, depReq)
 	} else {
 		zlog.Debug("Filtering peers - no default target peer specified")
 		filteredPeers = FilterPeers(depReq, libp2p.GetP2P().Host)
