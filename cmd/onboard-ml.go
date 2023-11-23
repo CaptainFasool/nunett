@@ -65,14 +65,14 @@ var onboardMLCmd = &cobra.Command{
 		}
 
 		if hasNVIDIA {
-			err = pullMultipleImages(cli, ctx, imageList, imagesNVIDIA, cmd.OutOrStdout())
+			err = pullMultipleImages(ctx, cli, imageList, imagesNVIDIA, cmd.OutOrStdout())
 			if err != nil {
 				return fmt.Errorf("failed to pull NVIDIA images: %w", err)
 			}
 		}
 
 		if hasAMD {
-			err = pullMultipleImages(cli, ctx, imageList, imagesAMD, cmd.OutOrStdout())
+			err = pullMultipleImages(ctx, cli, imageList, imagesAMD, cmd.OutOrStdout())
 			if err != nil {
 				return fmt.Errorf("failed to pull AMD images: %w", err)
 			}
@@ -82,10 +82,10 @@ var onboardMLCmd = &cobra.Command{
 	},
 }
 
-func pullMultipleImages(cli *client.Client, ctx context.Context, imageList []types.ImageSummary, images []string, w io.Writer) error {
+func pullMultipleImages(ctx context.Context, cli *client.Client, imageList []types.ImageSummary, images []string, w io.Writer) error {
 	for i := 0; i < len(images); i++ {
 		if !imageExists(imageList, images[i]) {
-			err := pullImage(cli, ctx, images[i])
+			err := pullImage(ctx, cli, images[i], w)
 			if err != nil {
 				return fmt.Errorf("unable to pull image %s: %v", images[i], err)
 			}

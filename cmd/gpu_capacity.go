@@ -71,6 +71,8 @@ var gpuCapacityCmd = &cobra.Command{
 				Entrypoint: []string{""},
 			}
 
+			// initialize client outside of command
+			// pass as a field for the struct
 			cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 			if err != nil {
 				return fmt.Errorf("unable to create Docker client: %w", err)
@@ -82,13 +84,13 @@ var gpuCapacityCmd = &cobra.Command{
 			}
 
 			if !imageExists(images, cudaOpts.Image) {
-				err := pullImage(ctx, cmd.OutOrStdout(), cli, cudaOpts.Image)
+				err := pullImage(ctx, cli, cudaOpts.Image, cmd.OutOrStdout())
 				if err != nil {
 					return fmt.Errorf("failed to pull CUDA image %s: %w", cudaOpts.Image, err)
 				}
 			}
 
-			err = runDockerContainer(cli, ctx, cudaOpts)
+			err = runDockerContainer(ctx, cli, cudaOpts, cmd.OutOrStderr())
 			if err != nil {
 				return fmt.Errorf("failed to run CUDA container: %w", err)
 			}
@@ -118,13 +120,13 @@ var gpuCapacityCmd = &cobra.Command{
 			}
 
 			if !imageExists(images, rocmOpts.Image) {
-				err := pullImage(ctx, cmd.OutOrStdout(), cli, rocmOpts.Image)
+				err := pullImage(ctx, cli, rocmOpts.Image, cmd.OutOrStdout())
 				if err != nil {
 					return fmt.Errorf("could not pull ROCm-HIP image %s: %w", rocmOpts.Image, err)
 				}
 			}
 
-			err = runDockerContainer(cli, ctx, rocmOpts)
+			err = runDockerContainer(ctx, cli, rocmOpts, cmd.OutOrStderr())
 			if err != nil {
 				return fmt.Errorf("failed to run ROCm-HIP container: %w", err)
 			}
@@ -134,25 +136,37 @@ var gpuCapacityCmd = &cobra.Command{
 	},
 }
 
-func runDockerContainer(cli *client.Client, ctx context.Context, options ContainerOptions) error {
+func validateOptions(options ContainerOptions) error {
 	if options.Image == "" {
 		return fmt.Errorf("image name cannot be empty")
 	}
 
-	config := &container.Config{
+	return nil
+}
+
+func configureContainer(options ContainerOptions) (*container.Config, *container.HostConfig, error) {
+	var (
+		config     *container.Config
+		hostConfig *container.HostConfig
+	)
+
+	config = &container.Config{
 		Image:      options.Image,
 		Entrypoint: options.Entrypoint,
 		Cmd:        options.Command,
 		Tty:        true,
 	}
 
-	hostConfig := &container.HostConfig{}
+	hostConfig = &container.HostConfig{}
 
 	if options.UseGPUs {
 		gpuOpts := opts.GpuOpts{}
-		if err := gpuOpts.Set("all"); err != nil {
-			return fmt.Errorf("failed setting GPU opts: %v", err)
+
+		err := gpuOpts.Set("all")
+		if err != nil {
+			return &container.Config{}, &container.HostConfig{}, fmt.Errorf("failed setting GPU opts: %w", err)
 		}
+
 		hostConfig.DeviceRequests = gpuOpts.Value()
 	}
 
@@ -166,22 +180,44 @@ func runDockerContainer(cli *client.Client, ctx context.Context, options Contain
 
 	hostConfig.GroupAdd = options.Groups
 
-	resp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
+	return config, hostConfig, nil
+}
+
+func createAndStartContainer(ctx context.Context, cli *client.Client, config *container.Config, hostConfig *container.HostConfig, w io.Writer) (string, error) {
+	var (
+		resp container.ContainerCreateCreatedBody
+		err  error
+	)
+
+	resp, err = cli.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
 	if err != nil {
-		return fmt.Errorf("cannot create container: %v", err)
+		return "", fmt.Errorf("cannot create container: %v", err)
 	}
 
 	defer func() {
-		if err := cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{}); err != nil {
-			fmt.Printf("WARNING: could not remove container: %v\n", err)
+		err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{})
+		if err != nil {
+			fmt.Fprintf(w, "WARNING: could not remove container: %v\n", err)
 		}
 	}()
 
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return fmt.Errorf("cannot start container: %v", err)
+	if err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		return "", fmt.Errorf("cannot start container: %v", err)
 	}
 
-	out, err := cli.ContainerAttach(ctx, resp.ID, types.ContainerAttachOptions{
+	return resp.ID, nil
+}
+
+func attachAndMonitorContainer(ctx context.Context, cli *client.Client, id string, w io.Writer) error {
+	var (
+		out types.HijackedResponse
+		err error
+
+		waitCh <-chan container.ContainerWaitOKBody
+		errCh  <-chan error
+	)
+
+	out, err = cli.ContainerAttach(ctx, id, types.ContainerAttachOptions{
 		Stream: true,
 		Stdout: true,
 		Stderr: true,
@@ -190,9 +226,9 @@ func runDockerContainer(cli *client.Client, ctx context.Context, options Contain
 		return fmt.Errorf("failed attaching container: %v", err)
 	}
 
-	io.Copy(os.Stdout, out.Reader)
+	io.Copy(w, out.Reader)
 
-	waitCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	waitCh, errCh = cli.ContainerWait(ctx, id, container.WaitConditionNotRunning)
 	select {
 	case waitResult := <-waitCh:
 		if waitResult.Error != nil {
@@ -200,6 +236,37 @@ func runDockerContainer(cli *client.Client, ctx context.Context, options Contain
 		}
 	case err := <-errCh:
 		return fmt.Errorf("error waiting for container: %v", err)
+	}
+
+	return nil
+}
+
+func runDockerContainer(ctx context.Context, cli *client.Client, options ContainerOptions, w io.Writer) error {
+	var (
+		err        error
+		id         string
+		config     *container.Config
+		hostConfig *container.HostConfig
+	)
+
+	err = validateOptions(options)
+	if err != nil {
+		return fmt.Errorf("invalid container option: %w", err)
+	}
+
+	config, hostConfig, err = configureContainer(options)
+	if err != nil {
+		return fmt.Errorf("failed to configure container: %w", err)
+	}
+
+	id, err = createAndStartContainer(ctx, cli, config, hostConfig, w)
+	if err != nil {
+		return fmt.Errorf("failed to create and start container %s: %w", id, err)
+	}
+
+	err = attachAndMonitorContainer(ctx, cli, id, w)
+	if err != nil {
+		return fmt.Errorf("failed to attach and monitor container %s: %w", id, err)
 	}
 
 	return nil
@@ -216,9 +283,10 @@ func imageExists(images []types.ImageSummary, imageName string) bool {
 	return false
 }
 
-func pullImage(ctx context.Context, w io.Writer, cli *client.Client, image string) error {
+func pullImage(ctx context.Context, cli *client.Client, image string, w io.Writer) error {
 	ctxCancel, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	out, err := cli.ImagePull(ctxCancel, image, types.ImagePullOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to pull image %s: %v", image, err)
