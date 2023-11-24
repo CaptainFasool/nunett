@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/gin-gonic/gin"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -18,12 +20,22 @@ import (
 
 type Utility interface {
 	CheckWSL() (bool, error)
+	IsOnboarded() (bool, error)
+	ResponseBody(c *gin.Context, method, endpoint, query string, body []byte) ([]byte, error)
 }
 
 type Utils struct{}
 
 func (u *Utils) CheckWSL() (bool, error) {
 	return utils.CheckWSL()
+}
+
+func (u *Utils) IsOnboarded() (bool, error) {
+	return utils.IsOnboarded()
+}
+
+func (u *Utils) ResponseBody(c *gin.Context, method, endpoint, query string, body []byte) ([]byte, error) {
+	return utils.ResponseBody(c, method, endpoint, query, body)
 }
 
 ////////////////////
@@ -76,35 +88,41 @@ type Docker interface {
 }
 
 type DockerClient struct {
-	cli *client.Client
+	cli Docker
 }
 
-func (d *DockerClient) ContainerAttach(ctx context.Context, container string, opt types.ContainerAttachOptions) (types.HijackedResponse, error) {
-	return d.cli.ContainerAttach(ctx, container, opt)
+func (dc *DockerClient) NewDockerClient(cli Docker) *DockerClient {
+	return &DockerClient{
+		cli: cli,
+	}
 }
 
-func (d *DockerClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *specs.Platform, name string) (container.ContainerCreateCreatedBody, error) {
-	return d.cli.ContainerCreate(ctx, config, hostConfig, networkingConfig, platform, name)
+func (dc *DockerClient) ContainerAttach(ctx context.Context, container string, opt types.ContainerAttachOptions) (types.HijackedResponse, error) {
+	return dc.cli.ContainerAttach(ctx, container, opt)
 }
 
-func (d *DockerClient) ContainerRemove(ctx context.Context, id string, opt types.ContainerRemoveOptions) error {
-	return d.cli.ContainerRemove(ctx, id, opt)
+func (dc *DockerClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *specs.Platform, name string) (container.ContainerCreateCreatedBody, error) {
+	return dc.cli.ContainerCreate(ctx, config, hostConfig, networkingConfig, platform, name)
 }
 
-func (d *DockerClient) ContainerStart(ctx context.Context, id string, opt types.ContainerStartOptions) error {
-	return d.cli.ContainerStart(ctx, id, opt)
+func (dc *DockerClient) ContainerRemove(ctx context.Context, id string, opt types.ContainerRemoveOptions) error {
+	return dc.cli.ContainerRemove(ctx, id, opt)
 }
 
-func (d *DockerClient) ContainerWait(ctx context.Context, id string, condition container.WaitCondition) (<-chan container.ContainerWaitOKBody, <-chan error) {
-	return d.cli.ContainerWait(ctx, id, condition)
+func (dc *DockerClient) ContainerStart(ctx context.Context, id string, opt types.ContainerStartOptions) error {
+	return dc.cli.ContainerStart(ctx, id, opt)
 }
 
-func (d *DockerClient) ImageList(ctx context.Context, opt types.ImageListOptions) ([]types.ImageSummary, error) {
-	return d.cli.ImageList(ctx, opt)
+func (dc *DockerClient) ContainerWait(ctx context.Context, id string, condition container.WaitCondition) (<-chan container.ContainerWaitOKBody, <-chan error) {
+	return dc.cli.ContainerWait(ctx, id, condition)
 }
 
-func (d *DockerClient) ImagePull(ctx context.Context, img string, opt types.ImagePullOptions) (io.ReadCloser, error) {
-	return d.cli.ImagePull(ctx, img, opt)
+func (dc *DockerClient) ImageList(ctx context.Context, opt types.ImageListOptions) ([]types.ImageSummary, error) {
+	return dc.cli.ImageList(ctx, opt)
+}
+
+func (dc *DockerClient) ImagePull(ctx context.Context, img string, opt types.ImagePullOptions) (io.ReadCloser, error) {
+	return dc.cli.ImagePull(ctx, img, opt)
 }
 
 //////////////////
