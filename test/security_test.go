@@ -20,6 +20,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
@@ -94,6 +95,20 @@ func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.
 	req.Constraints.Vram = 2000
 	req.Constraints.Power = 170
 	req.Constraints.Time = 1
+
+	oracleResp, err := oracle.FundContractRequest(&oracle.FundingRequest{
+		ServiceProviderAddr: req.RequesterWalletAddress,
+		// TODO: obtain from CP metadata
+		ComputeProviderAddr: "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk",
+		EstimatedPrice:      int64(req.MaxNtx),
+	})
+	spClient.s.Nil(err, "Failed to obtain oracleResp");
+
+	req.MetadataHash = oracleResp.MetadataHash
+	req.WithdrawHash = oracleResp.WithdrawHash
+	req.RefundHash = oracleResp.RefundHash
+	req.Distribute_50Hash = oracleResp.Distribute_50Hash
+	req.Distribute_75Hash = oracleResp.Distribute_75Hash
 
 	return req;
 }
@@ -198,6 +213,32 @@ func (s *TestHarness) TestValidCPNodeId() {
 	spClient.SendDeploymentRequest(req)
 
 	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid RemoteNodeID")
+}
+
+type OracleRewardReqPayload struct
+{
+	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
+	JobDuration          int64  // job duration in minutes
+	EstimatedJobDuration int64  // job duration in minutes
+	LogURL               string
+}
+
+func ( spClient *SPTestClient ) getSignaturesFromOracle(req models.DeploymentRequest, payload OracleRewardReqPayload) (oracleResp *oracle.RewardResponse) {
+	oracleResp, err := oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
+		JobStatus:            payload.JobStatus,
+		JobDuration:          payload.JobDuration,
+		EstimatedJobDuration: payload.EstimatedJobDuration,
+		LogPath:              payload.LogURL,
+		MetadataHash:         req.MetadataHash,
+		WithdrawHash:         req.WithdrawHash,
+		RefundHash:           req.RefundHash,
+		Distribute_50Hash:    req.Distribute_50Hash,
+		Distribute_75Hash:    req.Distribute_75Hash,
+	})
+
+	spClient.s.Nil(err, "Failed to obtain signatures from oracle");
+
+	return oracleResp
 }
 
 func GenerateTestKeyPair() (crypto.PrivKey, crypto.PubKey, error) {
