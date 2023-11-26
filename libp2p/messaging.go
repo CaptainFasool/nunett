@@ -47,8 +47,8 @@ const (
 	JobCompleted = "job-completed"
 )
 
-var txHashPropogrationTime = 60 // seconds
-var txHashConfirmationNum = 5 // min number of confirmations
+var txHashPropogrationTime = 60   // seconds
+var txHashConfirmationNum = 5     // min number of confirmations
 var txhashConfirmationTimeout = 5 // minutes
 
 var inboundChatStreams []network.Stream
@@ -299,6 +299,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 					DepResQueue <- depRespMessage
 				} else if !depRespMessage.Success {
 					JobFailedQueue <- depRespMessage.Content
+					OutboundDepReqStream.Reset()
 				}
 
 				// XXX: Needs to be modified to take multiple deployment requests from same service provider

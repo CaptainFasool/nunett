@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.144](#327)
+
+### Fixed
+- close the libp2p stream when CP sends a success: false
+
 ## [0.4.143](oracle#24)
 
 ### Changed
