@@ -59,6 +59,7 @@ func SetupRouter() *gin.Engine {
 		tx.GET("", tokenomics.GetJobTxHashes)
 		tx.POST("/request-reward", tokenomics.HandleRequestReward)
 		run.POST("/send-status", tokenomics.HandleSendStatus)
+		tx.POST("/update-status", tokenomics.HandleUpdateStatus)
 	}
 
 	tele := v1.Group("/telemetry")

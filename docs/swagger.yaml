@@ -218,6 +218,11 @@ definitions:
       signature_datum:
         type: string
     type: object
+  tokenomics.updateTxStatusBody:
+    properties:
+      address:
+        type: string
+    type: object
 host: localhost:9999
 info:
   contact:
@@ -230,7 +235,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.146
+  version: 0.4.147
 paths:
   /device/status:
     get:
@@ -614,6 +619,25 @@ paths:
       summary: Sends blockchain status of contract creation.
       tags:
       - run
+  /transactions/update-status:
+    post:
+      description: HandleUpdateStatus is used by webapps to update status of saved
+        transactions with fetching info from blockchain using koios REST API.
+      parameters:
+      - description: Transaction Status Update Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tokenomics.updateTxStatusBody'
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Updates blockchain transaction status of DB.
+      tags:
+      - tx
   /vm/start-custom:
     post:
       description: This endpoint is an abstraction of all primitive endpoints. When

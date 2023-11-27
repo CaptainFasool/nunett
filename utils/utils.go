@@ -352,6 +352,7 @@ func SaveServiceInfo(cpService models.Services) error {
 		return fmt.Errorf("Unable to find service on SP side: %v", err)
 	}
 	cpService.ID = spService.ID
+	cpService.CreatedAt = spService.CreatedAt
 
 	result := db.DB.Model(&models.Services{}).Where("tx_hash = ?", cpService.TxHash).Updates(&cpService)
 	if result.Error != nil {

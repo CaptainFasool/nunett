@@ -21,6 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.147](#323)
+
+### Added
+- Created REST endpoint for updating transaction status in db
+- Blockchain util function to get list of utxos of smart contract
+
 ## [0.4.146](#328)
 
 ### Changed
