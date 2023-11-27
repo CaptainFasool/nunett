@@ -50,11 +50,11 @@ func GetLogs(ctx context.Context, contName string) (io.ReadCloser, error) {
 
 // sendLogsToSPD is a facade which handles fetching and sending of chunked
 // logs to service provider.
-func sendLogsToSPD(ctx context.Context, containerID string, since string) {
+func sendLogsToSPD(ctx context.Context, containerID string, since string) error {
 	// Fetch delta of logs from last log fetch.
-	stdout, stderr := fetchLogsFromContainer(ctx, containerID, since)
+	stdout, stderr, err := fetchLogsFromContainer(ctx, containerID, since)
 	if stdout.Len() == 0 && stderr.Len() == 0 {
-		return
+		return fmt.Errorf("Logs not found to send SPD: %v", err)
 	}
 
 	// Send logs to service provider
@@ -64,18 +64,19 @@ func sendLogsToSPD(ctx context.Context, containerID string, since string) {
 	if stderr.String() != "" {
 		libp2p.DeploymentUpdate(libp2p.MsgLogStderr, stderr.String(), false)
 	}
+	return nil
 }
 
-func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer) {
+func fetchLogsFromContainer(ctx context.Context, containerID string, since string) (stdout, stderr bytes.Buffer, err error) {
 	// use go docker api to fetch logs from given containerID
 	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Since: since}
 
 	out, err := dc.ContainerLogs(ctx, containerID, options)
 	if err != nil {
-		return bytes.Buffer{}, bytes.Buffer{}
+		return bytes.Buffer{}, bytes.Buffer{}, err
 	}
 
 	stdcopy.StdCopy(&stdout, &stderr, out)
 
-	return stdout, stderr
+	return stdout, stderr, nil
 }

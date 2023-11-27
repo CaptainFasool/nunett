@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -62,13 +63,22 @@ For more help, check:
 		}
 
 		if flagCombination&bitFullFlag != 0 {
-			handleFull(table)
+			if err := handleFull(table); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		}
 		if flagCombination&bitAvailableFlag != 0 {
-			handleAvailable(table)
+			if err := handleAvailable(table); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		}
 		if flagCombination&bitOnboardedFlag != 0 {
-			handleOnboarded(table)
+			if err := handleOnboarded(table); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		}
 
 		if table != nil {
@@ -115,60 +125,56 @@ func setupTable() *tablewriter.Table {
 	return table
 }
 
-func handleFull(table *tablewriter.Table) {
+func handleFull(table *tablewriter.Table) error {
 	totalProvisioned := onboarding.GetTotalProvisioned()
 
 	fullData := setFullData(totalProvisioned)
 	table.Append(fullData)
-
+	return nil
 }
 
-func handleAvailable(table *tablewriter.Table) {
+func handleAvailable(table *tablewriter.Table) error {
 	onboarded, err := utils.IsOnboarded()
 	if err != nil {
-		fmt.Println("Error checking onboard status:", err)
-		os.Exit(1)
+		return fmt.Errorf("Error checking onboard status: %v", err)
 	}
 
 	if !onboarded {
-		fmt.Println(`Looks like your machine is not onboarded...
+		return errors.New(`Looks like your machine is not onboarded...
 
 For onboarding, check:
     nunet onboard --help`)
-		os.Exit(1)
 	}
 
 	metadata, err := utils.ReadMetadataFile()
 	if err != nil {
-		fmt.Println("Error reading metadata file:", err)
-		os.Exit(1)
+		return fmt.Errorf("Error reading metadata file: %v", err)
 	}
 
 	availableData := setAvailableData(metadata)
 	table.Append(availableData)
+	return nil
 }
 
-func handleOnboarded(table *tablewriter.Table) {
+func handleOnboarded(table *tablewriter.Table) error {
 	onboarded, err := utils.IsOnboarded()
 	if err != nil {
-		fmt.Println("Error checking onboard status:", err)
-		os.Exit(1)
+		return fmt.Errorf("Error checking onboard status: %v", err)
 	}
 
 	if !onboarded {
-		fmt.Println(`Looks like your machine is not onboarded...
+		return errors.New(`Looks like your machine is not onboarded...
 
 For onboarding, check:
     nunet onboard --help`)
-		os.Exit(1)
 	}
 
 	metadata, err := utils.ReadMetadataFile()
 	if err != nil {
-		fmt.Println("Error reading metadata file:", err)
-		os.Exit(1)
+		return fmt.Errorf("Error reading metadata file: %v", err)
 	}
 
 	onboardedData := setOnboardedData(metadata)
 	table.Append(onboardedData)
+	return nil
 }

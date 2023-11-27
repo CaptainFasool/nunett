@@ -275,7 +275,7 @@ func CalculateSHA256Checksum(filePath string) (string, error) {
 }
 
 // PromptYesNo prompts the user on stdout for a yes or no response on stdin
-func PromptYesNo(prompt string) bool {
+func PromptYesNo(prompt string) (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
 
 	verifyInput := func(input string) bool {
@@ -288,15 +288,14 @@ func PromptYesNo(prompt string) bool {
 		response, err := reader.ReadString('\n')
 
 		if err != nil {
-			fmt.Println("Error reading from buffer:", err)
-			return false
+			return false, fmt.Errorf("Error reading from buffer: %v", err)
 		}
 
 		response = strings.TrimSpace(response)
 
 		if verifyInput(response) {
 			lowerResponse := strings.ToLower(response)
-			return lowerResponse == "y" || lowerResponse == "yes"
+			return lowerResponse == "y" || lowerResponse == "yes", nil
 		} else {
 			fmt.Println("Invalid input. Please enter 'y' or 'n'")
 		}

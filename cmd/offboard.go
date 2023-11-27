@@ -36,7 +36,7 @@ For onboarding, check:
 		}
 
 		fmt.Println("Warning: Offboarding will remove all your data and you will not be able to onboard again with the same identity")
-		answer := utils.PromptYesNo("Are you sure you want to offboard? (y/N)")
+		answer, _ := utils.PromptYesNo("Are you sure you want to offboard? (y/N)")
 		if !answer {
 			fmt.Println("Exiting...")
 			os.Exit(1)

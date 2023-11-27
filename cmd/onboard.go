@@ -90,7 +90,11 @@ For onboarding, check:
 
 func promptOnboard(onboarded bool) error {
 	if onboarded {
-		promptResp := utils.PromptYesNo("Looks like your machine is already onboarded. Do you want to reonboard it? (y/N)")
+		promptResp, err := utils.PromptYesNo("Looks like your machine is already onboarded. Do you want to reonboard it? (y/N)")
+		if err != nil {
+			return err
+		}
+
 		if promptResp {
 			fmt.Println("Proceeding with reonboard...")
 			return nil
