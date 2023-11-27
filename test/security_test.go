@@ -265,6 +265,58 @@ func (s *TestHarness) TestSPCannotRefundWhileJobIsExecuting() {
 	}
 }
 
+// Test that the SP cannot request refund before the timeout of job, even if CP goes offline
+// Note: This is currently identical to TestSPCannotRefundWhileJobIsExecuting,
+// as currntly the SP does not rely on response from CP for executing a refund request
+func (s *TestHarness) TestSPCannotRefundBeforeTimeoutCPOffline() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.ModelURL = oneMinSleepModelURL
+
+	spClient.SendDeploymentRequest(req)
+
+	firstUpdate, err := spClient.GetNextDeploymentUpdate()
+	s.Nil(err, "Failed to get first deployment update")
+	s.Equal(libp2p.MsgJobStatus, firstUpdate.MsgType, "Failed to deploy job")
+
+	// Confirm that the DeploymentRequest is successful
+	if firstUpdate.MsgType == libp2p.MsgJobStatus {
+		secondUpdate, err := spClient.GetNextDeploymentUpdate()
+		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
+		s.Nil(err, "Failed to get second deployment update")
+
+
+		// Now that the Job has been confirmed to be running, obtain signatures for refund
+		// SP can obtain the signature based on parameters already known
+		oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
+			JobStatus: "finished with errors",
+			JobDuration: int64(0),
+			EstimatedJobDuration: int64(req.Constraints.Time),
+			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
+		})
+
+		// The SP can in principle obtain a refund using the signature obtained from oracle
+		// while waiting for the job to complete
+		s.NotEqual("refund", oracleResp.RewardType, "Obtained a refund request for a running/valid job")
+		s.NotEqual(128, len(oracleResp.SignatureDatum), "Obtained signature from oracle for a refund request for a running/valid job")
+
+		for {
+			update, err := spClient.GetNextDeploymentUpdate()
+			s.Nil(err, "Failed to get deployment update")
+			if update.MsgType == libp2p.MsgLogStdout || update.MsgType == libp2p.MsgLogStderr {
+				continue
+			}
+			// Final confirmation that the job finished without errors and that SP obtains a valid LogURL from CP
+			s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
+			s.Equal("finished without errors", update.Services.JobStatus, "Expected Job to have finished succesfully")
+			s.NotEqual(0, len(update.Services.LogURL), "Expected LogURL to be non empty")
+			break;
+		}
+	}
+}
+
 type OracleRewardReqPayload struct
 {
 	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
