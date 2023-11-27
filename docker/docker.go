@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -40,18 +41,23 @@ var (
 	logUpdateInterval time.Duration = time.Duration(config.GetConfig().Job.LogUpdateInterval) * time.Minute
 )
 
-func freeUsedResources() {
+func freeUsedResources() error {
 	// update the available resources table
 	err := telemetry.CalcFreeResAndUpdateDB()
 	if err != nil {
-		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		return fmt.Errorf("Error calculating and updating FreeResources: %v", err)
 	}
 	freeResource, err := telemetry.GetFreeResources()
 	if err != nil {
-		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+		return fmt.Errorf("Error getting freeResources: %v", err)
 	}
-	elk.DeviceResourceChange(freeResource.TotCpuHz, freeResource.Ram)
+	err = elk.DeviceResourceChange(freeResource.TotCpuHz, freeResource.Ram)
+	if err != nil {
+		return err
+	}
+
 	libp2p.UpdateKadDHT()
+	return nil
 }
 
 func mhzPerCore() (float64, error) {
@@ -217,7 +223,10 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	status := "started"
 
 	// updating status of service to elastic search
-	elk.ProcessStatus(int(requestTracker.CallID), requestTracker.NodeID, "", status, 0)
+	err = elk.ProcessStatus(int(requestTracker.CallID), requestTracker.NodeID, "", status, 0)
+	if err != nil {
+		zlog.Sugar().Errorln(err)
+	}
 
 	// updating RequestTracker
 	requestTracker.Status = status
@@ -284,14 +293,20 @@ outerLoop:
 				zlog.Sugar().Errorf("problem in running contianer: %v", err)
 				depRes := models.DeploymentResponse{Success: false, Content: "Problem occurred with container. Unable to complete request."}
 				resCh <- depRes
-				freeUsedResources()
+				err = freeUsedResources()
+				if err != nil {
+					zlog.Sugar().Errorf("Error on freeUsedResources: %v", err)
+				}
 				return
 			}
 		case containerStatus := <-statusCh: // not running?
 			zlog.Info("[container running] entering second case; container exiting")
 
 			// get the last logs & exit...
-			updateLogbin(ctx, createdLog.ID, resp.ID)
+			err = updateLogbin(ctx, createdLog.ID, resp.ID)
+			if err != nil {
+				zlog.Sugar().Errorf("Unable to update Logbin: %v", err)
+			}
 
 			// Add a response for log update
 			if r := db.DB.Where("container_id = ?", resp.ID).First(&service); r.Error != nil {
@@ -315,7 +330,11 @@ outerLoop:
 			jobDuration := duration.Minutes()
 			service.JobDuration = int64(jobDuration)
 
-			oracleResp := getSignaturesFromOracle(service) // saving the signatures into DB, received from Oracle + wallet server
+			oracleResp, err := getSignaturesFromOracle(service) // saving the signatures into DB, received from Oracle + wallet server
+			if err != nil {
+				zlog.Sugar().Errorln(err)
+			}
+
 			service.TransactionType = oracleResp.RewardType
 			service.SignatureDatum = oracleResp.SignatureDatum
 			service.MessageHashDatum = oracleResp.MessageHashDatum
@@ -337,11 +356,22 @@ outerLoop:
 			averageNetBw := networkBwUsed / timeTaken
 
 			// updating elastic search with status of service
-			elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
+			err = elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
 				int(averageNetBw), int(timeTaken), requestTracker.MaxTokens)
-			elk.ProcessStatus(int(requestTracker.CallID), depReq.Params.LocalNodeID, "", status, 0)
+			if err != nil {
+				zlog.Sugar().Errorln(err)
+			}
+
+			err = elk.ProcessStatus(int(requestTracker.CallID), depReq.Params.LocalNodeID, "", status, 0)
+			if err != nil {
+				zlog.Sugar().Errorln(err)
+			}
+
 			db.DB.Save(requestTracker)
-			freeUsedResources()
+			err = freeUsedResources()
+			if err != nil {
+				zlog.Sugar().Errorf("Error on freeUsedResources: %v", err)
+			}
 			break outerLoop
 		case <-tick.C:
 			zlog.Info("[container running] entering third case; time ticker")
@@ -366,12 +396,15 @@ outerLoop:
 					usedRAM := strings.Split(s.Memory.Raw, "/")
 					usedCPU := strings.Split(s.CPU, "%")
 					usedNetwork := strings.Split(s.IO.Network, "/")
-					ramFloat64 := calculateResourceUsage(usedRAM[0])
+					ramFloat64, err := calculateResourceUsage(usedRAM[0])
 					cpuFloat64, _ := strconv.ParseFloat(usedCPU[0], 64)
 					cpuFloat64 = cpuUsage(cpuFloat64, float64(depReq.Constraints.CPU))
-					networkFloat64Pre := calculateResourceUsage(usedNetwork[0])
-					networkFloat64Suf := calculateResourceUsage(usedNetwork[1])
+					networkFloat64Pre, err := calculateResourceUsage(usedNetwork[0])
+					networkFloat64Suf, err := calculateResourceUsage(usedNetwork[1])
 					networkFloat64 := networkFloat64Pre + networkFloat64Suf
+					if err != nil {
+						zlog.Sugar().Errorf("Error on calculate resource usage: %v", err)
+					}
 					if ramFloat64 > maxUsedRAM {
 						maxUsedRAM = ramFloat64 / 1024
 					}
@@ -385,10 +418,16 @@ outerLoop:
 			}
 
 			// updating elastic search with telemetry info during job running
-			elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
+			err = elk.ProcessUsage(int(requestTracker.CallID), int(maxUsedCPU), int(maxUsedRAM),
 				int(averageNetBw), int(timeTaken), requestTracker.MaxTokens)
+			if err != nil {
+				zlog.Sugar().Errorln(err)
+			}
 
-			updateLogbin(ctx, createdLog.ID, resp.ID)
+			err = updateLogbin(ctx, createdLog.ID, resp.ID)
+			if err != nil {
+				zlog.Sugar().Errorf("Unable to update Logbin: %v", err)
+			}
 
 			// Add a response for log update
 			db.DB.Where("container_id = ?", resp.ID).First(&service)
@@ -399,11 +438,17 @@ outerLoop:
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
 
-			createTarballAndChecksum(dc, resp.ID, requestTracker.CallID)
+			err = createTarballAndChecksum(dc, resp.ID, requestTracker.CallID)
+			if err != nil {
+				zlog.Sugar().Errorf("Error on creating tarball abd checksum: %v", err)
+			}
 		case <-containerTimeout.C:
 			// We've hit a case where container has to be forcefully stopped due to timeout
 			zlog.Info("[container running] entering fourth case; container timeout")
-			beforeContainerTimeout(dc, resp.ID, requestTracker.CallID, depReq.Params.LocalNodeID)
+			err := beforeContainerTimeout(dc, resp.ID, requestTracker.CallID, depReq.Params.LocalNodeID)
+			if err != nil {
+				zlog.Sugar().Errorf(err.Error())
+			}
 			dc.ContainerStop(ctx, resp.ID, nil)
 
 		}
@@ -544,7 +589,7 @@ func cpuUsage(cpu float64, maxCPU float64) float64 {
 	return maxCPU * cpu / 100
 }
 
-func extractResourceUsage(input string) (float64, string) {
+func extractResourceUsage(input string) (float64, string, error) {
 	re := regexp.MustCompile(`(\d+(\.\d+)?)([KkMmGgTt][Bb]|[KkMmGgTt][Ii]?[Bb])`)
 	matches := re.FindStringSubmatch(input)
 	valueStr := matches[1]
@@ -552,28 +597,31 @@ func extractResourceUsage(input string) (float64, string) {
 
 	value, err := strconv.ParseFloat(valueStr, 64)
 	if err != nil {
-		return 0.0, unit
+		return 0.0, unit, err
 	}
 
-	return value, unit
+	return value, unit, nil
 }
 
-func calculateResourceUsage(input string) float64 {
-	value, unit := extractResourceUsage(input)
+func calculateResourceUsage(input string) (float64, error) {
+	value, unit, err := extractResourceUsage(input)
+	if err != nil {
+		return 0.0, err
+	}
 	switch strings.ToLower(unit) {
 	case "kb", "kib":
-		return value
+		return value, nil
 	case "mb", "mib":
-		return value * 1024
+		return value * 1024, nil
 	case "gb", "gib":
-		return value * 1024 * 1024
+		return value * 1024 * 1024, nil
 	default:
-		return 0.0
+		return 0.0, nil
 	}
 }
 
-func getSignaturesFromOracle(service models.Services) (oracleResp *oracle.RewardResponse) {
-	oracleResp, err := oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
+func getSignaturesFromOracle(service models.Services) (oracleResp *oracle.RewardResponse, err error) {
+	oracleResp, err = oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
 		JobStatus:            service.JobStatus,
 		JobDuration:          service.JobDuration,
 		EstimatedJobDuration: service.EstimatedJobDuration,
@@ -585,15 +633,15 @@ func getSignaturesFromOracle(service models.Services) (oracleResp *oracle.Reward
 		Distribute_75Hash:    service.Distribute_75Hash,
 	})
 	if err != nil {
-		zlog.Sugar().Errorf("connetction to oracle failed : %v", err)
+		return &oracle.RewardResponse{}, fmt.Errorf("connetction to oracle failed : %v", err)
 	}
 
-	return oracleResp
+	return oracleResp, nil
 }
 
 // HandleDeployment does following docker based actions in the sequence:
 // Pull image, run container, get logs, send log to the requester
-func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) models.DeploymentResponse {
+func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) (models.DeploymentResponse, error) {
 	var chosenGPUVendor library.GPUVendor
 	if depReq.Params.MachineType == "gpu" {
 		// Finding the GPU with the highest free VRAM regardless of vendor type
@@ -639,7 +687,7 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 		} else {
 			fmt.Println("Unknown GPU vendor")
 			// return here because we need to have at least one GPU
-			return models.DeploymentResponse{Success: false, Content: "Unknown GPU vendor."}
+			return models.DeploymentResponse{Success: false, Content: "Unknown GPU vendor."}, errors.New("Unknown GPU vendor")
 		}
 
 		zlog.Sugar().Infoln("GPU with the highest free VRAM on this machine:")
@@ -656,13 +704,12 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 	}
 	err := PullImage(ctx, imageName)
 	if err != nil {
-		zlog.Sugar().Errorf("couldn't pull image: %v", err)
-		return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}
+		return models.DeploymentResponse{Success: false, Content: "Unable to pull image."}, fmt.Errorf("couldn't pull image: %v", err)
 	}
 
 	metadata, err := utils.ReadMetadataFile()
 	if err != nil {
-		zlog.Sugar().Errorf("couldn't read metadata: %v", err)
+		return models.DeploymentResponse{Success: false, Content: "Not able to read Metadata"}, fmt.Errorf("couldn't read metadata: %v", err)
 	}
 
 	// create a service and pass the primary key to the RunContainer to update ContainerID
@@ -692,15 +739,13 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 			},
 			"_"))
 	if err != nil {
-		zlog.Sugar().Errorf("couldn't create log at logbin: %v", err)
-		return models.DeploymentResponse{Success: false, Content: "Unable to create log at LogBin."}
+		return models.DeploymentResponse{Success: false, Content: "Unable to create log at LogBin."}, fmt.Errorf("couldn't create log at logbin: %v", err)
 	}
 
 	service.LogURL = createdLog.RawUrl
 	// Save the service with logs
 	if err := db.DB.Create(&service).Error; err != nil {
-		zlog.Sugar().Errorf("couldn't save service: %v", err)
-		return models.DeploymentResponse{Success: false, Content: "Couldn't save service."}
+		return models.DeploymentResponse{Success: false, Content: "Couldn't save service."}, fmt.Errorf("couldn't save service: %v", err)
 	}
 
 	// Send service status update
@@ -716,17 +761,17 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) mode
 
 	// Send back createdLog.RawUrl
 	res.Content = createdLog.RawUrl
-	return res
+	return res, nil
 }
 
 // createTarballAndChecksum takes containerID and job id and creates a tarball
 // of the container along with sha256sum of the tarball.
-func createTarballAndChecksum(dc *client.Client, containerID string, callID int64) {
+func createTarballAndChecksum(dc *client.Client, containerID string, callID int64) error {
 	ctx := context.Background()
 	// create a tar of /workspace dir; which is where the image stores it's ML progress
 	tarStream, _, err := dc.CopyFromContainer(ctx, containerID, "/workspace")
 	if err != nil {
-		zlog.Sugar().Fatalf("Error getting tar stream:", err)
+		return fmt.Errorf("Error getting tar stream: %v", err)
 	}
 	defer tarStream.Close()
 
@@ -739,7 +784,7 @@ func createTarballAndChecksum(dc *client.Client, containerID string, callID int6
 	tarOnHostPath := filepath.Join(checkpointPath, fmt.Sprintf("%d.tar.gz", callID))
 	tarballFile, err := os.Create(tarOnHostPath)
 	if err != nil {
-		zlog.Sugar().Fatalf("Error creating tarball file:", err)
+		return fmt.Errorf("Error creating tarball file: %v", err)
 	}
 	defer tarballFile.Close()
 
@@ -750,7 +795,7 @@ func createTarballAndChecksum(dc *client.Client, containerID string, callID int6
 	// Copy the tar stream to the gzip writer (compressing it)
 	_, err = io.Copy(gzipWriter, tarStream)
 	if err != nil {
-		zlog.Sugar().Fatalf("Error copying tar stream to tarball file:", err)
+		return fmt.Errorf("Error copying tar stream to tarball file: %v", err)
 	}
 
 	zlog.Debug("Tarball of the home directory created successfully.")
@@ -758,32 +803,33 @@ func createTarballAndChecksum(dc *client.Client, containerID string, callID int6
 	// Calculate the SHA-256 checksum of the tar.gz file
 	sha256Checksum, err := utils.CalculateSHA256Checksum(tarOnHostPath)
 	if err != nil {
-		zlog.Sugar().Fatalf("Error calculating SHA-256 checksum:", err)
+		return fmt.Errorf("Error calculating SHA-256 checksum: %v", err)
 	}
 
 	// Write the checksum to a .sha256.txt file
 	sha256FilePath := fmt.Sprintf("%s.sha256.txt", tarOnHostPath)
 	sha256File, err := os.Create(sha256FilePath)
 	if err != nil {
-		zlog.Sugar().Fatalf("Error creating SHA-256 checksum file:", err)
+		return fmt.Errorf("Error creating SHA-256 checksum file: %v", err)
 	}
 	defer sha256File.Close()
 
 	_, err = sha256File.WriteString(sha256Checksum)
 	if err != nil {
-		zlog.Sugar().Fatalf("Error writing SHA-256 checksum:", err)
+		return fmt.Errorf("Error writing SHA-256 checksum: %v", err)
 	}
 
 	zlog.Debug("SHA-256 checksum written to .sha256.txt file.")
+	return nil
 }
 
-func sendBackupToSPD(containerID string, callID int64, spNodeID string) {
+func sendBackupToSPD(containerID string, callID int64, spNodeID string) error {
 	// send the tarball to SPD
 	checkpointPath := fmt.Sprintf("%s/checkpoints", config.GetConfig().General.MetadataPath)
 	tarOnHostPath := filepath.Join(checkpointPath, fmt.Sprintf("%d.tar.gz", callID))
 	spPeerID, err := peer.Decode(spNodeID)
 	if err != nil {
-		zlog.Sugar().Fatalf("Error decoding spNodeID:", err)
+		return fmt.Errorf("Error decoding spNodeID: %v", err)
 	}
 
 	// Send checksum file
@@ -791,14 +837,19 @@ func sendBackupToSPD(containerID string, callID int64, spNodeID string) {
 	libp2p.SendFileToPeer(context.Background(), spPeerID, checksumFile)
 	// Send tar file
 	libp2p.SendFileToPeer(context.Background(), spPeerID, tarOnHostPath)
+	return nil
 }
 
 // beforeContainerTimeout is a event handler which deals with initiating the
 // sending of final checkpoint to service provider (sp).
-func beforeContainerTimeout(dc *client.Client, containerID string, callID int64, spNodeID string) {
+func beforeContainerTimeout(dc *client.Client, containerID string, callID int64, spNodeID string) error {
 	zlog.Debug("Sending final checkpoint to SPD")
 	createTarballAndChecksum(dc, containerID, callID)
-	sendBackupToSPD(containerID, callID, spNodeID)
+	err := sendBackupToSPD(containerID, callID, spNodeID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // fetchOnboardedResources returns cpuQuota and memoryMax (in bytes) onboarded to nunet

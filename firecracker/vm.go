@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net/http"
 	"os"
 	"os/exec"
 	"syscall"
@@ -52,7 +51,7 @@ func GenerateSocketFile(n int) string {
 	return prefix + string(s) + ".socket"
 }
 
-func initVM(c *gin.Context, vm models.VirtualMachine) {
+func initVM(c *gin.Context, vm models.VirtualMachine) error {
 	cmd := exec.Command("firecracker", "--api-sock", vm.SocketFile)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
 	// output, _ := cmd.CombinedOutput() // for debugging purpose
@@ -64,85 +63,103 @@ func initVM(c *gin.Context, vm models.VirtualMachine) {
 
 	// process started with .Start() lives even after parent's death: https://stackoverflow.com/a/46755495/939986
 	if err := cmd.Start(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message":   fmt.Sprintf("Failed to start cmd: %v", stderr.String()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("Failed to start cmd: %v", err)
 	}
 
 	// wait for a flash, vm.SocketFile needs some time to create on disk
 	time.Sleep(100 * time.Millisecond)
+	return nil
 }
 
-func bootSource(c *gin.Context, vm models.VirtualMachine, bs models.BootSource) {
+func bootSource(c *gin.Context, vm models.VirtualMachine, bs models.BootSource) error {
 	jsonBytes, _ := json.Marshal(bs)
 	client := NewClient(vm.SocketFile)
 
-	utils.MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, ERR_BOOTSOURCE_REQ)
+	err := utils.MakeRequest(c, client, "http://localhost/boot-source", jsonBytes, ERR_BOOTSOURCE_REQ)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func drives(c *gin.Context, vm models.VirtualMachine, d models.Drives) {
+func drives(c *gin.Context, vm models.VirtualMachine, d models.Drives) error {
 	jsonBytes, _ := json.Marshal(d)
 
 	client := NewClient(vm.SocketFile)
 
-	utils.MakeRequest(c, client, "http://localhost/drives/rootfs", jsonBytes, ERR_DRIVES_REQ)
+	err := utils.MakeRequest(c, client, "http://localhost/drives/rootfs", jsonBytes, ERR_DRIVES_REQ)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func machineConfig(c *gin.Context, vm models.VirtualMachine, mc models.MachineConfig) {
+func machineConfig(c *gin.Context, vm models.VirtualMachine, mc models.MachineConfig) error {
 	jsonBytes, _ := json.Marshal(mc)
 
 	client := NewClient(vm.SocketFile)
 
-	utils.MakeRequest(c, client, "http://localhost/machine-config", jsonBytes, ERR_MACHINE_CONFIG_REQ)
+	err := utils.MakeRequest(c, client, "http://localhost/machine-config", jsonBytes, ERR_MACHINE_CONFIG_REQ)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func networkInterfaces(c *gin.Context, vm models.VirtualMachine, ni models.NetworkInterfaces) {
+func networkInterfaces(c *gin.Context, vm models.VirtualMachine, ni models.NetworkInterfaces) error {
 	err := networking.ConfigureTapByName(vm.TapDevice)
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, errors.New("error configuring network"))
-		return
+		return errors.New("error configuring network")
 	}
 
 	jsonBytes, _ := json.Marshal(ni)
 
 	client := NewClient(vm.SocketFile)
 
-	utils.MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, ERR_MACHINE_CONFIG_REQ)
+	err = utils.MakeRequest(c, client, "http://localhost/network-interfaces/eth0", jsonBytes, ERR_MACHINE_CONFIG_REQ)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func setupMMDS(c *gin.Context, vm models.VirtualMachine, mmds models.MMDSConfig) {
+func setupMMDS(c *gin.Context, vm models.VirtualMachine, mmds models.MMDSConfig) error {
 
 	jsonBytes, _ := json.Marshal(mmds)
 	client := NewClient(vm.SocketFile)
-	utils.MakeRequest(c, client, "http://localhost/mmds/config", jsonBytes, ERR_MMDS_CONFIG)
+	err := utils.MakeRequest(c, client, "http://localhost/mmds/config", jsonBytes, ERR_MMDS_CONFIG)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func passMMDSMsg(c *gin.Context, vm models.VirtualMachine, mmdsMsg models.MMDSMsg) {
+func passMMDSMsg(c *gin.Context, vm models.VirtualMachine, mmdsMsg models.MMDSMsg) error {
 
 	jsonBytes, _ := json.Marshal(mmdsMsg)
 	client := NewClient(vm.SocketFile)
-	utils.MakeRequest(c, client, "http://localhost/mmds", jsonBytes, ERR_MMDS_MSG)
+	err := utils.MakeRequest(c, client, "http://localhost/mmds", jsonBytes, ERR_MMDS_MSG)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func startVM(c *gin.Context, vm models.VirtualMachine) {
+func startVM(c *gin.Context, vm models.VirtualMachine) error {
 	var jsonBytes = []byte(`{"action_type": "InstanceStart"}`)
 
 	var freeRes models.FreeResources
 
 	if err := db.DB.WithContext(c.Request.Context()).Where("id = ?", 1).First(&freeRes).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
-		return
+		return fmt.Errorf("error retrieving free resources: %v", err)
 	}
 
 	// Check if we have enough free resources before running VM
 	if (vm.MemSizeMib > freeRes.Ram) ||
 		(vm.VCPUCount > freeRes.Vcpu) {
-		c.JSON(http.StatusBadRequest,
-			gin.H{"error": "not enough resources available to deploy vm"})
-		return
+		return errors.New("not enough resources available to deploy vm")
 	}
 
 	// initialize http client
@@ -156,23 +173,19 @@ func startVM(c *gin.Context, vm models.VirtualMachine) {
 
 	err := telemetry.CalcFreeResAndUpdateDB()
 	if err != nil {
-		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		return fmt.Errorf("Error calculating and updating FreeResources: %v", err)
 	}
 
 	_, err = telemetry.GetFreeResources()
 	if err != nil {
-		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+		return fmt.Errorf("Error getting freeResources: %v", err)
 	}
 
 	libp2p.UpdateKadDHT()
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":   "VM started successfully.",
-		"timestamp": time.Now().In(time.UTC),
-	})
+	return nil
 }
 
-func stopVM(c *gin.Context, vm models.VirtualMachine) {
+func stopVM(c *gin.Context, vm models.VirtualMachine) error {
 	var jsonBytes = []byte(`{"action_type": "SendCtrlAltDel"}`)
 
 	// initialize http client
@@ -186,12 +199,13 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) {
 
 	err := telemetry.CalcFreeResAndUpdateDB()
 	if err != nil {
-		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
+		return fmt.Errorf("Error calculating and updating FreeResources: %v", err)
 	}
 
 	_, err = telemetry.GetFreeResources()
 	if err != nil {
-		zlog.Sugar().Errorf("Error getting freeResources: %v", err)
+		return fmt.Errorf("Error getting freeResources: %v", err)
 	}
 	libp2p.UpdateKadDHT()
+	return nil
 }

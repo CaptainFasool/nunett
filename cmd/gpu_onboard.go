@@ -148,7 +148,11 @@ func runScript(scriptPath string) error {
 // promptContainer takes container runtime script path as input and prompts the user for confirmation.
 // If confirmed, it runs the script.
 func promptContainer(containerPath string) error {
-	proceed := utils.PromptYesNo("Do you want to proceed with Container Runtime installation? (y/N)")
+	proceed, err := utils.PromptYesNo("Do you want to proceed with Container Runtime installation? (y/N)")
+	if err != nil {
+		return err
+	}
+
 	if proceed {
 		err := runScript(containerPath)
 		if err != nil {
@@ -164,7 +168,11 @@ func promptContainer(containerPath string) error {
 func promptDriverInstallation(vendor library.GPUVendor, scriptPath string) error {
 	prompt := fmt.Sprintf("Do you want to proceed with %s driver installation? (y/N)", vendor.String())
 
-	proceed := utils.PromptYesNo(prompt)
+	proceed, err := utils.PromptYesNo(prompt)
+	if err != nil {
+		return err
+	}
+
 	if proceed {
 		err := runScript(scriptPath)
 		if err != nil {

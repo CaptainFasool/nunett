@@ -23,6 +23,11 @@ Types of changes
 
 ## [0.4.144](#327)
 
+### Changed
+- Correct error propagation in libp2p, docker and onboarding packages
+
+## [0.4.144](#327)
+
 ### Fixed
 - close the libp2p stream when CP sends a success: false
 

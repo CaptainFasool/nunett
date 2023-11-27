@@ -250,7 +250,11 @@ func Onboard(c *gin.Context) {
 	if err != nil {
 		zlog.Panic(err.Error())
 	}
-	libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
+
+	err = libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
+	if err != nil {
+		zlog.Sugar().Errorf("Unable to save Node info: %v", err)
+	}
 
 	err = telemetry.CalcFreeResAndUpdateDB()
 	if err != nil {
@@ -258,7 +262,10 @@ func Onboard(c *gin.Context) {
 		// Should we return http error also?
 	}
 
-	libp2p.RunNode(priv, capacityForNunet.ServerMode)
+	err = libp2p.RunNode(priv, capacityForNunet.ServerMode)
+	if err != nil {
+		zlog.Sugar().Errorf("Unable to Run libp2p Node: %v", err)
+	}
 
 	_, err = heartbeat.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)
 	if err != nil {

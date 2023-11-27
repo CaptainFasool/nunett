@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -21,7 +22,7 @@ import (
 )
 
 // UpdateConnections updates the database with the current connections.
-func UpdateConnections(conns []network.Conn) {
+func UpdateConnections(conns []network.Conn) error {
 	connMap := make(map[string]network.Conn)
 	for _, conn := range conns {
 		peerID := conn.RemotePeer().String()
@@ -38,22 +39,22 @@ func UpdateConnections(conns []network.Conn) {
 		}
 
 		if result := db.DB.Where("peer_id = ?", peerID).Assign(models.Connection{}).FirstOrCreate(&connection); result.Error != nil {
-			zlog.Sugar().Errorf("failed to update or insert connection for peer ID %s: %w", peerID, result.Error)
+			return fmt.Errorf("failed to update or insert connection for peer ID %s: %w", peerID, result.Error)
 		}
 	}
 
 	var connections []models.Connection
 	if result := db.DB.Find(&connections); result.Error != nil {
-		zlog.Sugar().Errorf("failed to find connections: %w", result.Error)
+		return fmt.Errorf("failed to find connections: %w", result.Error)
 	}
 	for _, connection := range connections {
 		if _, ok := connMap[connection.PeerID]; !ok {
 			if err := RemoveConnection(connection); err != nil {
-				zlog.Sugar().Errorf("failed to remove connection for peer ID %s: %w", connection.PeerID, err)
+				return fmt.Errorf("failed to remove connection for peer ID %s: %w", connection.PeerID, err)
 			}
 		}
 	}
-
+	return nil
 }
 
 func RemoveConnection(conn models.Connection) error {
@@ -65,13 +66,13 @@ func RemoveConnection(conn models.Connection) error {
 	return nil
 }
 
-func GetConnections() []models.Connection {
+func GetConnections() ([]models.Connection, error) {
 	var connections []models.Connection
 	result := db.DB.Find(&connections)
 	if result.Error != nil {
-		zlog.Sugar().Errorf("Error while finding connections: %v", result.Error)
+		return []models.Connection{}, fmt.Errorf("Error while finding connections: %v", result.Error)
 	}
-	return connections
+	return connections, nil
 }
 
 // Ping pings the given peer and returns the result along with the context cancel function
