@@ -21,7 +21,12 @@ Types of changes
 
 -->
 
-## [0.4.144](#327)
+## [0.4.146](#328)
+
+### Changed
+- Allow targeting of peer coming from the DeploymentRequest payload
+
+## [0.4.145](#297)
 
 ### Changed
 - Correct error propagation in libp2p, docker and onboarding packages
