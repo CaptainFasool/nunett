@@ -433,7 +433,11 @@ func CreateServiceProviderTestingClient( s *TestHarness ) (SPTestClient, error) 
 	selfID := p2p.Host.ID()
 	err = p2p.BootstrapNode(ctx)
 
+	// After bootstrap wait a moment for the peer tables to initialize
+	time.Sleep(2 * time.Second)
+
 	cpID := GetTestComputeProviderID()
+
 	stream, err := host.NewStream(context.Background(), cpID, libp2p.DepReqProtocolID)
 
 	reader := bufio.NewReader(stream)
