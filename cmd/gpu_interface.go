@@ -6,12 +6,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	library "gitlab.com/nunet/device-management-service/lib"
@@ -60,7 +60,9 @@ type Executer interface {
 type CmdExecutor struct{}
 
 func (c *CmdExecutor) Execute(name string, arg ...string) Commander {
-	return &ExecCommand{cmd: exec.Command(name, arg...)}
+	return &ExecCommand{
+		cmd: exec.Command(name, arg...),
+	}
 }
 
 type Commander interface {
@@ -149,42 +151,105 @@ func (l *Library) GetNVIDIAGPUInfo() ([]library.GPUInfo, error) {
 
 /////////////////////
 
-type NvidiaManager interface {
-	Init() nvml.Return
-	Shutdown() nvml.Return
-	DeviceGetCount() (int, nvml.Return)
+type NVMLManager interface {
+	Init() error
+	Shutdown() error
 }
 
 type NVML struct{}
 
-func (n *NVML) Init() nvml.Return {
-	return nvml.Init()
+func (n *NVML) Init() error {
+	ret := nvml.Init()
+	if ret != nvml.SUCCESS {
+		return fmt.Errorf("exited with code %d: %s", ret, nvml.ErrorString(ret))
+	}
+	return nil
 }
 
-func (n *NVML) Shutdown() nvml.Return {
-	return nvml.Shutdown()
-}
-
-func (n *NVML) DeviceGetCount() (int, nvml.Return) {
-	return nvml.DeviceGetCount()
+func (n *NVML) Shutdown() error {
+	ret := nvml.Shutdown()
+	if ret != nvml.SUCCESS {
+		return fmt.Errorf("exited with code %d: %s", ret, nvml.ErrorString(ret))
+	}
+	return nil
 }
 
 ///////////////////////
 
+type GPUController interface {
+	CountDevices() (int, error)
+	GetDeviceByIndex(i int) (GPU, error)
+}
+
+type NvidiaController struct{}
+
+func (nm *NvidiaController) CountDevices() (int, error) {
+	count, ret := nvml.DeviceGetCount()
+	if ret != nvml.SUCCESS {
+		return 0, fmt.Errorf("exit code %d: %s", ret, nvml.ErrorString(ret))
+	}
+
+	return count, nil
+}
+
+func (nm *NvidiaController) GetDeviceByIndex(i int) (GPU, error) {
+	var (
+		device nvml.Device
+		ret    nvml.Return
+	)
+
+	device, ret = nvml.DeviceGetHandleByIndex(i)
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("exit code %d: %s", ret, nvml.ErrorString(ret))
+	}
+
+	return &nvidiaGPU{device: device}, nil
+}
+
+type AMDController struct {
+	executer Executer
+}
+
+func (ac *AMDController) CountDevices() (int, error) {
+	var (
+		cmd Commander
+		out []byte
+
+		pattern string
+		re      *regexp.Regexp
+		matches [][]string
+		ids     []string
+
+		err error
+	)
+
+	cmd = ac.executer.Execute("rocm-smi --showid")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return 0, err
+	}
+
+	pattern = `GPU\[(\d+)\]`
+	re = regexp.MustCompile(pattern)
+
+	matches = re.FindAllStringSubmatch(string(out), -1)
+	for _, match := range matches {
+		ids = append(ids, match[1])
+	}
+
+	return len(ids), nil
+}
+
+func (ac *AMDController) GetDeviceByIndex(i int) (GPU, error) {
+	return &amdGPU{index: i + 1}, nil
+}
+
 type GPU interface {
-	name() string
-	utilizationRate() uint32
-	memory() memoryInfo
-	temperature() float64
-	powerUsage() uint32
-}
-
-type nvidiaGPU struct {
-	index int
-}
-
-type amdGPU struct {
-	index int
+	Name() string
+	UtilizationRate() uint32
+	Memory() memoryInfo
+	Temperature() float64
+	PowerUsage() uint32
 }
 
 type memoryInfo struct {

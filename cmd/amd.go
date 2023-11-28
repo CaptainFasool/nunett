@@ -7,125 +7,198 @@ import (
 	"strconv"
 )
 
-func (a *amdGPU) name() string {
-	pattern := fmt.Sprintf(`GPU\[%d\]\s+: Card series:\s+(.+)`, a.index)
-	re := regexp.MustCompile(pattern)
+type amdGPU struct {
+	index    int
+	executer Executer
+}
 
-	rocmOutput, err := runShellCmd("rocm-smi --showproductname")
+func (a *amdGPU) Name() string {
+	var (
+		pattern string
+		re      *regexp.Regexp
+		match   []string
+
+		cmd Commander
+		out []byte
+
+		name string
+
+		err error
+	)
+
+	pattern = fmt.Sprintf(`GPU\[%d\]\s+: Card series:\s+(.+)`, a.index)
+	re = regexp.MustCompile(pattern)
+
+	cmd = a.executer.Execute("sh", "-c", "rocm-smi --showproductname")
+	out, err = cmd.CombinedOutput()
 	if err != nil {
 		return ""
 	}
 
-	match := re.FindStringSubmatch(rocmOutput)
-	if len(match) > 1 {
-		return match[1]
+	match = re.FindStringSubmatch(string(out))
+	if len(match) < 1 {
+		return ""
 	}
+	name = match[1]
 
-	return ""
+	return name
 }
 
-func (a *amdGPU) utilizationRate() uint32 {
-	pattern := fmt.Sprintf(`GPU\[%d\]\s+: GPU use \(%%\): (\d+)`, a.index)
-	re := regexp.MustCompile(pattern)
+func (a *amdGPU) UtilizationRate() uint32 {
+	var (
+		pattern string
+		re      *regexp.Regexp
+		match   []string
 
-	rocmOutput, err := runShellCmd("rocm-smi --showuse")
+		cmd Commander
+		out []byte
+
+		utilization int64
+
+		err error
+	)
+
+	pattern = fmt.Sprintf(`GPU\[%d\]\s+: GPU use \(%%\): (\d+)`, a.index)
+	re = regexp.MustCompile(pattern)
+
+	cmd = a.executer.Execute("sh", "-c", "rocm-smi --showuse")
+	out, err = cmd.CombinedOutput()
 	if err != nil {
 		return 0
 	}
 
-	match := re.FindStringSubmatch(rocmOutput)
-	if len(match) > 1 {
-		utilization, err := strconv.ParseInt(match[1], 10, 32)
-		if err != nil {
-			return 0
-		}
-
-		return uint32(utilization)
+	match = re.FindStringSubmatch(string(out))
+	if len(match) < 1 {
+		return 0
 	}
 
-	return 0
+	utilization, err = strconv.ParseInt(match[1], 10, 32)
+	if err != nil {
+		return 0
+	}
+	return uint32(utilization)
 }
 
-func (a *amdGPU) memory() memoryInfo {
-	patternTotal := fmt.Sprintf(`GPU\[%d\]\s+: vis_vram Total Memory \(B\): (\d+)`, a.index)
-	reTotal := regexp.MustCompile(patternTotal)
+func (a *amdGPU) Memory() memoryInfo {
+	var (
+		patternTotal, patternUsed string
+		reTotal, reUsed           *regexp.Regexp
+		matchTotal, matchUsed     []string
 
-	patternUsed := fmt.Sprintf(`GPU\[%d\]\s+: vis_vram Total Used Memory \(B\): (\d+)`, a.index)
-	reUsed := regexp.MustCompile(patternUsed)
+		cmd Commander
+		out []byte
 
-	rocmOutput, err := runShellCmd("rocm-smi --showmeminfo vis_vram")
+		total, used, free int64
+
+		err error
+	)
+
+	patternTotal = fmt.Sprintf(`GPU\[%d\]\s+: vis_vram Total Memory \(B\): (\d+)`, a.index)
+	reTotal = regexp.MustCompile(patternTotal)
+
+	patternUsed = fmt.Sprintf(`GPU\[%d\]\s+: vis_vram Total Used Memory \(B\): (\d+)`, a.index)
+	reUsed = regexp.MustCompile(patternUsed)
+
+	cmd = a.executer.Execute("rocm-smi --showmeminfo vis_vram")
+	out, err = cmd.CombinedOutput()
 	if err != nil {
 		return memoryInfo{}
 	}
 
-	matchTotal := reTotal.FindStringSubmatch(rocmOutput)
-	matchUsed := reUsed.FindStringSubmatch(rocmOutput)
-
-	if len(matchTotal) > 1 && len(matchUsed) > 1 {
-		total, err := strconv.ParseInt(matchTotal[1], 10, 64)
-		if err != nil {
-			total = 0
-		}
-
-		used, err := strconv.ParseInt(matchUsed[1], 10, 64)
-		if err != nil {
-			used = 0
-		}
-
-		free := (total - used)
-
-		return memoryInfo{
-			used:  uint64(used),
-			free:  uint64(free),
-			total: uint64(total),
-		}
+	matchTotal = reTotal.FindStringSubmatch(string(out))
+	matchUsed = reUsed.FindStringSubmatch(string(out))
+	if len(matchTotal) < 1 && len(matchUsed) < 1 {
+		return memoryInfo{}
 	}
 
-	return memoryInfo{}
+	total, err = strconv.ParseInt(matchTotal[1], 10, 64)
+	if err != nil {
+		total = 0
+	}
+
+	used, err = strconv.ParseInt(matchUsed[1], 10, 64)
+	if err != nil {
+		used = 0
+	}
+
+	free = (total - used)
+	return memoryInfo{
+		used:  uint64(used),
+		free:  uint64(free),
+		total: uint64(total),
+	}
 }
 
-func (a *amdGPU) temperature() float64 {
-	pattern := fmt.Sprintf(`GPU\[%d\]\s+: Temperature \(Sensor edge\) \(C\): ([\d\.]+)`, a.index)
-	re := regexp.MustCompile(pattern)
+func (a *amdGPU) Temperature() float64 {
+	var (
+		pattern string
+		re      *regexp.Regexp
+		match   []string
 
-	rocmOutput, err := runShellCmd("rocm-smi --showtemp")
+		cmd Commander
+		out []byte
+
+		temperature float64
+
+		err error
+	)
+
+	pattern = fmt.Sprintf(`GPU\[%d\]\s+: Temperature \(Sensor edge\) \(C\): ([\d\.]+)`, a.index)
+	re = regexp.MustCompile(pattern)
+
+	cmd = a.executer.Execute("rocm-smi --showtemp")
+	out, err = cmd.CombinedOutput()
 	if err != nil {
 		return 0
 	}
 
-	match := re.FindStringSubmatch(rocmOutput)
-	if len(match) > 1 {
-		temperature, err := strconv.ParseFloat(match[1], 64)
-		if err != nil {
-			return 0
-		}
-
-		return temperature
+	match = re.FindStringSubmatch(string(out))
+	if len(match) < 1 {
+		return 0
 	}
 
-	return 0
-}
-
-func (a *amdGPU) powerUsage() uint32 {
-	pattern := fmt.Sprintf(`GPU\[%d\]\s+: Average Graphics Package Power \(W\): ([\d\.]+)`, a.index)
-	re := regexp.MustCompile(pattern)
-
-	rocmOutput, err := runShellCmd("rocm-smi --showpower")
+	temperature, err = strconv.ParseFloat(match[1], 64)
 	if err != nil {
 		return 0
 	}
 
-	match := re.FindStringSubmatch(rocmOutput)
-	if len(match) > 1 {
-		powerFloat, err := strconv.ParseFloat(match[1], 64)
-		if err != nil {
-			return 0
-		}
+	return temperature
+}
 
-		power := uint32(math.Round(powerFloat))
+func (a *amdGPU) PowerUsage() uint32 {
+	var (
+		pattern string
+		re      *regexp.Regexp
+		match   []string
 
-		return power
+		cmd Commander
+		out []byte
+
+		powerFloat float64
+		power      uint32
+
+		err error
+	)
+
+	pattern = fmt.Sprintf(`GPU\[%d\]\s+: Average Graphics Package Power \(W\): ([\d\.]+)`, a.index)
+	re = regexp.MustCompile(pattern)
+
+	cmd = a.executer.Execute("rocm-smi --showpower")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return 0
 	}
 
-	return 0
+	match = re.FindStringSubmatch(string(out))
+	if len(match) < 1 {
+		return 0
+	}
+
+	powerFloat, err = strconv.ParseFloat(match[1], 64)
+	if err != nil {
+		return 0
+	}
+	power = uint32(math.Round(powerFloat))
+
+	return power
 }
