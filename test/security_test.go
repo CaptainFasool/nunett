@@ -174,6 +174,32 @@ func (s *TestHarness) TestTxNTXValidation() {
 	spClient.AssertJobFail("Malicious SP sent a valid transaction but decalred a higher payout to the DMS and the job ran success")
 }
 
+// Test that the CP DMS will only run the job when the Params specifying a correct LocalPublicKey
+func (s *TestHarness) TestValidSPPublicKey() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.LocalPublicKey = "invalid-local-key"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid LocalPublicKey")
+}
+
+// Test that the CP DMS will only run the job when the Params specifying a correct LocalNodeID
+func (s *TestHarness) TestValidSPNodeId() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.LocalNodeID = "invalid-local-id"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid LocalNodeID")
+}
+
 // Test that the CP DMS will only run the job when the Params specifying a correct RemotePublicKey
 func (s *TestHarness) TestValidCPPublicKey() {
 	spClient, err := CreateServiceProviderTestingClient(s)
@@ -198,6 +224,46 @@ func (s *TestHarness) TestValidCPNodeId() {
 	spClient.SendDeploymentRequest(req)
 
 	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid RemoteNodeID")
+}
+
+// Test that the CP DMS will only run a valid docker image
+func (s *TestHarness) TestValidImageID() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.ImageID = "registry.hub.docker.com/library/busybox"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid ImageID")
+}
+
+// Test that the CP DMS will only run a valid paylaod
+func (s *TestHarness) TestValidModelURL() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	// contains malicious code doing process fork
+	req.Params.ModelURL = "https://gist.githubusercontent.com/cidkidnix/1a9245b464fc8d05e95778dc5fb6255c/raw/f87c196dd214994eb632c17d50837460542ccb4e/gistfile1.py"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid ModelURL")
+}
+
+// Test that the CP DMS will only run a valid service type
+func (s *TestHarness) TestValidServiceType() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.ServiceType = "invalid"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid ServiceType")
 }
 
 func GenerateTestKeyPair() (crypto.PrivKey, crypto.PubKey, error) {
