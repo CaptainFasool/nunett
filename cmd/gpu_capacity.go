@@ -11,7 +11,6 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	library "gitlab.com/nunet/device-management-service/lib"
 )
