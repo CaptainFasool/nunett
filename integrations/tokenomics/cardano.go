@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 type TxHashResp struct {
@@ -29,6 +31,9 @@ type rewardRespToCPD struct {
 	SignatureAction     string `json:"signature_action,omitempty"`
 	MessageHashAction   string `json:"message_hash_action,omitempty"`
 	Action              string `json:"action,omitempty"`
+}
+type updateTxStatusBody struct {
+	Address string `json:"address,omitempty"`
 }
 
 // GetJobTxHashes  godoc
@@ -177,6 +182,54 @@ func HandleSendStatus(c *gin.Context) {
 	c.JSON(200, gin.H{"message": fmt.Sprintf("transaction status %s acknowledged", body.TransactionStatus)})
 }
 
+// HandleUpdateStatus  godoc
+//
+//	@Summary		Updates blockchain transaction status of DB.
+//	@Description	HandleUpdateStatus is used by webapps to update status of saved transactions with fetching info from blockchain using koios REST API.
+//	@Tags			tx
+//	@Param			body	body		updateTxStatusBody	true	"Transaction Status Update Body"
+//	@Success		200		{string}	string
+//	@Router			/transactions/update-status [post]
+func HandleUpdateStatus(c *gin.Context) {
+	body := updateTxStatusBody{}
+	if err := c.BindJSON(&body); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot read payload body"})
+		return
+	}
+
+	utxoHashes, err := utils.GetUTXOsOfSmartContract(body.Address, utils.KoiosPreProd)
+	if err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to fetch UTXOs from Blockchain"})
+		return
+	}
+
+	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
+	var services []models.Services
+	err = db.DB.
+		Where("tx_hash IS NOT NULL").
+		Where("log_url LIKE ?", "%log.nunet.io%").
+		Where("transaction_type IS NOT NULL").
+		Where("deleted_at IS NULL").
+		Where("created_at <= ?", fiveMinutesAgo).
+		Not("transaction_type = ?", "done").
+		Not("transaction_type = ?", "").
+		Find(&services).Error
+	if err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "no job deployed to request reward for"})
+		return
+	}
+
+	err = utils.UpdateTransactionStatus(services, utxoHashes)
+	if err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update transaction status"})
+	}
+
+	c.JSON(200, gin.H{"message": fmt.Sprintf("Transaction statuses synchronized with blockchain successfully")})
+}
+
 func getLimitedTransactions(sizeDone int) ([]models.Services, error) {
 	var doneServices []models.Services
 	var services []models.Services
@@ -196,6 +249,7 @@ func getLimitedTransactions(sizeDone int) ([]models.Services, error) {
 		Where("log_url LIKE ?", "%log.nunet.io%").
 		Where("transaction_type IS NOT NULL").
 		Not("transaction_type = ?", "done").
+		Not("transaction_type = ?", "").
 		Find(&services).Error
 	if err != nil {
 		return []models.Services{}, err

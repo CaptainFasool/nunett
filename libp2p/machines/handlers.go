@@ -2,6 +2,7 @@ package machines
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -107,6 +108,15 @@ func HandleRequestService(c *gin.Context) {
 		zlog.Debug("Going for target peer specified in config")
 		machines := libp2p.FetchMachines(libp2p.GetP2P().Host)
 		filteredPeers = libp2p.PeersWithMatchingSpec([]models.PeerData{machines[config.GetConfig().Job.TargetPeer]}, depReq)
+	} else if depReq.Params.RemoteNodeID != "" {
+		zlog.Sugar().Debugf("Going for target peer specified in deployment request: %s", depReq.Params.RemoteNodeID)
+		machines := libp2p.FetchMachines(libp2p.GetP2P().Host)
+		if selectedPeerInfo, ok := machines[depReq.Params.RemoteNodeID]; ok {
+			filteredPeers = libp2p.PeersWithMatchingSpec([]models.PeerData{selectedPeerInfo}, depReq)
+		} else {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "targeted peer is not within host DHT"})
+			return
+		}
 	} else {
 		zlog.Debug("Filtering peers - no default target peer specified")
 		filteredPeers = FilterPeers(depReq, libp2p.GetP2P().Host)
@@ -182,7 +192,7 @@ func HandleRequestService(c *gin.Context) {
 	})
 	if err != nil {
 		zlog.Info("sending fund contract request to oracle failed")
-		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "cannot connect to oracle"})
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": err})
 		return
 	}
 
@@ -283,7 +293,10 @@ func incomingDepReqWebsock(ctx *gin.Context) {
 				listen = false
 			}
 			zlog.Sugar().Debugf("Received message from websocket client: %s", string(p))
-			handleWebsocketAction(ctx, p, depreqWsConn)
+			err = handleWebsocketAction(ctx, p, depreqWsConn)
+			if err != nil {
+				zlog.Sugar().Errorf("%v", err)
+			}
 		}
 	}
 	zlog.Info("Exiting incomingDepReqWebsock")
@@ -410,12 +423,12 @@ func outgoingDepReqWebsock() {
 	zlog.Info("Exiting outgoingDepReqWebsock")
 }
 
-func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebSocketConnection) {
+func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebSocketConnection) error {
 	// convert json to go values
 	var m wsMessage
 	err := json.Unmarshal(payload, &m)
 	if err != nil {
-		zlog.Sugar().Errorf("wrong message payload: %v", err)
+		return fmt.Errorf("wrong message payload: %v", err)
 	}
 
 	switch m.Action {
@@ -427,14 +440,15 @@ func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebS
 			span := trace.SpanFromContext(ctx.Request.Context())
 			span.SetAttributes(attribute.String("URL", "/run/deploy"))
 			span.SetAttributes(attribute.String("TransactionStatus", "error"))
-			return
+			return err
 		}
 
 		err = sendDeploymentRequest(ctx, conn, txStatus.TxHash)
 		if err != nil {
-			zlog.Error(err.Error())
+			return fmt.Errorf(err.Error())
 		}
 	}
+	return nil
 }
 
 func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection, txHash string) error {
@@ -452,12 +466,12 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 
 	// SELECTs the first record; first record which is not marked as delete
 	if err := db.DB.First(&depReqFlat).Error; err != nil {
-		zlog.Error(err.Error())
+		return err
 	}
 
 	err := json.Unmarshal([]byte(depReqFlat.DeploymentRequest), &depReq)
 	if err != nil {
-		zlog.Sugar().Errorf(err.Error())
+		return err
 	}
 
 	depReq.TxHash = txHash
@@ -487,7 +501,7 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	submitted := map[string]string{"action": libp2p.JobSubmitted}
 	err = conn.WriteJSON(submitted)
 	if err != nil {
-		zlog.Sugar().Errorf("unable to write to websocket: %v", err)
+		return fmt.Errorf("unable to write to websocket: %v", err)
 	}
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)

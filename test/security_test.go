@@ -25,6 +25,12 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
+// This is a transaction hash that exists on preprpod
+const OldValidTransactionHash = "723fb1e2260c8f7c31b5760177c365917fcb39291925ce8b5c897c51d0de8fe7"
+
+// Address of the SP, currently same as CP
+const RequesterAddress = "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk"
+
 type TestHarness struct {
 	suite.Suite
 	sync.WaitGroup
@@ -52,23 +58,36 @@ func (s *TestHarness) TearDownSuite() {
 	os.RemoveAll("/tmp/nunet-client")
 }
 
-func (s *TestHarness) TestTxHashValidation() {
-	spClient, err := CreateServiceProviderTestingClient()
-	s.Nil(err, "Failed to create testing client");
-
+func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.DeploymentRequest {
 	var req models.DeploymentRequest
-	req.TxHash = "ce964014ea9c4b6ab884f82592846fde0c652a652db63f06dd549e78d9d78f86" // valid hash but not intended for CP wallet address
-	req.RequesterWalletAddress = "addr_test1qrrysjx7gg6e2h8qvsqc29lg37yttq6cnww72637sdgfm7c58xcwszypj5fz8mmdvkv2a7wew2tthvvftj02gdeaf4vsc849la"
+	// Hash of a valid job that has a valid datum and payment, but that doesn't list this CP DMS's address as the chosen CP
+	req.TxHash = tx_hash
+	req.RequesterWalletAddress = RequesterAddress
 	req.MaxNtx = 2
 	req.Blockchain = "Cardano"
 	req.ServiceType = "ml-training-cpu"
 	req.Timestamp = time.Now()
 	req.Params.MachineType = "cpu"
-	req.Params.ModelURL = "https://gist.github.com/luigy/d63eec5cb33d9f789969fafe04ee3ae9"
+
+	// Simple Model URL
+  req.Params.ModelURL = basicTensorflowModelURL
+
+	// Valid cpu image ID
 	req.Params.ImageID = "registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu"
-	req.Params.RemoteNodeID = "invalidremoteid"
-	req.Params.LocalNodeID = "invalidlocalid"
-	req.Params.LocalPublicKey = "invalidpublickey"
+
+	cpId := GetTestComputeProviderID()
+
+	computeProviderPubKey, err := libp2p.GetP2P().Host.Peerstore().PubKey(cpId).Raw()
+	spClient.s.Nil(err, "Failed to obtain compute provider public key");
+
+	// NOTE (divam): currently the public key is added to JSON without the typical base64 encoding
+	req.Params.RemoteNodeID = cpId.String()
+	req.Params.RemotePublicKey = string(computeProviderPubKey)
+	req.Params.LocalNodeID = spClient.selfID.String()
+	selfPubKey, _ := spClient.selfPublicKey.Raw()
+	req.Params.LocalPublicKey = string(selfPubKey)
+
+	// Low complexity and constraints
 	req.Constraints.Complexity = "Low"
 	req.Constraints.CPU = 1500
 	req.Constraints.RAM = 2000
@@ -76,28 +95,184 @@ func (s *TestHarness) TestTxHashValidation() {
 	req.Constraints.Power = 170
 	req.Constraints.Time = 1
 
+	return req;
+}
+
+// Test if the the CP DMS will run a undervalued job
+func (s *TestHarness) TestTxUndervaluation() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	// Create a request with very high constraints but with the minimum NTX
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.MaxNtx = 1;
+	req.Constraints.CPU = 1000000;
+	req.Constraints.RAM = 2000000;
+	req.Constraints.Vram = 2000000;
+	req.Constraints.Power = 20000000;
+	req.Constraints.Time = 10000000;
+
 	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("The CP DMS ran the job even though the requirements are too high for the payment")
+}
+
+// Convenience function to check for job failure and if the job runs respond with a custom error message.
+func ( spClient *SPTestClient ) AssertJobFail( job_ran_error string ) {
+	s := spClient.s
 
 	firstUpdate, err := spClient.GetNextDeploymentUpdate()
 	s.Nil(err, "Failed to get first deployment update")
-	s.NotEqual(libp2p.MsgJobStatus, firstUpdate.MsgType, "Malicious SP send an invalid tx-hash but the CP started the job")
+	s.NotEqual(libp2p.MsgJobStatus, firstUpdate.MsgType, job_ran_error)
 
 	// If we have received a message a job is running, lets also confirm that the DeploymentRequest is successful as well
 	if firstUpdate.MsgType == libp2p.MsgJobStatus {
 		secondUpdate, err := spClient.GetNextDeploymentUpdate()
 		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
 		s.Nil(err, "Failed to get second deployment update")
-		s.Equal(false, secondUpdate.Response.Success, "Malicious SP sent an invalid tx-hash but the CP confirmed deployment success")
+		s.Equal(false, secondUpdate.Response.Success, job_ran_error)
+
+		if secondUpdate.Response.Success {
+			// Wait for CP to finish the current job, as only one job can run at a time
+			// This is to prevent test failure due to "depReq already in progress. Refusing to accept."
+			for {
+				update, err := spClient.GetNextDeploymentUpdate()
+				s.Nil(err, "Failed to get deployment update")
+				if update.MsgType == libp2p.MsgLogStdout || update.MsgType == libp2p.MsgLogStderr {
+					continue
+				}
+				// Final confirmation that the job finished
+				s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
+				break;
+			}
+		}
 	}
 }
 
-func GenerateTestKeyPair() (crypto.PrivKey, error) {
-	priv, _, err := crypto.GenerateKeyPair(
+// Test that the CP DMS will not run a job with an invalid tx hash
+func (s *TestHarness) TestTxHashValidation() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest("invalidtxhash")
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent an invalid tx-hash but the CP confirmed deployment success")
+}
+
+// Test that the CP DMS will not run a job with a valid tx hash that does not have the correct amount of NTX
+func (s *TestHarness) TestTxNTXValidation() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.MaxNtx = 1000000
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a valid transaction but decalred a higher payout to the DMS and the job ran success")
+}
+
+// Test that the CP DMS will only run the job when the Params specifying a correct LocalPublicKey
+func (s *TestHarness) TestValidSPPublicKey() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.LocalPublicKey = "invalid-local-key"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid LocalPublicKey")
+}
+
+// Test that the CP DMS will only run the job when the Params specifying a correct LocalNodeID
+func (s *TestHarness) TestValidSPNodeId() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.LocalNodeID = "invalid-local-id"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid LocalNodeID")
+}
+
+// Test that the CP DMS will only run the job when the Params specifying a correct RemotePublicKey
+func (s *TestHarness) TestValidCPPublicKey() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.RemotePublicKey = "invalid-remote-key"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid RemotePublicKey")
+}
+
+// Test that the CP DMS will only run the job when the Params specifying a correct RemoteNodeID
+func (s *TestHarness) TestValidCPNodeId() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.RemoteNodeID = "invalid-remote-id"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid RemoteNodeID")
+}
+
+// Test that the CP DMS will only run a valid docker image
+func (s *TestHarness) TestValidImageID() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.ImageID = "registry.hub.docker.com/library/busybox"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid ImageID")
+}
+
+// Test that the CP DMS will only run a valid paylaod
+func (s *TestHarness) TestValidModelURL() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	// contains malicious code doing process fork
+	req.Params.ModelURL = "https://gist.githubusercontent.com/cidkidnix/1a9245b464fc8d05e95778dc5fb6255c/raw/f87c196dd214994eb632c17d50837460542ccb4e/gistfile1.py"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid ModelURL")
+}
+
+// Test that the CP DMS will only run a valid service type
+func (s *TestHarness) TestValidServiceType() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.ServiceType = "invalid"
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid ServiceType")
+}
+
+func GenerateTestKeyPair() (crypto.PrivKey, crypto.PubKey, error) {
+	priv, pub, err := crypto.GenerateKeyPair(
 		crypto.Ed25519, // Ed25519 are nice short
 		-1,             // No length required for Ed25519
 	)
 
-	return priv, err
+	return priv, pub, err
 }
 
 func SetupDMSTestingConfiguration( tempDirectoryName string, port int ) {
@@ -145,7 +320,7 @@ func RunTestComputeProvider() error {
 	go messaging.DeploymentWorker()
 
 	// Create a new key pair for Node Id Generation
-	pair, err := GenerateTestKeyPair();
+	pair, _, err := GenerateTestKeyPair()
 
 	runAsServer := true;
 	libp2p.RunNode(pair, runAsServer)
@@ -157,6 +332,9 @@ type SPTestClient struct
 {
 	reader *bufio.Reader
 	writer *bufio.Writer
+	s *TestHarness
+	selfID peer.ID
+	selfPublicKey crypto.PubKey
 }
 
 // Convenience type for DeploymentUpdate with unmarshalled data
@@ -167,14 +345,15 @@ type CPUpdate struct
 	Services models.Services
 }
 
-func CreateServiceProviderTestingClient() (SPTestClient, error) {
+func CreateServiceProviderTestingClient( s *TestHarness ) (SPTestClient, error) {
 	ctx := context.Background()
 
 	SetupDMSTestingConfiguration("client", 0)
 
-	pair, err := GenerateTestKeyPair()
+	pair, selfPublicKey, err := GenerateTestKeyPair()
 	host, dht, err := libp2p.NewHost(ctx, pair, false)
 	p2p := *libp2p.DMSp2pInit(host, dht)
+	selfID := p2p.Host.ID()
 	err = p2p.BootstrapNode(ctx)
 
 	cpID := GetTestComputeProviderID()
@@ -182,8 +361,7 @@ func CreateServiceProviderTestingClient() (SPTestClient, error) {
 
 	reader := bufio.NewReader(stream)
 	writer := bufio.NewWriter(stream)
-
-	return SPTestClient{reader,writer}, err
+	return SPTestClient{reader,writer,s, selfID, selfPublicKey}, err
 }
 
 func GetTestComputeProviderID() peer.ID {
@@ -239,6 +417,8 @@ func ( client *SPTestClient ) GetNextDeploymentUpdate() (CPUpdate, error) {
 		if err != nil {
 			return update, err
 		}
+	case libp2p.MsgLogStdout:
+	case libp2p.MsgLogStderr:
 	default:
 		return update, errors.New(fmt.Sprintf("Invalid Message Type %s", depUpdate.MsgType))
 	}
@@ -264,6 +444,15 @@ var testMetadata string = `
   "memory": 21334
  },
  "network": "nunet-team",
- "public_key": "addr_test1qrrysjx7gg6e2h8qvsqc29lg37yttq6cnww72637sdgfm7c58xcwszypj5fz8mmdvkv2a7wew2tthvvftj02gdeaf4vsc849la",
+ "public_key": "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk",
  "allow_cardano": true
 }`
+
+// Prints 'GPU found' / 'No GPU found'
+var basicTensorflowModelURL = "https://gist.githubusercontent.com/luigy/d63eec5cb33d9f789969fafe04ee3ae9/raw/c9722361c24e7520e5ebc084f94358fc0858753e/tesorflow.py"
+
+// Prints 'GPU found' / 'No GPU found' and sleep for 1 min
+var oneMinSleepModelURL = "https://gist.githubusercontent.com/dfordivam/10fa4b73f1d51cfc0d94aea844634bf7/raw/01490c73a7e988a11484b0ed42946cb3422b570a/one-min-sleep.py"
+
+// Prints 'GPU found' / throws error on CPU
+var gpuOnlyModelURL = "https://gist.githubusercontent.com/dfordivam/703232aafb3ad3348095a0890cfe7911/raw/589014937e38d6d80f31c15d24b18b33a287d735/gistfile1.txt"

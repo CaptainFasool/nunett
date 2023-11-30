@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -75,16 +74,11 @@ func MakeInternalRequest(c *gin.Context, methodType, internalEndpoint, query str
 	return resp, nil
 }
 
-func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, errMsg string) {
+func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, errMsg string) error {
 	// set the HTTP method, url, and request body
 	req, err := http.NewRequest(http.MethodPut, uri, bytes.NewBuffer(body))
-
 	if err != nil {
-		c.JSON(400, gin.H{
-			"message":   errMsg,
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("unable to make new request: %v", err)
 	}
 
 	// set the request header Content-Type for json
@@ -97,8 +91,9 @@ func MakeRequest(c *gin.Context, client *http.Client, uri string, body []byte, e
 		// 	"timestamp": time.Now(),
 		// })
 		// return
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func ResponseBody(c *gin.Context, methodType, internalEndpoint, query string, body []byte) (responseBody []byte, errMsg error) {

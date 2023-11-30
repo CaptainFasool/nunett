@@ -34,6 +34,7 @@ func NewClient(sockFile string) *http.Client {
 }
 
 // StartCustom godoc
+//
 //	@Summary		Start a VM with custom configuration.
 //	@Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
 //	@Tags			vm
@@ -75,14 +76,28 @@ func StartCustom(c *gin.Context) {
 		panic(result.Error)
 	}
 
-	initVM(c, vm)
+	if err := initVM(c, vm); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     err.Error(),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
 	bootSourceBody.KernelImagePath = body.KernelImagePath
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	bootSource(c, vm, bootSourceBody)
+	if err := bootSource(c, vm, bootSourceBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure boot source: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -92,7 +107,14 @@ func StartCustom(c *gin.Context) {
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
-	drives(c, vm, drivesBody)
+	if err := drives(c, vm, drivesBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure drives: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -100,7 +122,14 @@ func StartCustom(c *gin.Context) {
 	machineConfigBody.MemSizeMib = vm.MemSizeMib
 	machineConfigBody.VCPUCount = vm.VCPUCount
 
-	machineConfig(c, vm, machineConfigBody)
+	if err := machineConfig(c, vm, machineConfigBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure machineConfig: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -108,12 +137,26 @@ func StartCustom(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 
-	networkInterfaces(c, vm, networkInterfacesBody)
+	if err := networkInterfaces(c, vm, networkInterfacesBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure network-interfaces: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	mmdsConfigBody := models.MMDSConfig{}
 	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
 
-	setupMMDS(c, vm, mmdsConfigBody)
+	if err := setupMMDS(c, vm, mmdsConfigBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to setup MMDS: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
@@ -122,12 +165,33 @@ func StartCustom(c *gin.Context) {
 	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
-	passMMDSMsg(c, vm, mmdsMsg)
+	if err := passMMDSMsg(c, vm, mmdsMsg); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to pass MMDS message: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
-	startVM(c, vm)
+	// POST /start
+	if err := startVM(c, vm); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     err.Error(),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "VM started successfully.",
+		"timestamp": time.Now().In(time.UTC),
+	})
 }
 
 // StartDefault godoc
+//
 //	@Summary		Start a VM with default configuration.
 //	@Description	Everything except kernel files and filesystem file will be set by DMS itself.
 //	@Tags			vm
@@ -166,14 +230,28 @@ func StartDefault(c *gin.Context) {
 		zlog.Panic(result.Error.Error())
 	}
 
-	initVM(c, vm)
+	if err := initVM(c, vm); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     err.Error(),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
 	bootSourceBody.KernelImagePath = body.KernelImagePath
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	bootSource(c, vm, bootSourceBody)
+	if err := bootSource(c, vm, bootSourceBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure boot source: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -183,7 +261,14 @@ func StartDefault(c *gin.Context) {
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
-	drives(c, vm, drivesBody)
+	if err := drives(c, vm, drivesBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure drives: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -198,7 +283,14 @@ func StartDefault(c *gin.Context) {
 		zlog.Panic(result.Error.Error())
 	}
 
-	machineConfig(c, vm, machineConfigBody)
+	if err := machineConfig(c, vm, machineConfigBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure machineConfig: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -206,12 +298,26 @@ func StartDefault(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 
-	networkInterfaces(c, vm, networkInterfacesBody)
+	if err := networkInterfaces(c, vm, networkInterfacesBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure network-interfaces: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	mmdsConfigBody := models.MMDSConfig{}
 	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
 
-	setupMMDS(c, vm, mmdsConfigBody)
+	if err := setupMMDS(c, vm, mmdsConfigBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to setup MMDS: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
@@ -219,9 +325,29 @@ func StartDefault(c *gin.Context) {
 	mmdsMetadata.PKey = body.PublicKey
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
-	passMMDSMsg(c, vm, mmdsMsg)
+	if err := passMMDSMsg(c, vm, mmdsMsg); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to pass MMDS message: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
-	startVM(c, vm)
+	// POST /start
+	if err := startVM(c, vm); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     err.Error(),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "VM started successfully.",
+		"timestamp": time.Now().In(time.UTC),
+	})
 }
 
 func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
@@ -243,8 +369,9 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 
 	// process started with .Start() lives even after parent's death: https://stackoverflow.com/a/46755495/939986
 	if err := cmd.Start(); err != nil {
+		zlog.Sugar().Errorf("Failed to start cmd: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message":   fmt.Sprintf("Failed to start cmd: %v", stderr.String()),
+			"error":     fmt.Sprintf("Failed to start cmd: %v", stderr.String()),
 			"timestamp": time.Now().In(time.UTC),
 		})
 		return
@@ -255,7 +382,14 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	bootSourceBody.KernelImagePath = vm.BootSource
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	bootSource(c, vm, bootSourceBody)
+	if err := bootSource(c, vm, bootSourceBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure boot source: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /drives
 	drivesBody := models.Drives{}
@@ -265,7 +399,14 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
-	drives(c, vm, drivesBody)
+	if err := drives(c, vm, drivesBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure drives: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /machine-config
 	machineConfigBody := models.MachineConfig{}
@@ -273,7 +414,14 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	machineConfigBody.MemSizeMib = 256
 	machineConfigBody.VCPUCount = 2
 
-	drives(c, vm, drivesBody)
+	if err := drives(c, vm, drivesBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure drives: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// PUT /network-interfaces
 	networkInterfacesBody := models.NetworkInterfaces{}
@@ -281,12 +429,26 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = vm.TapDevice
 
-	networkInterfaces(c, vm, networkInterfacesBody)
+	if err := networkInterfaces(c, vm, networkInterfacesBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to configure network-interfaces: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	mmdsConfigBody := models.MMDSConfig{}
 	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
 
-	setupMMDS(c, vm, mmdsConfigBody)
+	if err := setupMMDS(c, vm, mmdsConfigBody); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to setup MMDS: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
@@ -295,9 +457,27 @@ func runFromConfig(c *gin.Context, vm models.VirtualMachine) {
 	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
-	passMMDSMsg(c, vm, mmdsMsg)
+	if err := passMMDSMsg(c, vm, mmdsMsg); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     fmt.Sprintf("Failed to pass MMDS message: %v", err.Error()),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
 	// POST /start
+	if err := startVM(c, vm); err != nil {
+		zlog.Sugar().Errorln(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":     err.Error(),
+			"timestamp": time.Now().In(time.UTC),
+		})
+		return
+	}
 
-	startVM(c, vm)
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "VM started successfully.",
+		"timestamp": time.Now().In(time.UTC),
+	})
 }

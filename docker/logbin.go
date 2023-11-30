@@ -83,15 +83,14 @@ func newLogBin(title string) (LogbinResponse, error) {
 	return logbinResp, nil
 }
 
-func updateLogbin(ctx context.Context, logbinID string, containerID string) {
+func updateLogbin(ctx context.Context, logbinID string, containerID string) error {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
 	containerLog, err := GetLogs(ctx, containerID)
 	if err != nil {
-		zlog.Sugar().Errorf("failed to get logs from container - %v", err)
-		return
+		return fmt.Errorf("failed to get logs from container - %v", err)
 	}
 	stdcopy.StdCopy(&stdout, &stderr, containerLog)
 
@@ -107,28 +106,25 @@ func updateLogbin(ctx context.Context, logbinID string, containerID string) {
 	if logAppend.Stdout != "" || logAppend.Stderr != "" {
 		logAppendJson, err := json.Marshal(logAppend)
 		if err != nil {
-			zlog.Sugar().Errorf("unable to marshal logbin append request: %v", err)
-			return
+			return fmt.Errorf("unable to marshal logbin append request: %v", err)
 		}
 		logbinToken, err := utils.GetLogbinToken()
 		if err != nil {
-			zlog.Sugar().Errorf("unable to fetch logbin token from db: %v", err)
-			return
+			return fmt.Errorf("unable to fetch logbin token from db: %v", err)
 		}
 
 		req, err := http.NewRequest(http.MethodPut, "https://log.nunet.io/api/v1/logbin/"+logbinID, bytes.NewBuffer(logAppendJson))
 		if err != nil {
-			zlog.Sugar().Errorf("unable to create http request: %v", err)
-			return
+			return fmt.Errorf("unable to create http request: %v", err)
 		}
 		req.Header.Set("Content-Type", "application/json; charset=utf-8")
 		req.Header.Set("Authorization", logbinToken)
 		client := http.Client{}
 		resp, err := client.Do(req)
 		if err != nil || resp.StatusCode != 200 {
-			zlog.Sugar().Errorf("unable to append log at logbin: %v", err)
-			return
+			return fmt.Errorf("unable to append log at logbin: %v", err)
 		}
 		zlog.Info(fmt.Sprintf("[logbin]: Resp Code %d:", resp.StatusCode))
 	}
+	return nil
 }

@@ -21,6 +21,27 @@ Types of changes
 
 -->
 
+## [0.4.147](#323)
+
+### Added
+- Created REST endpoint for updating transaction status in db
+- Blockchain util function to get list of utxos of smart contract
+
+## [0.4.146](#328)
+
+### Changed
+- Allow targeting of peer coming from the DeploymentRequest payload
+
+## [0.4.145](#297)
+
+### Changed
+- Correct error propagation in libp2p, docker and onboarding packages
+
+## [0.4.144](#327)
+
+### Fixed
+- close the libp2p stream when CP sends a success: false
+
 ## [0.4.143](oracle#24)
 
 ### Changed

@@ -13,6 +13,8 @@ import (
 	"github.com/cosmos/btcutil/bech32"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fivebinaries/go-cardano-serialization/address"
+	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/models"
 )
 
 // KoiosEndpoint type for Koios rest api endpoints
@@ -25,6 +27,11 @@ const (
 	// KoiosPreProd - testnet preprod Koios rest api endpoint
 	KoiosPreProd KoiosEndpoint = "preprod.koios.rest"
 )
+
+type UTXOs struct {
+	TxHash  string `json:"tx_hash"`
+	IsSpent bool   `json:"is_spent"`
+}
 
 // isValidCardano checks if the cardano address is valid
 func isValidCardano(addr string, valid *bool) {
@@ -100,12 +107,11 @@ func GetTxReceiver(txHash string, endpoint KoiosEndpoint) (string, error) {
 		return "", err
 	}
 
-	if len(res) == 0  || len(res[0].Outputs) == 0 || len(res[0].Outputs[1].InlineDatum.Value.Fields) == 0{
+	if len(res) == 0 || len(res[0].Outputs) == 0 || len(res[0].Outputs[1].InlineDatum.Value.Fields) == 0 {
 		return "", fmt.Errorf("unable to find receiver")
 	}
 
 	receiver := res[0].Outputs[1].InlineDatum.Value.Fields[1].Bytes
-
 
 	return receiver, nil
 }
@@ -162,4 +168,56 @@ func WaitForTxConfirmation(confirmations int, timeout time.Duration, txHash stri
 			return errors.New("timeout")
 		}
 	}
+}
+
+// GetUTXOsOfSmartContract fetch all utxos of smart contract and return list of tx_hash
+func GetUTXOsOfSmartContract(address string, endpoint KoiosEndpoint) ([]string, error) {
+	type Request struct {
+		Address  []string `json:"_addresses"`
+		Extended bool     `json:"_extended"`
+	}
+	reqBody, _ := json.Marshal(Request{Address: []string{address}, Extended: true})
+
+	resp, err := http.Post(
+		fmt.Sprintf("https://%s/api/v1/address_utxos", endpoint),
+		"application/json",
+		bytes.NewBuffer(reqBody),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error making POST request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var utxos []UTXOs
+	jsonDecoder := json.NewDecoder(resp.Body)
+	if err := jsonDecoder.Decode(&utxos); err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	var utxoHashes []string
+	for _, utxo := range utxos {
+		utxoHashes = append(utxoHashes, utxo.TxHash)
+	}
+
+	return utxoHashes, nil
+}
+
+// UpdateTransactionStatus updates the status of claimed transactions in local DB
+func UpdateTransactionStatus(services []models.Services, utxoHashes []string) error {
+	for _, service := range services {
+		if !SliceContains(utxoHashes, service.TxHash) {
+			if service.TransactionType == "withdraw" {
+				service.TransactionType = transactionWithdrawnStatus
+			} else if service.TransactionType == "refund" {
+				service.TransactionType = transactionRefundedStatus
+			} else if service.TransactionType == "distribute-50" || service.TransactionType == "distribute-75" {
+				service.TransactionType = transactionDistributedStatus
+			}
+
+			if err := db.DB.Save(&service).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

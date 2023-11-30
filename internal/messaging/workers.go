@@ -54,9 +54,19 @@ func DeploymentWorker() {
 			json.Unmarshal(jsonDataMsg, &depReq)
 
 			if depReq.ServiceType == "cardano_node" {
-				handleCardanoDeployment(depReq)
+				content, err := handleCardanoDeployment(depReq)
+				if err != nil {
+					zlog.Sugar().Errorln(err)
+					sendDeploymentResponse(false, content)
+				}
+				sendDeploymentResponse(true, content)
 			} else if depReq.ServiceType == "ml-training-cpu" || depReq.ServiceType == "ml-training-gpu" {
-				handleDockerDeployment(ctx, depReq)
+				depResp, err := handleDockerDeployment(ctx, depReq)
+				if err != nil {
+					zlog.Sugar().Errorln(err)
+					sendDeploymentResponse(false, err.Error())
+				}
+				sendDeploymentResponse(true, depResp.Content)
 			} else {
 				zlog.Error(fmt.Sprintf("Unknown service type - %s", depReq.ServiceType))
 				sendDeploymentResponse(false, "Unknown service type.")
@@ -89,7 +99,7 @@ func FileTransferWorker() {
 	}
 }
 
-func handleCardanoDeployment(depReq models.DeploymentRequest) {
+func handleCardanoDeployment(depReq models.DeploymentRequest) (string, error) {
 	// dowload kernel and filesystem files place them somewhere
 	// TODO : organize fc files
 	pKey := depReq.Params.LocalPublicKey
@@ -97,17 +107,13 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 
 	err := utils.DownloadFile(utils.KernelFileURL, utils.KernelFilePath)
 	if err != nil {
-		zlog.Error(fmt.Sprintf("Downloading %s, - %s", utils.KernelFileURL, err.Error()))
-		sendDeploymentResponse(false,
-			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.KernelFileURL))
-		return
+		content := fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.KernelFileURL)
+		return content, fmt.Errorf(fmt.Sprintf("Downloading %s, - %s", utils.KernelFileURL, err.Error()))
 	}
 	err = utils.DownloadFile(utils.FilesystemURL, utils.FilesystemPath)
 	if err != nil {
-		zlog.Error(fmt.Sprintf("Downloading %s - %s", utils.FilesystemURL, err.Error()))
-		sendDeploymentResponse(false,
-			fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.FilesystemURL))
-		return
+		content := fmt.Sprintf("Cardano Node Deployment Failed. Unable to download %s", utils.FilesystemURL)
+		return content, fmt.Errorf(fmt.Sprintf("Downloading %s - %s", utils.FilesystemURL, err.Error()))
 	}
 
 	// makerequest to start-default with downloaded files.
@@ -130,14 +136,13 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) {
 	}
 	_, err = io.ReadAll(resp.Body)
 	if err != nil {
-		zlog.Error(err.Error())
-		sendDeploymentResponse(false, "Cardano Node Deployment Failed. Unable to spawn VM.")
-		return
+		content := "Cardano Node Deployment Failed. Unable to spawn VM."
+		return content, fmt.Errorf(err.Error())
 	}
-	sendDeploymentResponse(true, "Cardano Node Deployment Successful.")
+	return "Cardano Node Deployment Successful.", nil
 }
 
-func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest) {
+func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest) (models.DeploymentResponse, error) {
 	depResp := models.DeploymentResponse{}
 	callID := GetCallID()
 	peerIDOfServiceHost := depReq.Params.LocalNodeID
@@ -157,18 +162,25 @@ func handleDockerDeployment(ctx context.Context, depReq models.DeploymentRequest
 	if res := db.DB.Find(&reqTracker); res.RowsAffected == 0 {
 		result := db.DB.Create(&requestTracker)
 		if result.Error != nil {
-			zlog.Error(result.Error.Error())
+			return models.DeploymentResponse{}, fmt.Errorf("failed to read requestTracker table: %v", result.Error.Error())
 		}
 	} else {
 		result := db.DB.Model(&models.RequestTracker{}).Where("id = ?", 1).Select("*").Updates(requestTracker)
 		if result.Error != nil {
-			zlog.Error(result.Error.Error())
+			return models.DeploymentResponse{}, fmt.Errorf("failed to update requestTracker table: %v", result.Error.Error())
 		}
 	}
 
 	// sending service call info to elastic search
-	elk.ProcessUsage(int(callID), 0, 0, 0, 0, depReq.MaxNtx)
+	err := elk.ProcessUsage(int(callID), 0, 0, 0, 0, depReq.MaxNtx)
+	if err != nil {
+		return models.DeploymentResponse{}, err
+	}
 
-	depResp = docker.HandleDeployment(ctx, depReq)
-	sendDeploymentResponse(depResp.Success, depResp.Content)
+	depResp, err = docker.HandleDeployment(ctx, depReq)
+	if err != nil {
+		return models.DeploymentResponse{}, err
+	}
+
+	return depResp, nil
 }

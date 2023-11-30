@@ -90,19 +90,19 @@ func CheckOnboarding() {
 	}
 }
 
-func RunNode(priv crypto.PrivKey, server bool) {
+func RunNode(priv crypto.PrivKey, server bool) error {
 	ctx := context.Background()
 
 	host, dht, err := NewHost(ctx, priv, server)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("Unable to create libp2p New Host: %v", err)
 	}
 
 	p2p = *DMSp2pInit(host, dht)
 
 	err = p2p.BootstrapNode(ctx)
 	if err != nil {
-		zlog.Sugar().Errorf("Bootstraping failed: %v", err)
+		return fmt.Errorf("Bootstraping failed: %v", err)
 	}
 
 	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler) // to be deprecated
@@ -111,18 +111,22 @@ func RunNode(priv crypto.PrivKey, server bool) {
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 	host.SetStreamHandler(protocol.ID(FileTransferProtocolID), fileStreamHandler)
 
-	p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
+	p2p.peers, err = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
+	if err != nil {
+		return err
+	}
+
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
 	zlog.Sugar().Debugf("number of p2p.peers: %d", len(p2p.peers))
 
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
-		zlog.Sugar().Errorf("metadata.json does not exists or not readable: %v", err)
+		return fmt.Errorf("metadata.json does not exists or not readable: %v", err)
 	}
 	var metadata2 models.MetadataV2
 	err = json.Unmarshal(content, &metadata2)
 	if err != nil {
-		zlog.Sugar().Errorf("unable to parse metadata.json: %v", err)
+		return fmt.Errorf("unable to parse metadata.json: %v", err)
 	}
 
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
@@ -154,7 +158,10 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			case <-dhtHousekeepingTicker.C:
 				zlog.Debug("Cleaning up DHT")
 				CleanupOldPeers()
-				UpdateConnections(host.Network().Conns())
+				err = UpdateConnections(host.Network().Conns())
+				if err != nil {
+					zlog.Sugar().Errorf("%v", err)
+				}
 			case <-stopDHTCleanup:
 				zlog.Debug("Stopping DHT Cleanup")
 				dhtHousekeepingTicker.Stop()
@@ -200,7 +207,10 @@ func RunNode(priv crypto.PrivKey, server bool) {
 						evt.Current,
 						evt.Removed))
 				// Connect to saved peers
-				savedConnections := GetConnections()
+				savedConnections, err := GetConnections()
+				if err != nil {
+					zlog.Sugar().Errorf("%v", err)
+				}
 				for _, conn := range savedConnections {
 					addr, err := multiaddr.NewMultiaddr(conn.Multiaddrs)
 					if err != nil {
@@ -227,6 +237,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			}
 		}
 	}()
+	return nil
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {

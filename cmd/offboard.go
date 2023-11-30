@@ -43,7 +43,10 @@ func NewOffboardCmd(util Utility) *cobra.Command {
 
 			fmt.Fprintln(cmd.OutOrStdout(), "Warning: Offboarding will remove all your data and you will not be able to onboard again with the same identity")
 
-			confirmed = utils.PromptYesNo("Are you sure you want to offboard? (y/N)")
+			confirmed, err = utils.PromptYesNo("Are you sure you want to offboard? (y/N)")
+			if err != nil {
+				return fmt.Errorf("could not prompt for confirmation: %w", err)
+			}
 			if !confirmed {
 				return fmt.Errorf("offboard aborted by user")
 			}
