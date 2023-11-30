@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -18,7 +17,7 @@ const (
 	osFile           = "etc/os-release"
 )
 
-func NewGPUOnboardCmd(util Utility, librarier Librarier, executer Executer) *cobra.Command {
+func NewGPUOnboardCmd(util Utility, librarier Librarier, executer Executer, fs FileSystem) *cobra.Command {
 	return &cobra.Command{
 		Use:    "onboard",
 		Short:  "Install GPU drivers and Container Runtime",
@@ -53,7 +52,7 @@ func NewGPUOnboardCmd(util Utility, librarier Librarier, executer Executer) *cob
 					return fmt.Errorf("no NVIDIA GPU(s) detected...")
 				}
 			} else {
-				mining, err := checkMiningOS()
+				mining, err := checkMiningOS(fs)
 				if err != nil {
 					return fmt.Errorf("could not check Mining OS: %w", err)
 				}
@@ -186,12 +185,12 @@ func printGPUs(w io.Writer, gpus []library.GPUInfo) {
 
 // checkMiningOS detects if host is running a mining OS.
 // It reads from /etc/os-release file and look for common distros inside of it, if any is found it returns true.
-func checkMiningOS() (bool, error) {
+func checkMiningOS(fs FileSystem) (bool, error) {
 	miningOSes := []string{"Hive", "Rave", "PiMP", "Minerstat", "SimpleMining", "NH", "Miner", "SM", "MMP"}
 
-	info, err := os.ReadFile(osFile)
+	info, err := fs.ReadFile(osFile)
 	if err != nil {
-		return false, fmt.Errorf("cannot read file %s: %v", osFile, err)
+		return false, fmt.Errorf("cannot read file %s: %w", osFile, err)
 	}
 
 	infoStr := string(info)
