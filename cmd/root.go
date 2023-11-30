@@ -9,7 +9,21 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
+var (
+	librarier   Librarier
+	docker      Docker
+	executer    Executer
+	utility     Utility
+	nvmlManager NVMLManager
+)
+
 func init() {
+	librarier = &Library{}
+	docker = &DockerClient{}
+	executer = &CmdExecutor{}
+	utility = &Utils{}
+	nvmlManager = &NVML{}
+
 	rootCmd.AddCommand(gpuCmd)
 	rootCmd.AddCommand(offboardCmd)
 	rootCmd.AddCommand(onboardMLCmd)
