@@ -300,7 +300,7 @@ func pullImage(ctx context.Context, docker Docker, image string, w io.Writer) er
 		cancel()
 	}()
 
-	fmt.Fprint(w, "Pulling image: %s\nThis may take some time...\n", image)
+	fmt.Fprintf(w, "Pulling image: %s\nThis may take some time...\n", image)
 	defer out.Close()
 
 	io.Copy(w, out)
