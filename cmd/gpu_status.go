@@ -204,6 +204,6 @@ func printTemperature(w io.Writer, gpus []GPU) {
 
 func printPowerUsage(w io.Writer, gpus []GPU) {
 	for _, gpu := range gpus {
-		fmt.Fprintf(w, "%s: %dW\n", gpu.Name(), gpu.Temperature())
+		fmt.Fprintf(w, "%s: %dW\n", gpu.Name(), gpu.PowerUsage())
 	}
 }
