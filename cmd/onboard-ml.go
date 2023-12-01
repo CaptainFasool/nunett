@@ -84,13 +84,14 @@ var onboardMLCmd = &cobra.Command{
 
 func pullMultipleImages(ctx context.Context, cli *client.Client, imageList []types.ImageSummary, images []string, w io.Writer) error {
 	for i := 0; i < len(images); i++ {
-		if !imageExists(imageList, images[i]) {
-			err := pullImage(ctx, cli, images[i], w)
-			if err != nil {
-				return fmt.Errorf("unable to pull image %s: %v", images[i], err)
-			}
-		} else {
-			fmt.Fprintln(w, "Image already pulled: %s", images[i])
+		if imageExists(imageList, images[i]) {
+			fmt.Fprintf(w, "Image already pulled: %s\n", images[i])
+			continue
+		}
+
+		err := pullImage(ctx, cli, images[i], w)
+		if err != nil {
+			return fmt.Errorf("unable to pull image %s: %v", images[i], err)
 		}
 	}
 
