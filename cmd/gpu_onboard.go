@@ -182,9 +182,7 @@ func printGPUs(w io.Writer, gpus []library.GPUInfo) {
 	}
 
 	vendor = gpus[0].Vendor.String()
-
 	fmt.Fprintf(w, "Available %s GPU(s):", vendor)
-
 	for _, gpu := range gpus {
 		fmt.Fprintf(w, "- %s\n", gpu.GPUName)
 	}
