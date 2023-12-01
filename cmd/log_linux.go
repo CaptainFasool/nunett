@@ -75,7 +75,7 @@ var logCmd = &cobra.Command{
 				bootIDs[bootID] = len(bootIDs) + 1
 			}
 
-			logData := fmt.Sprintf("%s: %s\n", entry.RealtimeTimestamp, entry.Fields["MESSAGE"])
+			logData := fmt.Sprintf("%d: %s\n", entry.RealtimeTimestamp, entry.Fields["MESSAGE"])
 
 			logFilePath := filepath.Join(dmsLogDir, fmt.Sprintf("dms_log.%d", bootIDs[bootID]))
 			if err := appendToFile(logFilePath, logData); err != nil {
@@ -92,7 +92,7 @@ var logCmd = &cobra.Command{
 
 		// remove dms-log directory
 		if err := os.RemoveAll(dmsLogDir); err != nil {
-			fmt.Println("Error removing dms-log directory: %s", err)
+			fmt.Printf("Error removing dms-log directory: %s\n", err)
 			os.Exit(1)
 		}
 
