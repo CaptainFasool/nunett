@@ -15,6 +15,7 @@ var (
 	executer    Executer
 	utility     Utility
 	nvmlManager NVMLManager
+	fs          FileSystem
 )
 
 func init() {
@@ -23,6 +24,7 @@ func init() {
 	executer = &CmdExecutor{}
 	utility = &Utils{}
 	nvmlManager = &NVML{}
+	fs = &FS{}
 
 	rootCmd.AddCommand(gpuCmd)
 	rootCmd.AddCommand(offboardCmd)

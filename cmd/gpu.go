@@ -23,7 +23,7 @@ func init() {
 
 	gpuCapacityCmd = NewGPUCapacityCmd(librarier, docker)
 	gpuStatusCmd = NewGPUStatusCmd(librarier, executer, nvmlManager, gpuControllerMap, gpuMap)
-	gpuOnboardCmd = NewGPUOnboardCmd(utility, librarier, executer)
+	gpuOnboardCmd = NewGPUOnboardCmd(utility, librarier, executer, fs)
 
 	gpuCmd.AddCommand(gpuCapacityCmd)
 	gpuCmd.AddCommand(gpuStatusCmd)
