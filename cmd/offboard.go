@@ -63,7 +63,7 @@ func NewOffboardCmd(util Utility) *cobra.Command {
 
 			errMsg, err = jsonparser.GetString(body, "error")
 			if err == nil {
-				return fmt.Errorf("got error response from server: %w", errMsg)
+				return fmt.Errorf("got error response from server: %s", errMsg)
 			} else if err != jsonparser.KeyPathNotFoundError {
 				return fmt.Errorf("could not parse string response: %w", err)
 			}
