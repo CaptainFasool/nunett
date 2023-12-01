@@ -209,7 +209,6 @@ func configureContainer(options ContainerOptions) (*container.Config, *container
 	}
 
 	hostConfig.GroupAdd = options.Groups
-
 	return config, hostConfig, nil
 }
 
@@ -304,6 +303,5 @@ func pullImage(ctx context.Context, docker Docker, image string, w io.Writer) er
 	defer out.Close()
 
 	io.Copy(w, out)
-
 	return nil
 }
