@@ -48,7 +48,8 @@ func NewOffboardCmd(util Utility) *cobra.Command {
 				return fmt.Errorf("could not prompt for confirmation: %w", err)
 			}
 			if !confirmed {
-				return fmt.Errorf("offboard aborted by user")
+				fmt.Fprintln(cmd.OutOrStdout(), "Exiting...")
+				return nil
 			}
 
 			force, _ = cmd.Flags().GetBool("force")
