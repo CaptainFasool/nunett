@@ -274,30 +274,24 @@ func CalculateSHA256Checksum(filePath string) (string, error) {
 	return checksum, nil
 }
 
-// PromptYesNo prompts the user on stdout for a yes or no response on stdin
-func PromptYesNo(prompt string) (bool, error) {
-	reader := bufio.NewReader(os.Stdin)
-
-	verifyInput := func(input string) bool {
-		lowerInput := strings.ToLower(input)
-		return lowerInput == "y" || lowerInput == "yes" || lowerInput == "n" || lowerInput == "no"
-	}
+// PromptYesNo loops on confirmation from user until valid answer
+func PromptYesNo(in io.Reader, out io.Writer, prompt string) (bool, error) {
+	reader := bufio.NewReader(in)
 
 	for {
-		fmt.Print(prompt + ": ")
-		response, err := reader.ReadString('\n')
+		fmt.Fprintf(out, "%s (y/N): ", prompt)
 
+		response, err := reader.ReadString('\n')
 		if err != nil {
-			return false, fmt.Errorf("Error reading from buffer: %v", err)
+			return false, fmt.Errorf("read response string failed: %w", err)
 		}
 
-		response = strings.TrimSpace(response)
+		response = strings.ToLower(strings.TrimSpace(response))
 
-		if verifyInput(response) {
-			lowerResponse := strings.ToLower(response)
-			return lowerResponse == "y" || lowerResponse == "yes", nil
-		} else {
-			fmt.Println("Invalid input. Please enter 'y' or 'n'")
+		if response == "y" || response == "yes" {
+			return true, nil
+		} else if response == "n" || response == "no" {
+			return false, nil
 		}
 	}
 }
