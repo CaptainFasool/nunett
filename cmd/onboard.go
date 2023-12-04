@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/buger/jsonparser"
@@ -55,7 +56,7 @@ For onboarding, check:
 			os.Exit(1)
 		}
 
-		err = promptOnboard(onboarded)
+		err = promptOnboard(cmd.InOrStdin(), cmd.OutOrStdout(), onboarded)
 		if err != nil {
 			fmt.Println("Exiting:", err)
 			os.Exit(0)
@@ -88,9 +89,9 @@ For onboarding, check:
 	},
 }
 
-func promptOnboard(onboarded bool) error {
+func promptOnboard(r io.Reader, w io.Writer, onboarded bool) error {
 	if onboarded {
-		promptResp, err := utils.PromptYesNo("Looks like your machine is already onboarded. Do you want to reonboard it? (y/N)")
+		promptResp, err := utils.PromptYesNo(r, w, "Looks like your machine is already onboarded. Do you want to reonboard it?")
 		if err != nil {
 			return err
 		}
