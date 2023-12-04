@@ -141,8 +141,17 @@ func newMockFS() *MockFS {
 	}
 }
 
-func Test_GPUOnboardCmdNvidia(t *testing.T) {
+func TestGPUOnboardCmdNvidia(t *testing.T) {
+	type test struct {
+		nvidiaCount int
+		input       string
+		want        []string
+		notWant     []string
+	}
+
 	var (
+		tests []test
+
 		mockUtils   *MockUtils
 		mockLibrary *MockLibrary
 		mockExec    *MockExecuter
@@ -157,42 +166,143 @@ func Test_GPUOnboardCmdNvidia(t *testing.T) {
 		input  *strings.Reader
 		in     *bufio.Reader
 
-		nvidiaSeries []library.GPUInfo
-		err          error
+		nvidias []library.GPUInfo
+
+		err error
 	)
 	assert := assert.New(t)
 
-	mockUtils = newMockUtils()
-	mockLibrary = newMockLibrary(withNvidia(1))
-	mockExec = newMockExecuter()
-	mockFS = newMockFS()
-
-	mockFS.Create("/etc/os-release")
-
-	// output for scripts
 	containerOut = "container installed"
 	driversOut = "nvidia drivers installed"
+
+	mockUtils = newMockUtils()
+
+	mockExec = newMockExecuter()
 	mockExec.SetCommandOutput("/bin/bash", []string{"maint-scripts/install_container_runtime"}, []byte(containerOut), nil)
 	mockExec.SetCommandOutput("/bin/bash", []string{"maint-scripts/install_nvidia_drivers"}, []byte(driversOut), nil)
 
-	input = strings.NewReader("y\ny\n")
-	in = bufio.NewReader(input)
-	out = new(bytes.Buffer)
-	errOut = new(bytes.Buffer)
+	mockFS = newMockFS()
+	mockFS.Create("/etc/os-release")
 
-	cmd = NewGPUOnboardCmd(mockUtils, mockLibrary, mockExec, mockFS)
-	cmd.SetIn(in)
-	cmd.SetOut(out)
-	cmd.SetErr(errOut)
-
-	err = cmd.Execute()
-	assert.NoError(err)
-
-	nvidiaSeries = newTestNvidia(1)
-	for _, nvidia := range nvidiaSeries {
-		assert.Contains(out.String(), nvidia.GPUName)
+	tests = []test{
+		{nvidiaCount: 1, input: "y\ny\n", want: []string{containerOut, driversOut}},
+		{nvidiaCount: 2, input: "n\ny\n", want: []string{driversOut}, notWant: []string{containerOut}},
+		{nvidiaCount: 3, input: "y\nn\n", want: []string{containerOut}, notWant: []string{driversOut}},
+		{nvidiaCount: 4, input: "n\nn\n", notWant: []string{containerOut, driversOut}},
 	}
 
-	assert.Contains(out.String(), containerOut)
-	assert.Contains(out.String(), driversOut)
+	for _, tc := range tests {
+		mockLibrary = newMockLibrary(withNvidia(tc.nvidiaCount))
+
+		input = strings.NewReader(tc.input)
+		in = bufio.NewReader(input)
+		out = new(bytes.Buffer)
+		errOut = new(bytes.Buffer)
+
+		cmd = NewGPUOnboardCmd(mockUtils, mockLibrary, mockExec, mockFS)
+		cmd.SetIn(in)
+		cmd.SetOut(out)
+		cmd.SetErr(errOut)
+
+		err = cmd.Execute()
+		assert.NoError(err)
+
+		// check if all gpus are printed
+		nvidias = newTestNvidia(tc.nvidiaCount)
+		for _, nvidia := range nvidias {
+			assert.Contains(out.String(), nvidia.GPUName)
+		}
+
+		// check for scripts output
+		if tc.want != nil {
+			for _, output := range tc.want {
+				assert.Contains(out.String(), output)
+			}
+		}
+		if tc.notWant != nil {
+			for _, output := range tc.notWant {
+				assert.NotContains(out.String(), output)
+			}
+		}
+	}
+}
+
+func TestGPUOnboardCmdAMD(t *testing.T) {
+	type test struct {
+		amdCount int
+		input    string
+		want     []string
+		notWant  []string
+	}
+
+	var (
+		tests []test
+
+		mockUtils   *MockUtils
+		mockLibrary *MockLibrary
+		mockExec    *MockExecuter
+		mockFS      *MockFS
+
+		driversOut string
+
+		cmd    *cobra.Command
+		out    *bytes.Buffer
+		errOut *bytes.Buffer
+		input  *strings.Reader
+		in     *bufio.Reader
+
+		amds []library.GPUInfo
+		err  error
+	)
+	assert := assert.New(t)
+
+	driversOut = "AMD drivers installed"
+
+	mockUtils = newMockUtils()
+
+	mockExec = newMockExecuter()
+	mockExec.SetCommandOutput("/bin/bash", []string{"maint-scripts/install_amd_drivers"}, []byte(driversOut), nil)
+
+	mockFS = newMockFS()
+	mockFS.Create("/etc/os-release")
+
+	tests = []test{
+		{amdCount: 1, input: "y\n", want: []string{driversOut}},
+		{amdCount: 2, input: "n\n", notWant: []string{driversOut}},
+	}
+
+	for _, tc := range tests {
+		mockLibrary = newMockLibrary(withAMD(tc.amdCount))
+
+		input = strings.NewReader(tc.input)
+		in = bufio.NewReader(input)
+		out = new(bytes.Buffer)
+		errOut = new(bytes.Buffer)
+
+		cmd = NewGPUOnboardCmd(mockUtils, mockLibrary, mockExec, mockFS)
+		cmd.SetIn(in)
+		cmd.SetOut(out)
+		cmd.SetErr(errOut)
+
+		err = cmd.Execute()
+		assert.NoError(err)
+
+		// check if all gpus are printed
+		amds = newTestAMD(tc.amdCount)
+		for _, amd := range amds {
+			assert.Contains(out.String(), amd.GPUName)
+		}
+
+		// check for scripts output
+		if tc.want != nil {
+			for _, output := range tc.want {
+				assert.Contains(out.String(), output)
+			}
+		}
+		if tc.notWant != nil {
+			for _, output := range tc.notWant {
+				assert.NotContains(out.String(), output)
+			}
+		}
+	}
 }
