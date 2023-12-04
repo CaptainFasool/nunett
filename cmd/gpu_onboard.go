@@ -14,7 +14,7 @@ const (
 	containerPath    = "maint-scripts/install_container_runtime"
 	amdDriverPath    = "maint-scripts/install_amd_drivers"
 	nvidiaDriverPath = "maint-scripts/install_nvidia_drivers"
-	osFile           = "etc/os-release"
+	osFile           = "/etc/os-release"
 )
 
 func NewGPUOnboardCmd(util Utility, librarier Librarier, executer Executer, fs FileSystem) *cobra.Command {
@@ -44,7 +44,7 @@ func NewGPUOnboardCmd(util Utility, librarier Librarier, executer Executer, fs F
 				fmt.Fprintf(cmd.OutOrStdout(), "You are running on Windows Subsystem for Linux (WSL)\n\nWARNING: AMD GPUs are not supported!\n")
 
 				if hasNVIDIA {
-					err := promptContainer(executer, containerPath, cmd.OutOrStdout())
+					err := promptContainer(executer, containerPath, cmd.InOrStdin(), cmd.OutOrStdout())
 					if err != nil {
 						return fmt.Errorf("container runtime installation failed: %w", err)
 					}
@@ -60,7 +60,7 @@ func NewGPUOnboardCmd(util Utility, librarier Librarier, executer Executer, fs F
 				if mining {
 					fmt.Fprintln(cmd.OutOrStdout(), "You are likely running a Mining OS. Skipping driver installation...")
 
-					err := promptContainer(executer, containerPath, cmd.OutOrStdout())
+					err := promptContainer(executer, containerPath, cmd.InOrStdin(), cmd.OutOrStdout())
 					if err != nil {
 						return fmt.Errorf("container runtime installation failed: %w", err)
 					}
@@ -76,12 +76,12 @@ func NewGPUOnboardCmd(util Utility, librarier Librarier, executer Executer, fs F
 
 					printGPUs(cmd.OutOrStdout(), NVIDIAGPUs)
 
-					err = promptContainer(executer, containerPath, cmd.OutOrStdout())
+					err = promptContainer(executer, containerPath, cmd.InOrStdin(), cmd.OutOrStdout())
 					if err != nil {
 						return fmt.Errorf("container runtime installation failed: %w", err)
 					}
 
-					err = promptDriverInstallation(executer, cmd.OutOrStdout(), library.NVIDIA, nvidiaDriverPath)
+					err = promptDriverInstallation(executer, cmd.InOrStdin(), cmd.OutOrStdout(), library.NVIDIA, nvidiaDriverPath)
 					if err != nil {
 						return fmt.Errorf("NVIDIA drivers installation failed: %w", err)
 					}
@@ -95,7 +95,7 @@ func NewGPUOnboardCmd(util Utility, librarier Librarier, executer Executer, fs F
 
 					printGPUs(cmd.OutOrStdout(), AMDGPUs)
 
-					err = promptDriverInstallation(executer, cmd.OutOrStdout(), library.AMD, amdDriverPath)
+					err = promptDriverInstallation(executer, cmd.InOrStdin(), cmd.OutOrStdout(), library.AMD, amdDriverPath)
 					if err != nil {
 						return fmt.Errorf("AMD drivers installation failed: %w", err)
 					}
@@ -136,8 +136,8 @@ func runScript(executer Executer, scriptPath string, w io.Writer) error {
 
 // promptContainer takes container runtime script path as input and prompts the user for confirmation.
 // If confirmed, it runs the script.
-func promptContainer(executer Executer, containerPath string, w io.Writer) error {
-	proceed, err := utils.PromptYesNo("Do you want to proceed with Container Runtime installation? (y/N)")
+func promptContainer(executer Executer, containerPath string, r io.Reader, w io.Writer) error {
+	proceed, err := utils.PromptYesNo(r, w, "Do you want to proceed with Container Runtime installation?")
 	if err != nil {
 		return err
 	}
@@ -153,10 +153,10 @@ func promptContainer(executer Executer, containerPath string, w io.Writer) error
 
 // promptDriverInstallation takes GPUVendor (for printing) and the installation script as inputs.
 // It prompts the user for confirmation and if confirmed it runs the script.
-func promptDriverInstallation(executer Executer, w io.Writer, vendor library.GPUVendor, scriptPath string) error {
-	prompt := fmt.Sprintf("Do you want to proceed with %s driver installation? (y/N)", vendor.String())
+func promptDriverInstallation(executer Executer, r io.Reader, w io.Writer, vendor library.GPUVendor, scriptPath string) error {
+	prompt := fmt.Sprintf("Do you want to proceed with %s driver installation?", vendor.String())
 
-	proceed, err := utils.PromptYesNo(prompt)
+	proceed, err := utils.PromptYesNo(r, w, prompt)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func printGPUs(w io.Writer, gpus []library.GPUInfo) {
 	}
 
 	vendor = gpus[0].Vendor.String()
-	fmt.Fprintf(w, "Available %s GPU(s):", vendor)
+	fmt.Fprintf(w, "Available %s GPU(s):\n", vendor)
 	for _, gpu := range gpus {
 		fmt.Fprintf(w, "- %s\n", gpu.GPUName)
 	}
