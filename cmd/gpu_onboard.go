@@ -141,11 +141,13 @@ func promptContainer(executer Executer, containerPath string, r io.Reader, w io.
 	if err != nil {
 		return err
 	}
-	if proceed {
-		err := runScript(executer, containerPath, w)
-		if err != nil {
-			return fmt.Errorf("cannot run container runtime installation script: %v", err)
-		}
+	if !proceed {
+		return nil
+	}
+
+	err = runScript(executer, containerPath, w)
+	if err != nil {
+		return fmt.Errorf("cannot run container runtime installation script: %v", err)
 	}
 
 	return nil
@@ -160,12 +162,13 @@ func promptDriverInstallation(executer Executer, r io.Reader, w io.Writer, vendo
 	if err != nil {
 		return err
 	}
+	if !proceed {
+		return nil
+	}
 
-	if proceed {
-		err := runScript(executer, scriptPath, w)
-		if err != nil {
-			return fmt.Errorf("cannot run driver installation script: %v", err)
-		}
+	err = runScript(executer, scriptPath, w)
+	if err != nil {
+		return fmt.Errorf("cannot run driver installation script: %v", err)
 	}
 
 	return nil
