@@ -19,10 +19,12 @@ import (
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 // This is a transaction hash that exists on preprpod
@@ -102,6 +104,7 @@ func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.
 func (s *TestHarness) TestTxUndervaluation() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	// Create a request with very high constraints but with the minimum NTX
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -137,7 +140,10 @@ func ( spClient *SPTestClient ) AssertJobFail( job_ran_error string ) {
 			// This is to prevent test failure due to "depReq already in progress. Refusing to accept."
 			for {
 				update, err := spClient.GetNextDeploymentUpdate()
-				s.Nil(err, "Failed to get deployment update")
+				if err != nil {
+					s.Nil(err, "Failed to get deployment update")
+					break
+				}
 				if update.MsgType == libp2p.MsgLogStdout || update.MsgType == libp2p.MsgLogStderr {
 					continue
 				}
@@ -153,6 +159,7 @@ func ( spClient *SPTestClient ) AssertJobFail( job_ran_error string ) {
 func (s *TestHarness) TestTxHashValidation() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest("invalidtxhash")
 
@@ -165,6 +172,7 @@ func (s *TestHarness) TestTxHashValidation() {
 func (s *TestHarness) TestTxNTXValidation() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.MaxNtx = 1000000
@@ -178,6 +186,7 @@ func (s *TestHarness) TestTxNTXValidation() {
 func (s *TestHarness) TestValidSPPublicKey() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.Params.LocalPublicKey = "invalid-local-key"
@@ -191,6 +200,7 @@ func (s *TestHarness) TestValidSPPublicKey() {
 func (s *TestHarness) TestValidSPNodeId() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.Params.LocalNodeID = "invalid-local-id"
@@ -204,6 +214,7 @@ func (s *TestHarness) TestValidSPNodeId() {
 func (s *TestHarness) TestValidCPPublicKey() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.Params.RemotePublicKey = "invalid-remote-key"
@@ -217,6 +228,7 @@ func (s *TestHarness) TestValidCPPublicKey() {
 func (s *TestHarness) TestValidCPNodeId() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.Params.RemoteNodeID = "invalid-remote-id"
@@ -230,6 +242,7 @@ func (s *TestHarness) TestValidCPNodeId() {
 func (s *TestHarness) TestValidImageID() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.Params.ImageID = "registry.hub.docker.com/library/busybox"
@@ -243,6 +256,7 @@ func (s *TestHarness) TestValidImageID() {
 func (s *TestHarness) TestValidModelURL() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	// contains malicious code doing process fork
@@ -257,6 +271,7 @@ func (s *TestHarness) TestValidModelURL() {
 func (s *TestHarness) TestValidServiceType() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client");
+	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.ServiceType = "invalid"
@@ -324,6 +339,10 @@ func RunTestComputeProvider() error {
 
 	runAsServer := true;
 	libp2p.RunNode(pair, runAsServer)
+
+	if libp2p.GetP2P().Host != nil {
+		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+	}
 	return err
 }
 
@@ -335,6 +354,7 @@ type SPTestClient struct
 	s *TestHarness
 	selfID peer.ID
 	selfPublicKey crypto.PubKey
+	p2p libp2p.DMSp2p
 }
 
 // Convenience type for DeploymentUpdate with unmarshalled data
@@ -361,7 +381,32 @@ func CreateServiceProviderTestingClient( s *TestHarness ) (SPTestClient, error) 
 
 	reader := bufio.NewReader(stream)
 	writer := bufio.NewWriter(stream)
-	return SPTestClient{reader,writer,s, selfID, selfPublicKey}, err
+	return SPTestClient{reader,writer,s, selfID, selfPublicKey, p2p}, err
+}
+
+func ( client *SPTestClient ) ShutdownSPClient() error {
+	for _, node := range client.p2p.Host.Peerstore().Peers() {
+		client.p2p.Host.Network().ClosePeer(node)
+		client.p2p.Host.Peerstore().Put(node, "peer_info", nil)
+		client.p2p.Host.Peerstore().ClearAddrs(node)
+		client.p2p.Host.Peerstore().RemovePeer(node)
+	}
+
+	err := client.p2p.Host.Close()
+	if err != nil {
+		return err
+	}
+	err = client.p2p.DHT.Close()
+	if err != nil {
+		return err
+	}
+
+	client.p2p.Host = nil
+	client.p2p.DHT = nil
+
+	// Ensure the bootstrapnode does remove SPTestClient before starting another test
+	time.Sleep(2 * time.Second)
+	return nil
 }
 
 func GetTestComputeProviderID() peer.ID {
@@ -388,16 +433,37 @@ func ( client *SPTestClient ) SendDeploymentRequest( request models.DeploymentRe
 	return nil
 }
 
+type ReadResult struct {
+	Message string
+	Error   error
+}
+
 func ( client *SPTestClient ) GetNextDeploymentUpdate() (CPUpdate, error) {
 	var update CPUpdate;
 
-	msg, err := client.reader.ReadString('\n')
-	if err != nil {
-		return update, err
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	ch := make(chan ReadResult)
+
+	go func() {
+		msg, err := client.reader.ReadString('\n')
+		ch <- ReadResult{ Message:msg, Error:err}
+	}()
+
+	msg := ""
+	select {
+	case <-ctx.Done():
+		return update, errors.New(fmt.Sprintf("GetNextDeploymentUpdate timedout"))
+	case result := <-ch:
+		if result.Error != nil {
+			return update, result.Error
+		}
+		msg = result.Message
 	}
 
 	depUpdate := models.DeploymentUpdate{}
-	err = json.Unmarshal([]byte(msg), &depUpdate)
+	err := json.Unmarshal([]byte(msg), &depUpdate)
 	if err != nil {
 		return update, err
 	}
