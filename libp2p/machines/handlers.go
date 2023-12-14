@@ -509,6 +509,25 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 		return err
 	}
 
+	// if this is a resume request, send the file as well
+	if depReq.Params.ResumeJob.Resume {
+		zlog.Sugar().Infof("sending progress file: %s", depReq.Params.ResumeJob.ProgressFile)
+		remotePeerID, err := peer.Decode(depReq.Params.RemoteNodeID)
+		if err != nil {
+			zlog.Sugar().Errorf("could not decode string ID to peerID: %v", err)
+			return fmt.Errorf("could not decode string ID to peerID: %v", err)
+		}
+		transferChan, err := libp2p.SendFileToPeer(ctx, remotePeerID, depReq.Params.ResumeJob.ProgressFile, libp2p.FTDEPREQ)
+		if err != nil {
+			zlog.Sugar().Errorf("error: couldn't send file to peer - %v", err)
+			return err
+		}
+
+		// wait until transferChan is closed, which happens when file is transferred 100%
+		zlog.Info("waiting for checkpoint file transfer to complete")
+		<-transferChan
+	}
+
 	//TODO: Context handling and cancellation on all messaging related code
 	//      most importantly, depreq/depres messaging
 	//XXX: needs a lot of testing.

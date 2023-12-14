@@ -184,11 +184,20 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		return
 	}
 
-	// if resuming a job, bind the volume together
+	// if resuming a job, extract the tarball, and bind the volume together
 	if depReq.Params.ResumeJob.Resume {
-		hostPath := filepath.Join(config.GetConfig().General.MetadataPath, "progress")
+		zlog.Info(fmt.Sprintf("Extracting %s", depReq.Params.ResumeJob.ProgressFile))
+		tarFileBaseName := filepath.Base(depReq.Params.ResumeJob.ProgressFile)               // filename.tar.gz
+		tarFileBaseName = strings.TrimSuffix(tarFileBaseName, filepath.Ext(tarFileBaseName)) // filename.tar
+		tarFileBaseName = strings.TrimSuffix(tarFileBaseName, filepath.Ext(tarFileBaseName)) // filename
+		extractPath := filepath.Join(filepath.Dir(depReq.Params.ResumeJob.ProgressFile), tarFileBaseName)
+		err = utils.ExtractTarGzToPath(depReq.Params.ResumeJob.ProgressFile, extractPath)
+		if err != nil {
+			zlog.Sugar().Errorf("Error extracting tar.gz file - %v", err)
+		}
+
 		containerPath := "/workspace"
-		volumeBinding := fmt.Sprintf("%s:%s", hostPath, containerPath)
+		volumeBinding := fmt.Sprintf("%s/workspace:%s", extractPath, containerPath)
 
 		// preserve other binds from AMD host config
 		if chosenGPUVendor == library.AMD {
@@ -313,7 +322,7 @@ outerLoop:
 				zlog.Sugar().Errorf("problem updating services: %v", r.Error)
 				service.JobStatus = "finished with errors"
 			}
-			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format(time.RFC3339))
 
 			// add exitStatus to db
 			if containerStatus.StatusCode == 0 {
@@ -432,9 +441,9 @@ outerLoop:
 			// Add a response for log update
 			db.DB.Where("container_id = ?", resp.ID).First(&service)
 			zlog.Debug("service.LastLogFetch",
-				zap.String("value", service.LastLogFetch.Format("2006-01-02T15:04:05Z")),
+				zap.String("value", service.LastLogFetch.Format(time.RFC3339)),
 			)
-			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format("2006-01-02T15:04:05Z"))
+			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format(time.RFC3339))
 			service.LastLogFetch = time.Now().In(time.UTC)
 			db.DB.Save(&service)
 
@@ -450,7 +459,6 @@ outerLoop:
 				zlog.Sugar().Errorf(err.Error())
 			}
 			dc.ContainerStop(ctx, resp.ID, nil)
-
 		}
 	}
 }
@@ -769,14 +777,14 @@ func HandleDeployment(ctx context.Context, depReq models.DeploymentRequest) (mod
 func createTarballAndChecksum(dc *client.Client, containerID string, callID int64) error {
 	ctx := context.Background()
 	// create a tar of /workspace dir; which is where the image stores it's ML progress
-	tarStream, _, err := dc.CopyFromContainer(ctx, containerID, "/workspace")
+	tarStream, _, err := dc.CopyFromContainer(ctx, containerID, containerWorkspaceDir)
 	if err != nil {
 		return fmt.Errorf("Error getting tar stream: %v", err)
 	}
 	defer tarStream.Close()
 
 	// save the tarball to the designated place on host machine
-	checkpointPath := fmt.Sprintf("%s/checkpoints", config.GetConfig().General.MetadataPath)
+	checkpointPath := fmt.Sprintf("%s/created_checkpoints", config.GetConfig().General.DataDir)
 	// make sure the checkpointPath is an existing directory.
 	utils.CreateDirectoryIfNotExists(checkpointPath)
 
@@ -825,18 +833,15 @@ func createTarballAndChecksum(dc *client.Client, containerID string, callID int6
 
 func sendBackupToSPD(containerID string, callID int64, spNodeID string) error {
 	// send the tarball to SPD
-	checkpointPath := fmt.Sprintf("%s/checkpoints", config.GetConfig().General.MetadataPath)
+	checkpointPath := fmt.Sprintf("%s/created_checkpoints", config.GetConfig().General.DataDir)
 	tarOnHostPath := filepath.Join(checkpointPath, fmt.Sprintf("%d.tar.gz", callID))
 	spPeerID, err := peer.Decode(spNodeID)
 	if err != nil {
 		return fmt.Errorf("Error decoding spNodeID: %v", err)
 	}
 
-	// Send checksum file
-	checksumFile := fmt.Sprintf("%s.sha256.txt", tarOnHostPath)
-	libp2p.SendFileToPeer(context.Background(), spPeerID, checksumFile)
 	// Send tar file
-	libp2p.SendFileToPeer(context.Background(), spPeerID, tarOnHostPath)
+	libp2p.SendFileToPeer(context.Background(), spPeerID, tarOnHostPath, libp2p.FTDEPREQ)
 	return nil
 }
 

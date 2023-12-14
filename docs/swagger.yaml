@@ -93,9 +93,7 @@ definitions:
           resume_job:
             properties:
               progress_file:
-                description: 'TODO: Need to be actual file contents, not path/string'
-                type: string
-              progress_file_checksum:
+                description: file path
                 type: string
               resume:
                 type: boolean
@@ -235,7 +233,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.147
+  version: 0.4.148
 paths:
   /device/status:
     get:

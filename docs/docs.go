@@ -784,10 +784,7 @@ const docTemplate = `{
                             "type": "object",
                             "properties": {
                                 "progress_file": {
-                                    "description": "TODO: Need to be actual file contents, not path/string",
-                                    "type": "string"
-                                },
-                                "progress_file_checksum": {
+                                    "description": "file path",
                                     "type": "string"
                                 },
                                 "resume": {
@@ -991,7 +988,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.147",
+	Version:          "0.4.148",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

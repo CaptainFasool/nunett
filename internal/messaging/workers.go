@@ -53,6 +53,11 @@ func DeploymentWorker() {
 			jsonDataMsg, _ := json.Marshal(msg)
 			json.Unmarshal(jsonDataMsg, &depReq)
 
+			if depReq.Params.ResumeJob.Resume {
+				depReq.Params.ResumeJob.ProgressFile = <-ProgressFilePathOnCP
+				zlog.Debug("file transfer likely to complete by now")
+			}
+
 			if depReq.ServiceType == "cardano_node" {
 				content, err := handleCardanoDeployment(depReq)
 				if err != nil {
@@ -77,25 +82,59 @@ func DeploymentWorker() {
 
 // FileTransferWorker continuously listens to the file transfer queue and
 // filters which files to accept.
-func FileTransferWorker() {
+func FileTransferWorker(ctx context.Context) {
 	for msg := range libp2p.FileTransferQueue {
-		// implement your own logic which files should be accepted
-		// Check 1: The sender peer must be the same peer with whom deployment request stream is open
-		// if no stream is open, reject the file
-		if msg.Sender != libp2p.OutboundDepReqStream.Conn().RemotePeer() {
-			zlog.Sugar().Errorf("File Transfer Request from %s rejected. No deployment request stream open.", msg.Sender)
-			continue
-		}
+		// Check if there's an ongoing deployment request stream (either inbound or outbound) with the sender
+		if (libp2p.InboundDepReqStream != nil && libp2p.InboundDepReqStream.Conn().RemotePeer() == msg.Sender) ||
+			(libp2p.OutboundDepReqStream != nil && libp2p.OutboundDepReqStream.Conn().RemotePeer() == msg.Sender) {
+			// Check if the file type is supported (e.g., ends with "tar.gz")
+			if strings.HasSuffix(msg.File.Name, "tar.gz") {
+				zlog.Info(fmt.Sprintf("File Transfer Request of file %q from %s accepted.", msg.File.Name, msg.Sender))
 
-		// Check 2: The file must end with tar.gz or tar.gz.sha256.txt
-		if !(strings.HasSuffix(msg.File.Name, "tar.gz") || strings.HasSuffix(msg.File.Name, "tar.gz.sha256.txt")) {
-			zlog.Sugar().Errorf("File Transfer Request from %s rejected. File type not supported (%s).", msg.Sender, msg.File.Name)
-			continue
-		}
+				resultChan := make(chan libp2p.FileTransferResult)
+				go func() {
+					filePath, transferChan, err := libp2p.AcceptFileTransfer(ctx, msg)
+					resultChan <- libp2p.FileTransferResult{
+						FilePath:     filePath,
+						TransferChan: transferChan,
+						Error:        err,
+					}
+				}()
 
-		// accept the file
-		zlog.Sugar().Infof("File Transfer Request of %s from %s accepted.", msg.File.Name, msg.Sender)
-		go libp2p.AcceptFileTransfer()
+				result := <-resultChan
+				// wait for channel to be closed (meaning file transfer is 100%)
+				<-result.TransferChan
+				zlog.Info("File transfer complete!")
+				ProgressFilePathOnCP <- result.FilePath
+				zlog.Debug("Deployment request should proceed now")
+
+				if strings.HasSuffix(msg.File.Name, "tar.gz") {
+					// verify checksum before extraction
+					zlog.Sugar().Infof("Verifying SHA-256 checksum of %s", result.FilePath)
+					checksum, err := utils.CalculateSHA256Checksum(result.FilePath)
+					if err != nil {
+						zlog.Sugar().Errorf("Error calculating SHA-256 checksum of %s - %s", result.FilePath, err.Error())
+					}
+					if checksum != msg.File.SHA256Checksum {
+						zlog.Sugar().Errorf("SHA-256 checksum of %s does not match expected checksum %s", result.FilePath, msg.File.SHA256Checksum)
+						//XXX should we delete the file if it's not the right file?
+						return
+					}
+
+					// write checksum to file
+					sha256FilePath, err := utils.CreateCheckSumFile(result.FilePath, checksum)
+					if err != nil {
+						zlog.Sugar().Errorf("Error writing SHA-256 checksum to file - %v", err)
+					}
+
+					zlog.Sugar().Debugf("Checksum matched! SHA-256 written to %q.", sha256FilePath)
+				}
+			} else {
+				zlog.Error(fmt.Sprintf("File Transfer Request from %s rejected. File type not supported.", msg.Sender))
+			}
+		} else {
+			zlog.Error(fmt.Sprintf("File Transfer Request from %s rejected. No deployment request stream open with the sender.", msg.Sender))
+		}
 	}
 }
 

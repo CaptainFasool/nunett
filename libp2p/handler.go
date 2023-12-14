@@ -783,10 +783,10 @@ func InitiateFileTransferHandler(c *gin.Context) {
 		zlog.Sugar().Errorf("Failed to set websocket upgrade: %+v\n", err)
 		return
 	}
-	conn := internal.WebSocketConnection{Conn: ws}
-	clients[conn] = peerID
+	// conn := internal.WebSocketConnection{Conn: ws}
+	// clients[conn] = peerID
 
-	transferChan, err := SendFileToPeer(c, p, filePath)
+	transferChan, err := SendFileToPeer(c, p, filePath, FTMISC)
 	if err != nil {
 		zlog.Sugar().Errorf("error: couldn't send file to peer - %v", err)
 		ws.WriteJSON(gin.H{"error": err.Error()})
@@ -834,9 +834,29 @@ func AcceptFileTransferHandler(c *gin.Context) {
 		return
 	}
 
-	err = AcceptFileTransfer()
+	filePath, transferChan, err := AcceptFileTransfer(c, currentFileTransfer)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
+		zlog.Sugar().Errorf("error: couldn't accept file transfer - %v", err)
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+
+	// upgrade to websocket and steam transfer progress
+	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		zlog.Sugar().Errorf("Failed to set websocket upgrade: %+v\n", err)
+		return
+	}
+
+	ws.WriteJSON(gin.H{"message": "File Transfer Accepted."})
+	for p := range transferChan {
+		ws.WriteJSON(gin.H{
+			"remaining_time": fmt.Sprintf("%v seconds", p.Remaining().Round(time.Second)),
+			"percentage":     fmt.Sprintf("%.2f %%", p.Percent()),
+			"size":           fmt.Sprintf("%.2f MB", p.N()/1048576),
+		})
+	}
+	ws.WriteMessage(1, []byte("transfer complete"))
+	ws.WriteMessage(1, []byte("File saved to: "+filePath))
+	ws.Close()
 }

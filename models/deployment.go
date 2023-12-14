@@ -13,18 +13,17 @@ type DeploymentRequest struct {
 	TxHash                 string    `json:"tx_hash"`
 	ServiceType            string    `json:"service_type"`
 	Timestamp              time.Time `json:"timestamp"`
-	MetadataHash           string    `json:"metadata_hash,omitempty"`
-	WithdrawHash           string    `json:"withdraw_hash,omitempty"`
-	RefundHash             string    `json:"refund_hash,omitempty"`
+	MetadataHash           string    `json:"metadata_hash"`
+	WithdrawHash           string    `json:"withdraw_hash"`
+	RefundHash             string    `json:"refund_hash"`
 	Distribute_50Hash      string    `json:"distribute_50_hash"`
 	Distribute_75Hash      string    `json:"distribute_75_hash"`
 	Params                 struct {
 		ImageID   string `json:"image_id"`
 		ModelURL  string `json:"model_url"`
 		ResumeJob struct {
-			Resume               bool   `json:"resume"`
-			ProgressFile         string `json:"progress_file"` // TODO: Need to be actual file contents, not path/string
-			ProgressFileChecksum string `json:"progress_file_checksum"`
+			Resume       bool   `json:"resume"`
+			ProgressFile string `json:"progress_file"` // file path
 		} `json:"resume_job"`
 		Packages        []string `json:"packages"`
 		RemoteNodeID    string   `json:"node_id"`          // NodeID of compute provider (machine to deploy the job on)
