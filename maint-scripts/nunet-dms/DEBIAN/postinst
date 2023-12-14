@@ -12,6 +12,7 @@ adduser $USER docker
 
 # Give above user access to write to /etc/nunet
 chown -R $USER:$USER /etc/nunet
+chown -R $USER:$USER /var/nunet
 
 # Start the services.
 systemctl daemon-reload

@@ -46,9 +46,6 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	r.Progress.n += float64(n)
 	r.Progress.err = err
 	r.lock.Unlock()
-	if r.Progress.n >= r.Progress.size {
-		return 0, io.EOF
-	}
 	return n, err
 }
 

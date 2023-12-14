@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.148](#298)
+
+### Changed
+- Use progress checkpoint file to request a resume job
+
 ## [0.4.147](#323)
 
 ### Added

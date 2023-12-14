@@ -52,7 +52,7 @@ var txHashConfirmationNum = 5     // min number of confirmations
 var txhashConfirmationTimeout = 5 // minutes
 
 var inboundChatStreams []network.Stream
-var inboundDepReqStream network.Stream
+var InboundDepReqStream network.Stream
 var OutboundDepReqStream network.Stream
 
 type OpenStream struct {
@@ -92,7 +92,7 @@ func depReqStreamHandler(stream network.Stream) {
 	zlog.InfoContext(ctx, "Got a new depReq stream!")
 
 	// limit to 1 request
-	if inboundDepReqStream != nil {
+	if InboundDepReqStream != nil {
 		zlog.Sugar().Debugf("[depReq recv] depReq already in progress. Refusing to accept.")
 		depRes := models.DeploymentResponse{Success: false, Content: "Open Stream Length Exceeded. Closing Stream."}
 		depResJson, err := json.Marshal(depRes)
@@ -128,7 +128,7 @@ func depReqStreamHandler(stream network.Stream) {
 
 	zlog.Sugar().DebugfContext(ctx, "[depReq recv] message: %s", str)
 
-	inboundDepReqStream = stream
+	InboundDepReqStream = stream
 
 	depreqMessage := models.DeploymentRequest{}
 	err = json.Unmarshal([]byte(str), &depreqMessage)
@@ -349,12 +349,12 @@ func DeploymentUpdate(msgType string, msg string, close bool) error {
 
 	msgBytes, _ := json.Marshal(depUpdateMsg)
 
-	if inboundDepReqStream == nil {
+	if InboundDepReqStream == nil {
 		zlog.Sugar().ErrorfContext(ctx, "no inbound deployment request stream to send an update to")
 		return fmt.Errorf("no inbound deployment request to respond to")
 	}
 
-	w := bufio.NewWriter(inboundDepReqStream)
+	w := bufio.NewWriter(InboundDepReqStream)
 	_, err := w.WriteString(fmt.Sprintf("%s\n", string(msgBytes)))
 	if err != nil {
 		zlog.Sugar().ErrorfContext(ctx, "failed to write deployment update to buffer")
@@ -369,11 +369,11 @@ func DeploymentUpdate(msgType string, msg string, close bool) error {
 
 	if close {
 		zlog.Sugar().InfofContext(ctx, "closing deployment request stream from")
-		err = inboundDepReqStream.Close()
+		err = InboundDepReqStream.Close()
 		if err != nil {
 			zlog.Sugar().ErrorfContext(ctx, "failed to close deployment request stream - %v", err)
 		}
-		inboundDepReqStream = nil
+		InboundDepReqStream = nil
 	}
 
 	return nil
@@ -569,5 +569,5 @@ func IsDepReqStreamOpen() bool {
 }
 
 func IsDepRespStreamOpen() bool {
-	return inboundDepReqStream != nil
+	return InboundDepReqStream != nil
 }

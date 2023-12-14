@@ -24,6 +24,7 @@ import (
 )
 
 func Run() {
+	ctx := context.Background()
 	config.LoadConfig()
 
 	db.ConnectDatabase(afero.NewOsFs())
@@ -37,7 +38,7 @@ func Run() {
 
 	go messaging.DeploymentWorker()
 
-	go messaging.FileTransferWorker()
+	go messaging.FileTransferWorker(ctx)
 
 	heartbeat.Done = make(chan bool)
 	go heartbeat.Heartbeat()

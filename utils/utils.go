@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,6 +14,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -272,6 +275,89 @@ func CalculateSHA256Checksum(filePath string) (string, error) {
 	// Calculate the checksum and return it as a hexadecimal string
 	checksum := hex.EncodeToString(hash.Sum(nil))
 	return checksum, nil
+}
+
+// put checksum in file
+func CreateCheckSumFile(filePath string, checksum string) (string, error) {
+	sha256FilePath := fmt.Sprintf("%s.sha256.txt", filePath)
+	sha256File, err := os.Create(sha256FilePath)
+	if err != nil {
+		return "", fmt.Errorf("unable to create SHA-256 checksum file: %v", err)
+	}
+
+	defer sha256File.Close()
+
+	_, err = sha256File.WriteString(checksum)
+	if err != nil {
+		return "", fmt.Errorf("unable to write to SHA-256 checksum file: %v", err)
+	}
+
+	return sha256FilePath, nil
+}
+
+// ExtractTarGzToPath extracts a tar.gz file to a specified path
+func ExtractTarGzToPath(tarGzFilePath, extractedPath string) error {
+	// Ensure the target directory exists; create it if it doesn't.
+	if err := os.MkdirAll(extractedPath, os.ModePerm); err != nil {
+		return fmt.Errorf("error creating target directory: %v", err)
+	}
+
+	tarGzFile, err := os.Open(tarGzFilePath)
+	if err != nil {
+		return fmt.Errorf("error opening tar.gz file: %v", err)
+	}
+	defer tarGzFile.Close()
+
+	gzipReader, err := gzip.NewReader(tarGzFile)
+	if err != nil {
+		return fmt.Errorf("error creating gzip reader: %v", err)
+	}
+	defer gzipReader.Close()
+
+	tarReader := tar.NewReader(gzipReader)
+
+	for {
+		header, err := tarReader.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return fmt.Errorf("error reading tar header: %v", err)
+		}
+
+		// Construct the full target path by joining the target directory with
+		// the name of the file or directory from the archive.
+		fullTargetPath := filepath.Join(extractedPath, header.Name)
+
+		// Ensure that the directory path leading to the file exists.
+		if header.FileInfo().IsDir() {
+			// Create the directory and any parent directories as needed.
+			if err := os.MkdirAll(fullTargetPath, os.ModePerm); err != nil {
+				return fmt.Errorf("error creating directory: %v", err)
+			}
+		} else {
+			// Create the file and any parent directories as needed.
+			if err := os.MkdirAll(filepath.Dir(fullTargetPath), os.ModePerm); err != nil {
+				return fmt.Errorf("error creating directory: %v", err)
+			}
+
+			// Create a new file with the specified path.
+			newFile, err := os.Create(fullTargetPath)
+			if err != nil {
+				return fmt.Errorf("error creating file: %v", err)
+			}
+			defer newFile.Close()
+
+			// Copy the file contents from the tar archive to the new file.
+			if _, err := io.Copy(newFile, tarReader); err != nil {
+				return fmt.Errorf("error copying file contents: %v", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // PromptYesNo prompts the user on stdout for a yes or no response on stdin
