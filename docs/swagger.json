@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.148"
+        "version": "0.4.149"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -441,6 +441,26 @@
                 }
             }
         },
+        "/run/checkpoints": {
+            "get": {
+                "description": "ListCheckpointHandler scans data_dir/received_checkpoints and lists all the tar.gz files which can be used to resume a job. Returns a list of objects with absolute path and last modified date.",
+                "tags": [
+                    "run"
+                ],
+                "summary": "Returns a list of absolute path to checkpoint files.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/libp2p.checkpoint"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/run/deploy": {
             "get": {
                 "description": "Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.",
@@ -460,7 +480,7 @@
         },
         "/run/request-service": {
             "post": {
-                "description": "HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.",
+                "description": "RequestServiceHandler searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.",
                 "tags": [
                     "run"
                 ],
@@ -640,6 +660,20 @@
         }
     },
     "definitions": {
+        "libp2p.checkpoint": {
+            "type": "object",
+            "properties": {
+                "checkpoint_dir": {
+                    "type": "string"
+                },
+                "last_modified": {
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
         "machines.fundingRespToSPD": {
             "type": "object",
             "properties": {

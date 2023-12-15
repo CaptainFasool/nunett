@@ -21,6 +21,13 @@ Types of changes
 
 -->
 
+## [0.4.149](#324)
+
+### Changed
+- add endpoint to list available checkpoint files for resuming
+- rename a few handlers to align with others
+- change ownership of checkpoint files to assumed user in container
+
 ## [0.4.148](#298)
 
 ### Changed

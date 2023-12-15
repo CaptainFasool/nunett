@@ -829,7 +829,7 @@ func AcceptFileTransferHandler(c *gin.Context) {
 		return
 	}
 
-	if streamID != 0 {
+	if streamID != 0  {
 		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Unknown Stream ID: %v", streamID)})
 		return
 	}
