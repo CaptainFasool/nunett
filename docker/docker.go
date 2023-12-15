@@ -196,16 +196,30 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 			zlog.Sugar().Errorf("Error extracting tar.gz file - %v", err)
 		}
 
+		// XXX hacky way to get the user inside the container be able to read the checkpoint file
+		//     DMS runs as root now and hence the files it touches are also owned by root.
+		err := filepath.Walk(extractPath,
+			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				os.Chown(path, 1000, 1000)
+				return nil
+			})
+		if err != nil {
+			zlog.Sugar().Errorf("problem changing ownership of extracted files - %v", err)
+		}
+
 		containerPath := "/workspace"
 		volumeBinding := fmt.Sprintf("%s/workspace:%s", extractPath, containerPath)
 
-		// preserve other binds from AMD host config
+		// Preserve other settings for AMD GPU containers
 		if chosenGPUVendor == library.AMD {
-			hostConfig.Binds = append(hostConfig.Binds, volumeBinding)
+			hostConfigAMDGPU.Binds = append(hostConfigAMDGPU.Binds, volumeBinding)
+			hostConfig = &hostConfigAMDGPU
 		} else {
-			hostConfig = &container.HostConfig{
-				Binds: []string{volumeBinding},
-			}
+			// add volume mount to hostConfig
+			hostConfig.Binds = append(hostConfig.Binds, volumeBinding)
 		}
 	}
 
@@ -322,6 +336,7 @@ outerLoop:
 				zlog.Sugar().Errorf("problem updating services: %v", r.Error)
 				service.JobStatus = "finished with errors"
 			}
+
 			sendLogsToSPD(ctx, resp.ID, service.LastLogFetch.Format(time.RFC3339))
 
 			// add exitStatus to db
@@ -842,6 +857,7 @@ func sendBackupToSPD(containerID string, callID int64, spNodeID string) error {
 
 	// Send tar file
 	libp2p.SendFileToPeer(context.Background(), spPeerID, tarOnHostPath, libp2p.FTDEPREQ)
+
 	return nil
 }
 

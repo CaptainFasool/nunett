@@ -1,5 +1,14 @@
 basePath: /api/v1
 definitions:
+  libp2p.checkpoint:
+    properties:
+      checkpoint_dir:
+        type: string
+      last_modified:
+        type: integer
+      path:
+        type: string
+    type: object
   machines.fundingRespToSPD:
     properties:
       compute_provider_addr:
@@ -233,7 +242,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.148
+  version: 0.4.149
 paths:
   /device/status:
     get:
@@ -523,6 +532,21 @@ paths:
       summary: Sends a command to specific node and prints back response.
       tags:
       - peers
+  /run/checkpoints:
+    get:
+      description: ListCheckpointHandler scans data_dir/received_checkpoints and lists
+        all the tar.gz files which can be used to resume a job. Returns a list of
+        objects with absolute path and last modified date.
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/libp2p.checkpoint'
+            type: array
+      summary: Returns a list of absolute path to checkpoint files.
+      tags:
+      - run
   /run/deploy:
     get:
       description: Loads deployment request from the DB after a successful blockchain
@@ -538,9 +562,9 @@ paths:
       - run
   /run/request-service:
     post:
-      description: HandleRequestService searches the DHT for non-busy, available devices
-        with appropriate metadata. Then informs parameters related to blockchain to
-        request to run a service on NuNet.
+      description: RequestServiceHandler searches the DHT for non-busy, available
+        devices with appropriate metadata. Then informs parameters related to blockchain
+        to request to run a service on NuNet.
       parameters:
       - description: Deployment Request
         in: body

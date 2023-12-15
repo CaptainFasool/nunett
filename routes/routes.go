@@ -50,8 +50,9 @@ func SetupRouter() *gin.Engine {
 
 	run := v1.Group("/run")
 	{
-		run.GET("/deploy", machines.HandleDeploymentRequest) // websocket
-		run.POST("/request-service", machines.HandleRequestService)
+		run.GET("/deploy", machines.DeploymentRequestHandler) // websocket
+		run.POST("/request-service", machines.RequestServiceHandler)
+		run.GET("/checkpoints", libp2p.ListCheckpointHandler)
 	}
 
 	tx := v1.Group("/transactions")

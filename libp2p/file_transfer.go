@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -49,11 +52,18 @@ type FileTransferResult struct {
 	Error        error
 }
 
+// checkpoint is a struct to hold checkpoint_dir, filename, and timestamp
+type checkpoint struct {
+	CheckpointDir string `json:"checkpoint_dir"`
+	Path          string `json:"path"`
+	LastModified  int64  `json:"last_modified"`
+}
+
 func fileStreamHandler(stream network.Stream) {
 	zlog.Info("Got a new file stream!")
 
 	// XXX bad limit to 1 request - temporary
-	if currentFileTransfer.InboundFileStream == nil {
+	if currentFileTransfer.InboundFileStream != nil {
 		w := bufio.NewWriter(stream)
 		_, err := w.WriteString("Open Stream Length Exceeded. Closing Stream.\n")
 		if err != nil {
@@ -316,4 +326,59 @@ func AcceptFileTransfer(ctx context.Context, incomingFileTransfer IncomingFileTr
 
 	filePath := file.Name()
 	return filePath, progressChan, nil
+}
+
+// ListCheckpointHandler  godoc
+//
+//	@Summary		Returns a list of absolute path to checkpoint files.
+//	@Description	ListCheckpointHandler scans data_dir/received_checkpoints and lists all the tar.gz files which can be used to resume a job. Returns a list of objects with absolute path and last modified date.
+//	@Tags			run
+//	@Success		200					{object}	[]checkpoint
+//	@Router			/run/checkpoints [get]
+func ListCheckpointHandler(c *gin.Context) {
+	receivedCheckpoints := filepath.Join(config.GetConfig().General.DataDir, "received_checkpoints")
+
+	// Check if the directory exists
+	if _, err := os.Stat(receivedCheckpoints); os.IsNotExist(err) {
+		// If the directory doesn't exist, return an empty array
+		c.JSON(http.StatusOK, []struct{}{})
+		return
+	}
+
+	// Use filepath.Glob to find all tar.gz files in the directory
+	checkpoints, err := filepath.Glob(filepath.Join(receivedCheckpoints, "*.tar.gz"))
+	if err != nil {
+		// If there's an error, return an empty array
+		c.JSON(http.StatusOK, []struct{}{})
+		return
+	}
+
+	// Create a slice to hold checkpoint objects
+	var checkpointList []checkpoint
+
+	// Retrieve information about each checkpoint file
+	for _, checkpt := range checkpoints {
+		// Get file information
+		fileInfo, err := os.Stat(checkpt)
+		if err != nil {
+			// Handle the error if needed
+			continue // Skip this file and proceed with the next one
+		}
+
+		lastModifiedEpoch := fileInfo.ModTime().Unix()
+
+		// Append checkpoint information to the list
+		checkpointList = append(checkpointList, struct {
+			CheckpointDir string `json:"checkpoint_dir"`
+			Path          string `json:"path"`
+			LastModified  int64  `json:"last_modified"`
+		}{
+			CheckpointDir: receivedCheckpoints,
+			Path:          filepath.Base(checkpt),
+			LastModified:  lastModifiedEpoch,
+		})
+	}
+
+	// Return the list of checkpoint objects as JSON response
+	c.JSON(http.StatusOK, checkpointList)
 }

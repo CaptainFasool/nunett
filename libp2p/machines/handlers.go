@@ -39,15 +39,15 @@ type fundingRespToSPD struct {
 
 var depreqWsConn *internal.WebSocketConnection
 
-// HandleRequestService  godoc
+// RequestServiceHandler  godoc
 //
 //	@Summary		Informs parameters related to blockchain to request to run a service on NuNet
-//	@Description	HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
+//	@Description	RequestServiceHandler searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
 //	@Tags			run
 //	@Param			deployment_request	body		models.DeploymentRequest	true	"Deployment Request"
 //	@Success		200					{object}	fundingRespToSPD
 //	@Router			/run/request-service [post]
-func HandleRequestService(c *gin.Context) {
+func RequestServiceHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/request-service"))
 	kLogger.Info("Handle request service", span)
@@ -233,14 +233,14 @@ func HandleRequestService(c *gin.Context) {
 	go outgoingDepReqWebsock()
 }
 
-// HandleDeploymentRequest  godoc
+// DeploymentRequestHandler  godoc
 //
 //	@Summary		Websocket endpoint responsible for sending deployment request and receiving deployment response.
 //	@Description	Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.
 //	@Tags			run
 //	@Success		200	{string}	string
 //	@Router			/run/deploy [get]
-func HandleDeploymentRequest(c *gin.Context) {
+func DeploymentRequestHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
 	kLogger.Info("Handle deployment request", span)

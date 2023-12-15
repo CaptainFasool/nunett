@@ -447,6 +447,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/run/checkpoints": {
+            "get": {
+                "description": "ListCheckpointHandler scans data_dir/received_checkpoints and lists all the tar.gz files which can be used to resume a job. Returns a list of objects with absolute path and last modified date.",
+                "tags": [
+                    "run"
+                ],
+                "summary": "Returns a list of absolute path to checkpoint files.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/libp2p.checkpoint"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/run/deploy": {
             "get": {
                 "description": "Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.",
@@ -466,7 +486,7 @@ const docTemplate = `{
         },
         "/run/request-service": {
             "post": {
-                "description": "HandleRequestService searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.",
+                "description": "RequestServiceHandler searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.",
                 "tags": [
                     "run"
                 ],
@@ -646,6 +666,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "libp2p.checkpoint": {
+            "type": "object",
+            "properties": {
+                "checkpoint_dir": {
+                    "type": "string"
+                },
+                "last_modified": {
+                    "type": "integer"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
         "machines.fundingRespToSPD": {
             "type": "object",
             "properties": {
@@ -988,7 +1022,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.148",
+	Version:          "0.4.149",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

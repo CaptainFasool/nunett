@@ -55,8 +55,8 @@ func SetUpRouter() *gin.Engine {
 
 	run := v1.Group("/run")
 	{
-		run.POST("/request-service", machines.HandleRequestService)
-		run.GET("/deploy", machines.HandleDeploymentRequest)
+		run.POST("/request-service", machines.RequestServiceHandler)
+		run.GET("/deploy", machines.DeploymentRequestHandler)
 	}
 
 	txRoute := v1.Group("/transactions")
