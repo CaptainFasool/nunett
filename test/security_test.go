@@ -172,6 +172,40 @@ func ( spClient *SPTestClient ) AssertJobFail( job_ran_error string ) {
 	}
 }
 
+// Convenience  function like AssertJobFail but just runs through making sure we have status updates
+func ( spClient *SPTestClient ) RunJob() {
+	s := spClient.s
+
+	firstUpdate, err := spClient.GetNextDeploymentUpdate()
+	s.Nil(err, "Failed to get first deployment update for success")
+
+	// If we have received a message a job is running, lets also confirm that the DeploymentRequest is successful as well
+	if firstUpdate.MsgType == libp2p.MsgJobStatus {
+		secondUpdate, err := spClient.GetNextDeploymentUpdate()
+		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
+		s.Nil(err, "Failed to get second deployment update for success")
+
+		if secondUpdate.Response.Success {
+			// Wait for CP to finish the current job, as only one job can run at a time
+			// This is to prevent test failure due to "depReq already in progress. Refusing to accept."
+			for {
+				update, err := spClient.GetNextDeploymentUpdate()
+				if err != nil {
+					s.Nil(err, "Failed to get deployment update")
+					break
+				}
+				if update.MsgType == libp2p.MsgLogStdout || update.MsgType == libp2p.MsgLogStderr {
+					continue
+				}
+				// Final confirmation that the job finished
+				s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
+				break;
+			}
+		}
+	}
+}
+
+
 // Test that the CP DMS will not run a job with an invalid tx hash
 func (s *TestHarness) TestTxHashValidation() {
 	spClient, err := CreateServiceProviderTestingClient(s)
@@ -183,6 +217,36 @@ func (s *TestHarness) TestTxHashValidation() {
 	spClient.SendDeploymentRequest(req)
 
 	spClient.AssertJobFail("Malicious SP sent an invalid tx-hash but the CP confirmed deployment success")
+}
+
+func (s *TestHarness) TestInvalidResume() {
+  spClient, err := CreateServiceProviderTestingClient(s)
+  s.Nil(err, "Failed to create testing client");
+  defer spClient.ShutdownSPClient()
+
+  req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+  req.Params.ResumeJob.Resume = true
+  req.Params.ResumeJob.ProgressFile = "null"
+
+  spClient.SendDeploymentRequest(req)
+  spClient.AssertJobFail("Attempted to start invalid resume")
+}
+
+func (s *TestHarness) TestMultipleRequestsSameTX() {
+  spClient, err := CreateServiceProviderTestingClient(s)
+  s.Nil(err, "Failed to create testing client");
+  defer spClient.ShutdownSPClient()
+
+  req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+
+  reqnew := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+  reqnew.MaxNtx = 5
+
+  spClient.SendDeploymentRequest(req)
+  spClient.RunJob()
+
+  spClient.SendDeploymentRequest(reqnew)
+  spClient.AssertJobFail("Attempted to start a job with a previously used tx_hash")
 }
 
 // Test that the CP DMS will not run a job with a valid tx hash that does not have the correct amount of NTX
