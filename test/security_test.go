@@ -1,3 +1,5 @@
+// To run a single test use "-run=^TestSecurity\$ -testify.m TestTxHashValidation"
+
 package main
 
 import (
@@ -20,6 +22,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
@@ -94,6 +97,20 @@ func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.
 	req.Constraints.Vram = 2000
 	req.Constraints.Power = 170
 	req.Constraints.Time = 1
+
+	oracleResp, err := oracle.FundContractRequest(&oracle.FundingRequest{
+		ServiceProviderAddr: req.RequesterWalletAddress,
+		// TODO: obtain from CP metadata
+		ComputeProviderAddr: "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk",
+		EstimatedPrice:      int64(req.MaxNtx),
+	})
+	spClient.s.Nil(err, "Failed to obtain oracleResp");
+
+	req.MetadataHash = oracleResp.MetadataHash
+	req.WithdrawHash = oracleResp.WithdrawHash
+	req.RefundHash = oracleResp.RefundHash
+	req.Distribute_50Hash = oracleResp.Distribute_50Hash
+	req.Distribute_75Hash = oracleResp.Distribute_75Hash
 
 	return req;
 }
@@ -266,6 +283,207 @@ func (s *TestHarness) TestValidServiceType() {
 	spClient.AssertJobFail("Malicious SP sent a DeploymentRequest with invalid ServiceType")
 }
 
+// Test that the SP cannot request refund while the job is executing
+func (s *TestHarness) TestSPCannotRefundWhileJobIsExecuting() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.ModelURL = oneMinSleepModelURL
+
+	spClient.SendDeploymentRequest(req)
+
+	firstUpdate, err := spClient.GetNextDeploymentUpdate()
+	s.Nil(err, "Failed to get first deployment update")
+	s.Equal(libp2p.MsgJobStatus, firstUpdate.MsgType, "Failed to deploy job")
+
+	// Confirm that the DeploymentRequest is successful
+	if firstUpdate.MsgType == libp2p.MsgJobStatus {
+		secondUpdate, err := spClient.GetNextDeploymentUpdate()
+		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
+		s.Nil(err, "Failed to get second deployment update")
+
+
+		// Now that the Job has been confirmed to be running, obtain signatures for refund
+		// SP can obtain the signature based on parameters already known
+		oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
+			JobStatus: "finished with errors",
+			JobDuration: int64(0),
+			EstimatedJobDuration: int64(req.Constraints.Time),
+			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
+		})
+
+		// The SP can in principle obtain a refund using the signature obtained from oracle
+		// while waiting for the job to complete
+		s.NotEqual("refund", oracleResp.RewardType, "Obtained a refund request for a running/valid job")
+		s.NotEqual(128, len(oracleResp.SignatureDatum), "Obtained signature from oracle for a refund request for a running/valid job")
+
+		for {
+			update, err := spClient.GetNextDeploymentUpdate()
+			s.Nil(err, "Failed to get deployment update")
+			if update.MsgType == libp2p.MsgLogStdout || update.MsgType == libp2p.MsgLogStderr {
+				continue
+			}
+			// Final confirmation that the job finished without errors and that SP obtains a valid LogURL from CP
+			s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
+			s.Equal("finished without errors", update.Services.JobStatus, "Expected Job to have finished succesfully")
+			s.NotEqual(0, len(update.Services.LogURL), "Expected LogURL to be non empty")
+			break;
+		}
+	}
+}
+
+// Test that the SP cannot request refund before the timeout of job, even if CP goes offline
+// Note: This is currently identical to TestSPCannotRefundWhileJobIsExecuting,
+// as currntly the SP does not rely on response from CP for executing a refund request
+func (s *TestHarness) TestSPCannotRefundBeforeTimeoutCPOffline() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.ModelURL = oneMinSleepModelURL
+
+	spClient.SendDeploymentRequest(req)
+
+	firstUpdate, err := spClient.GetNextDeploymentUpdate()
+	s.Nil(err, "Failed to get first deployment update")
+	s.Equal(libp2p.MsgJobStatus, firstUpdate.MsgType, "Failed to deploy job")
+
+	// Confirm that the DeploymentRequest is successful
+	if firstUpdate.MsgType == libp2p.MsgJobStatus {
+		secondUpdate, err := spClient.GetNextDeploymentUpdate()
+		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
+		s.Nil(err, "Failed to get second deployment update")
+
+
+		// Now that the Job has been confirmed to be running, obtain signatures for refund
+		// SP can obtain the signature based on parameters already known
+		oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
+			JobStatus: "finished with errors",
+			JobDuration: int64(0),
+			EstimatedJobDuration: int64(req.Constraints.Time),
+			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
+		})
+
+		// The SP can in principle obtain a refund using the signature obtained from oracle
+		// while waiting for the job to complete
+		s.NotEqual("refund", oracleResp.RewardType, "Obtained a refund request for a running/valid job")
+		s.NotEqual(128, len(oracleResp.SignatureDatum), "Obtained signature from oracle for a refund request for a running/valid job")
+
+		for {
+			update, err := spClient.GetNextDeploymentUpdate()
+			s.Nil(err, "Failed to get deployment update")
+			if update.MsgType == libp2p.MsgLogStdout || update.MsgType == libp2p.MsgLogStderr {
+				continue
+			}
+			// Final confirmation that the job finished without errors and that SP obtains a valid LogURL from CP
+			s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
+			s.Equal("finished without errors", update.Services.JobStatus, "Expected Job to have finished succesfully")
+			s.NotEqual(0, len(update.Services.LogURL), "Expected LogURL to be non empty")
+			break;
+		}
+	}
+}
+
+// Test that SP cannot request refund after the job ran successfully
+func (s *TestHarness) TestSPCannotRefundAfterValidJob() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.ModelURL = oneMinSleepModelURL
+
+	spClient.SendDeploymentRequest(req)
+
+	firstUpdate, err := spClient.GetNextDeploymentUpdate()
+	s.Nil(err, "Failed to get first deployment update")
+	s.Equal(libp2p.MsgJobStatus, firstUpdate.MsgType, "Failed to deploy job")
+
+	// Confirm that the DeploymentRequest is successful
+	if firstUpdate.MsgType == libp2p.MsgJobStatus {
+		secondUpdate, err := spClient.GetNextDeploymentUpdate()
+		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
+		s.Nil(err, "Failed to get second deployment update")
+
+		// Wait for the job to finish successfully
+		for {
+			update, err := spClient.GetNextDeploymentUpdate()
+			s.Nil(err, "Failed to get deployment update")
+			if update.MsgType == libp2p.MsgLogStdout || update.MsgType == libp2p.MsgLogStderr {
+				continue
+			}
+			// Final confirmation that the job finished without errors and that SP obtains a valid LogURL from CP
+			s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
+			s.Equal("finished without errors", update.Services.JobStatus, "Expected Job to have finished succesfully")
+			s.NotEqual(0, len(update.Services.LogURL), "Expected LogURL to be non empty")
+			break;
+		}
+	}
+
+	// Now obtain signatures for refund, by pretending that the job finished with errors
+	oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
+		JobStatus: "finished with errors",
+			JobDuration: int64(0),
+			EstimatedJobDuration: int64(req.Constraints.Time),
+			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
+		})
+
+	// Using these signatures the SP can do a refund request
+	// At this point the CP DMS and SP DMS will likely compete for submitting the txs on chain.
+	// It will be a race situation but the SP can win, as
+	// the CP DMS does not send the withdraw tx to chain before sending the results.
+	s.NotEqual("refund", oracleResp.RewardType, "Obtained a refund request for a running/valid job")
+	s.NotEqual(128, len(oracleResp.SignatureDatum), "Obtained signature from oracle for a refund request for a running/valid job")
+}
+
+// Test that CP cannot request withdraw without running job successfully
+func (s *TestHarness) TestCPCannotWithdrawForInvalidResults() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+
+	// At the moment it is not necessary to even run the job to perform a withdraw
+	// Therefore CP can respond that it is executing the job, while it does the withdraw
+	// Now obtain signatures for withdraw, by pretending that the job finished successfully
+	oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
+		JobStatus: "finished without errors",
+			JobDuration: int64(req.Constraints.Time),
+			EstimatedJobDuration: int64(req.Constraints.Time),
+			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
+		})
+
+	// Using these signatures the CP can do a withdraw request
+	s.NotEqual("withdraw", oracleResp.RewardType, "Obtained a withdraw request without running the job")
+	s.NotEqual(128, len(oracleResp.SignatureDatum), "Obtained signature from oracle for a withdraw request without running the job")
+}
+
+type OracleRewardReqPayload struct
+{
+	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
+	JobDuration          int64  // job duration in minutes
+	EstimatedJobDuration int64  // job duration in minutes
+	LogURL               string
+}
+
+func ( spClient *SPTestClient ) getSignaturesFromOracle(req models.DeploymentRequest, payload OracleRewardReqPayload) (oracleResp *oracle.RewardResponse) {
+	oracleResp, err := oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
+		JobStatus:            payload.JobStatus,
+		JobDuration:          payload.JobDuration,
+		EstimatedJobDuration: payload.EstimatedJobDuration,
+		LogPath:              payload.LogURL,
+		MetadataHash:         req.MetadataHash,
+		WithdrawHash:         req.WithdrawHash,
+		RefundHash:           req.RefundHash,
+		Distribute_50Hash:    req.Distribute_50Hash,
+		Distribute_75Hash:    req.Distribute_75Hash,
+	})
+
+	spClient.s.Nil(err, "Failed to obtain signatures from oracle");
+
+	return oracleResp
+}
+
 func GenerateTestKeyPair() (crypto.PrivKey, crypto.PubKey, error) {
 	priv, pub, err := crypto.GenerateKeyPair(
 		crypto.Ed25519, // Ed25519 are nice short
@@ -356,7 +574,11 @@ func CreateServiceProviderTestingClient( s *TestHarness ) (SPTestClient, error) 
 	selfID := p2p.Host.ID()
 	err = p2p.BootstrapNode(ctx)
 
+	// After bootstrap wait a moment for the peer tables to initialize
+	time.Sleep(2 * time.Second)
+
 	cpID := GetTestComputeProviderID()
+
 	stream, err := host.NewStream(context.Background(), cpID, libp2p.DepReqProtocolID)
 
 	reader := bufio.NewReader(stream)
