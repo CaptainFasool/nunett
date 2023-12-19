@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.150](#327)
+
+### Fixed
+- Reset outbound depreq stream when other side closes
+
 ## [0.4.149](#324)
 
 ### Changed

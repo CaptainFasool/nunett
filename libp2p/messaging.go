@@ -209,6 +209,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 
 		if err == io.EOF {
 			zlog.Sugar().Debug("Stream closed with EOF, ending read loop")
+			OutboundDepReqStream = nil
 			return
 		} else if err != nil || resp == "" {
 			zlog.Sugar().Errorf("failed to read deployment update: %v", err)
@@ -300,6 +301,7 @@ func DeploymentUpdateListener(stream network.Stream) {
 				} else if !depRespMessage.Success {
 					JobFailedQueue <- depRespMessage.Content
 					OutboundDepReqStream.Reset()
+					OutboundDepReqStream = nil
 				}
 
 				// XXX: Needs to be modified to take multiple deployment requests from same service provider
