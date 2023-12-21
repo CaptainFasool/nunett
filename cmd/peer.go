@@ -2,18 +2,23 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
-func init() {
-	peerCmd.AddCommand(peerListCmd)
-	peerCmd.AddCommand(peerSelfCmd)
-}
+var peerCmd = NewPeerCmd(networkService)
 
-var peerCmd = &cobra.Command{
-	Use:   "peer",
-	Short: "Peer-related operations",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
+func NewPeerCmd(net backend.NetworkManager) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "peer",
+		Short:             "Peer-related operations",
+		Long:              ``,
+		PersistentPreRunE: isDMSRunning(net),
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Help()
+		},
+	}
+
+	cmd.AddCommand(peerListCmd)
+	cmd.AddCommand(peerSelfCmd)
+	return cmd
 }

@@ -1,85 +1,93 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
 	"sync"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/spf13/cobra"
 
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func init() {
+var chatStartCmd = NewChatStartCmd(p2pService, utilsService, webSocketClient)
 
-}
+func NewChatStartCmd(p2pService backend.PeerManager, utilsService backend.Utility, wsClient backend.WebSocketClient) *cobra.Command {
+	return &cobra.Command{
+		Use:     "start",
+		Short:   "Start chat with a peer",
+		Example: "nunet chat start <peerID>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			log.SetOutput(cmd.OutOrStderr())
 
-var chatStartCmd = &cobra.Command{
-	Use:     "start",
-	Short:   "Start chat with a peer",
-	Example: "nunet chat start <peerID>",
-	Long:    "",
-	Run: func(cmd *cobra.Command, args []string) {
-		err := validateStartChatInput(args)
-		if err != nil {
-			fmt.Println("Error:", err)
-			fmt.Printf("\nFor starting chats, check:\n\tnunet chat start --help\n")
+			err := validateStartChatInput(p2pService, args)
+			if err != nil {
+				return fmt.Errorf("start chat failed: %w", err)
+			}
 
-			os.Exit(1)
-		}
+			query := "peerID=" + args[0]
 
-		query := "peerID=" + args[0]
+			startURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/chat/start", query)
+			if err != nil {
+				return fmt.Errorf("could not compose WebSocket URL: %w", err)
+			}
 
-		startURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/chat/start", query)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+			err = wsClient.Initialize(startURL)
+			if err != nil {
+				return fmt.Errorf("failed to initialize WebSocket client: %w", err)
+			}
+			defer func() {
+				err := wsClient.Close()
+				if err != nil {
+					log.Printf("failed to close WebSocket client: %v\n", err)
+				}
+			}()
 
-		client := &Client{}
-		err = client.Initialize(startURL)
-		if err != nil {
-			fmt.Println("Failed to initialize client:", err)
-			os.Exit(1)
-		}
-		defer client.Conn.Close()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		var wg sync.WaitGroup
-		wg.Add(3)
+			go func() {
+				interrupt := make(chan os.Signal, 1)
+				signal.Notify(interrupt, os.Interrupt)
+				<-interrupt
+				cancel()
+			}()
 
-		go func() {
-			client.ReadMessages()
-			wg.Done()
-			client.stop <- true
-		}()
-		go func() {
-			client.WriteMessages()
-			wg.Done()
-			client.stop <- true
-		}()
+			var wg sync.WaitGroup
+			wg.Add(3)
 
-		go func() {
-			client.HandleInterruptsAndPings()
-			wg.Done()
-			client.stop <- true
-		}()
+			go func() {
+				defer wg.Done()
 
-		wg.Wait()
-	},
-}
+				err := wsClient.ReadMessage(ctx, cmd.OutOrStdout())
+				if err != nil {
+					log.Printf("Error: %v\n", err)
+				}
+			}()
+			go func() {
+				defer wg.Done()
 
-func validateStartChatInput(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("no peer ID specified")
-	} else if len(args) > 1 {
-		return fmt.Errorf("unable to start multiple chats")
-	} else {
-		_, err := peer.Decode(args[0])
-		if err != nil {
-			return fmt.Errorf("argument is not a valid peer ID")
-		}
+				err := wsClient.WriteMessage(ctx, cmd.InOrStdin())
+				if err != nil {
+					log.Printf("Error: %v\n", err)
+				}
+			}()
+
+			go func() {
+				defer wg.Done()
+
+				err := wsClient.Ping(ctx, cmd.OutOrStderr())
+				if err != nil {
+					log.Printf("Error: %v\n", err)
+				}
+			}()
+
+			wg.Wait()
+			return nil
+		},
 	}
-
-	return nil
 }

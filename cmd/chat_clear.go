@@ -2,27 +2,24 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
-	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
-func init() {
+var chatClearCmd = NewChatClearCmd(p2pService)
 
-}
+func NewChatClearCmd(p2pService backend.PeerManager) *cobra.Command {
+	return &cobra.Command{
+		Use:   "clear",
+		Short: "Clear open chat streams",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := p2pService.ClearIncomingChatRequests()
+			if err != nil {
+				return fmt.Errorf("clear chat failed: %w", err)
+			}
 
-var chatClearCmd = &cobra.Command{
-	Use:   "clear",
-	Short: "Clear open chat streams",
-	Long:  "",
-	Run: func(cmd *cobra.Command, args []string) {
-		err := libp2p.ClearIncomingChatRequests()
-		if err != nil {
-			fmt.Println("Error:", err)
-			os.Exit(1)
-		}
-
-		os.Exit(0)
-	},
+			return nil
+		},
+	}
 }

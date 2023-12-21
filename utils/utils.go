@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	gonet "github.com/shirou/gopsutil/net"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
@@ -244,6 +243,28 @@ func ReadyForElastic() bool {
 	return elasticToken.NodeId != "" && elasticToken.ChannelName != ""
 }
 
+// PromptYesNo loops on confirmation from user until valid answer
+func PromptYesNo(in io.Reader, out io.Writer, prompt string) (bool, error) {
+	reader := bufio.NewReader(in)
+
+	for {
+		fmt.Fprintf(out, "%s (y/N): ", prompt)
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			return false, fmt.Errorf("read response string failed: %w", err)
+		}
+
+		response = strings.ToLower(strings.TrimSpace(response))
+
+		if response == "y" || response == "yes" {
+			return true, nil
+		} else if response == "n" || response == "no" {
+			return false, nil
+		}
+	}
+}
+
 // CreateDirectoryIfNotExists creates a directory if it does not exist
 func CreateDirectoryIfNotExists(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -360,34 +381,6 @@ func ExtractTarGzToPath(tarGzFilePath, extractedPath string) error {
 	return nil
 }
 
-// PromptYesNo prompts the user on stdout for a yes or no response on stdin
-func PromptYesNo(prompt string) (bool, error) {
-	reader := bufio.NewReader(os.Stdin)
-
-	verifyInput := func(input string) bool {
-		lowerInput := strings.ToLower(input)
-		return lowerInput == "y" || lowerInput == "yes" || lowerInput == "n" || lowerInput == "no"
-	}
-
-	for {
-		fmt.Print(prompt + ": ")
-		response, err := reader.ReadString('\n')
-
-		if err != nil {
-			return false, fmt.Errorf("Error reading from buffer: %v", err)
-		}
-
-		response = strings.TrimSpace(response)
-
-		if verifyInput(response) {
-			lowerResponse := strings.ToLower(response)
-			return lowerResponse == "y" || lowerResponse == "yes", nil
-		} else {
-			fmt.Println("Invalid input. Please enter 'y' or 'n'")
-		}
-	}
-}
-
 // CheckWSL check if running in WSL
 func CheckWSL() (bool, error) {
 	file, err := os.Open("/proc/version")
@@ -406,24 +399,6 @@ func CheckWSL() (bool, error) {
 
 	if scanner.Err() != nil {
 		return false, scanner.Err()
-	}
-
-	return false, nil
-}
-
-// ListenDMSPort check if DMS port is being used
-func ListenDMSPort() (bool, error) {
-	port := config.GetConfig().Rest.Port
-
-	conns, err := gonet.Connections("all")
-	if err != nil {
-		return false, err
-	}
-
-	for _, conn := range conns {
-		if conn.Status == "LISTEN" && uint32(port) == conn.Laddr.Port {
-			return true, nil
-		}
 	}
 
 	return false, nil

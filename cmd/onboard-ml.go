@@ -13,9 +13,6 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func init() {
-}
-
 var imagesNVIDIA = []string{
 	"registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/tensorflow",
 	"registry.gitlab.com/nunet/ml-on-gpu/ml-on-gpu-service/develop/pytorch",
@@ -27,10 +24,10 @@ var imagesAMD = []string{
 }
 
 var onboardMLCmd = &cobra.Command{
-	Use:    "onboard-ml",
-	Short:  "Setup for Machine Learning with GPU",
-	Long:   ``,
-	PreRun: isDMSRunning(),
+	Use:     "onboard-ml",
+	Short:   "Setup for Machine Learning with GPU",
+	Long:    ``,
+	PreRunE: isDMSRunning(networkService),
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
@@ -97,7 +94,7 @@ func pullMultipleImages(cli *client.Client, ctx context.Context, imageList []typ
 				return fmt.Errorf("unable to pull image %s: %v", images[i], err)
 			}
 		} else {
-			fmt.Println("Image already pulled: %s", images[i])
+			fmt.Printf("Image already pulled: %s\n", images[i])
 		}
 	}
 

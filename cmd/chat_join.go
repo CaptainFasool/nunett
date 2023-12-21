@@ -1,93 +1,100 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
-	"strconv"
+	"os/signal"
 	"sync"
 
 	"github.com/spf13/cobra"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func init() {
-}
+var (
+	chatJoinCmd = NewChatJoinCmd(utilsService, webSocketClient)
+)
 
-var chatJoinCmd = &cobra.Command{
-	Use:     "join",
-	Short:   "Join open chat stream",
-	Example: "nunet chat join <chatID>",
-	Long:    "",
-	Run: func(cmd *cobra.Command, args []string) {
-		err := validateJoinChatInput(args)
-		if err != nil {
-			fmt.Println("Error:", err)
-			fmt.Printf("\nFor joining chats, check:\n\tnunet chat join --help\n")
+func NewChatJoinCmd(utilsService backend.Utility, wsClient backend.WebSocketClient) *cobra.Command {
+	return &cobra.Command{
+		Use:     "join",
+		Short:   "Join open chat stream",
+		Example: "nunet chat join <chatID>",
+		Long:    "",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			chatList, err := utilsService.ResponseBody(nil, "GET", "/api/v1/peers/chat", "", nil)
+			if err != nil {
+				return fmt.Errorf("could not obtain incoming chats list: %w", err)
+			}
 
-			os.Exit(1)
-		}
+			err = validateJoinChatInput(args, chatList)
+			if err != nil {
+				return fmt.Errorf("join chat failed: %w", err)
+			}
 
-		query := "streamID=" + args[0]
+			query := "streamID=" + args[0]
 
-		joinURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/chat/join", query)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+			joinURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/chat/join", query)
+			if err != nil {
+				return fmt.Errorf("could not compose WebSocket URL: %w", err)
+			}
 
-		client := &Client{}
-		err = client.Initialize(joinURL)
-		if err != nil {
-			fmt.Println("Failed to initialize client:", err)
-			os.Exit(1)
-		}
-		defer client.Conn.Close()
+			log.SetOutput(cmd.OutOrStderr())
 
-		var wg sync.WaitGroup
+			err = wsClient.Initialize(joinURL)
+			if err != nil {
+				return fmt.Errorf("failed to initialize WebSocket client: %w", err)
+			}
+			defer func() {
+				err := wsClient.Close()
+				if err != nil {
+					log.Printf("failed to close WebSocket client: %v\n", err)
+				}
+			}()
 
-		wg.Add(3)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		go func() {
-			client.ReadMessages()
-			wg.Done()
-			client.stop <- true
-		}()
-		go func() {
-			client.WriteMessages()
-			wg.Done()
-			client.stop <- true
-		}()
+			go func() {
+				interrupt := make(chan os.Signal, 1)
+				signal.Notify(interrupt, os.Interrupt)
+				<-interrupt
+				cancel()
+			}()
 
-		go func() {
-			client.HandleInterruptsAndPings()
-			wg.Done()
-			client.stop <- true
-		}()
+			var wg sync.WaitGroup
+			wg.Add(3)
 
-		wg.Wait()
-	},
-}
+			go func() {
+				defer wg.Done()
 
-func validateJoinChatInput(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("no chat ID specified")
-	} else if len(args) > 1 {
-		return fmt.Errorf("unable to join multiple chats")
-	} else {
-		chatID, err := strconv.Atoi(args[0])
-		if err != nil {
-			return fmt.Errorf("argument is not a valid chat ID")
-		}
+				err := wsClient.ReadMessage(ctx, cmd.OutOrStdout())
+				if err != nil {
+					log.Printf("Error: %v\n", err)
+				}
+			}()
+			go func() {
+				defer wg.Done()
 
-		openChats, err := getIncomingChatList()
-		if err != nil {
-			return err
-		}
+				err := wsClient.WriteMessage(ctx, cmd.InOrStdin())
+				if err != nil {
+					log.Printf("Error: %v\n", err)
+				}
+			}()
 
-		if chatID >= len(openChats) {
-			return fmt.Errorf("no incoming stream match chat ID specified")
-		}
+			go func() {
+				defer wg.Done()
+
+				err := wsClient.Ping(ctx, cmd.OutOrStderr())
+				if err != nil {
+					log.Printf("Error: %v\n", err)
+				}
+			}()
+
+			wg.Wait()
+			return nil
+		},
 	}
-
-	return nil
 }
