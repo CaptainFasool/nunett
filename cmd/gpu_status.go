@@ -15,14 +15,11 @@ import (
 	library "gitlab.com/nunet/device-management-service/lib"
 )
 
-func init() {
-}
-
 var gpuStatusCmd = &cobra.Command{
-	Use:    "status",
-	Short:  "Check GPU status in real time",
-	Long:   ``,
-	PreRun: isDMSRunning(),
+	Use:     "status",
+	Short:   "Check GPU status in real time",
+	Long:    ``,
+	PreRunE: isDMSRunning(networkService),
 	Run: func(cmd *cobra.Command, args []string) {
 		vendors, err := library.DetectGPUVendors()
 		if err != nil {

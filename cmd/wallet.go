@@ -2,17 +2,21 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
-func init() {
-	walletCmd.AddCommand(walletNewCmd)
-}
+var walletCmd = NewWalletCmd(networkService)
 
-var walletCmd = &cobra.Command{
-	Use:   "wallet",
-	Short: "Wallet Management",
-	Long:  "",
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
+func NewWalletCmd(net backend.NetworkManager) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "wallet",
+		Short:             "Wallet Management",
+		PersistentPreRunE: isDMSRunning(net),
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Help()
+		},
+	}
+
+	cmd.AddCommand(walletNewCmd)
+	return cmd
 }

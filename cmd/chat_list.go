@@ -1,64 +1,45 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/buger/jsonparser"
-	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/utils"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
-func init() {
+var chatListCmd = NewChatListCmd(utilsService)
 
-}
+func NewChatListCmd(utilsService backend.Utility) *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "Display table of open chat streams",
+		Long:  "",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			chatBody, err := utilsService.ResponseBody(nil, "GET", "/api/v1/peers/chat", "", nil)
+			if err != nil {
+				return fmt.Errorf("unable to get chat list response body: %w", err)
+			}
 
-var chatListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "Display table of open chat streams",
-	Long:  "",
-	Run: func(cmd *cobra.Command, args []string) {
-		chatList, err := getIncomingChatList()
-		if err != nil {
-			fmt.Println("Error:", err)
-			os.Exit(1)
-		}
+			errMsg, err := jsonparser.GetString(chatBody, "error")
+			if err == nil {
+				return fmt.Errorf(errMsg)
+			}
 
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Stream ID", "From Peer", "Time Opened"})
-		table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-		table.SetCenterSeparator("|")
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
+			chatList, err := getIncomingChatList(chatBody)
+			if err != nil {
+				return fmt.Errorf("could not get incoming chat list: %w", err)
+			}
 
-		for _, chat := range chatList {
-			table.Append([]string{strconv.Itoa(chat.ID), chat.StreamID, chat.FromPeer, chat.TimeOpened})
-		}
+			table := setupChatTable(cmd.OutOrStdout())
 
-		table.Render()
-		os.Exit(0)
-	},
-}
+			for _, chat := range chatList {
+				table.Append([]string{strconv.Itoa(chat.ID), chat.StreamID, chat.FromPeer, chat.TimeOpened})
+			}
 
-func getIncomingChatList() ([]libp2p.OpenStream, error) {
-	chatList, err := utils.ResponseBody(nil, "GET", "/api/v1/peers/chat", "", nil)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get response body: %v", err)
+			table.Render()
+			return nil
+		},
 	}
-
-	errMsg, err := jsonparser.GetString(chatList, "error")
-	if err == nil {
-		return nil, fmt.Errorf(errMsg)
-	}
-
-	incomingChatList := []libp2p.OpenStream{}
-	err = json.Unmarshal(chatList, &incomingChatList)
-	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal response body: %v", err)
-	}
-
-	return incomingChatList, nil
 }

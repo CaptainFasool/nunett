@@ -3,161 +3,103 @@
 package cmd
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/coreos/go-systemd/sdjournal"
 	"github.com/spf13/cobra"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
-func init() {
+const (
+	logDir    = "/tmp/nunet-log"
+	dmsUnit   = "nunet-dms.service"
+	tarGzName = "nunet-log.tar.gz"
+)
 
-}
+var logCmd = NewLogCmd(networkService, fileSystemService, journalService)
 
-var logCmd = &cobra.Command{
-	Use:    "log",
-	Short:  "Gather all logs into a tarball",
-	Long:   "",
-	PreRun: isDMSRunning(),
-	Run: func(cmd *cobra.Command, args []string) {
-		logDir := "/tmp/nunet-log"
-		dmsLogDir := filepath.Join(logDir, "dms-log")
+func NewLogCmd(net backend.NetworkManager, fs backend.FileSystem, journal backend.Logger) *cobra.Command {
+	return &cobra.Command{
+		Use:     "log",
+		Short:   "Gather all logs into a tarball",
+		PreRunE: isDMSRunning(net),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dmsLogDir := filepath.Join(logDir, "dms-log")
 
-		fmt.Println("Collecting logs...")
+			fmt.Fprintln(cmd.OutOrStdout(), "Collecting logs...")
 
-		// create directory with necessary permissions
-		err := os.MkdirAll(dmsLogDir, 0777)
-		if err != nil {
-			fmt.Println("Error creating directory:", err)
-			os.Exit(1)
-		}
-
-		// initialize journal
-		j, err := sdjournal.NewJournal()
-		if err != nil {
-			fmt.Println("Error initializing journal:", err)
-			os.Exit(1)
-		}
-		defer j.Close()
-
-		// filter by service unit name
-		if err := j.AddMatch("_SYSTEMD_UNIT=nunet-dms.service"); err != nil {
-			fmt.Println("Error adding match:", err)
-			os.Exit(1)
-		}
-
-		bootIDs := map[string]int{}
-
-		// loop through journal entries
-		for {
-			c, err := j.Next()
+			err := fs.MkdirAll(dmsLogDir, 0777)
 			if err != nil {
-				fmt.Println("Error reading next journal entry:", err)
-				continue
+				return fmt.Errorf("cannot create dms-log directory: %w", err)
 			}
 
-			if c == 0 {
-				break
-			}
+			// journal is initialized in init.go
+			defer journal.Close()
 
-			entry, err := j.GetEntry()
+			// filter by service unit name
+			match := fmt.Sprintf("_SYSTEMD_UNIT=%s", dmsUnit)
+
+			err = journal.AddMatch(match)
 			if err != nil {
-				fmt.Println("Error getting journal entry:", err)
-				continue
+				return fmt.Errorf("cannot add unit match: %w", err)
 			}
 
-			bootID := entry.Fields["_BOOT_ID"]
-			if _, exists := bootIDs[bootID]; !exists {
-				bootIDs[bootID] = len(bootIDs) + 1
+			var count int
+
+			// loop through journal entries
+			for {
+				c, err := journal.Next()
+				if err != nil {
+					fmt.Fprintf(cmd.OutOrStderr(), "Error reading next journal entry: %v\n", err)
+					continue
+				}
+
+				if c == 0 {
+					break
+				}
+
+				entry, err := journal.GetEntry()
+				if err != nil {
+					fmt.Fprintf(cmd.OutOrStderr(), "Error getting journal entry %d: %v\n", count, err)
+					continue
+				}
+
+				msg, ok := entry.Fields["MESSAGE"]
+				if !ok {
+					fmt.Fprintf(cmd.OutOrStderr(), "Error: no message field in entry %d\n", count)
+				}
+
+				logData := fmt.Sprintf("%d: %s\n", entry.RealtimeTimestamp, msg)
+
+				logFilePath := filepath.Join(dmsLogDir, fmt.Sprintf("dms_log.%d", count))
+
+				err = appendToFile(fs, logFilePath, logData)
+				if err != nil {
+					fmt.Fprintf(cmd.OutOrStderr(), "Error writing log file for boot %d: %v\n", count, err)
+				}
+
+				count++
 			}
 
-			logData := fmt.Sprintf("%s: %s\n", entry.RealtimeTimestamp, entry.Fields["MESSAGE"])
-
-			logFilePath := filepath.Join(dmsLogDir, fmt.Sprintf("dms_log.%d", bootIDs[bootID]))
-			if err := appendToFile(logFilePath, logData); err != nil {
-				fmt.Printf("Error writing log file for boot %d: %s", bootIDs[bootID], err)
+			if count == 0 {
+				fmt.Fprintln(cmd.OutOrStdout(), "No log entries")
+				return nil
 			}
-		}
 
-		// create tar archive
-		tarGzFile := filepath.Join(logDir, "nunet-log.tar.gz")
-		if err := createTar(tarGzFile, dmsLogDir); err != nil {
-			fmt.Println("Error creating tar archive:", err)
-			os.Exit(1)
-		}
+			tarGzFile := filepath.Join(logDir, tarGzName)
 
-		// remove dms-log directory
-		if err := os.RemoveAll(dmsLogDir); err != nil {
-			fmt.Println("Error removing dms-log directory: %s", err)
-			os.Exit(1)
-		}
+			err = createTar(fs, tarGzFile, dmsLogDir)
+			if err != nil {
+				return fmt.Errorf("cannot create tar.gz file: %w", err)
+			}
 
-		fmt.Println(tarGzFile)
-	},
-}
+			err = fs.RemoveAll(dmsLogDir)
+			if err != nil {
+				return fmt.Errorf("remove dms-log directory failed: %w", err)
+			}
 
-func appendToFile(filename, data string) error {
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := f.WriteString(data); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func createTar(tarGzPath string, sourceDir string) error {
-	tarGzFile, err := os.Create(tarGzPath)
-	if err != nil {
-		return err
-	}
-	defer tarGzFile.Close()
-
-	gzWriter := gzip.NewWriter(tarGzFile)
-	defer gzWriter.Close()
-
-	tarWriter := tar.NewWriter(gzWriter)
-	defer tarWriter.Close()
-
-	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == tarGzPath {
+			fmt.Fprintln(cmd.OutOrStdout(), tarGzFile)
 			return nil
-		}
-
-		header, err := tar.FileInfoHeader(info, info.Name())
-		if err != nil {
-			return err
-		}
-
-		header.Name = strings.TrimPrefix(path, sourceDir)
-		if header.Name == "" || header.Name == "/" {
-			return nil
-		}
-
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return err
-		}
-
-		if info.Mode().IsRegular() {
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			if _, err := tarWriter.Write(data); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+		},
+	}
 }

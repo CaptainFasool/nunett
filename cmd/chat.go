@@ -2,20 +2,24 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
-func init() {
-	chatCmd.AddCommand(chatClearCmd)
-	chatCmd.AddCommand(chatJoinCmd)
-	chatCmd.AddCommand(chatListCmd)
-	chatCmd.AddCommand(chatStartCmd)
-}
+var chatCmd = NewChatCmd(networkService)
 
-var chatCmd = &cobra.Command{
-	Use:   "chat",
-	Short: "Chat-related operations",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
+func NewChatCmd(net backend.NetworkManager) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "chat",
+		Short:             "Chat-related operations",
+		PersistentPreRunE: isDMSRunning(net),
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Help()
+		},
+	}
+
+	cmd.AddCommand(chatClearCmd)
+	cmd.AddCommand(chatJoinCmd)
+	cmd.AddCommand(chatListCmd)
+	cmd.AddCommand(chatStartCmd)
+	return cmd
 }

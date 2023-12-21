@@ -34,10 +34,10 @@ func init() {
 }
 
 var gpuCapacityCmd = &cobra.Command{
-	Use:    "capacity",
-	Short:  "Check availability of NVIDIA/AMD GPUs",
-	Long:   ``,
-	PreRun: isDMSRunning(),
+	Use:     "capacity",
+	Short:   "Check availability of NVIDIA/AMD GPUs",
+	Long:    ``,
+	PreRunE: isDMSRunning(networkService),
 	Run: func(cmd *cobra.Command, args []string) {
 		cuda, _ := cmd.Flags().GetBool("cuda-tensor")
 		rocm, _ := cmd.Flags().GetBool("rocm-hip")

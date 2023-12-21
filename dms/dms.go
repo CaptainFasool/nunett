@@ -53,7 +53,6 @@ func Run() {
 	if libp2p.GetP2P().Host != nil {
 		SanityCheck(db.DB)
 		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
-
 	}
 
 	// wait for SIGINT or SIGTERM

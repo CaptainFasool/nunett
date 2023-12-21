@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -18,10 +19,10 @@ const (
 )
 
 var gpuOnboardCmd = &cobra.Command{
-	Use:    "onboard",
-	Short:  "Install GPU drivers and Container Runtime",
-	Long:   ``,
-	PreRun: isDMSRunning(),
+	Use:     "onboard",
+	Short:   "Install GPU drivers and Container Runtime",
+	Long:    ``,
+	PreRunE: isDMSRunning(networkService),
 	Run: func(cmd *cobra.Command, args []string) {
 		wsl, err := utils.CheckWSL()
 		if err != nil {
@@ -47,7 +48,7 @@ var gpuOnboardCmd = &cobra.Command{
 			fmt.Printf("You are running on Windows Subsystem for Linux (WSL)\n\nWARNING: AMD GPUs are not supported!\n")
 
 			if hasNVIDIA {
-				err := promptContainer(containerPath)
+				err := promptContainer(cmd.InOrStdin(), cmd.OutOrStdout(), containerPath)
 				if err != nil {
 					fmt.Println("Error during Container Runtime installation:", err)
 					os.Exit(1)
@@ -66,7 +67,7 @@ var gpuOnboardCmd = &cobra.Command{
 			if mining {
 				fmt.Println("You are likely running a Mining OS. Skipping driver installation...")
 
-				err := promptContainer(containerPath)
+				err := promptContainer(cmd.InOrStdin(), cmd.OutOrStdout(), containerPath)
 				if err != nil {
 					fmt.Println("Error during Container Runtime installation:", err)
 					os.Exit(1)
@@ -84,13 +85,13 @@ var gpuOnboardCmd = &cobra.Command{
 
 				printGPUs(NVIDIAGPUs)
 
-				err = promptContainer(containerPath)
+				err = promptContainer(cmd.InOrStdin(), cmd.OutOrStdout(), containerPath)
 				if err != nil {
 					fmt.Println("Error during Container Runtime installation:", err)
 					os.Exit(1)
 				}
 
-				err = promptDriverInstallation(library.NVIDIA, nvidiaDriverPath)
+				err = promptDriverInstallation(cmd.InOrStdin(), cmd.OutOrStdout(), library.NVIDIA, nvidiaDriverPath)
 				if err != nil {
 					fmt.Println("Error during NVIDIA drivers installation:", err)
 					os.Exit(1)
@@ -106,7 +107,7 @@ var gpuOnboardCmd = &cobra.Command{
 
 				printGPUs(AMDGPUs)
 
-				err = promptDriverInstallation(library.AMD, amdDriverPath)
+				err = promptDriverInstallation(cmd.InOrStdin(), cmd.OutOrStdout(), library.AMD, amdDriverPath)
 				if err != nil {
 					fmt.Println("Error during AMD drivers installation:", err)
 					os.Exit(1)
@@ -147,10 +148,10 @@ func runScript(scriptPath string) error {
 
 // promptContainer takes container runtime script path as input and prompts the user for confirmation.
 // If confirmed, it runs the script.
-func promptContainer(containerPath string) error {
-	proceed, err := utils.PromptYesNo("Do you want to proceed with Container Runtime installation? (y/N)")
+func promptContainer(in io.Reader, out io.Writer, containerPath string) error {
+	proceed, err := utils.PromptYesNo(in, out, "Do you want to proceed with Container Runtime installation? (y/N)")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not read answer from prompt: %v", err)
 	}
 
 	if proceed {
@@ -165,12 +166,12 @@ func promptContainer(containerPath string) error {
 
 // promptDriverInstallation takes GPUVendor (for printing) and the installation script as inputs.
 // It prompts the user for confirmation and if confirmed it runs the script.
-func promptDriverInstallation(vendor library.GPUVendor, scriptPath string) error {
+func promptDriverInstallation(in io.Reader, out io.Writer, vendor library.GPUVendor, scriptPath string) error {
 	prompt := fmt.Sprintf("Do you want to proceed with %s driver installation? (y/N)", vendor.String())
 
-	proceed, err := utils.PromptYesNo(prompt)
+	proceed, err := utils.PromptYesNo(in, out, prompt)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not read answer from prompt: %v", err)
 	}
 
 	if proceed {

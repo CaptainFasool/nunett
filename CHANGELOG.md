@@ -21,6 +21,13 @@ Types of changes
 
 -->
 
+## [0.4.151](#315)
+
+### Changed
+- Update commmand run functions to return errors
+- Organize command implementations and their backends
+- Unit test for each command
+
 ## [0.4.150](#327)
 
 ### Fixed

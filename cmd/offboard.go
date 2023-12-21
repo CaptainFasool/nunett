@@ -16,10 +16,10 @@ func init() {
 }
 
 var offboardCmd = &cobra.Command{
-	Use:    "offboard",
-	Short:  "Offboard the device from NuNet",
-	Long:   ``,
-	PreRun: isDMSRunning(),
+	Use:     "offboard",
+	Short:   "Offboard the device from NuNet",
+	Long:    ``,
+	PreRunE: isDMSRunning(networkService),
 	Run: func(cmd *cobra.Command, args []string) {
 		onboarded, err := utils.IsOnboarded()
 		if err != nil {
@@ -36,7 +36,12 @@ For onboarding, check:
 		}
 
 		fmt.Println("Warning: Offboarding will remove all your data and you will not be able to onboard again with the same identity")
-		answer, _ := utils.PromptYesNo("Are you sure you want to offboard? (y/N)")
+		answer, err := utils.PromptYesNo(cmd.InOrStdin(), cmd.OutOrStdout(), "Are you sure you want to offboard? (y/N)")
+		if err != nil {
+			fmt.Println("Error reading answer for onboard prompt:", err)
+			os.Exit(1)
+		}
+
 		if !answer {
 			fmt.Println("Exiting...")
 			os.Exit(1)

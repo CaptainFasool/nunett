@@ -1,180 +1,84 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"os"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/onboarding"
-	"gitlab.com/nunet/device-management-service/utils"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
+// support for bitwise operations according to each flag
 const (
-	bitFullFlag      = 1 << iota // 1
-	bitAvailableFlag             // 2
-	bitOnboardedFlag             // 4
+	bitFullFlag      = 1 << iota // 1 (001)
+	bitAvailableFlag             // 2 (010)
+	bitOnboardedFlag             // 4 (100)
 )
 
-var flagFull, flagAvailable, flagOnboarded bool
+var (
+	capacityCmd                            = NewCapacityCmd(networkService, resourceService, utilsService)
+	flagFull, flagAvailable, flagOnboarded bool
+)
 
-func init() {
-	capacityCmd.Flags().BoolVarP(&flagFull, "full", "f", false, "display device ")
-	capacityCmd.Flags().BoolVarP(&flagAvailable, "available", "a", false, "display amount of resources still available for onboarding")
-	capacityCmd.Flags().BoolVarP(&flagOnboarded, "onboarded", "o", false, "display amount of onboarded resources")
-}
+func NewCapacityCmd(net backend.NetworkManager, resources backend.ResourceManager, utilsService backend.Utility) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "capacity",
+		Short:   "Display capacity of device resources",
+		Long:    `Retrieve capacity of the machine, onboarded or available amount of resources`,
+		PreRunE: isDMSRunning(net),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			onboarded, _ := cmd.Flags().GetBool("onboarded")
+			full, _ := cmd.Flags().GetBool("full")
+			available, _ := cmd.Flags().GetBool("available")
 
-var capacityCmd = &cobra.Command{
-	Use:    "capacity",
-	Short:  "Display capacity of device resources",
-	Long:   `Retrieve capacity of the machine, onboarded or available amount of resources. `,
-	PreRun: isDMSRunning(),
-	Run: func(cmd *cobra.Command, args []string) {
-		onboarded, _ := cmd.Flags().GetBool("onboarded")
-		full, _ := cmd.Flags().GetBool("full")
-		available, _ := cmd.Flags().GetBool("available")
-
-		// flagCombination stores the bitwise value of combined flags
-		var flagCombination int
-		if full {
-			flagCombination |= bitFullFlag
-		}
-		if available {
-			flagCombination |= bitAvailableFlag
-		}
-		if onboarded {
-			flagCombination |= bitOnboardedFlag
-		}
-
-		if flagCombination == 0 {
-			fmt.Println(`Error: no flags specified
-
-For more help, check:
-    nunet capacity --help`)
-			os.Exit(1)
-		}
-
-		var table *tablewriter.Table
-		// setups table in case of full, available or onboarded flags are passed
-		if flagCombination&bitFullFlag != 0 || flagCombination&bitAvailableFlag != 0 || flagCombination&bitOnboardedFlag != 0 {
-			table = setupTable()
-		}
-
-		if flagCombination&bitFullFlag != 0 {
-			if err := handleFull(table); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+			// flagCombination stores the bitwise value of combined flags
+			var flagCombination int
+			if full {
+				flagCombination |= bitFullFlag
 			}
-		}
-		if flagCombination&bitAvailableFlag != 0 {
-			if err := handleAvailable(table); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+			if available {
+				flagCombination |= bitAvailableFlag
 			}
-		}
-		if flagCombination&bitOnboardedFlag != 0 {
-			if err := handleOnboarded(table); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+			if onboarded {
+				flagCombination |= bitOnboardedFlag
 			}
-		}
 
-		if table != nil {
-			table.Render()
-		}
+			if flagCombination == 0 {
+				return fmt.Errorf("no flags specified")
+			}
 
-	},
-}
+			var table *tablewriter.Table
+			// setups table in case of full, available or onboarded flags are passed
+			if flagCombination&bitFullFlag != 0 || flagCombination&bitAvailableFlag != 0 || flagCombination&bitOnboardedFlag != 0 {
+				table = setupTable(cmd.OutOrStdout())
+			}
 
-func setFullData(provisioned *models.Provisioned) []string {
-	return []string{
-		"Full",
-		fmt.Sprintf("%d", provisioned.Memory),
-		fmt.Sprintf("%.0f", provisioned.CPU),
-		fmt.Sprintf("%d", provisioned.NumCores),
-	}
-}
+			if flagCombination&bitFullFlag != 0 {
+				handleFull(table, resources)
+			}
+			if flagCombination&bitAvailableFlag != 0 {
+				err := handleAvailable(table, utilsService)
+				if err != nil {
+					return fmt.Errorf("cannot fetch available data: %w", err)
+				}
+			}
+			if flagCombination&bitOnboardedFlag != 0 {
+				err := handleOnboarded(table, utilsService)
+				if err != nil {
+					return fmt.Errorf("cannot fetch onboarded data: %w", err)
+				}
+			}
 
-func setAvailableData(metadata *models.MetadataV2) []string {
-	return []string{
-		"Available",
-		fmt.Sprintf("%d", metadata.Available.Memory),
-		fmt.Sprintf("%d", metadata.Available.CPU),
-		"",
-	}
-}
+			if table != nil {
+				table.Render()
+			}
 
-func setOnboardedData(metadata *models.MetadataV2) []string {
-	return []string{
-		"Onboarded",
-		fmt.Sprintf("%d", metadata.Reserved.Memory),
-		fmt.Sprintf("%d", metadata.Reserved.CPU),
-		"",
-	}
-}
-
-func setupTable() *tablewriter.Table {
-	table := tablewriter.NewWriter(os.Stdout)
-	headers := []string{"Resources", "Memory", "CPU", "Cores"}
-	table.SetHeader(headers)
-	table.SetAutoMergeCellsByColumnIndex([]int{0})
-	table.SetAutoFormatHeaders(false)
-
-	return table
-}
-
-func handleFull(table *tablewriter.Table) error {
-	totalProvisioned := onboarding.GetTotalProvisioned()
-
-	fullData := setFullData(totalProvisioned)
-	table.Append(fullData)
-	return nil
-}
-
-func handleAvailable(table *tablewriter.Table) error {
-	onboarded, err := utils.IsOnboarded()
-	if err != nil {
-		return fmt.Errorf("Error checking onboard status: %v", err)
+			return nil
+		},
 	}
 
-	if !onboarded {
-		return errors.New(`Looks like your machine is not onboarded...
-
-For onboarding, check:
-    nunet onboard --help`)
-	}
-
-	metadata, err := utils.ReadMetadataFile()
-	if err != nil {
-		return fmt.Errorf("Error reading metadata file: %v", err)
-	}
-
-	availableData := setAvailableData(metadata)
-	table.Append(availableData)
-	return nil
-}
-
-func handleOnboarded(table *tablewriter.Table) error {
-	onboarded, err := utils.IsOnboarded()
-	if err != nil {
-		return fmt.Errorf("Error checking onboard status: %v", err)
-	}
-
-	if !onboarded {
-		return errors.New(`Looks like your machine is not onboarded...
-
-For onboarding, check:
-    nunet onboard --help`)
-	}
-
-	metadata, err := utils.ReadMetadataFile()
-	if err != nil {
-		return fmt.Errorf("Error reading metadata file: %v", err)
-	}
-
-	onboardedData := setOnboardedData(metadata)
-	table.Append(onboardedData)
-	return nil
+	cmd.Flags().BoolVarP(&flagFull, "full", "f", false, "display device ")
+	cmd.Flags().BoolVarP(&flagAvailable, "available", "a", false, "display amount of resources still available for onboarding")
+	cmd.Flags().BoolVarP(&flagOnboarded, "onboarded", "o", false, "display amount of onboarded resources")
+	return cmd
 }
