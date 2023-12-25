@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/afero"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/firecracker"
@@ -27,7 +26,7 @@ func Run() {
 	ctx := context.Background()
 	config.LoadConfig()
 
-	db.ConnectDatabase(afero.NewOsFs())
+	db.ConnectDatabase()
 
 	docker.StartCleanup()
 

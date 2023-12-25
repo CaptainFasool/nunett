@@ -12,11 +12,9 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/nunet/device-management-service/cmd/backend"
-	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
@@ -59,7 +57,6 @@ func isDMSRunning(net backend.NetworkManager) func(*cobra.Command, []string) err
 
 // checkOnboarded is a wrapper of utils.IsOnboarded() that prevents command execution if not onboarded
 func checkOnboarded(utilsService backend.Utility) error {
-	db.ConnectDatabase(afero.NewOsFs())
 	onboarded, err := utilsService.IsOnboarded()
 	if err != nil {
 		return fmt.Errorf("could not check onboard status: %w", err)

@@ -18,7 +18,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func SetUpRouter() *gin.Engine {
@@ -40,18 +44,43 @@ func SetUpRouter() *gin.Engine {
 }
 
 func TestListPeers(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mockDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Errorf("error trying to initialize mock db: %v", err)
+	}
+	db.DB = mockDB
+
 	router := SetUpRouter()
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
 	var metadata models.MetadataV2
 	metadata.AllowCardano = false
+	metadata.Network = "nunet-team"
 	msg, _ := json.Marshal(metadata)
 	FS = afero.NewMemMapFs()
 	AFS = &afero.Afero{Fs: FS}
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1, true)
+
+	host, dht, err := NewHost(ctx, priv1, true)
+	if err != nil {
+		t.Errorf("error trying to initialize host: %v", err)
+	}
+	p2p = *DMSp2pInit(host, dht)
+
+	err = p2p.BootstrapNode(ctx)
+	if err != nil {
+		t.Errorf("error trying to bootstrap node: %v", err)
+	}
+
+	p2p.peers, err = discoverPeers(ctx, host, dht, utils.GetChannelName())
+	if err != nil {
+		t.Errorf("error trying to discover peers: %v", err)
+	}
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/peers", nil)
@@ -68,7 +97,7 @@ func TestListPeers(t *testing.T) {
 	}
 	var list []peerList
 
-	err := json.Unmarshal(body, &list)
+	err = json.Unmarshal(body, &list)
 	if err != nil {
 		t.Error("Error Unmarshaling Peer List:", err)
 	}

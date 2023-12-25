@@ -21,6 +21,13 @@ Types of changes
 
 -->
 
+## [0.4.152](#321)
+
+### Changed
+- Removed unnecessary fs argument in db connection
+- Updated tests
+- Avoid panic on unavailable telemetry collector
+
 ## [0.4.151](#315)
 
 ### Changed
