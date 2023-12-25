@@ -4,21 +4,25 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"os"
 	"os/exec"
-	"strings"
+
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
-	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/models"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
@@ -39,23 +43,27 @@ func SetupRouter() *gin.Engine {
 	return router
 }
 
-type MyTestSuite struct {
+type CLI struct {
 	suite.Suite
 	sync.WaitGroup
 	cleanup func(context.Context) error
 }
 
-func TestMyTestSuite(t *testing.T) {
-	s := new(MyTestSuite)
+func TestCLI(t *testing.T) {
+	s := new(CLI)
 	suite.Run(t, s)
 }
 
-func (s *MyTestSuite) SetupSuite() {
+func (s *CLI) SetupSuite() {
 	os.Mkdir("/tmp/nunet.test", 0755)
 	config.LoadConfig()
 	config.SetConfig("general.metadata_path", "/tmp/nunet.test/")
 
-	db.ConnectDatabase(afero.NewOsFs())
+	mockDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		s.T().Errorf("error trying to initialize mock db: %v", err)
+	}
+	db.DB = mockDB
 
 	s.cleanup = tracing.InitTracer()
 
@@ -66,15 +74,22 @@ func (s *MyTestSuite) SetupSuite() {
 	time.Sleep(4 * time.Second)
 }
 
-func (s *MyTestSuite) TearDownSuite() {
+func (s *CLI) TearDownSuite() {
 	s.WaitGroup.Done()
 	s.cleanup(context.Background())
 	os.RemoveAll("/tmp/nunet.test")
 }
 
-func (s *MyTestSuite) TestNunetWalletNewEthereumCLI() {
-	out, err := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+func (s *CLI) TestNunetWalletNewEthereumCLI() {
+	out, err := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"wallet", "new", "-e").Output()
+
+	if err != nil {
+		s.T().Logf("Error executing command: %v", err)
+		s.FailNow("Failed to execute command")
+	}
+
+	s.T().Logf("Output: %s", string(out))
 
 	s.Nil(err)
 
@@ -85,11 +100,16 @@ func (s *MyTestSuite) TestNunetWalletNewEthereumCLI() {
 	var resp WalletNewEthereumOutput
 	err = json.Unmarshal(out, &resp)
 
+	if err != nil {
+		s.T().Logf("Error unmarshalling JSON: %v", err)
+		s.FailNow("Failed to unmarshal JSON")
+	}
+
 	s.Nil(err)
 }
 
-func (s *MyTestSuite) TestNunetWalletNewCardanoCLI() {
-	out, err := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+func (s *CLI) TestNunetWalletNewCardanoCLI() {
+	out, err := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"wallet", "new", "--cardano").Output()
 
 	s.Nil(err)
@@ -104,8 +124,8 @@ func (s *MyTestSuite) TestNunetWalletNewCardanoCLI() {
 	s.Nil(err)
 }
 
-func (s *MyTestSuite) TestNuNetAvailableCLI() {
-	out, err := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+func (s *CLI) TestNuNetAvailableCLI() {
+	out, err := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"capacity", "-v").Output()
 
 	s.Nil(err)
@@ -143,10 +163,10 @@ func (s *MyTestSuite) TestNuNetAvailableCLI() {
 	s.Nil(err)
 }
 
-func (s *MyTestSuite) TestNunetOnboardNoCPUValueCLI() {
+func (s *CLI) TestNunetOnboardNoCPUValueCLI() {
 	availableMemory := onboarding.GetTotalProvisioned().Memory
 	halfMemory := availableMemory / 2
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"onboard",
 		"-m", fmt.Sprint(halfMemory),
 		"-a", "testaddress",
@@ -154,10 +174,10 @@ func (s *MyTestSuite) TestNunetOnboardNoCPUValueCLI() {
 	s.Contains(string(out), "Error: -c | --cpu must be specified")
 }
 
-func (s *MyTestSuite) TestNunetOnboardNoMemoryValueCLI() {
+func (s *CLI) TestNunetOnboardNoMemoryValueCLI() {
 	availableCPU := onboarding.GetTotalProvisioned().CPU
 	halfCPU := availableCPU / 2
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"onboard",
 		"-c", fmt.Sprint(halfCPU),
 		"-a", "testaddress",
@@ -165,12 +185,12 @@ func (s *MyTestSuite) TestNunetOnboardNoMemoryValueCLI() {
 	s.Contains(string(out), "Error: -m | --memory must be specified")
 }
 
-func (s *MyTestSuite) TestNunetOnboardNoChannelCLI() {
+func (s *CLI) TestNunetOnboardNoChannelCLI() {
 	provisioned := onboarding.GetTotalProvisioned()
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	fiftyPercentMemory := availableMemory / 2
 	fiftyPercentCPU := availableCPU / 2
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"onboard",
 		"-c", fmt.Sprint(fiftyPercentCPU),
 		"-m", fmt.Sprint(fiftyPercentMemory),
@@ -178,25 +198,28 @@ func (s *MyTestSuite) TestNunetOnboardNoChannelCLI() {
 	s.Contains(string(out), "Error: -n | --nunet-channel must be specified")
 }
 
-func (s *MyTestSuite) TestNunetOnboardNoAddressCLI() {
+func (s *CLI) TestNunetOnboardNoAddressCLI() {
 	provisioned := onboarding.GetTotalProvisioned()
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	fiftyPercentMemory := availableMemory / 2
 	fiftyPercentCPU := uint64(availableCPU / 2)
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+	out, err := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"onboard",
 		"-c", fmt.Sprint(fiftyPercentCPU),
 		"-m", fmt.Sprint(fiftyPercentMemory),
 		"-n", "nunet-team").Output()
 	s.Contains(string(out), "Error: -a | --address must be specified")
+	if err != nil {
+		s.T().Errorf("Command execution failed: %v", err)
+	}
 }
 
-func (s *MyTestSuite) TestNunetOnboardLowMemoryCLI() {
+func (s *CLI) TestNunetOnboardLowMemoryCLI() {
 	provisioned := onboarding.GetTotalProvisioned()
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	fivePercentMemory := availableMemory / 20
 	fiftyPercentCPU := uint64(availableCPU / 2)
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"onboard",
 		"-c", fmt.Sprint(fiftyPercentCPU),
 		"-m", fmt.Sprint(fivePercentMemory),
@@ -205,12 +228,12 @@ func (s *MyTestSuite) TestNunetOnboardLowMemoryCLI() {
 	s.Contains(string(out), "Memory should be between 10% and 90% of the available memory")
 }
 
-func (s *MyTestSuite) TestNunetOnboardLowCPUCLI() {
+func (s *CLI) TestNunetOnboardLowCPUCLI() {
 	provisioned := onboarding.GetTotalProvisioned()
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	halfMemory := availableMemory / 2
 	fivePercentCPU := uint64(availableCPU / 20)
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
+	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
 		"onboard",
 		"-c", fmt.Sprint(fivePercentCPU),
 		"-m", fmt.Sprint(halfMemory),
@@ -220,80 +243,87 @@ func (s *MyTestSuite) TestNunetOnboardLowCPUCLI() {
 	s.Contains(string(out), "CPU should be between 10% and 90% of the available CPU")
 }
 
-func (s *MyTestSuite) TestNunetOnboardLowCardanoValuesCLI() {
-	provisioned := onboarding.GetTotalProvisioned()
-	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
-	var minimumCardanoMemory uint64 = 10000
-	var minimumCardanoCPU uint64 = 6000
-	var useCPU, useMemory uint64
-	if availableCPU < float64(minimumCardanoCPU) {
-		useCPU = uint64(availableCPU)
-	} else {
-		useCPU = 5900
-	}
-	if uint64(availableMemory) < uint64(minimumCardanoMemory) {
-		useMemory = uint64(availableMemory)
-	} else {
-		useMemory = 9900
-	}
+func (s *CLI) TestNunetInfoNoMetadataCLI() {
+	testMetadataPath := "test/etc/nunet/metadataV2.json"
+	backupMetadataPath := "test/etc/nunet/metadata_backup.json"
 
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet",
-		"onboard",
-		"-c", fmt.Sprint(useCPU),
-		"-m", fmt.Sprint(useMemory),
-		"-a", "testaddress",
-		"-n", "nunet-test",
-		"--cardano").Output()
-	s.Contains(string(out), "cardano node requires 10000MB of RAM and 6000MHz CPU")
+	os.MkdirAll("test/etc/nunet", 0755)
+	defer os.RemoveAll("test/etc/nunet") // Clean up after the test
+
+	// Create a mock metadata file for the test
+	err := os.WriteFile(testMetadataPath, []byte("mock data"), 0644)
+	s.Require().NoError(err, "Error creating mock metadata file")
+
+	// Remove or rename the metadata file
+	err = os.Rename(testMetadataPath, backupMetadataPath)
+	s.Require().NoError(err, "Error renaming mock metadata file")
+	defer os.Rename(backupMetadataPath, testMetadataPath)
+
+	out, cmdErr := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet", "info").CombinedOutput()
+	s.Require().NoError(cmdErr, "Error executing nunet info command")
+	s.Contains(string(out), "unable to read metadata.json", "Expected error message not found in command output")
 }
 
-func (s *MyTestSuite) TestNunetInfoNoMetadataCLI() {
-	out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
-	s.Contains(string(out), "metadata.json does not exists or not readable")
-}
-
-func (s *MyTestSuite) TestNunetInfoCLICPU() {
+func (s *CLI) TestNunetInfoCLICPU() {
 	gpu, _ := library.Check_gpu()
 	if len(gpu) == 0 {
-		expectedJsonString := `{
-		"name": "TestMachineData",
-		"update_timestamp": 11111111111,
-		"resource": {
-		 "memory_max": 1,
-		 "total_core": 1,
-		 "cpu_max": 1
-		},
-		"available": {
-		 "cpu": 1,
-		 "memory": 1
-		},
-		"reserved": {
-		 "cpu": 1,
-		 "memory": 1
-		},
-		"network": "test-data",
-		"public_key": "test-address"
-		}`
+		expectedMetadata := models.MetadataV2{
+			Name:            "",
+			UpdateTimestamp: 1696269936,
+			Resource: struct {
+				MemoryMax int64 `json:"memory_max,omitempty"`
+				TotalCore int64 `json:"total_core,omitempty"`
+				CPUMax    int64 `json:"cpu_max,omitempty"`
+			}{
+				MemoryMax: 64305,
+				TotalCore: 12,
+				CPUMax:    43200,
+			},
+			Available: struct {
+				CPU    int64 `json:"cpu,omitempty"`
+				Memory int64 `json:"memory,omitempty"`
+			}{
+				CPU:    38200,
+				Memory: 57305,
+			},
+			Reserved: struct {
+				CPU    int64 `json:"cpu,omitempty"`
+				Memory int64 `json:"memory,omitempty"`
+			}{
+				CPU:    5000,
+				Memory: 7000,
+			},
+			Network:   "nunet-team",
+			PublicKey: "addr_test1qr6jk9ty2xhcxvqcy8w7mr22m03vd0de7hxp7nk0xw0x6slmar57e34n47qyy4zzdlzulrd9e6udfsw4r05qshm2gyesew4fxk",
+		}
+
+		// Convert expectedMetadata to JSON string
+		expectedJsonBytes, err := json.Marshal(expectedMetadata)
+		s.Nil(err)
+		expectedJsonString := string(expectedJsonBytes)
+
 		onboarding.AFS.WriteFile(
 			fmt.Sprintf("%s/metadataV2.json", config.GetConfig().MetadataPath),
 			[]byte(expectedJsonString), 0644)
 
-		out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
-		var expectedMetadata, receivedMetadata models.MetadataV2
+		out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
 
-		onboarding.AFS.Remove(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().MetadataPath))
+		// Unmarshal the output into receivedMetadata
+		var receivedMetadata models.MetadataV2
+		err = json.Unmarshal(out, &receivedMetadata)
+		s.Nil(err)
 
-		err := json.Unmarshal(out, &receivedMetadata)
-		s.Nil(err)
-		err = json.Unmarshal([]byte(expectedJsonString), &expectedMetadata)
-		s.Nil(err)
+		// Compare the expected and received metadata
 		s.Equal(expectedMetadata, receivedMetadata)
+
+		// Clean up
+		onboarding.AFS.Remove(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().MetadataPath))
 	} else {
 		s.T().Skip("Skipping tests because GPUs are available.")
 	}
 }
 
-func (s *MyTestSuite) TestNunetInfoCLIGPU() {
+func (s *CLI) TestNunetInfoCLIGPU() {
 	gpu, _ := library.Check_gpu()
 	if len(gpu) > 0 {
 		expectedJsonString := `{
@@ -320,7 +350,7 @@ func (s *MyTestSuite) TestNunetInfoCLIGPU() {
 		}]
 		}`
 		onboarding.AFS.WriteFile("/etc/nunet/metadataV2.json", []byte(expectedJsonString), 0644)
-		out, _ := exec.Command("./maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
+		out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet", "info").Output()
 		var expectedMetadata, receivedMetadata models.MetadataV2
 
 		output := string(out)

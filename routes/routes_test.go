@@ -2,11 +2,13 @@ package routes
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -25,7 +27,6 @@ import (
 	dmslibp2p "gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 
-	"github.com/libp2p/go-libp2p"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -169,19 +170,30 @@ func TestHandleDeploymentRequest(t *testing.T) {
 }
 
 func TestHandleRequestService(t *testing.T) {
-	// Mock the filesystem
-	fs := afero.NewMemMapFs()
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// Connect to the in-memory database
-	db.ConnectDatabase(fs)
+	mockDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Errorf("error trying to initialize mock db: %v", err)
+	}
+	db.DB = mockDB
 
-	if db.DB == nil {
-		t.Fatal("Database connection not established")
+	err = mockDB.AutoMigrate(&models.Libp2pInfo{})
+	if err != nil {
+		t.Fatalf("unable to migrate Libp2pInfo table - %v", err)
 	}
 
 	// Setup the router
 	router := SetUpRouter()
-	host, err := libp2p.New()
+
+	// Setup host
+	privK, pubK, _ := dmslibp2p.GenerateKey(time.Now().Unix())
+	err = dmslibp2p.SaveNodeInfo(privK, pubK, true)
+	if err != nil {
+		t.Fatal("Failed to save node info")
+	}
+	host, _, err := dmslibp2p.NewHost(ctx, privK, true)
 	if err != nil {
 		t.Fatal("Failed to create libp2p host")
 	}
@@ -250,13 +262,13 @@ func TestGetJobTxHashes(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening gorm database", err)
 	}
 
+	db.DB = mockDB
+
 	// Run the migrations to create the necessary tables in the in-memory database
-	err = mockDB.AutoMigrate(&models.Services{})
+	err = db.DB.AutoMigrate(&models.Services{})
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when migrating the database", err)
 	}
-
-	db.DB = mockDB
 
 	router := SetUpRouter()
 
@@ -278,7 +290,7 @@ func TestGetJobTxHashes(t *testing.T) {
 
 	// test when there are records in services table
 	mockHash := utils.RandomString(64)
-	mockDB.Create(&models.Services{TxHash: mockHash, LogURL: "log.nunet.io"})
+	db.DB.Create(&models.Services{TxHash: mockHash, LogURL: "log.nunet.io", TransactionType: "done"})
 
 	w = httptest.NewRecorder()
 	req, err = http.NewRequest("GET", "/api/v1/transactions?size_done=1", nil)

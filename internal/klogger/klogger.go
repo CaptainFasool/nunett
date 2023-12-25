@@ -49,28 +49,19 @@ func (cl *CustomLogger) log(level string, message string) {
 // Info logs an informational message
 func (cl *CustomLogger) Info(message string) {
 	cl.log("INFO", message)
-	err := heartbeat.DmsLoggs(message, "INFO")
-	if err != nil {
-		panic(err)
-	}
+	heartbeat.DmsLoggs(message, "INFO")
 }
 
 // Warning logs a warning message
 func (cl *CustomLogger) Warning(message string) {
 	cl.log("WARNING", message)
-	err := heartbeat.DmsLoggs(message, "Warning")
-	if err != nil {
-		panic(err)
-	}
+	heartbeat.DmsLoggs(message, "Warning")
 }
 
 // Error logs an error message
 func (cl *CustomLogger) Error(message string) {
 	cl.log("ERROR", message)
-	err := heartbeat.DmsLoggs(message, "Error")
-	if err != nil {
-		panic(err)
-	}
+	heartbeat.DmsLoggs(message, "Error")
 }
 
 // InitializeLogger initializes the global logger with the specified log level

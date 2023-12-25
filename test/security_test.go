@@ -17,13 +17,12 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
-	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
@@ -48,7 +47,7 @@ func TestSecurity(t *testing.T) {
 }
 
 func (s *TestHarness) SetupSuite() {
-	SetupDMSTestingConfiguration("target", 0);
+	SetupDMSTestingConfiguration("target", 0)
 	OnboardTestComputeProvider()
 	RunTestComputeProvider()
 
@@ -63,7 +62,7 @@ func (s *TestHarness) TearDownSuite() {
 	os.RemoveAll("/tmp/nunet-client")
 }
 
-func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.DeploymentRequest {
+func (spClient *SPTestClient) DefaultDeploymentRequest(tx_hash string) models.DeploymentRequest {
 	var req models.DeploymentRequest
 	// Hash of a valid job that has a valid datum and payment, but that doesn't list this CP DMS's address as the chosen CP
 	req.TxHash = tx_hash
@@ -75,7 +74,7 @@ func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.
 	req.Params.MachineType = "cpu"
 
 	// Simple Model URL
-  req.Params.ModelURL = basicTensorflowModelURL
+	req.Params.ModelURL = basicTensorflowModelURL
 
 	// Valid cpu image ID
 	req.Params.ImageID = "registry.gitlab.com/nunet/ml-on-gpu/ml-on-cpu-service/develop/ml-on-cpu"
@@ -83,7 +82,7 @@ func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.
 	cpId := GetTestComputeProviderID()
 
 	computeProviderPubKey, err := libp2p.GetP2P().Host.Peerstore().PubKey(cpId).Raw()
-	spClient.s.Nil(err, "Failed to obtain compute provider public key");
+	spClient.s.Nil(err, "Failed to obtain compute provider public key")
 
 	// NOTE (divam): currently the public key is added to JSON without the typical base64 encoding
 	req.Params.RemoteNodeID = cpId.String()
@@ -106,7 +105,7 @@ func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.
 		ComputeProviderAddr: "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk",
 		EstimatedPrice:      int64(req.MaxNtx),
 	})
-	spClient.s.Nil(err, "Failed to obtain oracleResp");
+	spClient.s.Nil(err, "Failed to obtain oracleResp")
 
 	req.MetadataHash = oracleResp.MetadataHash
 	req.WithdrawHash = oracleResp.WithdrawHash
@@ -114,23 +113,23 @@ func ( spClient *SPTestClient ) DefaultDeploymentRequest(tx_hash string) models.
 	req.Distribute_50Hash = oracleResp.Distribute_50Hash
 	req.Distribute_75Hash = oracleResp.Distribute_75Hash
 
-	return req;
+	return req
 }
 
 // Test if the the CP DMS will run a undervalued job
 func (s *TestHarness) TestTxUndervaluation() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	// Create a request with very high constraints but with the minimum NTX
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
-	req.MaxNtx = 1;
-	req.Constraints.CPU = 1000000;
-	req.Constraints.RAM = 2000000;
-	req.Constraints.Vram = 2000000;
-	req.Constraints.Power = 20000000;
-	req.Constraints.Time = 10000000;
+	req.MaxNtx = 1
+	req.Constraints.CPU = 1000000
+	req.Constraints.RAM = 2000000
+	req.Constraints.Vram = 2000000
+	req.Constraints.Power = 20000000
+	req.Constraints.Time = 10000000
 
 	spClient.SendDeploymentRequest(req)
 
@@ -138,7 +137,7 @@ func (s *TestHarness) TestTxUndervaluation() {
 }
 
 // Convenience function to check for job failure and if the job runs respond with a custom error message.
-func ( spClient *SPTestClient ) AssertJobFail( job_ran_error string ) {
+func (spClient *SPTestClient) AssertJobFail(job_ran_error string) {
 	s := spClient.s
 
 	firstUpdate, err := spClient.GetNextDeploymentUpdate()
@@ -166,14 +165,14 @@ func ( spClient *SPTestClient ) AssertJobFail( job_ran_error string ) {
 				}
 				// Final confirmation that the job finished
 				s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
-				break;
+				break
 			}
 		}
 	}
 }
 
 // Convenience  function like AssertJobFail but just runs through making sure we have status updates
-func ( spClient *SPTestClient ) RunJob() {
+func (spClient *SPTestClient) RunJob() {
 	s := spClient.s
 
 	firstUpdate, err := spClient.GetNextDeploymentUpdate()
@@ -199,17 +198,16 @@ func ( spClient *SPTestClient ) RunJob() {
 				}
 				// Final confirmation that the job finished
 				s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
-				break;
+				break
 			}
 		}
 	}
 }
 
-
 // Test that the CP DMS will not run a job with an invalid tx hash
 func (s *TestHarness) TestTxHashValidation() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest("invalidtxhash")
@@ -220,39 +218,39 @@ func (s *TestHarness) TestTxHashValidation() {
 }
 
 func (s *TestHarness) TestInvalidResume() {
-  spClient, err := CreateServiceProviderTestingClient(s)
-  s.Nil(err, "Failed to create testing client");
-  defer spClient.ShutdownSPClient()
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client")
+	defer spClient.ShutdownSPClient()
 
-  req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
-  req.Params.ResumeJob.Resume = true
-  req.Params.ResumeJob.ProgressFile = "null"
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.Params.ResumeJob.Resume = true
+	req.Params.ResumeJob.ProgressFile = "null"
 
-  spClient.SendDeploymentRequest(req)
-  spClient.AssertJobFail("Attempted to start invalid resume")
+	spClient.SendDeploymentRequest(req)
+	spClient.AssertJobFail("Attempted to start invalid resume")
 }
 
 func (s *TestHarness) TestMultipleRequestsSameTX() {
-  spClient, err := CreateServiceProviderTestingClient(s)
-  s.Nil(err, "Failed to create testing client");
-  defer spClient.ShutdownSPClient()
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client")
+	defer spClient.ShutdownSPClient()
 
-  req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 
-  reqnew := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
-  reqnew.MaxNtx = 5
+	reqnew := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	reqnew.MaxNtx = 5
 
-  spClient.SendDeploymentRequest(req)
-  spClient.RunJob()
+	spClient.SendDeploymentRequest(req)
+	spClient.RunJob()
 
-  spClient.SendDeploymentRequest(reqnew)
-  spClient.AssertJobFail("Attempted to start a job with a previously used tx_hash")
+	spClient.SendDeploymentRequest(reqnew)
+	spClient.AssertJobFail("Attempted to start a job with a previously used tx_hash")
 }
 
 // Test that the CP DMS will not run a job with a valid tx hash that does not have the correct amount of NTX
 func (s *TestHarness) TestTxNTXValidation() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -266,7 +264,7 @@ func (s *TestHarness) TestTxNTXValidation() {
 // Test that the CP DMS will only run the job when the Params specifying a correct LocalPublicKey
 func (s *TestHarness) TestValidSPPublicKey() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -280,7 +278,7 @@ func (s *TestHarness) TestValidSPPublicKey() {
 // Test that the CP DMS will only run the job when the Params specifying a correct LocalNodeID
 func (s *TestHarness) TestValidSPNodeId() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -294,7 +292,7 @@ func (s *TestHarness) TestValidSPNodeId() {
 // Test that the CP DMS will only run the job when the Params specifying a correct RemotePublicKey
 func (s *TestHarness) TestValidCPPublicKey() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -308,7 +306,7 @@ func (s *TestHarness) TestValidCPPublicKey() {
 // Test that the CP DMS will only run the job when the Params specifying a correct RemoteNodeID
 func (s *TestHarness) TestValidCPNodeId() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -322,7 +320,7 @@ func (s *TestHarness) TestValidCPNodeId() {
 // Test that the CP DMS will only run a valid docker image
 func (s *TestHarness) TestValidImageID() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -336,7 +334,7 @@ func (s *TestHarness) TestValidImageID() {
 // Test that the CP DMS will only run a valid paylaod
 func (s *TestHarness) TestValidModelURL() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -351,7 +349,7 @@ func (s *TestHarness) TestValidModelURL() {
 // Test that the CP DMS will only run a valid service type
 func (s *TestHarness) TestValidServiceType() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
@@ -365,7 +363,7 @@ func (s *TestHarness) TestValidServiceType() {
 // Test that the SP cannot request refund while the job is executing
 func (s *TestHarness) TestSPCannotRefundWhileJobIsExecuting() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.Params.ModelURL = oneMinSleepModelURL
@@ -382,14 +380,13 @@ func (s *TestHarness) TestSPCannotRefundWhileJobIsExecuting() {
 		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
 		s.Nil(err, "Failed to get second deployment update")
 
-
 		// Now that the Job has been confirmed to be running, obtain signatures for refund
 		// SP can obtain the signature based on parameters already known
-		oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
-			JobStatus: "finished with errors",
-			JobDuration: int64(0),
+		oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload{
+			JobStatus:            "finished with errors",
+			JobDuration:          int64(0),
 			EstimatedJobDuration: int64(req.Constraints.Time),
-			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
+			LogURL:               "https://log.nunet.io/api/v1/logbin/invalid/raw",
 		})
 
 		// The SP can in principle obtain a refund using the signature obtained from oracle
@@ -407,7 +404,7 @@ func (s *TestHarness) TestSPCannotRefundWhileJobIsExecuting() {
 			s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
 			s.Equal("finished without errors", update.Services.JobStatus, "Expected Job to have finished succesfully")
 			s.NotEqual(0, len(update.Services.LogURL), "Expected LogURL to be non empty")
-			break;
+			break
 		}
 	}
 }
@@ -417,7 +414,7 @@ func (s *TestHarness) TestSPCannotRefundWhileJobIsExecuting() {
 // as currntly the SP does not rely on response from CP for executing a refund request
 func (s *TestHarness) TestSPCannotRefundBeforeTimeoutCPOffline() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.Params.ModelURL = oneMinSleepModelURL
@@ -434,14 +431,13 @@ func (s *TestHarness) TestSPCannotRefundBeforeTimeoutCPOffline() {
 		s.Equal(libp2p.MsgDepResp, secondUpdate.MsgType, "We didn't receive a DeploymentResponse for our DeploymentRequest")
 		s.Nil(err, "Failed to get second deployment update")
 
-
 		// Now that the Job has been confirmed to be running, obtain signatures for refund
 		// SP can obtain the signature based on parameters already known
-		oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
-			JobStatus: "finished with errors",
-			JobDuration: int64(0),
+		oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload{
+			JobStatus:            "finished with errors",
+			JobDuration:          int64(0),
 			EstimatedJobDuration: int64(req.Constraints.Time),
-			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
+			LogURL:               "https://log.nunet.io/api/v1/logbin/invalid/raw",
 		})
 
 		// The SP can in principle obtain a refund using the signature obtained from oracle
@@ -459,7 +455,7 @@ func (s *TestHarness) TestSPCannotRefundBeforeTimeoutCPOffline() {
 			s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
 			s.Equal("finished without errors", update.Services.JobStatus, "Expected Job to have finished succesfully")
 			s.NotEqual(0, len(update.Services.LogURL), "Expected LogURL to be non empty")
-			break;
+			break
 		}
 	}
 }
@@ -467,7 +463,7 @@ func (s *TestHarness) TestSPCannotRefundBeforeTimeoutCPOffline() {
 // Test that SP cannot request refund after the job ran successfully
 func (s *TestHarness) TestSPCannotRefundAfterValidJob() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 	req.Params.ModelURL = oneMinSleepModelURL
@@ -495,17 +491,17 @@ func (s *TestHarness) TestSPCannotRefundAfterValidJob() {
 			s.Equal(libp2p.MsgJobStatus, update.MsgType, "Expected Job Status update")
 			s.Equal("finished without errors", update.Services.JobStatus, "Expected Job to have finished succesfully")
 			s.NotEqual(0, len(update.Services.LogURL), "Expected LogURL to be non empty")
-			break;
+			break
 		}
 	}
 
 	// Now obtain signatures for refund, by pretending that the job finished with errors
-	oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
-		JobStatus: "finished with errors",
-			JobDuration: int64(0),
-			EstimatedJobDuration: int64(req.Constraints.Time),
-			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
-		})
+	oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload{
+		JobStatus:            "finished with errors",
+		JobDuration:          int64(0),
+		EstimatedJobDuration: int64(req.Constraints.Time),
+		LogURL:               "https://log.nunet.io/api/v1/logbin/invalid/raw",
+	})
 
 	// Using these signatures the SP can do a refund request
 	// At this point the CP DMS and SP DMS will likely compete for submitting the txs on chain.
@@ -518,34 +514,33 @@ func (s *TestHarness) TestSPCannotRefundAfterValidJob() {
 // Test that CP cannot request withdraw without running job successfully
 func (s *TestHarness) TestCPCannotWithdrawForInvalidResults() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 
 	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
 
 	// At the moment it is not necessary to even run the job to perform a withdraw
 	// Therefore CP can respond that it is executing the job, while it does the withdraw
 	// Now obtain signatures for withdraw, by pretending that the job finished successfully
-	oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload {
-		JobStatus: "finished without errors",
-			JobDuration: int64(req.Constraints.Time),
-			EstimatedJobDuration: int64(req.Constraints.Time),
-			LogURL: "https://log.nunet.io/api/v1/logbin/invalid/raw",
-		})
+	oracleResp := spClient.getSignaturesFromOracle(req, OracleRewardReqPayload{
+		JobStatus:            "finished without errors",
+		JobDuration:          int64(req.Constraints.Time),
+		EstimatedJobDuration: int64(req.Constraints.Time),
+		LogURL:               "https://log.nunet.io/api/v1/logbin/invalid/raw",
+	})
 
 	// Using these signatures the CP can do a withdraw request
 	s.NotEqual("withdraw", oracleResp.RewardType, "Obtained a withdraw request without running the job")
 	s.NotEqual(128, len(oracleResp.SignatureDatum), "Obtained signature from oracle for a withdraw request without running the job")
 }
 
-type OracleRewardReqPayload struct
-{
+type OracleRewardReqPayload struct {
 	JobStatus            string // whether job is running or exited; one of these 'running', 'finished without errors', 'finished with errors'
 	JobDuration          int64  // job duration in minutes
 	EstimatedJobDuration int64  // job duration in minutes
 	LogURL               string
 }
 
-func ( spClient *SPTestClient ) getSignaturesFromOracle(req models.DeploymentRequest, payload OracleRewardReqPayload) (oracleResp *oracle.RewardResponse) {
+func (spClient *SPTestClient) getSignaturesFromOracle(req models.DeploymentRequest, payload OracleRewardReqPayload) (oracleResp *oracle.RewardResponse) {
 	oracleResp, err := oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
 		JobStatus:            payload.JobStatus,
 		JobDuration:          payload.JobDuration,
@@ -558,7 +553,7 @@ func ( spClient *SPTestClient ) getSignaturesFromOracle(req models.DeploymentReq
 		Distribute_75Hash:    req.Distribute_75Hash,
 	})
 
-	spClient.s.Nil(err, "Failed to obtain signatures from oracle");
+	spClient.s.Nil(err, "Failed to obtain signatures from oracle")
 
 	return oracleResp
 }
@@ -572,7 +567,7 @@ func GenerateTestKeyPair() (crypto.PrivKey, crypto.PubKey, error) {
 	return priv, pub, err
 }
 
-func SetupDMSTestingConfiguration( tempDirectoryName string, port int ) {
+func SetupDMSTestingConfiguration(tempDirectoryName string, port int) {
 	dmsTempDir := fmt.Sprintf("/tmp/nunet-%s", tempDirectoryName)
 	os.Mkdir(dmsTempDir, 0755)
 	ioutil.WriteFile(fmt.Sprintf("%s/metadataV2.json", dmsTempDir), []byte(testMetadata), 0644)
@@ -583,7 +578,7 @@ func SetupDMSTestingConfiguration( tempDirectoryName string, port int ) {
 }
 
 func OnboardTestComputeProvider() {
-	db.ConnectDatabase(afero.NewOsFs())
+	db.ConnectDatabase()
 
 	availableResources := models.AvailableResources{
 		TotCpuHz:  int(2000000),
@@ -598,13 +593,13 @@ func OnboardTestComputeProvider() {
 	}
 
 	freeResources := models.FreeResources{
-		ID: 1,
-		TotCpuHz: availableResources.TotCpuHz,
-		PriceCpu: 0,
-		Ram: availableResources.Ram,
-		PriceRam: 0,
-		Vcpu: 0,
-		Disk: 0,
+		ID:        1,
+		TotCpuHz:  availableResources.TotCpuHz,
+		PriceCpu:  0,
+		Ram:       availableResources.Ram,
+		PriceRam:  0,
+		Vcpu:      0,
+		Disk:      0,
 		PriceDisk: 0,
 	}
 
@@ -619,7 +614,7 @@ func RunTestComputeProvider() error {
 	// Create a new key pair for Node Id Generation
 	pair, _, err := GenerateTestKeyPair()
 
-	runAsServer := true;
+	runAsServer := true
 	libp2p.RunNode(pair, runAsServer)
 
 	if libp2p.GetP2P().Host != nil {
@@ -629,25 +624,23 @@ func RunTestComputeProvider() error {
 }
 
 // Interface for SP to communicate with testing CP
-type SPTestClient struct
-{
-	reader *bufio.Reader
-	writer *bufio.Writer
-	s *TestHarness
-	selfID peer.ID
+type SPTestClient struct {
+	reader        *bufio.Reader
+	writer        *bufio.Writer
+	s             *TestHarness
+	selfID        peer.ID
 	selfPublicKey crypto.PubKey
-	p2p libp2p.DMSp2p
+	p2p           libp2p.DMSp2p
 }
 
 // Convenience type for DeploymentUpdate with unmarshalled data
-type CPUpdate struct
-{
-	MsgType string
+type CPUpdate struct {
+	MsgType  string
 	Response models.DeploymentResponse
 	Services models.Services
 }
 
-func CreateServiceProviderTestingClient( s *TestHarness ) (SPTestClient, error) {
+func CreateServiceProviderTestingClient(s *TestHarness) (SPTestClient, error) {
 	ctx := context.Background()
 
 	SetupDMSTestingConfiguration("client", 0)
@@ -667,10 +660,10 @@ func CreateServiceProviderTestingClient( s *TestHarness ) (SPTestClient, error) 
 
 	reader := bufio.NewReader(stream)
 	writer := bufio.NewWriter(stream)
-	return SPTestClient{reader,writer,s, selfID, selfPublicKey, p2p}, err
+	return SPTestClient{reader, writer, s, selfID, selfPublicKey, p2p}, err
 }
 
-func ( client *SPTestClient ) ShutdownSPClient() error {
+func (client *SPTestClient) ShutdownSPClient() error {
 	for _, node := range client.p2p.Host.Peerstore().Peers() {
 		client.p2p.Host.Network().ClosePeer(node)
 		client.p2p.Host.Peerstore().Put(node, "peer_info", nil)
@@ -700,20 +693,20 @@ func GetTestComputeProviderID() peer.ID {
 	return p2p.Host.ID()
 }
 
-func ( client *SPTestClient ) SendDeploymentRequest( request models.DeploymentRequest ) error {
+func (client *SPTestClient) SendDeploymentRequest(request models.DeploymentRequest) error {
 	msg, json_err := json.Marshal(request)
 	if json_err != nil {
-		return json_err;
+		return json_err
 	}
 
 	_, write_err := client.writer.WriteString(fmt.Sprintf("%s\n", msg))
 	if write_err != nil {
-		return write_err;
+		return write_err
 	}
 
 	flush_err := client.writer.Flush()
 	if flush_err != nil {
-		return flush_err;
+		return flush_err
 	}
 
 	return nil
@@ -724,8 +717,8 @@ type ReadResult struct {
 	Error   error
 }
 
-func ( client *SPTestClient ) GetNextDeploymentUpdate() (CPUpdate, error) {
-	var update CPUpdate;
+func (client *SPTestClient) GetNextDeploymentUpdate() (CPUpdate, error) {
+	var update CPUpdate
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -734,7 +727,7 @@ func ( client *SPTestClient ) GetNextDeploymentUpdate() (CPUpdate, error) {
 
 	go func() {
 		msg, err := client.reader.ReadString('\n')
-		ch <- ReadResult{ Message:msg, Error:err}
+		ch <- ReadResult{Message: msg, Error: err}
 	}()
 
 	msg := ""

@@ -369,9 +369,9 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 		dht.NamespacedValidator(strings.ReplaceAll(customNamespace, "/", ""), blankValidator{}),
 		dht.Mode(dht.ModeServer),
 	}
+
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(
-		config.GetConfig().P2P.ListenAddress...,
-	),
+		config.GetConfig().P2P.ListenAddress...),
 		libp2p.Identity(priv),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
 			idht, err = dht.New(ctx, h, baseOpts...)

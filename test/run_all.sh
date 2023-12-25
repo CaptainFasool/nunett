@@ -1,5 +1,5 @@
 #!/bin/bash
 
-go test cli_test.go
+go test  -run=TestCLI
 go test -ldflags="-extldflags=-Wl,-z,lazy" -run=TestSecurity`
 

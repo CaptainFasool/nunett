@@ -11,14 +11,26 @@ import (
 const CIRendevousPoint string = "testing-nunet"
 
 func TestBootstrap(t *testing.T) {
+	t.Log("Starting TestBootstrap")
 	ctx := context.Background()
-	priv, _, _ := GenerateKey(0)
-	host, idht, _ := NewHost(ctx, priv, true)
+	priv, _, err := GenerateKey(0)
+	if err != nil {
+		t.Fatalf("Failed to generate key: %v", err)
+	}
+
+	host, idht, err := NewHost(ctx, priv, true)
+	if err != nil {
+		t.Fatalf("Failed to create host: %v", err)
+	}
 	defer host.Close()
+	t.Log("Host created successfully")
+
 	// Test successful Bootstrap
-	err := Bootstrap(ctx, host, idht)
+	err = Bootstrap(ctx, host, idht)
 	if err != nil {
 		t.Errorf("Expected Bootstrap to succeed but got error: %v", err)
+	} else {
+		t.Log("Bootstrap succeeded")
 	}
 
 }

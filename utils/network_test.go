@@ -32,7 +32,7 @@ func TestGetInternalBaseURL(t *testing.T) {
 	assert.NotNil(t, err, "Expected an error, but got none")
 }
 
-func TestMakeInternalRequest(t *testing.T) {
+func TestMakeInternalRequest(t *testing.T) { // *
 	ctx := context.Background()
 	// Test with a valid request
 	type respType struct {
