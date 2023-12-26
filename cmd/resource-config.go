@@ -18,9 +18,10 @@ func NewResourceConfigCmd(net backend.NetworkManager, utilsService backend.Utili
 		RunE: func(cmd *cobra.Command, args []string) error {
 			memory, _ := cmd.Flags().GetInt64("memory")
 			cpu, _ := cmd.Flags().GetInt64("cpu")
+			ntxPrice, _ := cmd.Flags().GetFloat64("ntx-price")
 
 			// check for both flags values
-			if memory == 0 || cpu == 0 {
+			if memory == 0 || cpu == 0 || ntxPrice < 0 {
 				return fmt.Errorf("all flag values must be specified")
 			}
 
@@ -30,7 +31,7 @@ func NewResourceConfigCmd(net backend.NetworkManager, utilsService backend.Utili
 			}
 
 			// set data for body request
-			resourceBody, err := setOnboardData(memory, cpu, "", "", false, false, true)
+			resourceBody, err := setOnboardData(memory, cpu, ntxPrice, "", "", false, false, true)
 			if err != nil {
 				return fmt.Errorf("failed to set onboard data: %w", err)
 			}
@@ -53,5 +54,6 @@ func NewResourceConfigCmd(net backend.NetworkManager, utilsService backend.Utili
 
 	cmd.Flags().Int64VarP(&flagMemory, "memory", "m", 0, "set amount of memory")
 	cmd.Flags().Int64VarP(&flagCpu, "cpu", "c", 0, "set amount of CPU")
+	cmd.Flags().Float64VarP(&flagNtxPrice, "ntx-price", "x", 0, "Set NTX Price per minute for compute resources you are updating")
 	return cmd
 }

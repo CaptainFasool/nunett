@@ -135,6 +135,7 @@ func RunNode(priv crypto.PrivKey, server bool, available bool) error {
 		peerInfo.IsAvailable = available
 		peerInfo.AllowCardano = metadata2.AllowCardano
 		peerInfo.TokenomicsAddress = metadata2.PublicKey
+		peerInfo.AvailableResources.NTXPricePerMinute = metadata2.NTXPricePerMinute
 		if len(metadata2.GpuInfo) == 0 {
 			peerInfo.HasGpu = false
 			peerInfo.GpuInfo = metadata2.GpuInfo

@@ -18,7 +18,7 @@ func Test_OnboardCmdFlags(t *testing.T) {
 	assert := assert.New(t)
 	assert.True(cmd.HasAvailableFlags())
 
-	expectedFlags := []string{"memory", "cpu", "nunet-channel", "address", "plugin", "local-enable", "cardano", "unavailable"}
+	expectedFlags := []string{"memory", "cpu", "nunet-channel", "address", "plugin", "local-enable", "cardano", "unavailable", "ntx-price"}
 	flags := cmd.Flags()
 	flags.VisitAll(func(f *flag.Flag) {
 		assert.Contains(expectedFlags, f.Name)
@@ -68,4 +68,30 @@ func Test_OnboardCmdSuccess(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Contains(outBuf.String(), "Sucessfully onboarded!")
+}
+
+func Test_OnboardNegativeNtxValue(t *testing.T) {
+	conns := GetMockConn(true)
+	mockConn := &MockConnection{conns: conns}
+	mockUtils := &MockUtilsService{}
+
+	assert := assert.New(t)
+
+	buf := new(bytes.Buffer)
+
+	cmd := NewOnboardCmd(mockConn, mockUtils)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cmd.SetArgs([]string{
+		"--ntx-price=-1",
+		"--memory=3000",
+		"--cpu=5000",
+		"--nunet-channel=nunet-test",
+		"--address=addr1_qtest123",
+	})
+
+	err := cmd.Execute()
+	assert.NotNil(err, "expected ''ntx-price' must be a positive value' error")
+	assert.ErrorContains(err, "'ntx-price' must be a positive value")
 }

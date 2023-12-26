@@ -40,7 +40,7 @@ func Test_ResourceConfigCmdHasFlags(t *testing.T) {
 	assert := assert.New(t)
 	assert.True(cmd.HasAvailableFlags())
 
-	expectedFlags := []string{"memory", "cpu"}
+	expectedFlags := []string{"memory", "cpu", "ntx-price"}
 	flags := cmd.Flags()
 	flags.VisitAll(func(f *flag.Flag) {
 		assert.Contains(expectedFlags, f.Name)
