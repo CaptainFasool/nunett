@@ -56,7 +56,8 @@ func TestDepReq(t *testing.T) {
 	libp2p.AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(libp2p.AFS, "/etc/nunet/metadataV2.json", meta, 0644)
 
-	libp2p.RunNode(priv1, true)
+	libp2p.RunNode(priv1, true, true)
+
 	p2p := libp2p.GetP2P()
 
 	p2p.Host.SetStreamHandler(libp2p.DepReqProtocolID, mockDepReqStreamHandler)

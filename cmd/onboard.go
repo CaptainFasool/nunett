@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	onboardCmd                     = NewOnboardCmd(networkService, utilsService)
-	flagCpu, flagMemory            int64
-	flagChan, flagAddr, flagPlugin string
-	flagCardano, flagLocal         bool
+	onboardCmd                                = NewOnboardCmd(networkService, utilsService)
+	flagCpu, flagMemory                       int64
+	flagChan, flagAddr, flagPlugin            string
+	flagCardano, flagLocal, flagIsUnavailable bool
 )
 
 func NewOnboardCmd(net backend.NetworkManager, utilsService backend.Utility) *cobra.Command {
@@ -27,6 +27,7 @@ func NewOnboardCmd(net backend.NetworkManager, utilsService backend.Utility) *co
 			address, _ := cmd.Flags().GetString("address")
 			local, _ := cmd.Flags().GetBool("local-enable")
 			cardano, _ := cmd.Flags().GetBool("cardano")
+			isUnavailable, _ := cmd.Flags().GetBool("unavailable")
 
 			if memory == 0 || cpu == 0 || channel == "" || address == "" {
 				return fmt.Errorf("missing at least one required flag")
@@ -46,7 +47,7 @@ func NewOnboardCmd(net backend.NetworkManager, utilsService backend.Utility) *co
 				}
 			}
 
-			onboardJson, err := setOnboardData(memory, cpu, channel, address, cardano, local)
+			onboardJson, err := setOnboardData(memory, cpu, channel, address, cardano, local, !isUnavailable)
 			if err != nil {
 				return fmt.Errorf("failed to set onboard data: %w", err)
 			}
@@ -71,6 +72,7 @@ func NewOnboardCmd(net backend.NetworkManager, utilsService backend.Utility) *co
 	cmd.Flags().StringVarP(&flagChan, "nunet-channel", "n", "", "set channel")
 	cmd.Flags().StringVarP(&flagAddr, "address", "a", "", "set wallet address")
 	cmd.Flags().StringVarP(&flagPlugin, "plugin", "p", "", "set plugin")
+	cmd.Flags().BoolVarP(&flagIsUnavailable, "unavailable", "u", false, "unavailable for job deployment (default: false)")
 	cmd.Flags().BoolVarP(&flagLocal, "local-enable", "l", true, "set server mode (enable for local)")
 	cmd.Flags().BoolVarP(&flagCardano, "cardano", "C", false, "set Cardano wallet")
 	return cmd

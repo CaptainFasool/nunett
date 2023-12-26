@@ -189,7 +189,7 @@ func TestHandleRequestService(t *testing.T) {
 
 	// Setup host
 	privK, pubK, _ := dmslibp2p.GenerateKey(time.Now().Unix())
-	err = dmslibp2p.SaveNodeInfo(privK, pubK, true)
+	err = dmslibp2p.SaveNodeInfo(privK, pubK, true, true)
 	if err != nil {
 		t.Fatal("Failed to save node info")
 	}

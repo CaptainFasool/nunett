@@ -30,7 +30,7 @@ func NewResourceConfigCmd(net backend.NetworkManager, utilsService backend.Utili
 			}
 
 			// set data for body request
-			resourceBody, err := setOnboardData(memory, cpu, "", "", false, false)
+			resourceBody, err := setOnboardData(memory, cpu, "", "", false, false, true)
 			if err != nil {
 				return fmt.Errorf("failed to set onboard data: %w", err)
 			}

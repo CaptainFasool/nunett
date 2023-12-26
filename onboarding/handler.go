@@ -251,7 +251,7 @@ func Onboard(c *gin.Context) {
 		zlog.Panic(err.Error())
 	}
 
-	err = libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode)
+	err = libp2p.SaveNodeInfo(priv, pub, capacityForNunet.ServerMode, capacityForNunet.IsAvailable)
 	if err != nil {
 		zlog.Sugar().Errorf("Unable to save Node info: %v", err)
 	}
@@ -262,9 +262,15 @@ func Onboard(c *gin.Context) {
 		// Should we return http error also?
 	}
 
-	err = libp2p.RunNode(priv, capacityForNunet.ServerMode)
+	err = libp2p.RunNode(priv, capacityForNunet.ServerMode, capacityForNunet.IsAvailable)
 	if err != nil {
 		zlog.Sugar().Errorf("Unable to Run libp2p Node: %v", err)
+	}
+
+	// Ensure libp2p host is initialised
+	if libp2p.GetP2P().Host == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "libp2p Host is not initialised"})
+		return
 	}
 
 	_, err = heartbeat.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)

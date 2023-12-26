@@ -21,6 +21,12 @@ Types of changes
 
 -->
 
+## [0.4.153](#257)
+
+### Added
+- Device cmd for device status management
+- Device job-availability set during onboarding
+
 ## [0.4.152](#321)
 
 ### Changed

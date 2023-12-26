@@ -18,7 +18,7 @@ func Test_OnboardCmdFlags(t *testing.T) {
 	assert := assert.New(t)
 	assert.True(cmd.HasAvailableFlags())
 
-	expectedFlags := []string{"memory", "cpu", "nunet-channel", "address", "plugin", "local-enable", "cardano"}
+	expectedFlags := []string{"memory", "cpu", "nunet-channel", "address", "plugin", "local-enable", "cardano", "unavailable"}
 	flags := cmd.Flags()
 	flags.VisitAll(func(f *flag.Flag) {
 		assert.Contains(expectedFlags, f.Name)

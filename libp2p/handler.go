@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
+	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
@@ -110,6 +111,18 @@ func DeviceStatusChangeHandler(c *gin.Context) {
 
 	peerData.IsAvailable = deviceStatus.IsAvailable
 	p2p.Host.Peerstore().Put(p2p.Host.ID(), "peer_info", peerData)
+
+	// update database value
+	lp2pInfo := models.Libp2pInfo{}
+	if result := db.DB.Find(&lp2pInfo); result.Error != nil {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Failed to retrieve libp2p info from database - error: %v", result.Error)})
+		return
+	}
+	lp2pInfo.Available = deviceStatus.IsAvailable
+	if result := db.DB.Save(&lp2pInfo); result.Error != nil {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Failed to update libp2p info in database - error: %v", result.Error)})
+		return
+	}
 
 	UpdateKadDHT()
 
@@ -829,7 +842,7 @@ func AcceptFileTransferHandler(c *gin.Context) {
 		return
 	}
 
-	if streamID != 0  {
+	if streamID != 0 {
 		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("Unknown Stream ID: %v", streamID)})
 		return
 	}

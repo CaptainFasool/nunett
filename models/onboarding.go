@@ -16,6 +16,7 @@ type CapacityForNunet struct {
 	PaymentAddress string `json:"payment_addr,omitempty"`
 	Cardano        bool   `json:"cardano,omitempty"`
 	ServerMode     bool   `json:"server_mode,omitempty,"`
+	IsAvailable    bool   `json:"is_available"`
 }
 
 // Provisioned struct holds data about how much total resource

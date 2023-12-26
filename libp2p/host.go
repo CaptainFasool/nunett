@@ -86,11 +86,11 @@ func CheckOnboarding() {
 		if err != nil {
 			panic(err)
 		}
-		RunNode(priv, libp2pInfo.ServerMode)
+		RunNode(priv, libp2pInfo.ServerMode, libp2pInfo.Available)
 	}
 }
 
-func RunNode(priv crypto.PrivKey, server bool) error {
+func RunNode(priv crypto.PrivKey, server bool, available bool) error {
 	ctx := context.Background()
 
 	host, dht, err := NewHost(ctx, priv, server)
@@ -132,7 +132,7 @@ func RunNode(priv crypto.PrivKey, server bool) error {
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
 		peerInfo := models.PeerData{}
 		peerInfo.PeerID = host.ID().String()
-		peerInfo.IsAvailable = true
+		peerInfo.IsAvailable = available
 		peerInfo.AllowCardano = metadata2.AllowCardano
 		peerInfo.TokenomicsAddress = metadata2.PublicKey
 		if len(metadata2.GpuInfo) == 0 {
@@ -255,12 +255,13 @@ func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {
 
 }
 
-func SaveNodeInfo(priv crypto.PrivKey, pub crypto.PubKey, serverMode bool) error {
+func SaveNodeInfo(priv crypto.PrivKey, pub crypto.PubKey, serverMode bool, available bool) error {
 	var libp2pInfo models.Libp2pInfo
 	libp2pInfo.ID = 1
 	libp2pInfo.PrivateKey, _ = crypto.MarshalPrivateKey(priv)
 	libp2pInfo.PublicKey, _ = crypto.MarshalPublicKey(pub)
 	libp2pInfo.ServerMode = serverMode
+	libp2pInfo.Available = available
 
 	result := db.DB.Save(&libp2pInfo)
 	if result.Error != nil {

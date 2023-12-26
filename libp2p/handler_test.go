@@ -48,9 +48,7 @@ func TestListPeers(t *testing.T) {
 	defer cancel()
 
 	mockDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Errorf("error trying to initialize mock db: %v", err)
-	}
+	assert.Nil(t, err, "error trying to initialize mock db: %v", err)
 	db.DB = mockDB
 
 	router := SetUpRouter()
@@ -67,20 +65,15 @@ func TestListPeers(t *testing.T) {
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
 
 	host, dht, err := NewHost(ctx, priv1, true)
-	if err != nil {
-		t.Errorf("error trying to initialize host: %v", err)
-	}
+	assert.Nil(t, err, "error trying to initialize host: %v", err)
+
 	p2p = *DMSp2pInit(host, dht)
 
 	err = p2p.BootstrapNode(ctx)
-	if err != nil {
-		t.Errorf("error trying to bootstrap node: %v", err)
-	}
+	assert.Nil(t, err, "error trying to initialize host: %v", err)
 
 	p2p.peers, err = discoverPeers(ctx, host, dht, utils.GetChannelName())
-	if err != nil {
-		t.Errorf("error trying to discover peers: %v", err)
-	}
+	assert.Nil(t, err, "error trying to discover peers: %v", err)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/peers", nil)
@@ -98,9 +91,7 @@ func TestListPeers(t *testing.T) {
 	var list []peerList
 
 	err = json.Unmarshal(body, &list)
-	if err != nil {
-		t.Error("Error Unmarshaling Peer List:", err)
-	}
+	assert.Nil(t, err, "problem unmarshaling peer list: ", err)
 
 	assert.NotEmpty(t, list)
 	assert.Equal(t, strings.Count(string(body), "ID"), len(list))
@@ -118,7 +109,7 @@ func TestSelfPeer(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1, true)
+	RunNode(priv1, true, true)
 
 	testp2p := GetP2P()
 
@@ -158,7 +149,7 @@ func TestStartChatNoPeerId(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1, true)
+	RunNode(priv1, true, true)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/peers/chat/start", nil)
@@ -191,7 +182,7 @@ func TestStartChatSelfPeerID(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1, true)
+	RunNode(priv1, true, true)
 	testp2p := GetP2P()
 
 	w := httptest.NewRecorder()
@@ -255,7 +246,7 @@ func TestStartChatCorrect(t *testing.T) {
 	// create test files and directories
 	AFS.MkdirAll("/etc/nunet", 0755)
 	afero.WriteFile(AFS, "/etc/nunet/metadataV2.json", msg, 0644)
-	RunNode(priv1, true)
+	RunNode(priv1, true, true)
 	testp2p := GetP2P()
 
 	testp2p.Host.Peerstore().AddAddrs(host2.ID(), host2.Addrs(), peerstore.PermanentAddrTTL)
