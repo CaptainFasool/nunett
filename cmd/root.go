@@ -15,6 +15,7 @@ func init() {
 	rootCmd.AddCommand(peerCmd)
 	rootCmd.AddCommand(onboardCmd)
 	rootCmd.AddCommand(infoCmd)
+	rootCmd.AddCommand(deviceCmd)
 	rootCmd.AddCommand(capacityCmd)
 	rootCmd.AddCommand(resourceConfigCmd)
 	rootCmd.AddCommand(logCmd)

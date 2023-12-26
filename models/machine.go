@@ -108,6 +108,7 @@ type Libp2pInfo struct {
 	PrivateKey []byte `json:"private_key"`
 	PublicKey  []byte `json:"public_key"`
 	ServerMode bool   `json:"server_mode"`
+	Available  bool   `json:"available"`
 }
 
 type MachineUUID struct {
