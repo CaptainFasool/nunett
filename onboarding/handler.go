@@ -210,6 +210,7 @@ func Onboard(c *gin.Context) {
 
 	metadata.Network = capacityForNunet.Channel
 	metadata.PublicKey = capacityForNunet.PaymentAddress
+	metadata.NTXPricePerMinute = capacityForNunet.NTXPricePerMinute
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
 	err = AFS.WriteFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath), file, 0644)
@@ -222,15 +223,16 @@ func Onboard(c *gin.Context) {
 	// Add available resources to database.
 
 	available_resources := models.AvailableResources{
-		TotCpuHz:  int(capacityForNunet.CPU),
-		CpuNo:     int(numCores),
-		CpuHz:     library.Hz_per_cpu(),
-		PriceCpu:  0, // TODO: Get price of CPU
-		Ram:       int(capacityForNunet.Memory),
-		PriceRam:  0, // TODO: Get price of RAM
-		Vcpu:      int(math.Floor((float64(capacityForNunet.CPU)) / library.Hz_per_cpu())),
-		Disk:      0,
-		PriceDisk: 0,
+		TotCpuHz:          int(capacityForNunet.CPU),
+		CpuNo:             int(numCores),
+		CpuHz:             library.Hz_per_cpu(),
+		PriceCpu:          0, // TODO: Get price of CPU
+		Ram:               int(capacityForNunet.Memory),
+		PriceRam:          0, // TODO: Get price of RAM
+		Vcpu:              int(math.Floor((float64(capacityForNunet.CPU)) / library.Hz_per_cpu())),
+		Disk:              0,
+		PriceDisk:         0,
+		NTXPricePerMinute: capacityForNunet.NTXPricePerMinute,
 	}
 
 	var availableRes models.AvailableResources
@@ -332,6 +334,7 @@ func ResourceConfig(c *gin.Context) {
 	}
 	metadata.Reserved.CPU = capacityForNunet.CPU
 	metadata.Reserved.Memory = capacityForNunet.Memory
+	metadata.NTXPricePerMinute = capacityForNunet.NTXPricePerMinute
 
 	// read the existing data and update it with new resources
 	var availableRes models.AvailableResources
@@ -343,6 +346,7 @@ func ResourceConfig(c *gin.Context) {
 	}
 	availableRes.TotCpuHz = int(capacityForNunet.CPU)
 	availableRes.Ram = int(capacityForNunet.Memory)
+	availableRes.NTXPricePerMinute = capacityForNunet.NTXPricePerMinute
 	db.DB.Save(&availableRes)
 
 	file, _ := json.MarshalIndent(metadata, "", " ")

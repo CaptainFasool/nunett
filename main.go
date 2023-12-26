@@ -3,7 +3,7 @@ package main
 import "gitlab.com/nunet/device-management-service/cmd"
 
 //	@title			Device Management Service
-//	@version		0.4.153
+//	@version		0.4.154
 //	@description	A dashboard application for computing providers.
 //	@termsOfService	https://nunet.io/tos
 

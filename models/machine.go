@@ -33,29 +33,31 @@ type Machine struct {
 // the subtraction between AvailableResources and the amount of resources
 // already used by DMS and its processes (mostly services)
 type FreeResources struct {
-	ID        uint    `json:"id"`
-	TotCpuHz  int     `json:"tot_cpu_hz"`
-	PriceCpu  float64 `json:"price_cpu"`
-	Ram       int     `json:"ram"`
-	PriceRam  float64 `json:"price_ram"`
-	Vcpu      int     `json:"vcpu"`
-	Disk      float64 `json:"disk"`
-	PriceDisk float64 `json:"price_disk"`
+	ID                uint    `json:"id"`
+	TotCpuHz          int     `json:"tot_cpu_hz"`
+	PriceCpu          float64 `json:"price_cpu"`
+	Ram               int     `json:"ram"`
+	PriceRam          float64 `json:"price_ram"`
+	Vcpu              int     `json:"vcpu"`
+	Disk              float64 `json:"disk"`
+	PriceDisk         float64 `json:"price_disk"`
+	NTXPricePerMinute float64 `json:"ntx_price"`
 }
 
 // AvailableResources are the amount of resources onboarded which
 // can be used by NuNet
 type AvailableResources struct {
-	ID        uint
-	TotCpuHz  int
-	CpuNo     int
-	CpuHz     float64
-	PriceCpu  float64
-	Ram       int
-	PriceRam  float64
-	Vcpu      int
-	Disk      float64
-	PriceDisk float64
+	ID                uint
+	TotCpuHz          int
+	CpuNo             int
+	CpuHz             float64
+	PriceCpu          float64
+	Ram               int
+	PriceRam          float64
+	Vcpu              int
+	Disk              float64
+	PriceDisk         float64
+	NTXPricePerMinute float64
 }
 
 type Services struct {

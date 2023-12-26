@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.154](nunet/research/network-tokenomics/public-alpha-model#8)
+
+### Added
+- Allow user to set price in NTX for onboarded compute resource
+
 ## [0.4.153](#257)
 
 ### Added

@@ -86,12 +86,13 @@ func promptReonboard(reader io.Reader, writer io.Writer) error {
 }
 
 // setOnboardData takes all onboarding parameters and marshal them into JSON
-func setOnboardData(memory int64, cpu int64, channel, address string, cardano, serverMode, isAvailable bool) ([]byte, error) {
+func setOnboardData(memory int64, cpu int64, ntxPrice float64, channel, address string, cardano, serverMode, isAvailable bool) ([]byte, error) {
 	reserved := models.CapacityForNunet{
 		Memory:         memory,
 		CPU:            cpu,
 		Channel:        channel,
 		PaymentAddress: address,
+		NTXPricePerMinute: ntxPrice,
 		Cardano:        cardano,
 		ServerMode:     serverMode,
 		IsAvailable:    isAvailable,
