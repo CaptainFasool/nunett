@@ -11,51 +11,109 @@ package cardano
 import (
 	"bytes"
 	"fmt"
+	"time"
 	"log"
+	"errors"
 	"os"
 	"strings"
 	"bufio"
+	"regexp"
 	"os/exec"
 	"encoding/json"
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
+	"encoding/hex"
 )
 
-// Address of the testing account, corresponds to tester.addr.
-const SPAddress = "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk"
+// NOTE: This corresponds to
+// https://gitlab.com/nunet/tokenomics-api/tokenomics-api-cardano-v2/-/blob/develop/src/SimpleEscrow.hs?ref_type=heads#L103
+// and must match exactly with the deployed contract
+type Redeemer int
+const (
+	Withdraw Redeemer = 0
+	Refund Redeemer = 1
+	Distribute Redeemer = 2
+)
 
-// Current alpha preprod contract.
-const CurrentContract = "addr_test1wp9pc08wneh5nk5cqdjj7h5vr2905k8sfdjqr9c95etults8xaeud"
+const (
+	testnetMagic = "1"
 
-// Current alpha preprod NTX native asset.
-const mNTX = "8cafc9b387c9f6519cacdce48a8448c062670c810d8da4b232e56313.6d4e5458"
+	SPAccount = "tester"
+	CPAccount = "cp"
 
-const testnetMagic = "1"
+	// Address of the testing account, corresponds to tester.addr.
+	SPAddress = "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk"
+	CPAddress = "addr_test1vz7j9m50apx99phkat3h4sm4t82wvap65ezjpe5xl3kcuxcr6e44h"
 
-const DATUM_FORMAT_STRING = `{
-   "constructor": 0,
-   "fields": [
+	SPCollateral = "1ad86a8ef29adf0aeac0a9c0282a2ee5bc9a3f9a3fc8e8b1c3f086b679aed882#0"
+	CPCollateral = "eb455c103d609e7b9d16056486c8203c59a7e7af312f9ecf9b5b6afc899ab71a#0"
+
+	// Current alpha preprod contract.
+	CurrentContract = "addr_test1wp2nthmgs7n6cwfs4srjs8vtsayhss08he0vwyl2e0v836s5n6jgy"
+
+	// Current alpha preprod NTX native asset.
+	mNTX = "8cafc9b387c9f6519cacdce48a8448c062670c810d8da4b232e56313.6d4e5458"
+
+	// Oracle given metadata hash and withdraw hash, signed with the nunet-team channel oracle
+	PreGenMetaDataHash = "dd00ba663a650bcd03f54682a2585da7488a452047f3b515878fcf2379e2ba28cc56bca6f20ff3adefae6072c59bdf288869bc423eb1119f25cd001493e1e505"
+	PreGenWithdrawHash = "66756e64696e672d622758205c7865655c786261607e5c786464255c7864325c7831655c7831385c7861615c7839645c7865385c786362756d5c7862615c7861665c783130545c7866315c7839645c7862375c7830365c7864335c78303829425c78646569556f5c78653527"
+
+	DATUM_FORMAT_STRING = `{
+      "constructor": 0,
+      "fields": [
+         {
+            "bytes": "%s"
+         },
+         {
+            "bytes": "%s"
+         },
+         {
+            "int": %d
+         },
+         {
+            "bytes": "%s"
+         },
+         {
+            "bytes": "%s"
+         },
+         {
+            "bytes": ""
+         },
+         {
+            "bytes": ""
+         }
+      ]
+   }`
+
+   REDEEMER_FORMAT_STRING = `{
+     "constructor": %d,
+     "fields": [
       {
-         "bytes": "%s"
-      },
-      {
-         "bytes": "%s"
-      },
-      {
-         "int": %d
-      },
-      {
-         "bytes": "dd00ba663a650bcd03f54682a2585da7488a452047f3b515878fcf2379e2ba28cc56bca6f20ff3adefae6072c59bdf288869bc423eb1119f25cd001493e1e505"
-      },
-      {
-         "bytes": "66756e64696e672d622758205c7865655c786261607e5c786464255c7864325c7831655c7831385c7861615c7839645c7865385c786362756d5c7862615c7861665c783130545c7866315c7839645c7862375c7830365c7864335c78303829425c78646569556f5c78653527"
-      },
-      {
-         "bytes": ""
-      },
-      {
-         "bytes": ""
-      }
-   ]
-}`
+   		"constructor": 0,
+   		"fields": [
+   			{
+   				"bytes" : "%s"
+   			},
+   			{
+   				"bytes" : "%s"
+   			},
+   			{
+   				"bytes" : "%s"
+   			},
+   			{
+   				"bytes" : "%s"
+   			},
+   			{
+   				"bytes" : "%s"
+   			},
+   			{
+   				"bytes" : "%s"
+   			}
+   	 	]
+   	  }
+     ]
+   }`
+
+)
 
 // JSONInput is a intermediate unmarshalled format for custom unmarshalling logic for Inputs
 // as Inputs do not have enough.
@@ -67,6 +125,9 @@ type JSONInput struct {
 type Input struct {
 	Key string // The key is the '<transaction-hash>#<index>'.
 	Value map[string]int64 // Value is a map from '<policy-id>.<hex-asset-name>' or 'lovelace' to token amount.
+	ScriptFile string
+	DatumFile string
+	RedeemerFile string
 }
 
 // An Output to be created by a transaction
@@ -81,6 +142,7 @@ type Transaction struct {
 	Inputs []Input // The inputs to the transaction.
 	Outputs map[string]Output // The outputs created by this transaction.
 	ChangeAddress string // The address that should be given change from this transaction.
+	Collateral string
 }
 
 // Get the Inputs owned by an address.
@@ -393,7 +455,7 @@ func ValueStr( value map[string]int64 ) (str string) {
 }
 
 func WriteDatumFile (path string, ntx int64, spPubKeyHash string, cpPubKeyHash string) {
-	if err := os.WriteFile(path, []byte(fmt.Sprintf(DATUM_FORMAT_STRING, spPubKeyHash, cpPubKeyHash, ntx)), 0666); err != nil {
+	if err := os.WriteFile(path, []byte(fmt.Sprintf(DATUM_FORMAT_STRING, spPubKeyHash, cpPubKeyHash, ntx, PreGenMetaDataHash, PreGenWithdrawHash)), 0666); err != nil {
 		log.Fatal(err)
 	}
 }
