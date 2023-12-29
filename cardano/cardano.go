@@ -397,6 +397,8 @@ func BuildTransactionRaw( tx Transaction, fee int64 ) {
 		"build-raw",
 		"--fee",
 		fmt.Sprintf("%d", fee),
+		"--protocol-params-file",
+		"protocol.json",
 		"--out-file",
 		"tx.draft",
 	)
@@ -404,6 +406,28 @@ func BuildTransactionRaw( tx Transaction, fee int64 ) {
 	for _, input := range tx.Inputs {
 		args = append(args, "--tx-in")
 		args = append(args, input.Key)
+
+		if (input.ScriptFile != "") {
+			args = append(args, "--tx-in-script-file")
+			args = append(args, input.ScriptFile)
+		}
+
+		// NOTE: Inline datum is expect to be standard
+		if (input.DatumFile != "") {
+			args = append(args, "--tx-in-inline-datum-present")
+		}
+
+		if (input.RedeemerFile != "") {
+			args = append(args, "--tx-in-redeemer-file")
+			args = append(args, input.RedeemerFile)
+			args = append(args, "--tx-in-execution-units")
+			args = append(args, "(3000000000, 7000000)")
+		}
+	}
+
+	if (tx.Collateral != "") {
+		args = append(args, "--tx-in-collateral")
+		args = append(args, tx.Collateral)
 	}
 
 	for _, output := range tx.Outputs {
