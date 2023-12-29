@@ -219,6 +219,75 @@ func getSignaturesFromOracle() (oracleResp *oracle.RewardResponse, err error) {
 	return oracleResp, nil
 }
 
+// Take money from script
+func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
+	scriptOutputs, err := GetUTXOs(CurrentContract)
+	if err != nil {
+		return err
+	}
+
+	scriptInput, success := FindOutput(scriptOutputs, tx_hash, index)
+	scriptInput.ScriptFile = "script.json"
+	scriptInput.DatumFile = "datum.json"
+	scriptInput.RedeemerFile = "redeemer.json"
+
+	if (!success) {
+		panic("Failed to find the script output")
+	}
+
+	resp, err := getSignaturesFromOracle()
+	if (err != nil) {
+		panic("Failed to contact oracle")
+	}
+
+	WriteRedeemerFile("redeemer.json", resp, redeemer);
+
+	outputs, err := GetUTXOs(SPAddress);
+	if err != nil {
+		return err
+	}
+
+	outputs = append(outputs, scriptInput)
+
+	var collateral string
+	var account string
+	if redeemer == Refund {
+		account = SPAccount
+		collateral = SPCollateral
+	} else {
+		account = CPAccount
+		collateral = CPCollateral
+	}
+
+	transaction := Transaction{
+		Inputs: outputs,
+		Outputs: make(map[string]Output),
+		ChangeAddress: SPAddress,
+		Collateral: collateral,
+	}
+
+	transaction.Outputs[CurrentContract] = Output{
+		To: CurrentContract,
+		Value: make(map[string]int64),
+	}
+
+	transaction.Outputs[CurrentContract].Value[mNTX] = scriptInput.Value[mNTX]
+	transaction.Outputs[CurrentContract].Value["lovelace"] = 100000000
+
+	BuildTransaction(transaction)
+	SignTransaction(account)
+	hash, err := GetTransactionHash()
+	if err != nil {
+		return err
+	}
+	err = SubmitTransaction()
+	if err != nil {
+		return err
+	}
+	log.Printf("Transaction Hash %s", hash);
+	return err
+}
+
 func WaitForTransaction ( tx_hash string, max_timeout_minutes int ) error {
 
 	log.Printf("Waiting for Transaction Confirmation %s", tx_hash);
