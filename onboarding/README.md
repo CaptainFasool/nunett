@@ -53,7 +53,10 @@ This endpoint executes the onboarding process for a compute provider device. See
 | Spec type              | `develop`     | `proposed`  |   `main` |
 ---|---|---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/develop/stages/functional_tests/device-management-service/features/Onboard_Compute_Provider.feature))   | n.a. | n.a. |
-| Data (at rest)       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/data/),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/data/rendered/)) | n.a. | n.a. |
+| Request payload           | entityDiagrams (capacityForNunet) ([.mermaid](),[.svg]()) | n.a. | n.a. |
+| Return payload - success  | entityDiagrams (metadataV2)  | n.a. | n.a. |
+| Return payload - error    | entityDiagrams (onboardingError)  | n.a. | n.a. |
+| Other Data                | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/data/),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/data/rendered/)) | n.a. | n.a. |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/onboardingProcess.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/rendered/onboardingProcess.sequence.svg)) | n.a. | n.a. |
 
 > **_Note:_**  Indicated data models and structures should be understood as the result of the process. The onboarding process contains subprocesses which are reponsible for constructing the indicated data structures specifically.
@@ -79,8 +82,9 @@ See table below for links to the specification and data models.
 | Spec type              | `develop`     | `proposed`  |   `main` |
 ---|---|---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/develop/stages/functional_tests/device-management-service/features/Get_Device_Info.feature))   | n.a. | n.a. |
-| Return payload       | entityDiagrams (TBD) | n.a. | n.a. |
-| Request payload      | entityDiagrams (TBD) | n.a. | n.a. |
+| Request payload      | Not Applicable | n.a. | n.a. |
+| Return payload - success      | entityDiagrams (metadataV2) | n.a. | n.a. |
+| Return payload - error      | entityDiagrams (getMetadataError) | n.a. | n.a. |
 | Processes / Functions | sequenceDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/getMetadata.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/rendered/getMetadata.sequence.svg)) | n.a. | n.a. |
 
 ### Get Provisioned Capacity
@@ -96,9 +100,10 @@ See table below for links to the specification and data models.
 | Spec type              | `develop`     | `proposed`  |   `main` |
 ---|---|---|---|
 | Features / test case specifications | Senarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/develop/stages/functional_tests/device-management-service/features/Get_Provisioned_Capacity.feature))   | n.a. | n.a. |
-| Return payload       | entityDiagrams (TBD) | n.a. | n.a. |
-| Request payload      | entityDiagrams (TBD) | n.a. | n.a. |
-| Processes / Functions | sequenceDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/getProvisionedCapacity.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/rendered/getProvisionedCapacity.sequence.svg)) | n.a. | n.a. |
+| Request payload               | Not Applicable | n.a. | n.a. |
+| Return payload - success      | entityDiagrams (provisioned.payload) | n.a. | n.a. |
+| Return payload - error        | entityDiagrams (TBD) | n.a. | n.a. |
+| Processes / Functions         | sequenceDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/getProvisionedCapacity.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/rendered/getProvisionedCapacity.sequence.svg)) | n.a. | n.a. |
 
 ### Create Payment Address
 
@@ -113,8 +118,9 @@ See table below for links to the specification and data models.
 | Spec type              | `develop`     | `proposed`  |   `main` |
 ---|---|---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/develop/stages/functional_tests/device-management-service/features/Create_Payment_Address.feature))   | n.a. | n.a. |
-| Return payload       | entityDiagrams (TBD) | n.a. | n.a. |
-| Request payload      | entityDiagrams (TBD) | n.a. | n.a. |
+| Request payload               | Not Applicable | n.a. | n.a. |
+| Return payload - success      | entityDiagrams (blockchainAddressPrivKey.payload) | n.a. | n.a. |
+| Return payload - error    | entityDiagrams (createPaymentAddressError.payload) | n.a. | n.a. |
 | Processes / Functions | sequenceDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/createPaymentAddress.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/rendered/createPaymentAddress.sequence.svg)) | n.a. | n.a. |
 
 ### Get Onboarding Status
@@ -130,8 +136,9 @@ See table below for links to the specification and data models.
 | Spec type              | `develop`     | `proposed`  |   `main` |
 ---|---|---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/develop/stages/functional_tests/device-management-service/features/Get_Onboarding_Status.feature))   | n.a. | n.a. |
-| Return payload       | entityDiagrams (TBD) | n.a. | n.a. |
-| Request payload      | entityDiagrams (TBD) | n.a. | n.a. |
+| Request payload               | Not Applicable | n.a. | n.a. |
+| Return payload - success    | entityDiagrams (onboardingStatus.payload) | n.a. | n.a. |
+| Return payload - error     | entityDiagrams (onboardingStatus.payload) | n.a. | n.a. |
 | Processes / Functions | sequenceDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/onboardingStatus.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/rendered/onboardingStatus.sequence.svg)) | n.a. | n.a. |
 
 ### Change ResourceConfig
@@ -147,8 +154,10 @@ See table below for links to the specification and data models.
 | Spec type              | `develop`     | `proposed`  |   `main` |
 ---|---|---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/develop/stages/functional_tests/device-management-service/features/Change_Resource_Config.feature))   | n.a. | n.a. |
-| Return payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/messages/successfulResourceChange.message.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/messages/rendered/successfulResourceChange.message.svg))* | n.a. | n.a. |
-| Request payload      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/messages/resourceChangeStart.message.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/messages/rendered/resourceChangeStart.message.svg))* | n.a. | n.a. |
+| Request payload               | entityDiagrams (capacityForNunet.payload[.mermaid](),[.svg]()) | n.a. | n.a. |
+| Return payload (success)      | entityDiagrams (metadataV2.payload[.mermaid](),[.svg]()) | n.a. | n.a. |
+| Return payload (error)        | entityDiagrams (changeResourceConfigError.payload[.mermaid](),[.svg]())* | 
+| Other data                    | entityDiagrams (TBD[.mermaid](),[.svg]()) | 
 | Processes / Functions | sequenceDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/changeResource.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/rendered/changeResource.sequence.svg)) | n.a. | n.a. |
 
 ### Offboard
@@ -164,7 +173,7 @@ See table below for links to the specification and data models.
 | Spec type              | `develop`     | `proposed`  |   `main` |
 ---|---|---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/develop/stages/functional_tests/device-management-service/features/Offboard.feature))   | n.a. | n.a. |
-| Return payload (error)      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/messages/offboardingError.message.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/messages/rendered/offboardingError.message.svg)) | n.a. | n.a. |
-| Return payload (success)      | entityDiagrams (TBD) | n.a. | n.a. |
-| Request payload      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/messages/offboardingStart.message.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/messages/rendered/offboardingStart.message.svg)) | n.a. | n.a. |
+| Request payload               | Not Applicable | n.a. | n.a. |
+| Return payload (success)      | entityDiagrams (successfulOffboarding.payload[.mermaid](),[.svg]()) | n.a. | n.a. |
+| Return payload (error)      | entityDiagrams (offboardingError.payload) | n.a. | n.a. |
 | Processes / Functions | sequenceDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/offboard.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/develop/device-management-service/onboarding/sequences/rendered/offboard.sequence.svg)) | n.a. | n.a. |
