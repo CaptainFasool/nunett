@@ -47,9 +47,6 @@ const (
 	SPCollateral = "1ad86a8ef29adf0aeac0a9c0282a2ee5bc9a3f9a3fc8e8b1c3f086b679aed882#0"
 	CPCollateral = "eb455c103d609e7b9d16056486c8203c59a7e7af312f9ecf9b5b6afc899ab71a#0"
 
-	// Current alpha preprod contract.
-	CurrentContract = "addr_test1wp2nthmgs7n6cwfs4srjs8vtsayhss08he0vwyl2e0v836s5n6jgy"
-
 	// Current alpha preprod NTX native asset.
 	mNTX = "8cafc9b387c9f6519cacdce48a8448c062670c810d8da4b232e56313.6d4e5458"
 
@@ -219,9 +216,31 @@ func getSignaturesFromOracle() (oracleResp *oracle.RewardResponse, err error) {
 	return oracleResp, nil
 }
 
+func BuildPaymentScriptAddress() (address string, err error) {
+	cmd := exec.Command("cardano-cli",
+		"address",
+		"build",
+		"--payment-script-file",
+		"script.json",
+		"--out-file",
+		"/dev/stdout",
+		"--testnet-magic",
+		testnetMagic)
+
+	output, err := execCommand(cmd)
+
+	address = strings.Trim(output, "\n")
+	return
+}
+
 // Take money from script
 func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
-	scriptOutputs, err := GetUTXOs(CurrentContract)
+	currentContract, err := BuildPaymentScriptAddress()
+	if err != nil {
+		return err
+	}
+
+	scriptOutputs, err := GetUTXOs(currentContract)
 	if err != nil {
 		return err
 	}
@@ -266,13 +285,13 @@ func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
 		Collateral: collateral,
 	}
 
-	transaction.Outputs[CurrentContract] = Output{
-		To: CurrentContract,
+	transaction.Outputs[currentContract] = Output{
+		To: currentContract,
 		Value: make(map[string]int64),
 	}
 
-	transaction.Outputs[CurrentContract].Value[mNTX] = scriptInput.Value[mNTX]
-	transaction.Outputs[CurrentContract].Value["lovelace"] = 100000000
+	transaction.Outputs[currentContract].Value[mNTX] = scriptInput.Value[mNTX]
+	transaction.Outputs[currentContract].Value["lovelace"] = 100000000
 
 	BuildTransaction(transaction)
 	SignTransaction(account)
@@ -322,6 +341,11 @@ func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 		return "", err
 	}
 
+	currentContract, err := BuildPaymentScriptAddress()
+	if err != nil {
+		return "", err
+	}
+
 	transaction := Transaction{
 		Inputs: outputs,
 		Outputs: make(map[string]Output),
@@ -331,16 +355,16 @@ func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 	const datumFile = "datum.json"
 	WriteDatumFile(datumFile, ntx, spPubKey, cpPubKey)
 
-	transaction.Outputs[CurrentContract] = Output{
-		To: CurrentContract,
+	transaction.Outputs[currentContract] = Output{
+		To: currentContract,
 		Value: make(map[string]int64),
 		DatumFile: datumFile,
 	}
 
-	transaction.Outputs[CurrentContract].Value[mNTX] = ntx
+	transaction.Outputs[currentContract].Value[mNTX] = ntx
 
 	// Set the min ada to be held in the output
-	transaction.Outputs[CurrentContract].Value["lovelace"] = minLovelace
+	transaction.Outputs[currentContract].Value["lovelace"] = minLovelace
 
 	BuildTransaction(transaction)
 	SignTransaction(SPAccount)
