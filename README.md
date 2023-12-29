@@ -1,165 +1,235 @@
-![latest release version](https://gitlab.com/nunet/device-management-service/-/badges/release.svg) ![unit tests](https://gitlab.com/nunet/device-management-service/badges/develop/pipeline.svg) ![coverage](https://gitlab.com/nunet/device-management-service/badges/develop/coverage.svg)
+Device Management Service, or DMS is the backend of all the clients which are available for compute or service provider. Currently they are SPD or Service Provider Dashboard and CPD aka Compute Provider Dashboard.
 
-# What is the Device Management Service (DMS)?
+Note: This README is intended for developers. For end users, please check our [Wiki section](https://gitlab.com/nunet/device-management-service/-/wikis/home).
 
-A **device management service** or **DMS** is a program that helps users run various computational services, including machine learning (ML) jobs, on a compute provider machine, based on an NTX token request system on NuNet. In simple terms, it connects users who want to perform computational tasks to powerful CPU/GPU enabled computers that can handle these tasks. The purpose of the DMS is to connect users on NuNet, allow them to run any service (not only ML jobs) and be rewarded for it.
-
-The NTX token is a digital cryptographic asset available on the Cardano and Ethereum blockchain as a smart contract. However, for the current use case of running machine learning jobs, only the Cardano blockchain is being used. Users request and allocate resources for computational jobs through a Service Provider Dashboard. Compute providers receive the NTX tokens based on the jobs through a Compute Provider Dashboard.
-
-Please note that the dashboards are not components of NuNet's core architecture. Both these components have been developed to perform the current use case that is to run ML jobs on compute providers machines.
-
-Here's a step-by-step explanation:
-
-1. Users have computational services they want to run. These services often require a lot of computing power, which may not be available on their personal devices.
-2. Compute provider machines are powerful computers designed to handle resource-intensive tasks like machine learning jobs.
-3. The device management service acts as a bridge, connecting users with these compute provider machines.
-4. Users specify resources and job requirements through a webapp interface, and request access to the compute provider machines by sending NTX tokens. NTX acts as a digital ticket, granting users access to the resources they need.
-5. The device management service receives the job request after verifying the authenticity of the NTX transaction through an Oracle.
-6. Once received, the DMS allocates the necessary resources on the compute provider machine to run the user's job.
-7. The user's job is executed on the provider's machine, and the results are sent back to the user.
-
-In summary, a device management service simplifies the process of running various computational services on powerful computers. Users can easily request access to these resources with NTX tokens, allowing them to complete their tasks efficiently and effectively.
-
-**Note**: If you are a developer, please check out [these instructions](https://gitlab.com/nunet/device-management-service/-/blob/develop/README-DEV.md).
-
-# How to Install the Device Management Service?
-
-Before going through the installation process, let's take a quick look at the system requirements and other things to keep in mind.
-
-## Installing via Virtual Machines or Windows Subsystem (WSL) for Linux
-
-When using a VM or WSL, using Ubuntu 20.04 is highly recommended.
-
-### Things to keep in mind for VMs
-
-- Skip doing an [unattended installation](https://www.virtualbox.org/manual/ch01.html#create-vm-wizard-unattended-install) for the new Ubuntu VM as it might not add the user with administrative privileges.
-- Enable [Guest Additions](https://www.virtualbox.org/manual/ch04.html) when installing the VM (VirtualBox only).
-- Always [change the default NAT network setting to Bridged](https://www.techrepublic.com/article/how-to-set-bridged-networking-in-a-virtualbox-virtual-machine) before booting the VM.
-- [Install Extension Pack](https://phoenixnap.com/kb/install-virtualbox-extension-pack) if on VirtualBox (recommended)
-- [Install VMware Tools](https://kb.vmware.com/s/article/1014294) if on VMware (recommended)
-- ML on GPU jobs on VMs are not supported
-
-### Things to keep in mind for WSLs
-
-- Install WSL through the Windows Store.
-- Install the [Update KB5020030](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5020030) (Windows 10 only)
-- Install Ubuntu 20.04 through WSL
-- Enable [systemd on Ubuntu WSL](https://www.xda-developers.com/how-enable-systemd-in-wsl)
-- ML Jobs deployed on Linux cannot be resumed on WSL
-
-Though it is possible to run ML jobs on Windows machines with WSL, using Ubuntu 20.04 natively is highly recommended. The reason being our development is completely based around the Linux operating system. Also, the system requirements when using WSL would increase by at least around 25%.
-
-If you are using a dual boot machine, make sure you use the `wsl --shutdown` command before shutting down Windows and running Linux for ML jobs. Also, ensure your Windows machine is not in a hibernated state when you reboot into Linux.
-
-## CPU-only machines
-
-### Minimum System requirements
-
-We only require for you to specify CPU (MHz x no. of cores) and RAM but your system must meet at least the following set of requirements before you decide to onboard it:
-
-- CPU - 2 GHz
-- RAM - 4 GB
-- Free Disk Space - 10 GB
-- Internet Download/Upload Speed - 4 Mbps / 0.5 MBps
-
-If the above CPU has 4 cores, your available CPU would be around 8000 MHz. So if you want to onboard half your CPU and RAM on NuNet, you can specify 4000 MHz CPU and 2000 MB RAM.
-
-### Recommended System requirements
-
-- CPU - 3.5 GHz
-- RAM - 8-16 GB
-- Free Disk Space - 20 GB
-- Internet Download/Upload Speed - 10 Mbps / 1.25 MBps
-
-## GPU Machines
-
-### Minimum System Requirements
-
-- CPU - 3 GHz
-- RAM - 8 GB
-- NVIDIA GPU - 4 GB VRAM
-- Free Disk Space - 50 GB
-- Internet Download/Upload Speed - 50 Mbps
-
-### Recommended System requirements
-
-- CPU - 4 GHz
-- RAM - 16-32 GB
-- NVIDIA GPU - 8-12 GB VRAM
-- Free Disk Space - 100 GB
-- Internet Download/Upload Speed - 100 Mbps
-
-Here's a step by step process to install the device management service (DMS) on a machine:
-
-1. **Download the DMS package**:
-
-   Download the latest version with this command:
-
+For a quick install, you can use the following script:
 ```
-wget https://d.nunet.io/nunet-dms-latest.deb -O nunet-dms-latest.deb
+sh <(curl -sL https://inst.dms.nunet.io)
 ```
 
-2. **Install DMS**: 
+## Getting Started with Development
 
-​	   Navigate to the directory where you downloaded the DMS package and install the DMS with this command:
+The cleanest way to setup development environment is to build a deb package out of this repository and let the installer do the work for you.
 
 ```
-sudo apt update && sudo apt install ./nunet-dms-latest.deb -y
+sudo apt install build-essential curl jq iproute2 libsystemd-dev
 ```
 
-​		If the above fails, try dpkg instead:
+### Prerequisites
 
+To build the deb, you'd be required to install these two packages:
+
+```
+sudo snap install go
+sudo apt install build-essential libsystemd-dev
+```
+
+### Build, Install & Setup Dev Env
+
+We provide a dev-setup shell script to ease the process of getting started. It does the following:
+
+1. Setup `pre-commit` hook which runs test before every commit.
+2. Build .deb file and installs it.
+3. Stops the `nunet-dms` service so that we can run main.go directly.
+
+Run the script as follows:
+
+```
+bash maint-scripts/dev-setup.sh
+```
+
+Once the env is setup, run the DMS as follows:
+
+```
+sudo go run main.go
+```
+
+Notice we're using `sudo` as the onboarding process writes some configuration files to `/etc/nunet`.
+
+### Component Installation
+
+To test the onboarding functionality it is required to install the DMS component. This can be done as follows:
+
+1. Download the latest version of DMS using this command
+
+`wget https://d.nunet.io/nunet-dms-latest.deb -O nunet-dms-latest.deb`
+
+2. Install DMS using this command
+
+`sudo apt update && sudo apt install ./nunet-dms-latest.deb -y`
+
+If the installation fails, try these commands instead:
 ```
 sudo dpkg -i nunet-dms-latest.deb
 sudo apt -f install -y
 ```
+If you see a "Permission denied" error, don't worry, it's just a notice. Proceed to the next step.
 
-
-Check if DMS is running. Either look for the _nunet-dms_ process with:
-
+3. Check if DMS is running
+Look for "/usr/bin/nunet-dms" in the output of this command:
 ```
 ps aux | grep nunet-dms
 ```
-or use systemd:
-```
-sudo systemctl status nunet-dms.service
-```
 
-If it's not running and you notice errors, [submit a bug report](https://gitlab.com/nunet/documentation/-/issues) with the error messages. Here are the [contribution guidelines](https://gitlab.com/nunet/documentation/-/wikis/Contribution-Guidelines).
-
-3. **Uninstall DMS** (if needed): 
-
+#### Remove DMS
 To remove DMS, use this command:
+`sudo apt remove nunet-dms`
 
-```
-sudo apt remove nunet-dms
-```
-
-To download and install a new DMS package, repeat steps 1 and 2.
-
-4. **Completely remove DMS** (if needed): 
-
+Completely remove DMS (if needed):
 To fully uninstall and stop DMS, use either of these commands:
 
-```
-
-sudo apt purge nunet-dms
-```
+`sudo apt purge nunet-dms`
 
 or
 
+`sudo dpkg --purge nunet-dms`
+
+#### Update DMS
+To update the DMS to the latest version, follow these steps in the given sequence:
+
+1. Uninstall the current DMS
+2. Download the latest DMS package
+3. Install the new DMS package
+
+### Onboarding
+
+You don't necessarily need to onboard for development, but that depends which part you're working on.
+To onboard during development, /etc/nunet need to be manually created since it's created with the package
+during installation.
+
+Onboarding instructions can be found at [Onboarding Wiki](https://gitlab.com/nunet/device-management-service/-/wikis/Onboarding)
+
+## Usecase: ML on GPU/CPU
+### Communication between SPD and DMS
+
+This section describes the communication mechanism between the Service Provider Daemon (SPD) and the Device Management Service (DMS). It covers the REST endpoints and Websocket interactions between the two components. 
+
+The REST endpoints can be explored using the provided Postman collection, and any questions or clarifications can be addressed on the project's isssues. 
+
+Websocket communication is utilized to maintain an open connection between SPD and DMS, allowing real-time exchange of messages. Message types, referred to as "actions," are used to ensure a predictable system for building and programming. The documentation explains the various actions supported by the Websocket endpoint, such as send-status, job-submitted, deployment-response, job-failed, and job-completed, along with their corresponding message formats.
+#### REST Endpoints
+
+A [Postman collection](https://gitlab.com/nunet/device-management-service/-/snippets/2507804) is there to help you get starting with REST endpoints exploration. Head over to project's issue section and create an issue with your question.
+
+#### Websocket
+
+Both SPD and DMS endpoints are always open through Websocket. And as we know websocket is basically a wrapper around TCP, when sending a message, it's a good practice to include the message type. This message type helps us make predictable system upon which we can build/program our system on.
+
+We tried to write most of the logic in REST as more people are more aware to REST than websocket. But when it comes to websocket, here are the message types which we have implemented. By convention, we call message type **action**.
+
+There is currently one websocket endpoint, which is available on `/run/deploy`, and it is available for any SPD client.
+
+* `send-status`: This action is supposed to be invoked by SPD after they have initially invoked the `/run/request-service`. Is is called *`send-status`* because SPD is supposed to inform DMS about the blockchain transaction status of fund transfer that service provider made for running the job.
+
+An example of send status is like this:
+
+```json
+{
+    "action": "send-status",
+    "message": {
+        "transaction_type": "fund",
+        "transaction_status": "success"
+    }
+}
 ```
-sudo dpkg --purge nunet-dms
+
+`success` or `pending` indicates actual status of blockchain transaction.
+
+send-status is the only action which a websocket client sends. Remaining others are sent by DMS.
+
+* `job-submitted`: If you have gone through the REST endpoint, you know that first endpoint that SPD hits, is /run/request-service. Then we do the send-status. If status is success, the deployment request is then passed to the compute provider. job-submitted is sent to SPD just before sending the deployment request to compute provider.
+
+Example:
+
+```json
+{
+    "action": "job-submitted"
+}
 ```
 
-5. **Update DMS**: 
+* `deployment-response`: Look at the message schema below.
 
-To update the DMS to the latest version, follow these steps in the given sequence:​    
-   - a. Download the latest DMS package (Step 1) 
-   - b. Install the new DMS package (Step 2)
+```json
+{
+    "action": "deployment-response",
+    "message": {
+        "success": true,
+        "content": https://log.url/user/logid
+    }
+}
+```
 
+If deployment is successful on the compute provider side, SPD will receive this message with log URL.
 
-# License
+* `job-failed`: If somehow job was not able to start, due to any error, SPD is going to receive following message:
+
+```json
+{
+    "action": "job-failed",
+    "message": "reason why deployment failed"
+}
+```
+
+* `job-completed`: This action is sent when container has exited with 0 exit status. Message looks simple similar to job-submitted.
+
+```json
+{
+    "action": "job-completed"
+}
+```
+
+## Run 2 DMS side by side
+
+As a developer, you might be in a situation where you have to both service provider and compute provider. For that you'll have to run 2 DMS, one acting as SP and another CP.
+
+**Step 1**:
+
+Clone the repo to 2 different directory. You might want to use descriptive directory names to avoid confusion.
+
+**Step 2**:
+
+You need to modify some configuration so that both the DMS does not create a deadlock. Those configuration include:
+
+1. The port DMS is listening on.
+2. The database file DMS uses.
+
+dms_config.json can be used to modify those settings. Here is a sample config file which can be modified to your taste and used:
+
+```json
+{
+  "p2p": {
+    "listen_address": [
+      "/ip4/0.0.0.0/tcp/9100",
+      "/ip4/0.0.0.0/udp/9100/quic"
+    ]
+  },
+  "general": {
+    "metadata_path": "/home/santosh/.config/nunet/dms/",
+    "debug": true
+  },
+  "rest": {
+    "port": 10000
+  }
+}
+```
+
+Please use absolute paths to keep yourself out of trouble. Moreover, have a look at [config structure](https://gitlab.com/nunet/device-management-service/-/blob/develop/internal/config/config.go).
+
+3. You must also change the port number in the nunet shell script if you are planning to use nunet cli.
+
+**Step 3**:
+
+Onboard both DMSes.
+
+**Step 4**:
+
+Check if both can discover each other.
+
+**Step 5**:
+
+Change DMS backend URL from the SPD/CPD side and start with the testing.
+
+## License
 
 Device Management Service (DMS) is licensed under the [GNU AFFERO GENERAL PUBLIC LICENSE](https://www.gnu.org/licenses/agpl-3.0.txt).
 
