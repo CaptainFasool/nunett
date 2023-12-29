@@ -190,6 +190,35 @@ func GetUTXOs(address string) ([]Input, error){
 	return result, err
 }
 
+func FindOutput(inputs []Input, tx_hash string, index int) (Input, bool) {
+	key := fmt.Sprintf("%s#%d", tx_hash, index)
+	for _, input := range inputs {
+		if (input.Key == key) {
+			return input, true
+		}
+	}
+
+	return Input{}, false
+}
+
+func getSignaturesFromOracle() (oracleResp *oracle.RewardResponse, err error) {
+	oracleResp, err = oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
+		JobStatus:            "finished without errors",
+		JobDuration:          1,
+		EstimatedJobDuration: 1,
+		LogPath:              "https://gist.github.com/luigy/d63eec5cb33d9f789969fafe04ee3ae9",
+		MetadataHash:         PreGenMetaDataHash,
+		WithdrawHash:         PreGenWithdrawHash,
+		RefundHash:           PreGenWithdrawHash,
+	})
+
+	if err != nil {
+		return &oracle.RewardResponse{}, fmt.Errorf("Connection to oracle failed : %v", err)
+	}
+
+	return oracleResp, nil
+}
+
 func WaitForTransaction ( tx_hash string, max_timeout_minutes int ) error {
 
 	log.Printf("Waiting for Transaction Confirmation %s", tx_hash);
