@@ -388,6 +388,72 @@ func GetTransactionHash() (hash string, err error) {
 	return
 }
 
+func EstimatePlutusInteraction ( tx Transaction ) {
+	args := make([]string, 0)
+
+	args = append(args,
+		"transaction",
+		"build",
+		"--calculate-plutus-script-cost",
+		"script_cost",
+		"--testnet-magic",
+		testnetMagic,
+		"--change-address",
+		SPAddress,
+		"--required-signer",
+		"tester.sk",
+	)
+
+	for _, input := range tx.Inputs {
+		args = append(args, "--tx-in")
+		args = append(args, input.Key)
+
+		if (input.ScriptFile != "") {
+			args = append(args, "--tx-in-script-file")
+			args = append(args, input.ScriptFile)
+		}
+
+		// TODO(skylar): See if inline datum is present
+		if (input.DatumFile != "") {
+			args = append(args, "--tx-in-inline-datum-present")
+		}
+
+		if (input.RedeemerFile != "") {
+			args = append(args, "--tx-in-redeemer-file")
+			args = append(args, input.RedeemerFile)
+		}
+	}
+
+	if (tx.Collateral != "") {
+		args = append(args, "--tx-in-collateral")
+		args = append(args, tx.Collateral)
+	}
+
+	for _, output := range tx.Outputs {
+		args = append(args, "--tx-out")
+		args = append(args, fmt.Sprintf(`%s+%s`, output.To, ValueStr(output.Value)))
+
+		if (output.DatumFile != "") {
+			args = append(args, "--tx-out-inline-datum-file")
+			args = append(args, output.DatumFile)
+		}
+	}
+
+	cmd := exec.Command ("cardano-cli", args...)
+
+	pipe, _ := cmd.StderrPipe()
+    scanner := bufio.NewScanner(pipe)
+
+	go func() {
+		for scanner.Scan() {
+			log.Println(scanner.Text())
+		}
+	}()
+
+	cmd.Start()
+	cmd.Wait()
+}
+
 // Builds a transaction file with the given fee.
 func BuildTransactionRaw( tx Transaction, fee int64 ) {
 	args := make([]string, 0)
