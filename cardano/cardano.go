@@ -454,6 +454,28 @@ func ValueStr( value map[string]int64 ) (str string) {
 	return builder.String()
 }
 
+func WriteRedeemerFile (path string, response *oracle.RewardResponse, redeemer Redeemer) {
+	r, _ := regexp.Compile(`B \\"(.*?)\\"`)
+	// NOTE: The submatch or capture group is the second argument, the first is the whole matched expression
+	action_capture := r.FindStringSubmatch(response.Action)[1]
+	datum_capture := r.FindStringSubmatch(response.Datum)[1]
+
+	var action_hex = hex.EncodeToString([]byte(action_capture))
+	var datum_hex = hex.EncodeToString([]byte(datum_capture))
+
+	if err := os.WriteFile(path, []byte(fmt.Sprintf(
+		REDEEMER_FORMAT_STRING,
+		redeemer,
+		response.SignatureDatum,
+		response.MessageHashDatum,
+		datum_hex,
+		response.SignatureAction,
+		response.MessageHashAction,
+		action_hex)), 0666); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func WriteDatumFile (path string, ntx int64, spPubKeyHash string, cpPubKeyHash string) {
 	if err := os.WriteFile(path, []byte(fmt.Sprintf(DATUM_FORMAT_STRING, spPubKeyHash, cpPubKeyHash, ntx, PreGenMetaDataHash, PreGenWithdrawHash)), 0666); err != nil {
 		log.Fatal(err)
