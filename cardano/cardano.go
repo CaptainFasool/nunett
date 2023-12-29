@@ -1,7 +1,7 @@
 // This package has some basic functionality to interact with the cardano block chain and the Escrow smart contract
 // it currently assumed preprod.
 //
-// You must have a running cardano-node synchronized on preprod and the TesterAddress must have mNTX and tADA for
+// You must have a running cardano-node synchronized on preprod and the SPAddress must have mNTX and tADA for
 // the tests to run properly.
 //
 // You must also have cardano-cli available on your PATH
@@ -20,7 +20,7 @@ import (
 )
 
 // Address of the testing account, corresponds to tester.addr.
-const TesterAddress = "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk"
+const SPAddress = "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk"
 
 // Current alpha preprod contract.
 const CurrentContract = "addr_test1wp9pc08wneh5nk5cqdjj7h5vr2905k8sfdjqr9c95etults8xaeud"
@@ -130,7 +130,7 @@ func GetUTXOs(address string) ([]Input, error){
 
 // Pay to the current escrow smart contract an amount in NTX
 func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
-	outputs, err := GetUTXOs(TesterAddress)
+	outputs, err := GetUTXOs(SPAddress)
 	if err != nil {
 		return "", err
 	}
@@ -138,7 +138,7 @@ func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 	transaction := Transaction{
 		Inputs: outputs,
 		Outputs: make(map[string]Output),
-		ChangeAddress: TesterAddress,
+		ChangeAddress: SPAddress,
 	}
 
 	const datumFile = "datum.json"
@@ -213,7 +213,7 @@ func BuildTransaction( tx Transaction ) error {
 	return err
 }
 
-// Sign a transaction with the TesterAddress.
+// Sign a transaction with the SPAddress.
 func SignTransaction () {
 	cmd := exec.Command("cardano-cli",
 		"transaction",
