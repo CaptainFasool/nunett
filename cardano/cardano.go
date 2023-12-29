@@ -218,7 +218,7 @@ func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 	transaction.Outputs[CurrentContract].Value["lovelace"] = minLovelace
 
 	BuildTransaction(transaction)
-	SignTransaction()
+	SignTransaction(SPAccount)
 	hash, err := GetTransactionHash()
 	if err != nil {
 		return "", err
@@ -276,14 +276,14 @@ func BuildTransaction( tx Transaction ) error {
 }
 
 // Sign a transaction with the SPAddress.
-func SignTransaction () {
+func SignTransaction ( account string ) {
 	cmd := exec.Command("cardano-cli",
 		"transaction",
 		"sign",
 		"--tx-body-file",
 		"tx.draft",
 		"--signing-key-file",
-		"tester.sk",
+		fmt.Sprintf("%s.sk", account),
 		"--out-file",
 		"tx.signed",
 	)
