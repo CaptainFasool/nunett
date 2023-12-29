@@ -293,6 +293,16 @@ func SignTransaction () {
 
 // Estimate fee of transaction
 func EstimateFee( tx Transaction ) (fee int64, err error) {
+
+	witness_count := 1
+
+	// Factor in script witnesses
+	for _, input := range tx.Inputs	{
+		if (input.ScriptFile != "") {
+			witness_count += 1;
+		}
+	}
+
 	cmd := exec.Command("cardano-cli",
 		"transaction",
 		"calculate-min-fee",
@@ -303,7 +313,7 @@ func EstimateFee( tx Transaction ) (fee int64, err error) {
 		"--tx-out-count",
 		fmt.Sprintf("%d", len(tx.Outputs)),
 		"--witness-count",
-		"1",
+		fmt.Sprintf("%d", witness_count),
 		"--protocol-params-file",
 		"protocol.json",
 		"--testnet-magic",
