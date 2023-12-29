@@ -190,6 +190,33 @@ func GetUTXOs(address string) ([]Input, error){
 	return result, err
 }
 
+func WaitForTransaction ( tx_hash string, max_timeout_minutes int ) error {
+
+	log.Printf("Waiting for Transaction Confirmation %s", tx_hash);
+	if (max_timeout_minutes == 0) {
+		return errors.New("Max timeout reached, transaction not observed")
+	}
+
+	cmd := exec.Command("cardano-cli",
+		"query",
+		"utxo",
+		"--tx-in",
+		fmt.Sprintf("%s#0", tx_hash),
+		"--out-file",
+		"/dev/stdout",
+		"--testnet-magic",
+		testnetMagic,
+	)
+
+	output, err := execCommand(cmd)
+	if (err != nil || string(output) == "{}") {
+		time.Sleep(1 * time.Minute)
+		return WaitForTransaction(tx_hash, max_timeout_minutes - 1)
+	}
+
+	return nil
+}
+
 // Pay to the current escrow smart contract an amount in NTX
 func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 	outputs, err := GetUTXOs(SPAddress)
