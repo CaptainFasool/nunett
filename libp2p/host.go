@@ -60,6 +60,14 @@ func GetP2P() DMSp2p {
 }
 
 func CheckOnboarding() {
+	onboarded, err := utils.IsOnboarded()
+	if err != nil {
+		zlog.Sugar().Errorf("could not check onboard status: %v", err)
+	}
+	if !onboarded {
+		return
+	}
+
 	// Check 1: Check if payment address is valid
 	metadata, err := utils.ReadMetadataFile()
 	if err != nil {
