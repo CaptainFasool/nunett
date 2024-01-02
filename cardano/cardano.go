@@ -204,15 +204,38 @@ func FindOutput(inputs []Input, tx_hash string, index int) (Input, bool) {
 	return Input{}, false
 }
 
-func getSignaturesFromOracle() (oracleResp *oracle.RewardResponse, err error) {
+func getSignaturesFromOracle(redeemer Redeemer) (oracleResp *oracle.RewardResponse, err error) {
+
+	logWithError := "https://log.nunet.io/api/v1/logbin/01472e48-c430-46f1-8b8a-40c6d1e5cfd1/raw"
+	logWithoutErrors := "https://log.nunet.io/api/v1/logbin/13d26b81-4324-402b-9f7f-cbd05afafb67/raw"
+	// For successful job
+	jobStatus := "finished without errors"
+	logPath := logWithoutErrors
+	jobDuration := int64(55)
+
+	switch redeemer {
+	case Refund:
+		logPath = logWithError
+		jobStatus = "finished with errors"
+		jobDuration = 1
+	case Distribute:
+		logPath = logWithError
+		jobStatus = "finished with errors"
+		jobDuration = 45
+	case Withdraw: // noop
+	}
+
+
 	oracleResp, err = oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
-		JobStatus:            "finished without errors",
-		JobDuration:          1,
-		EstimatedJobDuration: 1,
-		LogPath:              "https://gist.github.com/luigy/d63eec5cb33d9f789969fafe04ee3ae9",
+		JobStatus:            jobStatus,
+		JobDuration:          jobDuration,
+		EstimatedJobDuration: 60,
+		LogPath:              logPath,
 		MetadataHash:         PreGenMetaDataHash,
 		WithdrawHash:         PreGenWithdrawHash,
-		RefundHash:           PreGenWithdrawHash,
+		RefundHash:           PreGenRefundHash,
+		Distribute_50Hash:    PreGenDistribute50Hash,
+		Distribute_75Hash:    PreGenDistribute75Hash,
 	})
 
 	if err != nil {
@@ -260,7 +283,7 @@ func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
 		panic("Failed to find the script output")
 	}
 
-	resp, err := getSignaturesFromOracle()
+	resp, err := getSignaturesFromOracle(redeemer)
 	if (err != nil) {
 		panic("Failed to contact oracle")
 	}
