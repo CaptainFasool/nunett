@@ -50,9 +50,12 @@ const (
 	// Current alpha preprod NTX native asset.
 	mNTX = "8cafc9b387c9f6519cacdce48a8448c062670c810d8da4b232e56313.6d4e5458"
 
-	// Oracle given metadata hash and withdraw hash, signed with the nunet-team channel oracle
-	PreGenMetaDataHash = "dd00ba663a650bcd03f54682a2585da7488a452047f3b515878fcf2379e2ba28cc56bca6f20ff3adefae6072c59bdf288869bc423eb1119f25cd001493e1e505"
-	PreGenWithdrawHash = "66756e64696e672d622758205c7865655c786261607e5c786464255c7864325c7831655c7831385c7861615c7839645c7865385c786362756d5c7862615c7861665c783130545c7866315c7839645c7862375c7830365c7864335c78303829425c78646569556f5c78653527"
+	// These are all hex encoded ascii / ByteString of a text string
+	PreGenMetaDataHash = "612072616E646F6D20737472696E63"
+	PreGenWithdrawHash = "612072616E646F6D20737472696E64"
+	PreGenRefundHash = "612072616E646F6D20737472696E65"
+	PreGenDistribute75Hash = "612072616E646F6D20737472696E66"
+	PreGenDistribute50Hash = "612072616E646F6D20737472696E67"
 
 	DATUM_FORMAT_STRING = `{
       "constructor": 0,
@@ -73,10 +76,13 @@ const (
             "bytes": "%s"
          },
          {
-            "bytes": ""
+            "bytes": "%s"
          },
          {
-            "bytes": ""
+            "bytes": "%s"
+         },
+         {
+            "bytes": "%s"
          }
       ]
    }`
@@ -729,7 +735,7 @@ func WriteRedeemerFile (path string, response *oracle.RewardResponse, redeemer R
 }
 
 func WriteDatumFile (path string, ntx int64, spPubKeyHash string, cpPubKeyHash string) {
-	if err := os.WriteFile(path, []byte(fmt.Sprintf(DATUM_FORMAT_STRING, spPubKeyHash, cpPubKeyHash, ntx, PreGenMetaDataHash, PreGenWithdrawHash)), 0666); err != nil {
+	if err := os.WriteFile(path, []byte(fmt.Sprintf(DATUM_FORMAT_STRING, spPubKeyHash, cpPubKeyHash, ntx, PreGenMetaDataHash, PreGenWithdrawHash, PreGenRefundHash, PreGenDistribute75Hash, PreGenDistribute50Hash)), 0666); err != nil {
 		log.Fatal(err)
 	}
 }
