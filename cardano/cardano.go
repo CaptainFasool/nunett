@@ -323,7 +323,7 @@ func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
 	}
 
 	transaction.Outputs[address].Value[mNTX] = scriptInput.Value[mNTX]
-	transaction.Outputs[address].Value["lovelace"] = minLovelace
+	transaction.Outputs[address].Value["lovelace"] = minOutputLovelace
 
 	BuildTransaction(transaction)
 	SignTransaction(account)
@@ -396,7 +396,7 @@ func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 	transaction.Outputs[currentContract].Value[mNTX] = ntx
 
 	// Set the min ada to be held in the output
-	transaction.Outputs[currentContract].Value["lovelace"] = minLovelace
+	transaction.Outputs[currentContract].Value["lovelace"] = minOutputLovelace
 
 	BuildTransaction(transaction)
 	SignTransaction(SPAccount)
@@ -439,13 +439,14 @@ func SubmitTransaction () error {
 	return err
 }
 
-var minLovelace = int64(2500000)
+var txFees = int64(2200000)
+var minOutputLovelace = int64(5500000)
 
 // Helper to build a valid transaction
 func BuildTransaction( tx Transaction ) error {
 	// The first build is for estimation, we pass in a wide enough lovelace value so the
 	// size is approximated correctly.
-	BuildTransactionRaw(tx, minLovelace)
+	BuildTransactionRaw(tx, txFees)
 	EnsureProtocolParameters()
 	fee, err := EstimateFee(tx)
 	if err != nil {
