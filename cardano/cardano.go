@@ -261,37 +261,40 @@ func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
 
 	WriteRedeemerFile("redeemer.json", resp, redeemer);
 
-	outputs, err := GetUTXOs(SPAddress);
+	var collateral string
+	var account string
+	var address string
+	if redeemer == Refund {
+		address = SPAddress
+		account = SPAccount
+		collateral = SPCollateral
+	} else {
+		address = CPAddress
+		account = CPAccount
+		collateral = CPCollateral
+	}
+
+	outputs, err := GetUTXOs(address);
 	if err != nil {
 		return err
 	}
 
 	outputs = append(outputs, scriptInput)
 
-	var collateral string
-	var account string
-	if redeemer == Refund {
-		account = SPAccount
-		collateral = SPCollateral
-	} else {
-		account = CPAccount
-		collateral = CPCollateral
-	}
-
 	transaction := Transaction{
 		Inputs: outputs,
 		Outputs: make(map[string]Output),
-		ChangeAddress: SPAddress,
+		ChangeAddress: address,
 		Collateral: collateral,
 	}
 
-	transaction.Outputs[currentContract] = Output{
-		To: currentContract,
+	transaction.Outputs[address] = Output{
+		To: address,
 		Value: make(map[string]int64),
 	}
 
-	transaction.Outputs[currentContract].Value[mNTX] = scriptInput.Value[mNTX]
-	transaction.Outputs[currentContract].Value["lovelace"] = 100000000
+	transaction.Outputs[address].Value[mNTX] = scriptInput.Value[mNTX]
+	transaction.Outputs[address].Value["lovelace"] = minLovelace
 
 	BuildTransaction(transaction)
 	SignTransaction(account)
