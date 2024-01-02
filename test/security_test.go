@@ -19,6 +19,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/cardano"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
@@ -34,6 +35,7 @@ const OldValidTransactionHash = "723fb1e2260c8f7c31b5760177c365917fcb39291925ce8
 
 // Address of the SP, currently same as CP
 const RequesterAddress = "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk"
+const TesterKeyHash = "906b4d1d751bd204e60083bec876df93e4ff241007291fe7486993cb"
 
 type TestHarness struct {
 	suite.Suite
@@ -116,26 +118,6 @@ func (spClient *SPTestClient) DefaultDeploymentRequest(tx_hash string) models.De
 	return req
 }
 
-// Test if the the CP DMS will run a undervalued job
-func (s *TestHarness) TestTxUndervaluation() {
-	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client")
-	defer spClient.ShutdownSPClient()
-
-	// Create a request with very high constraints but with the minimum NTX
-	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
-	req.MaxNtx = 1
-	req.Constraints.CPU = 1000000
-	req.Constraints.RAM = 2000000
-	req.Constraints.Vram = 2000000
-	req.Constraints.Power = 20000000
-	req.Constraints.Time = 10000000
-
-	spClient.SendDeploymentRequest(req)
-
-	spClient.AssertJobFail("The CP DMS ran the job even though the requirements are too high for the payment")
-}
-
 // Convenience function to check for job failure and if the job runs respond with a custom error message.
 func (spClient *SPTestClient) AssertJobFail(job_ran_error string) {
 	s := spClient.s
@@ -204,6 +186,27 @@ func (spClient *SPTestClient) RunJob() {
 	}
 }
 
+// Test that the CP DMS will run a job with a valid tx hash
+func (s *TestHarness) TestDMSRunsValidJob() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client");
+
+	const ntxAmount = 2;
+
+	tx_hash, err := cardano.PayToScript(ntxAmount, TesterKeyHash, TesterKeyHash)
+	if err != nil {
+		s.Nil(err, "Failed to pay to script")
+		return
+	}
+
+	req := spClient.DefaultDeploymentRequest(tx_hash)
+
+	spClient.SendDeploymentRequest(req)
+
+	// Confirm that the job ran successfully
+	spClient.RunJob()
+}
+
 // Test that the CP DMS will not run a job with an invalid tx hash
 func (s *TestHarness) TestTxHashValidation() {
 	spClient, err := CreateServiceProviderTestingClient(s)
@@ -215,6 +218,26 @@ func (s *TestHarness) TestTxHashValidation() {
 	spClient.SendDeploymentRequest(req)
 
 	spClient.AssertJobFail("Malicious SP sent an invalid tx-hash but the CP confirmed deployment success")
+}
+
+// Test if the the CP DMS will run a undervalued job
+func (s *TestHarness) TestTxUndervaluation() {
+	spClient, err := CreateServiceProviderTestingClient(s)
+	s.Nil(err, "Failed to create testing client")
+	defer spClient.ShutdownSPClient()
+
+	// Create a request with very high constraints but with the minimum NTX
+	req := spClient.DefaultDeploymentRequest(OldValidTransactionHash)
+	req.MaxNtx = 1
+	req.Constraints.CPU = 1000000
+	req.Constraints.RAM = 2000000
+	req.Constraints.Vram = 2000000
+	req.Constraints.Power = 20000000
+	req.Constraints.Time = 10000000
+
+	spClient.SendDeploymentRequest(req)
+
+	spClient.AssertJobFail("The CP DMS ran the job even though the requirements are too high for the payment")
 }
 
 func (s *TestHarness) TestInvalidResume() {
@@ -615,7 +638,8 @@ func RunTestComputeProvider() error {
 	pair, _, err := GenerateTestKeyPair()
 
 	runAsServer := true
-	libp2p.RunNode(pair, runAsServer)
+	available := true
+	libp2p.RunNode(pair, runAsServer, available)
 
 	if libp2p.GetP2P().Host != nil {
 		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
@@ -720,7 +744,7 @@ type ReadResult struct {
 func (client *SPTestClient) GetNextDeploymentUpdate() (CPUpdate, error) {
 	var update CPUpdate
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
 	defer cancel()
 
 	ch := make(chan ReadResult)
