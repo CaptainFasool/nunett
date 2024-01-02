@@ -171,6 +171,11 @@ func GetUTXOs(address string) ([]Input, error){
 	json.Unmarshal([]byte(output), &dev)
 
 	for key, input := range dev {
+		// Skip the tester collateral!
+		if (key == SPCollateral || key == CPCollateral)  {
+			continue;
+		}
+
 		var newInput Input
 		newInput.Key = key
 		newInput.Value = make(map[string]int64)
