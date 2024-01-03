@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
@@ -165,7 +166,7 @@ func Onboard(c *gin.Context) {
 	metadata.Resource.CPUMax = int64(totalCpu)
 
 	// validate the public (payment) address
-	if err := utils.ValidateAddress(capacityForNunet.PaymentAddress); err != nil {
+	if err := tokenomics.ValidateAddress(capacityForNunet.PaymentAddress); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/afero"
 	mafilt "github.com/whyrusleeping/multiaddr-filter"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -67,7 +68,7 @@ func CheckOnboarding() {
 		return
 	}
 
-	err = utils.ValidateAddress(metadata.PublicKey)
+	err = tokenomics.ValidateAddress(metadata.PublicKey)
 	if err != nil {
 		zlog.Sugar().Errorf("the payment address %s is not valid", metadata.PublicKey)
 		zlog.Sugar().Error("exiting DMS")

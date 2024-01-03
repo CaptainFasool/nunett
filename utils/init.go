@@ -7,10 +7,6 @@ import (
 
 var zlog otelzap.Logger
 
-const transactionWithdrawnStatus = "withdrawn"
-const transactionRefundedStatus = "refunded"
-const transactionDistributedStatus = "distributed"
-
 func init() {
 	zlog = logger.OtelZapLogger("utils")
 }

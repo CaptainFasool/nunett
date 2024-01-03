@@ -127,16 +127,6 @@ func GetMachineUUID() string {
 
 }
 
-// SliceContains checks if a string exists in a slice
-func SliceContains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-	return false
-}
-
 // RegisterLogbin registers the device with logbin
 func RegisterLogbin(uuid string, peer_id string) (string, error) {
 	logbinAuthReq := struct {
@@ -374,7 +364,7 @@ func PromptYesNo(prompt string) (bool, error) {
 		response, err := reader.ReadString('\n')
 
 		if err != nil {
-			return false, fmt.Errorf("Error reading from buffer: %v", err)
+			return false, fmt.Errorf("error reading from buffer: %v", err)
 		}
 
 		response = strings.TrimSpace(response)
@@ -435,14 +425,14 @@ func SaveServiceInfo(cpService models.Services) error {
 	var spService models.Services
 	err := db.DB.Model(&models.Services{}).Where("tx_hash = ?", cpService.TxHash).Find(&spService).Error
 	if err != nil {
-		return fmt.Errorf("Unable to find service on SP side: %v", err)
+		return fmt.Errorf("unable to find service on sp side: %v", err)
 	}
 	cpService.ID = spService.ID
 	cpService.CreatedAt = spService.CreatedAt
 
 	result := db.DB.Model(&models.Services{}).Where("tx_hash = ?", cpService.TxHash).Updates(&cpService)
 	if result.Error != nil {
-		return fmt.Errorf("Unable to update service info on SP side: %v", result.Error.Error())
+		return fmt.Errorf("unable to update service info on sp side: %v", result.Error.Error())
 	}
 
 	return nil

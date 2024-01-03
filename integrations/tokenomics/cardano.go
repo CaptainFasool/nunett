@@ -1,15 +1,33 @@
 package tokenomics
 
 import (
+	"bytes"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/cosmos/btcutil/bech32"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/fivebinaries/go-cardano-serialization/address"
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/utils"
+)
+
+// CardanoNodeEndpoint type for Koios rest api endpoints
+type CardanoNodeEndpoint string
+
+const (
+	// KoiosMainnet - mainnet Koios rest api endpoint
+	CardanoMainnet CardanoNodeEndpoint = "api.koios.rest"
+
+	// KoiosPreProd - testnet preprod Koios rest api endpoint
+	CardanoPreProd CardanoNodeEndpoint = "95.217.109.61:8080"
 )
 
 type TxHashResp struct {
@@ -32,6 +50,53 @@ type rewardRespToCPD struct {
 	MessageHashAction   string `json:"message_hash_action,omitempty"`
 	Action              string `json:"action,omitempty"`
 }
+
+type Amount struct {
+	Unit     string `json:"unit"`
+	Quantity string `json:"quantity"`
+}
+
+type Input struct {
+	OutputIndex int    `json:"outputIndex"`
+	TxHash      string `json:"txHash"`
+}
+
+type Output struct {
+	Address string   `json:"address"`
+	Amount  []Amount `json:"amount"`
+}
+
+type UTXO struct {
+	Input  Input  `json:"input"`
+	Output Output `json:"output"`
+}
+
+// Bytes struct
+type Bytes struct {
+	Bytes string `json:"bytes"`
+}
+
+// Int struct
+type Int struct {
+	Int int `json:"int"`
+}
+
+// Fields struct
+type Fields struct {
+	Bytes string `json:"bytes,omitempty"`
+	Int   int    `json:"int,omitempty"`
+}
+
+type InlineDatum struct {
+	Constructor int      `json:"constructor"`
+	Fields      []Fields `json:"fields"`
+}
+
+type UTXOResponse struct {
+	UTXOs  []UTXO        `json:"utxo"`
+	Datums []InlineDatum `json:"datum"`
+}
+
 type updateTxStatusBody struct {
 	Address string `json:"address,omitempty"`
 }
@@ -197,7 +262,7 @@ func HandleUpdateStatus(c *gin.Context) {
 		return
 	}
 
-	utxoHashes, err := utils.GetUTXOsOfSmartContract(body.Address, utils.KoiosPreProd)
+	utxoHashes, err := GetUTXOsOfSmartContract(body.Address, CardanoPreProd)
 	if err != nil {
 		zlog.Sugar().Errorln(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to fetch UTXOs from Blockchain"})
@@ -221,13 +286,13 @@ func HandleUpdateStatus(c *gin.Context) {
 		return
 	}
 
-	err = utils.UpdateTransactionStatus(services, utxoHashes)
+	err = UpdateTransactionStatus(services, utxoHashes)
 	if err != nil {
 		zlog.Sugar().Errorln(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update transaction status"})
 	}
 
-	c.JSON(200, gin.H{"message": fmt.Sprintf("Transaction statuses synchronized with blockchain successfully")})
+	c.JSON(200, gin.H{"message": "Transaction statuses synchronized with blockchain successfully"})
 }
 
 func getLimitedTransactions(sizeDone int) ([]models.Services, error) {
@@ -257,4 +322,259 @@ func getLimitedTransactions(sizeDone int) ([]models.Services, error) {
 
 	services = append(services, doneServices...)
 	return services, nil
+}
+
+// DoesTxExist returns true if the transaction exists in the blockchain
+func DoesTxExist(payerAddress, txHash string, endpoint CardanoNodeEndpoint) (bool, error) {
+	type Request struct {
+		ScriptAddress string `json:"scriptAddress"`
+		Env           string
+	}
+	reqBody, _ := json.Marshal(Request{ScriptAddress: payerAddress, Env: "preprod"})
+
+	resp, err := http.Post(
+		fmt.Sprintf("http://%s/api/v1/utxo", endpoint),
+		"application/json",
+		bytes.NewBuffer(reqBody))
+
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	res := UTXOResponse{}
+	jsonDecoder := json.NewDecoder(resp.Body)
+	if err := jsonDecoder.Decode(&res); err != nil && err != io.EOF {
+		return false, err
+	}
+
+	if len(res.UTXOs) == 0 {
+		return false, fmt.Errorf("unable to find receiver")
+	}
+
+	for _, utxo := range res.UTXOs {
+		if utxo.Input.TxHash == txHash {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// GetTxReceiver returns the list of receivers of a transaction from the transaction hash
+func GetTxReceiver(payerAddress, txHash string, endpoint CardanoNodeEndpoint) (string, error) {
+	type Request struct {
+		ScriptAddress string `json:"scriptAddress"`
+		Env           string
+	}
+	reqBody, _ := json.Marshal(Request{ScriptAddress: payerAddress, Env: "preprod"})
+
+	resp, err := http.Post(
+		fmt.Sprintf("http://%s/api/v1/utxo", endpoint),
+		"application/json",
+		bytes.NewBuffer(reqBody))
+
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	res := UTXOResponse{}
+	jsonDecoder := json.NewDecoder(resp.Body)
+	if err := jsonDecoder.Decode(&res); err != nil && err != io.EOF {
+		return "", err
+	}
+
+	if len(res.UTXOs) == 0 {
+		return "", fmt.Errorf("unable to find receiver")
+	}
+
+	inlineDatum := findDatumForTx(res, txHash)
+
+	if len(inlineDatum.Fields) == 0 {
+		return "", fmt.Errorf("unable to find receiver")
+	}
+
+	receiver := inlineDatum.Fields[1].Bytes
+
+	return receiver, nil
+}
+
+func findDatumForTx(response UTXOResponse, txHash string) InlineDatum {
+	for i, utxo := range response.UTXOs {
+		if utxo.Input.TxHash == txHash {
+			return response.Datums[i]
+		}
+	}
+	return InlineDatum{}
+}
+
+// GetTxConfirmations returns the number of confirmations of a transaction from the transaction hash
+//
+// Deprecated: We switched from koios to our own cardano node. Use DoesTxExist instead.
+func GetTxConfirmations(txHash string, endpoint CardanoNodeEndpoint) (int, error) {
+	type Request struct {
+		TxHashes []string `json:"_tx_hashes"`
+	}
+	reqBody, _ := json.Marshal(Request{TxHashes: []string{txHash}})
+
+	resp, err := http.Post(
+		fmt.Sprintf("http://%s/api/v1/utxo", endpoint),
+		"application/json",
+		bytes.NewBuffer(reqBody))
+
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	var res []struct {
+		TxHash        string `json:"tx_hash"`
+		Confirmations int    `json:"num_confirmations"`
+	}
+	if err := json.Unmarshal(body, &res); err != nil {
+		return 0, err
+	}
+
+	return res[len(res)-1].Confirmations, nil
+}
+
+// GetUTXOsOfSmartContract fetch all utxos of smart contract and return list of tx_hash
+func GetUTXOsOfSmartContract(address string, endpoint CardanoNodeEndpoint) ([]string, error) {
+	type Request struct {
+		Address  []string `json:"_addresses"`
+		Extended bool     `json:"_extended"`
+	}
+	reqBody, _ := json.Marshal(Request{Address: []string{address}, Extended: true})
+
+	resp, err := http.Post(
+		fmt.Sprintf("http://%s/api/v1/utxo", endpoint),
+		"application/json",
+		bytes.NewBuffer(reqBody),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error making POST request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	res := UTXOResponse{}
+	jsonDecoder := json.NewDecoder(resp.Body)
+	if err := jsonDecoder.Decode(&res); err != nil && err != io.EOF {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
+
+	var utxoHashes []string
+	for _, utxo := range res.UTXOs {
+		utxoHashes = append(utxoHashes, utxo.Input.TxHash)
+	}
+
+	return utxoHashes, nil
+}
+
+// WaitForTxConfirmation waits for a transaction to be confirmed
+func WaitForTxConfirmation(confirmations int, timeout time.Duration,
+	scriptAddress, txHash string, endpoint CardanoNodeEndpoint) error {
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	confirmationsMade := 0
+
+	for {
+		select {
+		case <-ticker.C:
+			exists, err := DoesTxExist(scriptAddress, txHash, endpoint)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				confirmationsMade++
+			}
+			if confirmationsMade >= confirmations {
+				return nil
+			}
+		case <-time.After(timeout):
+			return errors.New("timeout")
+		}
+	}
+}
+
+type UTXOs struct {
+	TxHash  string `json:"tx_hash"`
+	IsSpent bool   `json:"is_spent"`
+}
+
+// isValidCardano checks if the cardano address is valid
+func isValidCardano(addr string, valid *bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			*valid = false
+		}
+	}()
+	if _, err := address.NewAddress(addr); err == nil {
+		*valid = true
+	}
+}
+
+// ValidateAddress checks if the wallet address is a valid ethereum/cardano address
+func ValidateAddress(addr string) error {
+	if common.IsHexAddress(addr) {
+		return errors.New("ethereum wallet address not allowed")
+	}
+
+	var validCardano = false
+	isValidCardano(addr, &validCardano)
+	if validCardano {
+		return nil
+	}
+
+	return errors.New("invalid cardano wallet address")
+}
+
+func GetAddressPaymentCredential(addr string) (string, error) {
+	_, data, err := bech32.Decode(addr, 1023)
+	if err != nil {
+		return "", fmt.Errorf("decoding bech32 failed: %w", err)
+	}
+
+	converted, err := bech32.ConvertBits(data, 5, 8, false)
+	if err != nil {
+		return "", fmt.Errorf("decoding bech32 failed: %w", err)
+	}
+
+	return hex.EncodeToString(converted)[2:58], nil
+}
+
+// SliceContains checks if a string exists in a slice
+func SliceContains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+// UpdateTransactionStatus updates the status of claimed transactions in local DB
+func UpdateTransactionStatus(services []models.Services, utxoHashes []string) error {
+	for _, service := range services {
+		if !SliceContains(utxoHashes, service.TxHash) {
+			if service.TransactionType == "withdraw" {
+				service.TransactionType = transactionWithdrawnStatus
+			} else if service.TransactionType == "refund" {
+				service.TransactionType = transactionRefundedStatus
+			} else if service.TransactionType == "distribute-50" || service.TransactionType == "distribute-75" {
+				service.TransactionType = transactionDistributedStatus
+			}
+
+			if err := db.DB.Save(&service).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

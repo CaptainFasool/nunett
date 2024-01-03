@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/internal"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/models"
@@ -47,9 +48,8 @@ const (
 	JobCompleted = "job-completed"
 )
 
-var txHashPropogrationTime = 60   // seconds
 var txHashConfirmationNum = 5     // min number of confirmations
-var txhashConfirmationTimeout = 5 // minutes
+var txhashConfirmationTimeout = 2 // minutes
 
 var inboundChatStreams []network.Stream
 var InboundDepReqStream network.Stream
@@ -140,7 +140,7 @@ func depReqStreamHandler(stream network.Stream) {
 		DeploymentUpdate(MsgDepResp, string(depResBytes), true)
 	} else {
 		// check if txhash is valid
-		err := checkTxHash(depreqMessage.TxHash)
+		err := checkTxHash(depreqMessage.RequesterWalletAddress, depreqMessage.TxHash)
 		if err == nil {
 			zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
 			DepReqQueue <- depreqMessage
@@ -153,24 +153,23 @@ func depReqStreamHandler(stream network.Stream) {
 	}
 }
 
-func checkTxHash(txHash string) error {
-	// sleep for a minute because it takes time for the tx to be visible
-	zlog.Sugar().Infof("waiting %d seconds before checking on tx Hash", txHashPropogrationTime)
-	time.Sleep(time.Duration(txHashPropogrationTime) * time.Second)
-
-	txReceiver, err := utils.GetTxReceiver(txHash, utils.KoiosPreProd)
+func checkTxHash(payerAddress, txHash string) error {
+	txReceiver, err := tokenomics.GetTxReceiver(txHash, payerAddress, tokenomics.CardanoPreProd)
 	if err != nil {
+		zlog.Sugar().Debugf("unable to get tx receivers %v", err)
 		return fmt.Errorf("unable to get tx receivers")
 	}
 
 	zlog.Sugar().Infof("tx receiver: %q", txReceiver)
 	metadata, err := utils.ReadMetadataFile()
 	if err != nil {
+		zlog.Sugar().Debugf("unable to read metadata file %v", err)
 		return fmt.Errorf("unable to read metadata file")
 	}
 
-	payment_cred, err := utils.GetAddressPaymentCredential(metadata.PublicKey)
+	payment_cred, err := tokenomics.GetAddressPaymentCredential(metadata.PublicKey)
 	if err != nil {
+		zlog.Sugar().Debugf("unable to get payment credential: %v", err)
 		return fmt.Errorf("unable to get payment credential")
 	}
 
@@ -180,7 +179,9 @@ func checkTxHash(txHash string) error {
 		return fmt.Errorf("invalid TxHash")
 	}
 
-	err = utils.WaitForTxConfirmation(txHashConfirmationNum, time.Duration(txhashConfirmationTimeout)*time.Minute, txHash, utils.KoiosPreProd)
+	err = tokenomics.WaitForTxConfirmation(txHashConfirmationNum,
+		time.Duration(txhashConfirmationTimeout)*time.Minute,
+		payerAddress, txHash, tokenomics.CardanoPreProd)
 	if err != nil {
 		return fmt.Errorf("invalid TxHash")
 	}
