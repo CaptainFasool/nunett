@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.155](#333)
+
+### Added
+- Background tasks scheduler package
 
 ## [0.4.154](nunet/research/network-tokenomics/public-alpha-model#8)
 

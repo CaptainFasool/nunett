@@ -13,6 +13,7 @@ require (
 	github.com/libp2p/go-libp2p v0.31.0
 	github.com/libp2p/go-libp2p-kad-dht v0.22.0
 	github.com/multiformats/go-multiaddr v0.11.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/afero v1.10.0
 	github.com/stretchr/testify v1.8.4
