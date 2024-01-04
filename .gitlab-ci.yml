@@ -115,8 +115,8 @@ update_readme:
     - git config user.email $GITLAB_USER_EMAIL
     - git config user.name $GITLAB_USER_NAME
     # add must be used on first run per runner, on subsequent runs error is caught
-    - git remote add gitlab_origin https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/$CI_PROJECT_PATH.git || true
-    - git remote set-url gitlab_origin https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/$CI_PROJECT_PATH.git
+    - git remote add gitlab_origin https://gitlab-ci-token:${PIPELINE_TOKEN}@gitlab.com/$CI_PROJECT_PATH.git || true
+    - git remote set-url gitlab_origin https://gitlab-ci-token:${PIPELINE_TOKEN}@gitlab.com/$CI_PROJECT_PATH.git
     - git add README.md
     #  don't fail if no changes
     - git commit -m "push back from pipeline - README.md" || true
