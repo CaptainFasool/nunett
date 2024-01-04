@@ -106,6 +106,9 @@ Deploy:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "staging"
 
 update_readme:
+  image:
+    entrypoint: ['']
+    name: alpine/git:${GIT_VERSION}
   stage: .post
   script:
     - sed -i "s/badges\/.*\/coverage/badges\/$CI_COMMIT_BRANCH\/coverage/g" README.md
