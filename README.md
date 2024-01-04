@@ -1,3 +1,5 @@
+![coverage](https://gitlab.com/%{project_path}/badges/%{default_branch}/coverage.svg)
+
 Device Management Service, or DMS is the backend of all the clients which are available for compute or service provider. Currently they are SPD or Service Provider Dashboard and CPD aka Compute Provider Dashboard.
 
 Note: This README is intended for developers. For end users, please check our [Wiki section](https://gitlab.com/nunet/device-management-service/-/wikis/home).
