@@ -560,6 +560,23 @@ func (s *TestHarness) TestCPCannotWithdrawForInvalidResults() {
 	s.NotEqual(128, len(oracleResp.SignatureDatum), "Obtained signature from oracle for a withdraw request without running the job")
 }
 
+// Test if the CP can successfully withdraw
+func (s *TestHarness) TestValidCPWithdrawal() {
+	hash, err := cardano.PayToScript(1, SPKeyHash, CPKeyHash)
+	if (err != nil) {
+		s.Fail("Failed to pay to script");
+	}
+	log.Printf("Transaction Hash %s", hash);
+	err = cardano.WaitForTransaction(hash, TxConfirmationTimeoutMinutes)
+	if (err != nil) {
+		s.Fail("Failed to get tx confirmation");
+	}
+	err = cardano.SpendFromScript(hash, 0, cardano.Withdraw)
+	if err != nil {
+		s.Fail("Failed to spend from script");
+	}
+}
+
 // Test if the SP can successfully refund
 func (s *TestHarness) TestValidSPRefund() {
 	hash, err := cardano.PayToScript(1, SPKeyHash, CPKeyHash)
