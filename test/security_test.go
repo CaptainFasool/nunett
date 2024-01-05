@@ -14,6 +14,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"log"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -36,6 +37,9 @@ const OldValidTransactionHash = "723fb1e2260c8f7c31b5760177c365917fcb39291925ce8
 // Address of the SP, currently same as CP
 const RequesterAddress = "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk"
 const TesterKeyHash = "906b4d1d751bd204e60083bec876df93e4ff241007291fe7486993cb"
+const SPKeyHash = "906b4d1d751bd204e60083bec876df93e4ff241007291fe7486993cb"
+const CPKeyHash = "bd22ee8fe84c5286f6eae37ac37559d4e6743aa64520e686fc6d8e1b"
+const TxConfirmationTimeoutMinutes = 5
 
 type TestHarness struct {
 	suite.Suite
@@ -554,6 +558,23 @@ func (s *TestHarness) TestCPCannotWithdrawForInvalidResults() {
 	// Using these signatures the CP can do a withdraw request
 	s.NotEqual("withdraw", oracleResp.RewardType, "Obtained a withdraw request without running the job")
 	s.NotEqual(128, len(oracleResp.SignatureDatum), "Obtained signature from oracle for a withdraw request without running the job")
+}
+
+// Test if the SP can successfully refund
+func (s *TestHarness) TestValidSPRefund() {
+	hash, err := cardano.PayToScript(1, SPKeyHash, CPKeyHash)
+	if (err != nil) {
+		s.Fail("Failed to pay to script");
+	}
+	log.Printf("Transaction Hash %s", hash);
+	err = cardano.WaitForTransaction(hash, TxConfirmationTimeoutMinutes)
+	if (err != nil) {
+		s.Fail("Failed to get tx confirmation");
+	}
+	err = cardano.SpendFromScript(hash, 0, cardano.Refund)
+	if err != nil {
+		s.Fail("Failed to spend from script");
+	}
 }
 
 type OracleRewardReqPayload struct {
