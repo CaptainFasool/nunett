@@ -455,7 +455,7 @@ func ValueStr( value map[string]int64 ) (str string) {
 }
 
 func WriteRedeemerFile (path string, response *oracle.RewardResponse, redeemer Redeemer) {
-	r, _ := regexp.Compile(`B \\"(.*?)\\"`)
+	r, _ := regexp.Compile(`\\\"(.*?)\\\"`)
 	// NOTE: The submatch or capture group is the second argument, the first is the whole matched expression
 	action_capture := r.FindStringSubmatch(response.Action)[1]
 	datum_capture := r.FindStringSubmatch(response.Datum)[1]
