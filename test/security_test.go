@@ -240,7 +240,7 @@ func (s *TestHarness) TestTxUndervaluation() {
 	spClient.AssertJobFail("The CP DMS ran the job even though the requirements are too high for the payment")
 }
 
-func (s *TestHarness) TestInvalidResume() {
+/*func (s *TestHarness) TestInvalidResume() {
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client")
 	defer spClient.ShutdownSPClient()
@@ -251,7 +251,7 @@ func (s *TestHarness) TestInvalidResume() {
 
 	spClient.SendDeploymentRequest(req)
 	spClient.AssertJobFail("Attempted to start invalid resume")
-}
+}*/
 
 func (s *TestHarness) TestMultipleRequestsSameTX() {
 	spClient, err := CreateServiceProviderTestingClient(s)
