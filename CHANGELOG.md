@@ -20,6 +20,10 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.156](#337)
+
+### Fixed
+- Improper state from existing metadatafile but no private key
 ## [0.4.155](#333)
 
 ### Added
