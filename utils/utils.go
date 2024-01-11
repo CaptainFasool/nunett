@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gitlab.com/nunet/device-management-service/db"
@@ -207,9 +208,14 @@ func GetLogbinToken() (string, error) {
 	return logbinAuth.Token, nil
 }
 
+// GetMetadataFilePath Returns metadata file path
+func GetMetadataFilePath() string {
+	return fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath)
+}
+
 // ReadMetadata returns metadata from metadataV2.json file
 func ReadMetadataFile() (*models.MetadataV2, error) {
-	metadataF, err := os.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
+	metadataF, err := os.ReadFile(GetMetadataFilePath())
 	if err != nil {
 		return &models.MetadataV2{}, err
 	}
@@ -219,6 +225,16 @@ func ReadMetadataFile() (*models.MetadataV2, error) {
 		return &models.MetadataV2{}, err
 	}
 	return &metadata, nil
+}
+
+// DeleteFile deletes a file, with or without a backup
+func DeleteFile(path string, backup bool) (err error) {
+	if backup {
+		err = os.Rename(path, fmt.Sprintf("%s.bk.%d", path, time.Now().Unix()))
+	} else {
+		err = os.Remove(path)
+	}
+	return
 }
 
 // IsOnboarded checks if the device is onboarded

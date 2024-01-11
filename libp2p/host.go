@@ -87,6 +87,11 @@ func CheckOnboarding() {
 			panic(err)
 		}
 		RunNode(priv, libp2pInfo.ServerMode, libp2pInfo.Available)
+	} else {
+		zlog.Error("metadata file found but unable to find private key. Improper State. Exiting.")
+		utils.DeleteFile(utils.GetMetadataFilePath(), true)
+		zlog.Info("deleted metadata file with backup matadataV2.json.deleted-<timestamp>")
+		os.Exit(1)
 	}
 }
 
