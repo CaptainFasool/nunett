@@ -19,15 +19,17 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-// CardanoNodeEndpoint type for Koios rest api endpoints
+// CardanoNodeEndpoint type for Nunet's cardano rest api endpoints
 type CardanoNodeEndpoint string
 
 const (
-	// KoiosMainnet - mainnet Koios rest api endpoint
-	CardanoMainnet CardanoNodeEndpoint = "api.koios.rest"
+	// CardanoMainnet - mainnet Nunet's cardano rest api endpoint
+	CardanoMainnet CardanoNodeEndpoint = "api.cardano.nunet.io"
 
-	// KoiosPreProd - testnet preprod Koios rest api endpoint
-	CardanoPreProd CardanoNodeEndpoint = "95.217.109.61:8080"
+	// CardanoPreProd - testnet preprod Nunet's cardano rest api endpoint
+	CardanoPreProd CardanoNodeEndpoint = "preprod.cardano.nunet.io"
+
+	PreprodContractAddr = "addr_test1wp2nthmgs7n6cwfs4srjs8vtsayhss08he0vwyl2e0v836s5n6jgy"
 )
 
 type TxHashResp struct {
@@ -361,12 +363,12 @@ func DoesTxExist(payerAddress, txHash string, endpoint CardanoNodeEndpoint) (boo
 }
 
 // GetTxReceiver returns the list of receivers of a transaction from the transaction hash
-func GetTxReceiver(payerAddress, txHash string, endpoint CardanoNodeEndpoint) (string, error) {
+func GetTxReceiver(txHash string, endpoint CardanoNodeEndpoint) (string, error) {
 	type Request struct {
 		ScriptAddress string `json:"scriptAddress"`
 		Env           string
 	}
-	reqBody, _ := json.Marshal(Request{ScriptAddress: payerAddress, Env: "preprod"})
+	reqBody, _ := json.Marshal(Request{ScriptAddress: PreprodContractAddr, Env: "preprod"})
 
 	resp, err := http.Post(
 		fmt.Sprintf("http://%s/api/v1/utxo", endpoint),
@@ -477,7 +479,7 @@ func GetUTXOsOfSmartContract(address string, endpoint CardanoNodeEndpoint) ([]st
 
 // WaitForTxConfirmation waits for a transaction to be confirmed
 func WaitForTxConfirmation(confirmations int, timeout time.Duration,
-	scriptAddress, txHash string, endpoint CardanoNodeEndpoint) error {
+	txHash string, endpoint CardanoNodeEndpoint) error {
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -487,7 +489,7 @@ func WaitForTxConfirmation(confirmations int, timeout time.Duration,
 	for {
 		select {
 		case <-ticker.C:
-			exists, err := DoesTxExist(scriptAddress, txHash, endpoint)
+			exists, err := DoesTxExist(PreprodContractAddr, txHash, endpoint)
 			if err != nil {
 				return err
 			}

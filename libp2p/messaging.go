@@ -140,7 +140,7 @@ func depReqStreamHandler(stream network.Stream) {
 		DeploymentUpdate(MsgDepResp, string(depResBytes), true)
 	} else {
 		// check if txhash is valid
-		err := checkTxHash(depreqMessage.RequesterWalletAddress, depreqMessage.TxHash)
+		err := CheckTxHash(depreqMessage.TxHash)
 		if err == nil {
 			zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
 			DepReqQueue <- depreqMessage
@@ -153,8 +153,8 @@ func depReqStreamHandler(stream network.Stream) {
 	}
 }
 
-func checkTxHash(payerAddress, txHash string) error {
-	txReceiver, err := tokenomics.GetTxReceiver(txHash, payerAddress, tokenomics.CardanoPreProd)
+func CheckTxHash(txHash string) error {
+	txReceiver, err := tokenomics.GetTxReceiver(txHash, tokenomics.CardanoPreProd)
 	if err != nil {
 		zlog.Sugar().Debugf("unable to get tx receivers %v", err)
 		return fmt.Errorf("unable to get tx receivers")
@@ -180,8 +180,7 @@ func checkTxHash(payerAddress, txHash string) error {
 	}
 
 	err = tokenomics.WaitForTxConfirmation(txHashConfirmationNum,
-		time.Duration(txhashConfirmationTimeout)*time.Minute,
-		payerAddress, txHash, tokenomics.CardanoPreProd)
+		time.Duration(txhashConfirmationTimeout)*time.Minute, txHash, tokenomics.CardanoPreProd)
 	if err != nil {
 		return fmt.Errorf("invalid TxHash")
 	}
