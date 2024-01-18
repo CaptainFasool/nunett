@@ -145,8 +145,8 @@ func depReqStreamHandler(stream network.Stream) {
 			zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
 			DepReqQueue <- depreqMessage
 		} else {
-			zlog.Sugar().Infof("tx_hash %q is invalid or timed out. Stopping deployment process", depreqMessage.TxHash)
-			depRes := models.DeploymentResponse{Success: false, Content: "Invalid TxHash"}
+			zlog.Sugar().Errorf("error validating tx_hash %q: %q", depreqMessage.TxHash, err)
+			depRes := models.DeploymentResponse{Success: false, Content: fmt.Sprintf("Invalid TxHash %q", err)}
 			depResBytes, _ := json.Marshal(depRes)
 			DeploymentUpdate(MsgDepResp, string(depResBytes), true)
 		}
@@ -176,13 +176,13 @@ func CheckTxHash(txHash string) error {
 	zlog.Sugar().Infof("self payment_cred=%q", payment_cred)
 
 	if payment_cred != txReceiver {
-		return fmt.Errorf("invalid TxHash")
+		return fmt.Errorf("invalid TxHash because payment_cred != txReceiver")
 	}
 
 	err = tokenomics.WaitForTxConfirmation(txHashConfirmationNum,
 		time.Duration(txhashConfirmationTimeout)*time.Minute, txHash, tokenomics.CardanoPreProd)
 	if err != nil {
-		return fmt.Errorf("invalid TxHash")
+		return fmt.Errorf("error in waiting for tx confirmation: %v", err)
 	}
 	return nil
 }

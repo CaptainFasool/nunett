@@ -384,13 +384,13 @@ func GetTxReceiver(txHash string, endpoint CardanoNodeEndpoint) (string, error) 
 	}
 
 	if len(res.UTXOs) == 0 {
-		return "", fmt.Errorf("unable to find receiver")
+		return "", fmt.Errorf("utxo count is zero, can't find receiver")
 	}
 
 	inlineDatum := findDatumForTx(res, txHash)
 
 	if len(inlineDatum.Fields) == 0 {
-		return "", fmt.Errorf("unable to find receiver")
+		return "", fmt.Errorf("inline datum fields count is zero, can't find receiver")
 	}
 
 	receiver := inlineDatum.Fields[1].Bytes
@@ -486,11 +486,12 @@ func WaitForTxConfirmation(confirmations int, timeout time.Duration,
 	for {
 		select {
 		case <-ticker.C:
-			exists, err := DoesTxExist(PreprodContractAddr, txHash, endpoint)
+			zlog.Sugar().Debugf("inside WaitForTxConfirmation ticker with %d confirmations", confirmations)
+			exists, err := DoesTxExist(txHash, endpoint)
 			if err != nil {
-				return err
+				continue
 			}
-			if !exists {
+			if exists {
 				confirmationsMade++
 			}
 			if confirmationsMade >= confirmations {
