@@ -327,17 +327,16 @@ func getLimitedTransactions(sizeDone int) ([]models.Services, error) {
 }
 
 // DoesTxExist returns true if the transaction exists in the blockchain
-func DoesTxExist(payerAddress, txHash string, endpoint CardanoNodeEndpoint) (bool, error) {
+func DoesTxExist(txHash string, endpoint CardanoNodeEndpoint) (bool, error) {
 	type Request struct {
 		ScriptAddress string `json:"scriptAddress"`
-		Env           string
+		Env           string `json:"env"`
 	}
-	reqBody, _ := json.Marshal(Request{ScriptAddress: payerAddress, Env: "preprod"})
+	reqBody, _ := json.Marshal(Request{ScriptAddress: PreprodContractAddr, Env: "testnet"})
 
-	resp, err := http.Post(
-		fmt.Sprintf("http://%s/api/v1/utxo", endpoint),
-		"application/json",
-		bytes.NewBuffer(reqBody))
+	fullUrl := fmt.Sprintf("http://%s/api/v1/utxo", endpoint)
+
+	resp, err := http.Post(fullUrl, "application/json", bytes.NewBuffer(reqBody))
 
 	if err != nil {
 		return false, err
@@ -366,14 +365,12 @@ func DoesTxExist(payerAddress, txHash string, endpoint CardanoNodeEndpoint) (boo
 func GetTxReceiver(txHash string, endpoint CardanoNodeEndpoint) (string, error) {
 	type Request struct {
 		ScriptAddress string `json:"scriptAddress"`
-		Env           string
+		Env           string `json:"env"`
 	}
-	reqBody, _ := json.Marshal(Request{ScriptAddress: PreprodContractAddr, Env: "preprod"})
+	reqBody, _ := json.Marshal(Request{ScriptAddress: PreprodContractAddr, Env: "testnet"})
 
-	resp, err := http.Post(
-		fmt.Sprintf("http://%s/api/v1/utxo", endpoint),
-		"application/json",
-		bytes.NewBuffer(reqBody))
+	fullUrl := fmt.Sprintf("http://%s/api/v1/utxo", endpoint)
+	resp, err := http.Post(fullUrl, "application/json", bytes.NewBuffer(reqBody))
 
 	if err != nil {
 		return "", err
