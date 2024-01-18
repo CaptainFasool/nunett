@@ -1,4 +1,4 @@
-![coverage](https://gitlab.com/%{project_path}/badges/%{default_branch}/coverage.svg)
+![coverage](https://gitlab.com/%{project_path}/badges/343-update-coverage-report-banner-on-repo/coverage.svg)
 
 Device Management Service, or DMS is the backend of all the clients which are available for compute or service provider. Currently they are SPD or Service Provider Dashboard and CPD aka Compute Provider Dashboard.
 
