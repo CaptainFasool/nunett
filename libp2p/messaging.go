@@ -48,12 +48,16 @@ const (
 	JobCompleted = "job-completed"
 )
 
-var txHashConfirmationNum = 5     // min number of confirmations
-var txhashConfirmationTimeout = 2 // minutes
+var (
+	txHashConfirmationNum     = 5 // min number of confirmations
+	txhashConfirmationTimeout = 2 // minutes
+)
 
-var inboundChatStreams []network.Stream
-var InboundDepReqStream network.Stream
-var OutboundDepReqStream network.Stream
+var (
+	inboundChatStreams   []network.Stream
+	InboundDepReqStream  network.Stream
+	OutboundDepReqStream network.Stream
+)
 
 type OpenStream struct {
 	ID         int    `json:"id"`
@@ -116,7 +120,7 @@ func depReqStreamHandler(stream network.Stream) {
 
 	zlog.Sugar().DebugfContext(ctx, "[depReq recv] no existing depReq. Proceeding to read from stream.")
 	r := bufio.NewReader(stream)
-	//XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
+	// XXX : see into disadvantages of using newline \n as a delimiter when reading and writing
 	//      from/to the buffer. So far, all messages are sent with a \n at the end and the
 	//      reader looks for it as a delimiter. See also DeploymentResponse - w.WriteString
 	str, err := r.ReadString('\n')
@@ -138,18 +142,22 @@ func depReqStreamHandler(stream network.Stream) {
 		depRes := models.DeploymentResponse{Success: false, Content: "Unable to decode deployment request"}
 		depResBytes, _ := json.Marshal(depRes)
 		DeploymentUpdate(MsgDepResp, string(depResBytes), true)
+	}
+
+	// sleep for 1 minute to let the tx propagate through multiple nodes
+	zlog.Sugar().Debug("sleeping for 1 minute to let the tx propagate through multiple nodes")
+	time.Sleep(1 * time.Minute)
+
+	// check if txhash is valid
+	err = CheckTxHash(depreqMessage.TxHash)
+	if err == nil {
+		zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
+		DepReqQueue <- depreqMessage
 	} else {
-		// check if txhash is valid
-		err := CheckTxHash(depreqMessage.TxHash)
-		if err == nil {
-			zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
-			DepReqQueue <- depreqMessage
-		} else {
-			zlog.Sugar().Errorf("error validating tx_hash %q: %q", depreqMessage.TxHash, err)
-			depRes := models.DeploymentResponse{Success: false, Content: fmt.Sprintf("Invalid TxHash %q", err)}
-			depResBytes, _ := json.Marshal(depRes)
-			DeploymentUpdate(MsgDepResp, string(depResBytes), true)
-		}
+		zlog.Sugar().Errorf("error validating tx_hash %q: %q", depreqMessage.TxHash, err)
+		depRes := models.DeploymentResponse{Success: false, Content: fmt.Sprintf("Invalid TxHash %q", err)}
+		depResBytes, _ := json.Marshal(depRes)
+		DeploymentUpdate(MsgDepResp, string(depResBytes), true)
 	}
 }
 
@@ -449,7 +457,8 @@ func IncomingChatRequests() ([]OpenStream, error) {
 			ID:         idx,
 			StreamID:   inboundChatStreams[idx].ID(),
 			FromPeer:   inboundChatStreams[idx].Conn().RemotePeer().String(),
-			TimeOpened: inboundChatStreams[idx].Stat().Opened.String()})
+			TimeOpened: inboundChatStreams[idx].Stat().Opened.String(),
+		})
 	}
 	return out, nil
 }
@@ -497,7 +506,6 @@ func readString(r *bufio.Reader) (string, error) {
 }
 
 func writeString(w *bufio.Writer, msg string) (int, error) {
-
 	zlog.Sugar().Debugf("writing raw data to stream: %s", msg)
 
 	n, err := w.WriteString(fmt.Sprintf("%s\n", msg))
