@@ -486,7 +486,7 @@ func WaitForTxConfirmation(confirmations int, timeout time.Duration,
 	for {
 		select {
 		case <-ticker.C:
-			zlog.Sugar().Debugf("inside WaitForTxConfirmation ticker with %d confirmations", confirmations)
+			zlog.Sugar().Debugf("inside WaitForTxConfirmation ticker with %d confirmations", confirmationsMade)
 			exists, err := DoesTxExist(txHash, endpoint)
 			if err != nil {
 				continue
