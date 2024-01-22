@@ -8,8 +8,9 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-    "github.com/docker/go-connections/nat"
+	"github.com/docker/go-connections/nat"
 )
 
 // DockerRunner implements the Runner interface for Docker containers.
@@ -140,6 +141,48 @@ func (d *DockerRunner) StatusStream(jobID string) (JobStatusStream, error) {
 	// Implementation for this method will require setting up a mechanism to
 	// stream updates from Docker, possibly using Docker events or periodic polling.
 	return nil, errors.New("StatusStream method not implemented")
+}
+
+
+func (d *DockerRunner) CleanupJobResources(jobID string) error {
+    // Cleanup all resources related to a specific job
+    ctx := context.Background()
+
+    // Example: Remove the container associated with the job
+    err := d.dockerClient.ContainerRemove(ctx, jobID, types.ContainerRemoveOptions{
+        Force:         true,
+        RemoveVolumes: true,
+    })
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func (d *DockerRunner) CleanupResources() error {
+    // Cleanup all unnecessary Docker resources
+    ctx := context.Background()
+
+    // Example: Prune unused containers, networks, images, and build cache
+    _, err := d.dockerClient.ContainersPrune(ctx, filters.Args{})
+    if err != nil {
+        return err
+    }
+    _, err = d.dockerClient.ImagesPrune(ctx, filters.Args{})
+    if err != nil {
+        return err
+    }
+    _, err = d.dockerClient.NetworksPrune(ctx, filters.Args{})
+    if err != nil {
+        return err
+    }
+    _, err = d.dockerClient.VolumesPrune(ctx, filters.Args{})
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
 
 // Helper functions

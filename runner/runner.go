@@ -88,4 +88,6 @@ type Runner interface {
 	HealthCheck() error
 	Status(jobID string) (JobStatus, error)
 	StatusStream(jobID string) (JobStatusStream, error)
+	CleanupJobResources(jobID string) error
+    CleanupResources() error
 }
