@@ -4,6 +4,36 @@ import (
 	"time"
 )
 
+// JobStatusCode represents the status of a job.
+type JobStatusCode string
+
+const (
+	JobStatusPending   JobStatusCode = "PENDING"
+	JobStatusRunning   JobStatusCode = "RUNNING"
+	JobStatusCompleted JobStatusCode = "COMPLETED"
+	JobStatusFailed    JobStatusCode = "FAILED"
+)
+
+// Runner defines the interface for any type of job runner.
+type Runner interface {
+	Capabilities() map[string]interface{}
+	Start(job JobConfig) (JobStatus, error)
+	Stop(jobID string) error
+	Pause(jobID string) error
+	Resume(jobID string) error
+	HealthCheck() error
+	Status(jobID string) (JobStatus, error)
+	StatusStream(jobID string) (JobStatusStream, error)
+	CleanupJobResources(jobID string) error
+	CleanupResources() error
+}
+
+// JobStatusStream defines the interface for streaming job status updates.
+type JobStatusStream interface {
+	// Next returns the next JobStatus update. It should block until there is an update or an error.
+	Next() (JobStatus, error)
+}
+
 // JobConfig defines the configuration necessary to start a job.
 // This is a generic structure that can be extended or interpreted differently
 // by various runner implementations.
@@ -60,34 +90,4 @@ type JobStatus struct {
 	StartTime      time.Time
 	CompletionTime time.Time
 	ErrorMessage   string
-}
-
-// JobStatusCode represents the status of a job.
-type JobStatusCode string
-
-const (
-	JobStatusPending   JobStatusCode = "PENDING"
-	JobStatusRunning   JobStatusCode = "RUNNING"
-	JobStatusCompleted JobStatusCode = "COMPLETED"
-	JobStatusFailed    JobStatusCode = "FAILED"
-)
-
-// JobStatusStream defines the interface for streaming job status updates.
-type JobStatusStream interface {
-	// Next returns the next JobStatus update. It should block until there is an update or an error.
-	Next() (JobStatus, error)
-}
-
-// Runner defines the interface for any type of job runner.
-type Runner interface {
-	Capabilities() map[string]interface{}
-	Start(job JobConfig) (JobStatus, error)
-	Stop(jobID string) error
-	Pause(jobID string) error
-	Resume(jobID string) error
-	HealthCheck() error
-	Status(jobID string) (JobStatus, error)
-	StatusStream(jobID string) (JobStatusStream, error)
-	CleanupJobResources(jobID string) error
-    CleanupResources() error
 }
