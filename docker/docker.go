@@ -24,6 +24,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
+	telemetry "gitlab.com/nunet/device-management-service/dms/calc-resources"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
@@ -31,7 +32,6 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
-	"gitlab.com/nunet/device-management-service/telemetry"
 	"gitlab.com/nunet/device-management-service/utils"
 	"go.uber.org/zap"
 )

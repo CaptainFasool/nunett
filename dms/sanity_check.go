@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	telemetry "gitlab.com/nunet/device-management-service/dms/calc-resources"
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/telemetry"
 	"gorm.io/gorm"
 )
 
