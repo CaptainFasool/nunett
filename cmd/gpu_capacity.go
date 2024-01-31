@@ -13,7 +13,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
-	library "gitlab.com/nunet/device-management-service/lib"
+	library "gitlab.com/nunet/device-management-service/dms/lib"
 )
 
 // ContainerOptions set parameters for running a Docker container (NVIDIA/AMD)

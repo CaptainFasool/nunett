@@ -21,9 +21,9 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/stretchr/testify/mock"
+	library "gitlab.com/nunet/device-management-service/dms/lib"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
-	library "gitlab.com/nunet/device-management-service/lib"
 	dmslibp2p "gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 

@@ -12,7 +12,7 @@ import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
-	library "gitlab.com/nunet/device-management-service/lib"
+	library "gitlab.com/nunet/device-management-service/dms/lib"
 )
 
 var gpuStatusCmd = &cobra.Command{
