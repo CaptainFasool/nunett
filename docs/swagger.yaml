@@ -286,8 +286,7 @@ paths:
       - p2p
   /onboarding/address/new:
     get:
-      description: Create a payment address from public key. Return payment address
-        and private key.
+      description: Create a payment address from public key. For Ethereum, returns address and private key. For Cardano, returns address and mnemonic.
       produces:
       - application/json
       responses:
@@ -440,20 +439,6 @@ paths:
       summary: Manage default deplyment request receiver peer
       tags:
       - peers
-  /peers/dht:
-    get:
-      description: Gets a list of peers the libp2p node has received a dht update
-        from
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      summary: Return list of peers which have sent a dht update
-      tags:
-      - p2p
   /peers/file:
     get:
       description: Get a list of file transfer requests from peers

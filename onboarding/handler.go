@@ -77,17 +77,25 @@ func CreatePaymentAddress(c *gin.Context) {
 
 	var pair *models.BlockchainAddressPrivKey
 	var err error
+	var responseType string
+
 	if blockChain == "ethereum" {
 		pair, err = GetEthereumAddressAndPrivateKey()
+		responseType = "Ethereum Address and Private Key"
 	} else if blockChain == "cardano" {
 		pair, err = GetCardanoAddressAndMnemonic()
+		responseType = "Cardano Address and Mnemonic"
 	}
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,
 			gin.H{"message": "error creating address"})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"responseType": responseType,
+			"data":         pair,
+		})
 	}
-	c.JSON(http.StatusOK, pair)
 }
 
 // Status      godoc
