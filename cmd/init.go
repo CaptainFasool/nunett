@@ -6,7 +6,7 @@ import (
 
 	"github.com/coreos/go-systemd/sdjournal"
 	"gitlab.com/nunet/device-management-service/cmd/backend"
-	// "gitlab.com/nunet/device-management-service/internal/config"
+	// "gitlab.com/nunet/device-management-service/dms/config"
 )
 
 // var dmsPort = config.GetConfig().Rest.Port

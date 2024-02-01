@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/nunet/device-management-service/cmd/backend"
-	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/dms/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -88,14 +88,14 @@ func promptReonboard(reader io.Reader, writer io.Writer) error {
 // setOnboardData takes all onboarding parameters and marshal them into JSON
 func setOnboardData(memory int64, cpu int64, ntxPrice float64, channel, address string, cardano, serverMode, isAvailable bool) ([]byte, error) {
 	reserved := models.CapacityForNunet{
-		Memory:         memory,
-		CPU:            cpu,
-		Channel:        channel,
-		PaymentAddress: address,
+		Memory:            memory,
+		CPU:               cpu,
+		Channel:           channel,
+		PaymentAddress:    address,
 		NTXPricePerMinute: ntxPrice,
-		Cardano:        cardano,
-		ServerMode:     serverMode,
-		IsAvailable:    isAvailable,
+		Cardano:           cardano,
+		ServerMode:        serverMode,
+		IsAvailable:       isAvailable,
 	}
 
 	data, err := json.Marshal(reserved)

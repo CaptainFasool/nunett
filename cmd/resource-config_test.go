@@ -8,7 +8,7 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/dms/config"
 )
 
 func GetMockConn(open bool) []gonet.ConnectionStat {

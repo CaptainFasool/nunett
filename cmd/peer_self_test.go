@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/dms/config"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
