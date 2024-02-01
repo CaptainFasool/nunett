@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/nunet/device-management-service/onboarding"
+	"gitlab.com/nunet/device-management-service/dms/onboarding"
 )
 
 func TestGetEthereumAddressAndPrivateKey(t *testing.T) {

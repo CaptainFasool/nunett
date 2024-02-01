@@ -23,7 +23,7 @@ import (
 	"gorm.io/gorm"
 
 	library "gitlab.com/nunet/device-management-service/dms/lib"
-	"gitlab.com/nunet/device-management-service/onboarding"
+	"gitlab.com/nunet/device-management-service/dms/onboarding"
 )
 
 func SetupRouter() *gin.Engine {

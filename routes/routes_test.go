@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/dms/onboarding"
 	"gitlab.com/nunet/device-management-service/libp2p/machines"
-	"gitlab.com/nunet/device-management-service/onboarding"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/stretchr/testify/mock"
