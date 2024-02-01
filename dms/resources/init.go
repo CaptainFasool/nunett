@@ -1,4 +1,4 @@
-package calc_resources
+package resources
 
 import (
 	"gitlab.com/nunet/device-management-service/internal/logger"
@@ -7,5 +7,5 @@ import (
 var zlog *logger.Logger
 
 func init() {
-	zlog = logger.New("calc-resources")
+	zlog = logger.New("resources")
 }

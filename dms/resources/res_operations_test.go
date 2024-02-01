@@ -1,4 +1,4 @@
-package calc_resources
+package resources
 
 import (
 	"fmt"

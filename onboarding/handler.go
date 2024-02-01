@@ -12,8 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
-	telemetry "gitlab.com/nunet/device-management-service/dms/calc-resources"
 	library "gitlab.com/nunet/device-management-service/dms/lib"
+	telemetry "gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
