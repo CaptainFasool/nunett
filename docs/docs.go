@@ -311,26 +311,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/peers/dht": {
-            "get": {
-                "description": "Gets a list of peers the libp2p node has received a dht update from",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "p2p"
-                ],
-                "summary": "Return list of peers which have sent a dht update",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/peers/file": {
             "get": {
                 "description": "Get a list of file transfer requests from peers",
@@ -862,59 +842,67 @@ const docTemplate = `{
                 }
             }
         },
-        "models.Metadata": {
+        "models.MetadataV2": {
             "type": "object",
             "properties": {
-                "available": {
+                "name": {
+                    "type": "string",
+                    "example": "nunet-node"
+                },
+                "update_timestamp": {
+                    "type": "integer",
+                    "example": 1705070529
+                },
+                "resource": {
                     "type": "object",
                     "properties": {
-                        "ram": {
-                            "type": "integer"
+                        "memory_max": {
+                            "type": "integer",
+                            "example": 7938
                         },
-                        "update_timestamp": {
-                            "type": "integer"
+                        "total_core": {
+                            "type": "integer",
+                            "example": 2
+                        },
+                        "cpu_max": {
+                            "type": "integer",
+                            "example": 4991
                         }
                     }
                 },
-                "name": {
-                    "type": "string"
-                },
-                "network": {
-                    "type": "string"
-                },
-                "public_key": {
-                    "type": "string"
+                "available": {
+                    "type": "object",
+                    "properties": {
+                        "cpu": {
+                            "type": "integer",
+                            "example": 2991
+                        },
+                        "memory": {
+                            "type": "integer",
+                            "example": 5938
+                        }
+                    }
                 },
                 "reserved": {
                     "type": "object",
                     "properties": {
                         "cpu": {
-                            "type": "integer"
+                            "type": "integer",
+                            "example": 2000
                         },
                         "memory": {
-                            "type": "integer"
+                            "type": "integer",
+                            "example": 2000
                         }
                     }
                 },
-                "resource": {
-                    "type": "object",
-                    "properties": {
-                        "cpu_max": {
-                            "type": "number"
-                        },
-                        "cpu_usage": {
-                            "type": "number"
-                        },
-                        "ram_max": {
-                            "type": "integer"
-                        },
-                        "total_core": {
-                            "type": "integer"
-                        },
-                        "update_timestamp": {
-                            "type": "integer"
-                        }
-                    }
+                "network": {
+                    "type": "string",
+                    "example": "nunet-team"
+                },
+                "public_key": {
+                    "type": "string",
+                    "example": "addr_test1qqgaadmlqk6d6dgum6zpscqcw66nnj3csz5kawrexv6p548d33s664y2llvarq57pcuuqk9qxh3nrdkay4tswu4lh53q8t3a2t"
                 }
             }
         },
