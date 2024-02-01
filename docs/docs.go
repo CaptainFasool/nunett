@@ -131,7 +131,7 @@ const docTemplate = `{
                 "summary": "Runs the offboarding process.",
                 "responses": {
                     "200": {
-                        "description": "Successfully Onboarded"
+                        "description": "Successfully Offboarded"
                     }
                 }
             }
