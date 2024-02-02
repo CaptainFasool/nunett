@@ -175,43 +175,43 @@ func ListPeers(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{string}	string
 //	@Router			/peers/dht [get]
-func ListDHTPeers(c *gin.Context) {
-	if p2p.Host == nil {
-		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
-		return
-	}
-	klogger.Logger.Info("List DHT peers executed by " + p2p.Host.ID().String())
+// func ListDHTPeers(c *gin.Context) {
+// 	if p2p.Host == nil {
+// 		c.JSON(500, gin.H{"error": "Host Node hasn't yet been initialized."})
+// 		return
+// 	}
+// 	klogger.Logger.Info("List DHT peers executed by " + p2p.Host.ID().String())
 
-	var dhtPeers []peer.ID
-	for _, peer := range p2p.peers {
-		_, err := p2p.Host.Peerstore().Get(peer.ID, "peer_info")
-		if err != nil {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
-				zlog.ErrorContext(c.Request.Context(), fmt.Sprintf("coultn't retrieve dht content for peer: %s", peer.String()), zap.Error(err))
-			}
-			continue
-		}
-		if peer.ID == p2p.Host.ID() {
-			continue
-		}
-		dhtPeers = append(dhtPeers, peer.ID)
-	}
+// 	var dhtPeers []peer.ID
+// 	for _, peer := range p2p.peers {
+// 		_, err := p2p.Host.Peerstore().Get(peer.ID, "peer_info")
+// 		if err != nil {
+// 			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+// 				zlog.ErrorContext(c.Request.Context(), fmt.Sprintf("coultn't retrieve dht content for peer: %s", peer.String()), zap.Error(err))
+// 			}
+// 			continue
+// 		}
+// 		if peer.ID == p2p.Host.ID() {
+// 			continue
+// 		}
+// 		dhtPeers = append(dhtPeers, peer.ID)
+// 	}
 
-	if len(dhtPeers) == 0 {
-		c.JSON(200, gin.H{"message": "No peers found"})
-		klogger.Logger.Error("No peers found")
-		return
-	}
+// 	if len(dhtPeers) == 0 {
+// 		c.JSON(200, gin.H{"message": "No peers found"})
+// 		klogger.Logger.Error("No peers found")
+// 		return
+// 	}
 
-	dhtPeersJ, err := json.Marshal(dhtPeers)
-	if err != nil {
-		zlog.ErrorContext(c.Request.Context(), "failed to json marshal dhtPeers: %v", zap.Error(err))
-		klogger.Logger.Error("failed to json marshal dhtPeers")
-	}
-	klogger.Logger.Info("Response: " + string(dhtPeersJ))
+// 	dhtPeersJ, err := json.Marshal(dhtPeers)
+// 	if err != nil {
+// 		zlog.ErrorContext(c.Request.Context(), "failed to json marshal dhtPeers: %v", zap.Error(err))
+// 		klogger.Logger.Error("failed to json marshal dhtPeers")
+// 	}
+// 	klogger.Logger.Info("Response: " + string(dhtPeersJ))
 
-	c.JSON(200, dhtPeers)
-}
+// 	c.JSON(200, dhtPeers)
+// }
 
 // ListKadDHTPeers  godoc
 //
