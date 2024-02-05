@@ -15,10 +15,10 @@ import (
 	"gitlab.com/nunet/device-management-service/dms/config"
 	library "gitlab.com/nunet/device-management-service/dms/lib"
 	"gitlab.com/nunet/device-management-service/dms/resources"
-	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	elk "gitlab.com/nunet/device-management-service/telemetry/heartbeat"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/spf13/afero"
@@ -275,7 +275,7 @@ func Onboard(c *gin.Context) {
 		return
 	}
 
-	_, err = heartbeat.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)
+	_, err = elk.NewToken(libp2p.GetP2P().Host.ID().String(), capacityForNunet.Channel)
 	if err != nil {
 		zlog.Sugar().Errorf("unable to get new telemetry token: %v", err)
 	}

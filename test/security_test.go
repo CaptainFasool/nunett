@@ -22,11 +22,11 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/dms/config"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
-	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	elk "gitlab.com/nunet/device-management-service/telemetry/heartbeat"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -642,7 +642,7 @@ func RunTestComputeProvider() error {
 	libp2p.RunNode(pair, runAsServer, available)
 
 	if libp2p.GetP2P().Host != nil {
-		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+		elk.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
 	}
 	return err
 }

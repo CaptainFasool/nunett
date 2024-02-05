@@ -29,9 +29,9 @@ import (
 	"gitlab.com/nunet/device-management-service/dms/onboarding"
 	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
-	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	elk "gitlab.com/nunet/device-management-service/telemetry/heartbeat"
 	"gitlab.com/nunet/device-management-service/utils"
 	"go.uber.org/zap"
 )

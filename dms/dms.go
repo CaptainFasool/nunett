@@ -11,11 +11,11 @@ import (
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal"
-	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
+	elk "gitlab.com/nunet/device-management-service/telemetry/heartbeat"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -39,8 +39,8 @@ func Run() {
 
 	go messaging.FileTransferWorker(ctx)
 
-	heartbeat.Done = make(chan bool)
-	go heartbeat.Heartbeat()
+	elk.Done = make(chan bool)
+	go elk.Heartbeat()
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
 
@@ -51,7 +51,7 @@ func Run() {
 	libp2p.CheckOnboarding()
 	if libp2p.GetP2P().Host != nil {
 		SanityCheck(db.DB)
-		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+		elk.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
 	}
 
 	// wait for SIGINT or SIGTERM
