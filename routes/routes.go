@@ -63,9 +63,9 @@ func SetupRouter() *gin.Engine {
 		tx.POST("/update-status", tokenomics.HandleUpdateStatus)
 	}
 
-	tele := v1.Group("/telemetry")
+	res := v1.Group("/resources")
 	{
-		tele.GET("/free", resources.GetFreeResource)
+		res.GET("/free", resources.GetFreeResource)
 	}
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
