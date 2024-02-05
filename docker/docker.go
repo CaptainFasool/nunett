@@ -27,7 +27,7 @@ import (
 	"gitlab.com/nunet/device-management-service/dms/config"
 	library "gitlab.com/nunet/device-management-service/dms/lib"
 	"gitlab.com/nunet/device-management-service/dms/onboarding"
-	telemetry "gitlab.com/nunet/device-management-service/dms/resources"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -43,11 +43,11 @@ var (
 
 func freeUsedResources() error {
 	// update the available resources table
-	err := telemetry.CalcFreeResAndUpdateDB()
+	err := resources.CalcFreeResAndUpdateDB()
 	if err != nil {
 		return fmt.Errorf("Error calculating and updating FreeResources: %v", err)
 	}
-	freeResource, err := telemetry.GetFreeResources()
+	freeResource, err := resources.GetFreeResources()
 	if err != nil {
 		return fmt.Errorf("Error getting freeResources: %v", err)
 	}
@@ -284,7 +284,7 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 		return
 	}
 
-	err = telemetry.CalcFreeResAndUpdateDB()
+	err = resources.CalcFreeResAndUpdateDB()
 	if err != nil {
 		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
 		depRes := models.DeploymentResponse{Success: false, Content: "Problem with free resources calculation. Unable to process request."}

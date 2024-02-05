@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"gitlab.com/nunet/device-management-service/dms/onboarding"
-	telemetry "gitlab.com/nunet/device-management-service/dms/resources"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
@@ -65,7 +65,7 @@ func SetupRouter() *gin.Engine {
 
 	tele := v1.Group("/telemetry")
 	{
-		tele.GET("/free", telemetry.GetFreeResource)
+		tele.GET("/free", resources.GetFreeResource)
 	}
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {

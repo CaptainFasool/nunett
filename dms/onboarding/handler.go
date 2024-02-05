@@ -14,7 +14,7 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/dms/config"
 	library "gitlab.com/nunet/device-management-service/dms/lib"
-	telemetry "gitlab.com/nunet/device-management-service/dms/resources"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -258,7 +258,7 @@ func Onboard(c *gin.Context) {
 		zlog.Sugar().Errorf("Unable to save Node info: %v", err)
 	}
 
-	err = telemetry.CalcFreeResAndUpdateDB()
+	err = resources.CalcFreeResAndUpdateDB()
 	if err != nil {
 		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
 		// Should we return http error also?
@@ -358,7 +358,7 @@ func ResourceConfig(c *gin.Context) {
 	}
 	klogger.Logger.Info("device resource changed")
 
-	err = telemetry.CalcFreeResAndUpdateDB()
+	err = resources.CalcFreeResAndUpdateDB()
 	if err != nil {
 		zlog.Sugar().Errorf("Error calculating and updating FreeResources: %v", err)
 		// Should we return http error also?
