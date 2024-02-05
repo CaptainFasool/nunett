@@ -128,7 +128,7 @@ func HandleRequestReward(c *gin.Context) {
 	// SELECTs the first record; first record which is not marked as delete
 	if err := db.DB.Where("tx_hash = ?", payload.TxHash).Find(&service).Error; err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(404, gin.H{"error": "unknown tx hash"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Transaction hash not found or invalid"})
 		return
 	}
 	zlog.Sugar().Infof("service found from txHash: %+v", service)
