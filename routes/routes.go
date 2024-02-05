@@ -53,13 +53,13 @@ func SetupRouter() *gin.Engine {
 		run.GET("/deploy", machines.DeploymentRequestHandler) // websocket
 		run.POST("/request-service", machines.RequestServiceHandler)
 		run.GET("/checkpoints", libp2p.ListCheckpointHandler)
+		run.POST("/send-status", tokenomics.HandleSendStatus)
 	}
 
 	tx := v1.Group("/transactions")
 	{
 		tx.GET("", tokenomics.GetJobTxHashes)
 		tx.POST("/request-reward", tokenomics.HandleRequestReward)
-		run.POST("/send-status", tokenomics.HandleSendStatus)
 		tx.POST("/update-status", tokenomics.HandleUpdateStatus)
 	}
 
