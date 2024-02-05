@@ -1,6 +1,6 @@
 package tokenomics
 
-import "gitlab.com/nunet/device-management-service/internal/logger"
+import "gitlab.com/nunet/device-management-service/telemetry/logger"
 
 var zlog *logger.Logger
 

@@ -6,9 +6,9 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"gitlab.com/nunet/device-management-service/dms/config"
-	"gitlab.com/nunet/device-management-service/internal/logger"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/telemetry/klogger"
+	"gitlab.com/nunet/device-management-service/telemetry/logger"
 )
 
 const (

@@ -5,7 +5,7 @@ package docker
 
 import (
 	"github.com/docker/docker/client"
-	"gitlab.com/nunet/device-management-service/internal/logger"
+	"gitlab.com/nunet/device-management-service/telemetry/logger"
 )
 
 var (
