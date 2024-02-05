@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/dms/config"
-	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry/tracing"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 

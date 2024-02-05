@@ -12,10 +12,10 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
-	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/routes"
 	elk "gitlab.com/nunet/device-management-service/telemetry/heartbeat"
+	"gitlab.com/nunet/device-management-service/telemetry/tracing"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	swaggerFiles "github.com/swaggo/files"

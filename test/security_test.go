@@ -23,10 +23,10 @@ import (
 	"gitlab.com/nunet/device-management-service/dms/config"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
-	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	elk "gitlab.com/nunet/device-management-service/telemetry/heartbeat"
+	"gitlab.com/nunet/device-management-service/telemetry/tracing"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
