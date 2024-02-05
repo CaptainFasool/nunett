@@ -328,7 +328,7 @@ paths:
         with a device.
       responses:
         "200":
-          description: Successfully Onboarded
+          description: Successfully Offboarded
       summary: Runs the offboarding process.
       tags:
       - onboarding
