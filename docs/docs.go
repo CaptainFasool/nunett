@@ -131,7 +131,7 @@ const docTemplate = `{
                 "summary": "Runs the offboarding process.",
                 "responses": {
                     "200": {
-                        "description": "Successfully Offboarded"
+                        "description": "Successfully Onboarded"
                     }
                 }
             }
@@ -307,6 +307,26 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK"
+                    }
+                }
+            }
+        },
+        "/peers/dht": {
+            "get": {
+                "description": "Gets a list of peers the libp2p node has received a dht update from",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "p2p"
+                ],
+                "summary": "Return list of peers which have sent a dht update",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -842,67 +862,59 @@ const docTemplate = `{
                 }
             }
         },
-        "models.MetadataV2": {
+        "models.Metadata": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "nunet-node"
-                },
-                "update_timestamp": {
-                    "type": "integer",
-                    "example": 1705070529
-                },
-                "resource": {
-                    "type": "object",
-                    "properties": {
-                        "memory_max": {
-                            "type": "integer",
-                            "example": 7938
-                        },
-                        "total_core": {
-                            "type": "integer",
-                            "example": 2
-                        },
-                        "cpu_max": {
-                            "type": "integer",
-                            "example": 4991
-                        }
-                    }
-                },
                 "available": {
                     "type": "object",
                     "properties": {
-                        "cpu": {
-                            "type": "integer",
-                            "example": 2991
+                        "ram": {
+                            "type": "integer"
                         },
-                        "memory": {
-                            "type": "integer",
-                            "example": 5938
+                        "update_timestamp": {
+                            "type": "integer"
                         }
                     }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "network": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
                 },
                 "reserved": {
                     "type": "object",
                     "properties": {
                         "cpu": {
-                            "type": "integer",
-                            "example": 2000
+                            "type": "integer"
                         },
                         "memory": {
-                            "type": "integer",
-                            "example": 2000
+                            "type": "integer"
                         }
                     }
                 },
-                "network": {
-                    "type": "string",
-                    "example": "nunet-team"
-                },
-                "public_key": {
-                    "type": "string",
-                    "example": "addr_test1qqgaadmlqk6d6dgum6zpscqcw66nnj3csz5kawrexv6p548d33s664y2llvarq57pcuuqk9qxh3nrdkay4tswu4lh53q8t3a2t"
+                "resource": {
+                    "type": "object",
+                    "properties": {
+                        "cpu_max": {
+                            "type": "number"
+                        },
+                        "cpu_usage": {
+                            "type": "number"
+                        },
+                        "ram_max": {
+                            "type": "integer"
+                        },
+                        "total_core": {
+                            "type": "integer"
+                        },
+                        "update_timestamp": {
+                            "type": "integer"
+                        }
+                    }
                 }
             }
         },
