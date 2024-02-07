@@ -210,7 +210,7 @@ func GetLogbinToken() (string, error) {
 
 // GetMetadataFilePath Returns metadata file path
 func GetMetadataFilePath() string {
-	return fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath)
+	return filepath.Join(config.GetConfig().General.MetadataPath, "metadataV2.json")
 }
 
 // ReadMetadata returns metadata from metadataV2.json file
