@@ -38,8 +38,7 @@ var AFS *afero.Afero = &afero.Afero{Fs: FS}
 
 // GetMetadata reads metadataV2.json file and returns a models.MetadataV2 struct
 func GetMetadata() (*models.MetadataV2, error) {
-	configPath := config.GetConfig().General.MetadataPath
-	metadataPath := filepath.Join(configPath, "metadataV2.json")
+	metadataPath := utils.GetMetadataFilePath()
 	content, err := AFS.ReadFile(metadataPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read metadata file: %w", err)
@@ -331,8 +330,7 @@ func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*mod
 
 	file, _ := json.MarshalIndent(metadata, "", " ")
 
-	configPath := config.GetConfig().General.MetadataPath
-	metadataPath := filepath.Join(configPath, "metadataV2.json")
+	metadataPath := utils.GetMetadataFilePath()
 	err = AFS.WriteFile(metadataPath, file, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("could not write to metadata file: %w", err)
@@ -366,8 +364,7 @@ func Offboard(ctx context.Context, force bool) error {
 		return fmt.Errorf("machine is not onboarded")
 	}
 
-	configPath := config.GetConfig().General.MetadataPath
-	metadataPath := filepath.Join(configPath, "metadataV2.json")
+	metadataPath := utils.GetMetadataFilePath()
 	err = os.Remove(metadataPath)
 	if err != nil && !force {
 		return fmt.Errorf("failed to remove metadata file: %w", err)
