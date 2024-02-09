@@ -1,8 +1,14 @@
 # Contributing guidelines
 
-Author: @janaina.senna
+First off, thanks for taking the time to contribute! :thumbsup:
 
-This page contains guidelines for community to contribute in NuNet's development by reporting bugs and suggesting improvements. [This GitLab tutorial](https://forum.gitlab.com/t/report-a-bug/40232/1) was used as inspiration to create this page.
+This page contains guidelines for community to contribute in NuNet's development by reporting bugs, suggesting improvements, and making code contributions.
+
+:warning: This project and everyone participating in it is governed by this [Code of Conduct](CODE_OF_CONDUCT.md).
+By participating, you are expected to uphold this code.
+
+:warning: When contributing to this project, you must agree that you have the necessary rights to the content and that the content you contribute may be provided under this [project license](LICENSE).
+
 
 ## How to report a bug?
 
@@ -15,6 +21,8 @@ This page contains guidelines for community to contribute in NuNet's development
 :bug: [Use the Bug Issue Template](https://gitlab.com/nunet/documentation/-/blob/main/.gitlab/issue_templates/Bug.md)! This template is provided on the issue tracker linked above. You can copy-paste, and then edit as you see fit. The text in the comments (`<!-- ... -->`) is there to help you with what to include.
 
 :bug: Add the ~type::bug label to your issue!
+
+Note: [This GitLab tutorial](https://forum.gitlab.com/t/report-a-bug/40232/1) was used as inspiration to create this section.
 
 
 ## How to request a new feature?
@@ -29,7 +37,18 @@ This page contains guidelines for community to contribute in NuNet's development
 
 :star2: Add the ~type::feature label to your issue!
 
-## Specifying and documenting the contributed code
 
-* All code and contributions have to include appropriate documentation updates, corresponding to the code changes, as explained in [architecture/technical-documentation](https://gitlab.com/nunet/architecture/-/blob/develop/technical-documentation);
-* Additionally, the code can include user documentation, as explained in [architecture/user-documenattion](https://gitlab.com/nunet/architecture/-/tree/develop/user-documentation);
+## How to make a code contribution?
+
+:sparkle: You can seek for a good issue to start looking for issues with [beginner-issue labels](https://gitlab.com/groups/nunet/-/issues/?sort=created_date&state=opened&label_name%5B%5D=beginner-issue).
+
+:sparkle: [Here](https://gitlab.com/nunet/documentation/-/wikis/GIT-Workflows) you can find the development workflow used in NuNet platform. 
+
+:sparkle: Create a merge request with the contributed code, filling out all requested information accordingly to the [merge request template](.gitlab/merge_request_templates/Default.md).
+
+:sparkle: After submitting the merge request, verify that all CI/CD pipeline stages are running successfully. Fix the merge request if necessary.
+
+:sparkle: All code and contributions have to include appropriate documentation updates, corresponding to the code changes, as explained in [architecture/technical-documentation](https://gitlab.com/nunet/architecture/-/blob/develop/technical-documentation);
+
+:sparkle: Additionally, the code can include user documentation, as explained in [architecture/user-documentation](https://gitlab.com/nunet/architecture/-/tree/develop/user-documentation).
+
