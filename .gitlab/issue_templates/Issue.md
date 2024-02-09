@@ -1,3 +1,9 @@
+## Estimation
+
+Story points: X SP <br>
+Estimated focus duration (perfect conditions): X days <br>
+Estimated pessimistic duration (worst case scenario): X days <br>
+
 ## Description
 <details><summary>Click to expand</summary>
 

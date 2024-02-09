@@ -27,6 +27,7 @@ func getViper() *viper.Viper {
 func setDefaultConfig() *viper.Viper {
 	v := getViper()
 	v.SetDefault("general.metadata_path", "/etc/nunet")
+	v.SetDefault("general.data_dir", "/var/nunet")
 	v.SetDefault("general.debug", false)
 	v.SetDefault("rest.port", 9999)
 	v.SetDefault("p2p.listen_address", []string{
@@ -40,6 +41,8 @@ func setDefaultConfig() *viper.Viper {
 	})
 	v.SetDefault("job.log_update_interval", 2)
 	v.SetDefault("job.target_peer", "")
+	v.SetDefault("job.cleanup_interval", 3)
+
 	return v
 }
 

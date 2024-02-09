@@ -6,7 +6,8 @@ import (
 )
 
 var (
-	zlog otelzap.Logger
+	zlog                 otelzap.Logger
+	ProgressFilePathOnCP = make(chan string, 1)
 )
 
 func init() {

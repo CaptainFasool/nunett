@@ -20,6 +20,209 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.156](#337)
+
+### Fixed
+- Improper state from existing metadatafile but no private key
+## [0.4.155](#333)
+
+### Added
+- Background tasks scheduler package
+
+## [0.4.154](nunet/research/network-tokenomics/public-alpha-model#8)
+
+### Added
+- Allow user to set price in NTX for onboarded compute resource
+
+## [0.4.153](#257)
+
+### Added
+- Device cmd for device status management
+- Device job-availability set during onboarding
+
+## [0.4.152](#321)
+
+### Changed
+- Removed unnecessary fs argument in db connection
+- Updated tests
+- Avoid panic on unavailable telemetry collector
+
+## [0.4.151](#315)
+
+### Changed
+- Update commmand run functions to return errors
+- Organize command implementations and their backends
+- Unit test for each command
+
+## [0.4.150](#327)
+
+### Fixed
+- Reset outbound depreq stream when other side closes
+
+## [0.4.149](#324)
+
+### Changed
+- add endpoint to list available checkpoint files for resuming
+- rename a few handlers to align with others
+- change ownership of checkpoint files to assumed user in container
+
+## [0.4.148](#298)
+
+### Changed
+- Use progress checkpoint file to request a resume job
+
+## [0.4.147](#323)
+
+### Added
+- Created REST endpoint for updating transaction status in db
+- Blockchain util function to get list of utxos of smart contract
+
+## [0.4.146](#328)
+
+### Changed
+- Allow targeting of peer coming from the DeploymentRequest payload
+
+## [0.4.145](#297)
+
+### Changed
+- Correct error propagation in libp2p, docker and onboarding packages
+
+## [0.4.144](#327)
+
+### Fixed
+- close the libp2p stream when CP sends a success: false
+
+## [0.4.143](oracle#24)
+
+### Changed
+- Fixed unique constraint error while save service into SP's DMS.
+- Update transaction status to running.
+
+## [0.4.142](#295)
+
+### Added
+- Keep a record of images pulled by DMS in the database to track dangling images
+- Utility functions in the docker package for search, remove and get containers using an image.
+- Added a daemon function to cleanup dangling images
+
+## [0.4.141](#166)
+
+### Added
+- Temporary setter for DMSp2p
+- Routes tests
+
+### Changed
+- Allow db to be initiated on a mock fs
+
+### Fixed
+- Fix /transactions responses when tx don't exist
+- Fixed utils/network tests
+
+
+## [0.4.140](#292)
+
+### Added
+- TxHash validation by CP on depReq receive before running job
+
+## [0.4.139](#292)
+
+### Added
+- Function `StopAndRemoveContainer` in the docker package
+- Logger for the dms package
+- Function `SanityCheck` that checks and kills lingering containers and correct available resources on dms start
+## [0.4.138](#292)
+
+### Added
+- Command gpu and sub-commands status, capacity and onboard
+- Port onboard-ml and offboard commands from bash script
+- Add scripts for driver and container runtime installation inside maint-scripts
+
+### Changed
+- Update InternalAPIURL and MakeInternalRequest utility functions to support queries
+- Move String method inside gpudetect package
+
+## [0.4.137](#309)
+
+### Added
+- Added wallet addresses in request-reward endpoint to return dashboards
+- Added parameters of  in request-reward endpoint to return dashboards
+- Calculated time execution of job container
+
+### Changed
+- Changed the transactions endpoints to filter them on dashboards
+## [0.4.136](#283)
+
+### Added
+- Oracle mock to enable testing
+- Refactored HandleRequestReward function
+- Created Unit Tests & Mocks for routes
+## [0.4.135](#308)
+
+### Added
+- Wallet address self validation on startup
+- CP wallet address validation before job deployment request
+
+## [0.4.134](#126)
+
+### Added
+- add timeout for container, use parameter from dep req
+- handle new fields from SPD regarding resuming
+- save tar.gz of /workspace directory in container every logUpdateInterval
+- add volume binding before starting a resuming container (extracted tar.gz -> /workspace)
+- add event handler at timeout to archive & send the final progress tarball
+- send sha256 checksum along with tarball to SPD
+
+## [0.4.133](#314)
+
+### Fixed
+- GPU detection on job start (#314)
+## [0.4.132](#273)
+
+### Changed
+- Support Darwin arm64 and amd64 builds
+- Makefile for building
+- Separate GPU detection for linux/darwin , arm64/amd64
+- No GPU detection support for Darwin
+## [0.4.131](#249)
+
+### Changed
+- Changed the telemetry/ folder from firecracker/ to the repository's root.
+- Created some functions to abstract the additions/subtractions of resource usage and available resources.
+- Unit/Integration tests for most of the functions of Telemetry package, the main one being calcFreeResources()
+## [0.4.130](#9)
+
+### Added
+- Allow setting device status (online/offline)
+- Rest endpoints and CLI commands to set device status
+## [0.4.129](#278)
+
+### Added
+- Create WebSocket client for handling communication with server
+- Add start chat, join chat, clear chat and list chat commands
+- Make openStream struct exportable and reuse it for listing chats
+- Fix typo in welcome message when starting a chat
+- Add libsystemd-dev as build/dev dependency
+## [0.4.128](#220)
+
+### Added
+- Port the commands to Go: peer list, peer self, onboard, info, capacity, wallet new, resource-config, log
+- Change pattern of commands to APP VERB NOUN
+- Add --dht flag for list peers command
+- Format output of show capacity command in YAML manner (suitable to change)
+
+## [0.4.127](#296)
+
+### Added
+- File transfer between peers (#147 -> #196)
+## [0.4.126](nunet/ml-on-gpu/ml-on-gpu-webapp/-/issues/41#note_1490827796#41)
+
+### Changed 
+- Request-reward endpoint to return the new parameters from oracle.
+- Request-service endpoint to return the hashes from oracle.
+### Deprecated
+- `signature` and `oracle_message` parameters.
+### Added 
+- oracle paramters for `withdrawReq` and `fundingReq`
 
 # [0.4.125.1](#306)
 ### Fixed

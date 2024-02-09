@@ -17,7 +17,9 @@ func FilterPeers(depReq models.DeploymentRequest, node host.Host) []models.PeerD
 		peers = append(peers, val)
 	}
 
+	peers = libp2p.PeersWithAvailability(peers)
 	peers = libp2p.PeersWithMatchingSpec(peers, depReq)
+
 	if depReq.ServiceType == "ml-training-gpu" {
 		if depReq.Params.MachineType == "gpu" {
 			peers = libp2p.PeersWithGPU(peers)

@@ -9,11 +9,14 @@ import (
 )
 
 var (
-	dc   *client.Client
-	zlog *logger.Logger
+	dc                    *client.Client
+	zlog                  *logger.Logger
+	containerWorkspaceDir string
+	DoneCleanup           chan bool
 )
 
 func init() {
 	zlog = logger.New("docker")
 	dc, _ = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	containerWorkspaceDir = "/workspace"
 }

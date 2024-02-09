@@ -13,9 +13,18 @@ type DeploymentRequest struct {
 	TxHash                 string    `json:"tx_hash"`
 	ServiceType            string    `json:"service_type"`
 	Timestamp              time.Time `json:"timestamp"`
+	MetadataHash           string    `json:"metadata_hash"`
+	WithdrawHash           string    `json:"withdraw_hash"`
+	RefundHash             string    `json:"refund_hash"`
+	Distribute_50Hash      string    `json:"distribute_50_hash"`
+	Distribute_75Hash      string    `json:"distribute_75_hash"`
 	Params                 struct {
-		ImageID         string   `json:"image_id"`
-		ModelURL        string   `json:"model_url"`
+		ImageID   string `json:"image_id"`
+		ModelURL  string `json:"model_url"`
+		ResumeJob struct {
+			Resume       bool   `json:"resume"`
+			ProgressFile string `json:"progress_file"` // file path
+		} `json:"resume_job"`
 		Packages        []string `json:"packages"`
 		RemoteNodeID    string   `json:"node_id"`          // NodeID of compute provider (machine to deploy the job on)
 		RemotePublicKey string   `json:"public_key"`       // Public key of compute provider
@@ -57,7 +66,7 @@ type DeploymentRequestFlat struct {
 }
 
 type BlockchainTxStatus struct {
-	TransactionType   string `json:"transaction_type"`
+	TransactionType   string `json:"transaction_type"` // No need of this param maybe be deprecated in future
 	TransactionStatus string `json:"transaction_status"`
 	TxHash            string `json:"tx_hash"`
 }

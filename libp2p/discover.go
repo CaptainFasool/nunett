@@ -2,6 +2,7 @@ package libp2p
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	dutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 )
+
+var err error
 
 func (p2p DMSp2p) StartDiscovery(ctx context.Context, rendezvous string) {
 	ticker := time.NewTicker(time.Minute * 5)
@@ -27,13 +30,21 @@ func (p2p DMSp2p) StartDiscovery(ctx context.Context, rendezvous string) {
 			ticker.Stop()
 			return
 		case <-ticker.C:
-			p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, rendezvous)
-			p2p.dialPeers(ctx)
+			p2p.peers, err = discoverPeers(ctx, p2p.Host, p2p.DHT, rendezvous)
+			if err != nil {
+				zlog.Sugar().Errorln(err)
+				return
+			}
+			err = p2p.dialPeers(ctx)
+			if err != nil {
+				zlog.Sugar().Errorln(err)
+				return
+			}
 		}
 	}
 }
 
-func (p2p DMSp2p) dialPeers(ctx context.Context) {
+func (p2p DMSp2p) dialPeers(ctx context.Context) error {
 	for _, p := range p2p.peers {
 		newPeer <- p
 		if p.ID == p2p.Host.ID() {
@@ -53,9 +64,10 @@ func (p2p DMSp2p) dialPeers(ctx context.Context) {
 
 		}
 	}
+	return nil
 }
 
-func discoverPeers(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous string) []peer.AddrInfo {
+func discoverPeers(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rendezvous string) ([]peer.AddrInfo, error) {
 	var routingDiscovery = drouting.NewRoutingDiscovery(idht)
 	dutil.Advertise(ctx, routingDiscovery, rendezvous)
 
@@ -67,11 +79,11 @@ func discoverPeers(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rende
 		discovery.Limit(40),
 	)
 	if err != nil {
-		zlog.Sugar().Errorf("failed to discover peers: %v", err)
+		return []peer.AddrInfo{}, fmt.Errorf("failed to discover peers: %v", err)
 	}
 	peers = filterAddrs(peers)
 	zlog.Sugar().Debugf("Discover - found peers: %v", peers)
-	return peers
+	return peers, nil
 }
 
 func filterAddrs(peers []peer.AddrInfo) []peer.AddrInfo {

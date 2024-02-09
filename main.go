@@ -1,12 +1,9 @@
 package main
 
-import (
-	"gitlab.com/nunet/device-management-service/cmd"
-	"gitlab.com/nunet/device-management-service/db"
-)
+import "gitlab.com/nunet/device-management-service/cmd"
 
 //	@title			Device Management Service
-//	@version		0.4.125.1
+//	@version		0.4.156
 //	@description	A dashboard application for computing providers.
 //	@termsOfService	https://nunet.io/tos
 
@@ -17,9 +14,8 @@ import (
 //	@license.name	Apache 2.0
 //	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-//	@host		localhost:9999
-//	@BasePath	/api/v1
+// @host		localhost:9999
+// @BasePath	/api/v1
 func main() {
-	db.ConnectDatabase()
 	cmd.Execute()
 }
