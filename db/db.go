@@ -18,6 +18,7 @@ func ConnectDatabase() {
 	if err != nil {
 		panic("Failed to connect to database!")
 	}
+
 	database.AutoMigrate(&models.ElasticToken{})
 	database.AutoMigrate(&models.VirtualMachine{})
 	database.AutoMigrate(&models.Machine{})
@@ -26,6 +27,7 @@ func ConnectDatabase() {
 	database.AutoMigrate(&models.PeerInfo{})
 	database.AutoMigrate(&models.Services{})
 	database.AutoMigrate(&models.ServiceResourceRequirements{})
+	database.AutoMigrate(&models.ContainerImages{})
 	database.AutoMigrate(&models.RequestTracker{})
 	database.AutoMigrate(&models.Libp2pInfo{})
 	database.AutoMigrate(&models.DeploymentRequestFlat{})

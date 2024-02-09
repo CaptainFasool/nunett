@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fivebinaries/go-cardano-serialization/address"
@@ -13,32 +12,6 @@ import (
 	"github.com/tyler-smith/go-bip39"
 	"gitlab.com/nunet/device-management-service/models"
 )
-
-// extra step needed because NewAddress panics on invalid address
-func isValidCardano(addr string, valid* bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			*valid = false
-		}
-	}()
-	if _, err := address.NewAddress(addr); err == nil {
-		*valid = true
-	}
-}
-
-func ValidateAddress(addr string) error {
-	if common.IsHexAddress(addr) {
-		return nil
-	} else {
-		var validCardano = false
-		isValidCardano(addr, &validCardano)
-		if validCardano {
-			return nil
-		} else {
-			return errors.New("invalid address")
-		}
-	}
-}
 
 func GetEthereumAddressAndPrivateKey() (*models.BlockchainAddressPrivKey, error) {
 	privateKey, err := crypto.GenerateKey()

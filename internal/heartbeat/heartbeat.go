@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -42,15 +43,19 @@ func Heartbeat() {
 				// Stop the goroutine when the channel receives a signal
 				return
 			case <-ticker.C:
-				Create()
+				err := Create()
+				if err != nil {
+					zlog.Sugar().Errorln(err)
+				}
 			}
 		}
 	}()
 }
 
-func Create() {
+func Create() error {
 	if !utils.ReadyForElastic() {
-		return
+		zlog.Warn("Elastic search is not ready yet")
+		return nil
 	}
 	indexName := "apm-nunet-dms-heartbeat"
 
@@ -91,7 +96,7 @@ func Create() {
 	if esClient == nil {
 		client, err := getElasticSearchClient()
 		if err != nil {
-			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+			return fmt.Errorf("unable to create esClient token: %v", err)
 		}
 		esClient = client
 	}
@@ -99,20 +104,20 @@ func Create() {
 	// Perform the request
 	res, err := req.Do(context.Background(), esClient)
 	if err != nil {
-		zlog.Sugar().Errorf("Error indexing document: %v", err)
+		return fmt.Errorf("Error indexing document: %v", err)
 	}
 	defer res.Body.Close()
 
 	// Check the response status
 	if res.IsError() {
-		zlog.Sugar().Errorf("Error response received: %s", res.Status())
+		return fmt.Errorf("Error response received: %s", res.Status())
 	}
-
+	return nil
 }
 
-func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetaken int, ntx int) {
+func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetaken int, ntx int) error {
 	if !utils.ReadyForElastic() {
-		return
+		return errors.New("Elasticsearch is not ready")
 	}
 	indexName := "apm-nunet-dms-heartbeat"
 	documentData := `{
@@ -147,7 +152,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	if esClient == nil {
 		client, err := getElasticSearchClient()
 		if err != nil {
-			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+			return fmt.Errorf("unable to create esClient token: %v", err)
 		}
 		esClient = client
 	}
@@ -155,8 +160,7 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	exists, err := documentExists(context.Background(), esClient, indexName, documentID)
 
 	if err != nil {
-		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
-		return
+		return fmt.Errorf("Error retrieving the document : %v", err)
 	}
 
 	if exists {
@@ -171,13 +175,13 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 
 			"ntx": ntx,
 		}
+
 		//err = UpdateDocumentField(context.Background(), es, indexName, documentID, "usedcpu", "50")
 		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
-
 		if err != nil {
-			zlog.Sugar().Errorf("Error retrieving the document : %v", err)
+			return fmt.Errorf("Error retrieving the document : %v", err)
 		}
-		return
+		return nil
 	}
 
 	docMap["ID"] = elastictoken.NodeId
@@ -197,21 +201,20 @@ func ProcessUsage(callid int, usedcpu int, usedram int, networkused int, timetak
 	// Perform the request
 	res, err := req.Do(context.Background(), esClient)
 	if err != nil {
-		zlog.Sugar().Errorf("Error indexing document: %v", err)
-		return
+		return fmt.Errorf("Error indexing document: %v", err)
 	}
 	defer res.Body.Close()
 
 	// Check the response status
 	if res.IsError() {
-		zlog.Sugar().Errorf("Error response received: %s", res.Status())
+		return fmt.Errorf("Error response received: %s", res.Status())
 	}
-
+	return nil
 }
 
-func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, status string, timestamp int) {
+func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, status string, timestamp int) error {
 	if !utils.ReadyForElastic() {
-		return
+		return errors.New("Elasticsearch is not ready")
 	}
 	indexName := "apm-nunet-dms-heartbeat"
 
@@ -220,7 +223,7 @@ func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, sta
 	if esClient == nil {
 		client, err := getElasticSearchClient()
 		if err != nil {
-			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+			return fmt.Errorf("unable to create esClient token: %v", err)
 		}
 		esClient = client
 	}
@@ -228,8 +231,7 @@ func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, sta
 	exists, err := documentExists(context.Background(), esClient, indexName, documentID)
 
 	if err != nil {
-		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
-		return
+		return fmt.Errorf("Error retrieving the document : %v", err)
 	}
 
 	if exists {
@@ -243,16 +245,16 @@ func ProcessStatus(callid int, peerIDOfServiceHost string, serviceID string, sta
 		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
 
 		if err != nil {
-			zlog.Sugar().Errorf("Error updating the document : %v", err)
+			return fmt.Errorf("Error updating the document : %v", err)
 		}
-		return
+		return nil
 	}
-
+	return nil
 }
 
-func NtxPayment(callid int, serviceID string, successFailStatus string, peerID string, amountOfNtx int, timestamp int) {
+func NtxPayment(callid int, serviceID string, successFailStatus string, peerID string, amountOfNtx int, timestamp int) error {
 	if !utils.ReadyForElastic() {
-		return
+		return errors.New("Elasticsearch is not ready")
 	}
 	indexName := "apm-nunet-dms-heartbeat"
 
@@ -261,7 +263,7 @@ func NtxPayment(callid int, serviceID string, successFailStatus string, peerID s
 	if esClient == nil {
 		client, err := getElasticSearchClient()
 		if err != nil {
-			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+			return fmt.Errorf("unable to create esClient token: %v", err)
 		}
 		esClient = client
 	}
@@ -269,8 +271,7 @@ func NtxPayment(callid int, serviceID string, successFailStatus string, peerID s
 	exists, err := documentExists(context.Background(), esClient, indexName, documentID)
 
 	if err != nil {
-		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
-		return
+		return fmt.Errorf("Error retrieving the document : %v", err)
 	}
 
 	if exists {
@@ -284,16 +285,16 @@ func NtxPayment(callid int, serviceID string, successFailStatus string, peerID s
 		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
 
 		if err != nil {
-			zlog.Sugar().Errorf("Error updating the document : %v", err)
+			return fmt.Errorf("Error updating the document : %v", err)
 		}
-		return
+		return nil
 	}
-
+	return nil
 }
 
-func DeviceResourceChange(cpu int, ram int) {
+func DeviceResourceChange(cpu int, ram int) error {
 	if !utils.ReadyForElastic() {
-		return
+		return errors.New("Elasticsearch is not ready")
 	}
 	indexName := "apm-nunet-dms-heartbeat"
 
@@ -302,7 +303,7 @@ func DeviceResourceChange(cpu int, ram int) {
 	if esClient == nil {
 		client, err := getElasticSearchClient()
 		if err != nil {
-			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+			return fmt.Errorf("unable to create esClient token: %v", err)
 		}
 		esClient = client
 	}
@@ -310,8 +311,7 @@ func DeviceResourceChange(cpu int, ram int) {
 	exists, err := documentExists(context.Background(), esClient, indexName, documentID)
 
 	if err != nil {
-		zlog.Sugar().Errorf("Error retrieving the document : %v", err)
-		return
+		return fmt.Errorf("Error retrieving the document : %v", err)
 	}
 
 	if exists {
@@ -323,16 +323,16 @@ func DeviceResourceChange(cpu int, ram int) {
 		err = updateDocumentFields(context.Background(), esClient, indexName, documentID, fields)
 
 		if err != nil {
-			zlog.Sugar().Errorf("Error updating the document : %v", err)
+			return fmt.Errorf("Error updating the document : %v", err)
 		}
-		return
+		return nil
 	}
-
+	return nil
 }
 
-func DmsLoggs(log string, level string) {
+func DmsLoggs(log string, level string) error {
 	if !utils.ReadyForElastic() {
-		return
+		return errors.New("Elasticsearch is not ready")
 	}
 	indexName := "apm-nunet-dms-logs"
 	documentID := strconv.Itoa(generateRandomInt())
@@ -365,7 +365,7 @@ func DmsLoggs(log string, level string) {
 	if esClient == nil {
 		client, err := getElasticSearchClient()
 		if err != nil {
-			zlog.Sugar().Errorf("unable to create esClient token: %v", err)
+			return fmt.Errorf("unable to create esClient token: %v", err)
 		}
 		esClient = client
 	}
@@ -373,15 +373,15 @@ func DmsLoggs(log string, level string) {
 	// Perform the request
 	res, err := req.Do(context.Background(), esClient)
 	if err != nil {
-		zlog.Sugar().Errorf("Error indexing document: %v", err)
+		return fmt.Errorf("Error indexing document: %v", err)
 	}
 	defer res.Body.Close()
 
 	// Check the response status
 	if res.IsError() {
-		zlog.Sugar().Errorf("Error response received: %s", res.Status())
+		return fmt.Errorf("Error response received: %s", res.Status())
 	}
-
+	return nil
 }
 
 func getElasticSearchClient() (*elasticsearch.Client, error) {

@@ -46,6 +46,11 @@ func DMSp2pInit(node host.Host, dht *dht.IpfsDHT) *DMSp2p {
 	return &DMSp2p{Host: node, DHT: dht}
 }
 
+// XXX bad implementation - don't use. Temporary measure for routes_test calling HandleRequestService
+func DMSp2pSet(node host.Host, dht *dht.IpfsDHT) {
+	p2p = *DMSp2pInit(node, dht)
+}
+
 var p2p DMSp2p
 var FS afero.Fs = afero.NewOsFs()
 var AFS *afero.Afero = &afero.Afero{Fs: FS}
@@ -55,7 +60,21 @@ func GetP2P() DMSp2p {
 }
 
 func CheckOnboarding() {
-	// Checks for saved metadata and create a new host
+	// Check 1: Check if payment address is valid
+	metadata, err := utils.ReadMetadataFile()
+	if err != nil {
+		zlog.Sugar().Errorf("unable to read metadata.json: %v", err)
+		return
+	}
+
+	err = utils.ValidateAddress(metadata.PublicKey)
+	if err != nil {
+		zlog.Sugar().Errorf("the payment address %s is not valid", metadata.PublicKey)
+		zlog.Sugar().Error("exiting DMS")
+		os.Exit(1)
+	}
+
+	// Check 2: Check for saved metadata and create a new host
 	var libp2pInfo models.Libp2pInfo
 	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
 	if result.Error != nil {
@@ -67,49 +86,61 @@ func CheckOnboarding() {
 		if err != nil {
 			panic(err)
 		}
-		RunNode(priv, libp2pInfo.ServerMode)
+		RunNode(priv, libp2pInfo.ServerMode, libp2pInfo.Available)
+	} else {
+		zlog.Error("metadata file found but unable to find private key. Improper State. Exiting.")
+		utils.DeleteFile(utils.GetMetadataFilePath(), true)
+		zlog.Info("deleted metadata file with backup matadataV2.json.deleted-<timestamp>")
+		os.Exit(1)
 	}
 }
 
-func RunNode(priv crypto.PrivKey, server bool) {
+func RunNode(priv crypto.PrivKey, server bool, available bool) error {
 	ctx := context.Background()
 
 	host, dht, err := NewHost(ctx, priv, server)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("Unable to create libp2p New Host: %v", err)
 	}
 
 	p2p = *DMSp2pInit(host, dht)
 
 	err = p2p.BootstrapNode(ctx)
 	if err != nil {
-		zlog.Sugar().Errorf("Bootstraping failed: %v", err)
+		return fmt.Errorf("Bootstraping failed: %v", err)
 	}
 
 	host.SetStreamHandler(protocol.ID(PingProtocolID), PingHandler) // to be deprecated
 	host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), PingHandler)
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
+	host.SetStreamHandler(protocol.ID(FileTransferProtocolID), fileStreamHandler)
 
-	p2p.peers = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
+	p2p.peers, err = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
+	if err != nil {
+		return err
+	}
+
 	go p2p.StartDiscovery(ctx, utils.GetChannelName())
 	zlog.Sugar().Debugf("number of p2p.peers: %d", len(p2p.peers))
 
 	content, err := AFS.ReadFile(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
-		zlog.Sugar().Errorf("metadata.json does not exists or not readable: %v", err)
+		return fmt.Errorf("metadata.json does not exists or not readable: %v", err)
 	}
 	var metadata2 models.MetadataV2
 	err = json.Unmarshal(content, &metadata2)
 	if err != nil {
-		zlog.Sugar().Errorf("unable to parse metadata.json: %v", err)
+		return fmt.Errorf("unable to parse metadata.json: %v", err)
 	}
 
 	if _, err := host.Peerstore().Get(host.ID(), "peer_info"); err != nil {
 		peerInfo := models.PeerData{}
 		peerInfo.PeerID = host.ID().String()
+		peerInfo.IsAvailable = available
 		peerInfo.AllowCardano = metadata2.AllowCardano
 		peerInfo.TokenomicsAddress = metadata2.PublicKey
+		peerInfo.AvailableResources.NTXPricePerMinute = metadata2.NTXPricePerMinute
 		if len(metadata2.GpuInfo) == 0 {
 			peerInfo.HasGpu = false
 			peerInfo.GpuInfo = metadata2.GpuInfo
@@ -133,7 +164,10 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			case <-dhtHousekeepingTicker.C:
 				zlog.Debug("Cleaning up DHT")
 				CleanupOldPeers()
-				UpdateConnections(host.Network().Conns())
+				err = UpdateConnections(host.Network().Conns())
+				if err != nil {
+					zlog.Sugar().Errorf("%v", err)
+				}
 			case <-stopDHTCleanup:
 				zlog.Debug("Stopping DHT Cleanup")
 				dhtHousekeepingTicker.Stop()
@@ -179,7 +213,10 @@ func RunNode(priv crypto.PrivKey, server bool) {
 						evt.Current,
 						evt.Removed))
 				// Connect to saved peers
-				savedConnections := GetConnections()
+				savedConnections, err := GetConnections()
+				if err != nil {
+					zlog.Sugar().Errorf("%v", err)
+				}
 				for _, conn := range savedConnections {
 					addr, err := multiaddr.NewMultiaddr(conn.Multiaddrs)
 					if err != nil {
@@ -206,6 +243,7 @@ func RunNode(priv crypto.PrivKey, server bool) {
 			}
 		}
 	}()
+	return nil
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {
@@ -223,12 +261,13 @@ func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {
 
 }
 
-func SaveNodeInfo(priv crypto.PrivKey, pub crypto.PubKey, serverMode bool) error {
+func SaveNodeInfo(priv crypto.PrivKey, pub crypto.PubKey, serverMode bool, available bool) error {
 	var libp2pInfo models.Libp2pInfo
 	libp2pInfo.ID = 1
 	libp2pInfo.PrivateKey, _ = crypto.MarshalPrivateKey(priv)
 	libp2pInfo.PublicKey, _ = crypto.MarshalPublicKey(pub)
 	libp2pInfo.ServerMode = serverMode
+	libp2pInfo.Available = available
 
 	result := db.DB.Save(&libp2pInfo)
 	if result.Error != nil {
@@ -337,9 +376,9 @@ func NewHost(ctx context.Context, priv crypto.PrivKey, server bool) (host.Host, 
 		dht.NamespacedValidator(strings.ReplaceAll(customNamespace, "/", ""), blankValidator{}),
 		dht.Mode(dht.ModeServer),
 	}
+
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(
-		config.GetConfig().P2P.ListenAddress...,
-	),
+		config.GetConfig().P2P.ListenAddress...),
 		libp2p.Identity(priv),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
 			idht, err = dht.New(ctx, h, baseOpts...)

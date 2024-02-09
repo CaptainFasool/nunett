@@ -40,10 +40,11 @@ usage() {
     echo "  info                Get info about currently onboarded machine"
     echo "  onboard-gpu         Install NVIDIA/AMD GPU driver and Container Runtime"
     echo "  onboard-ml          Prepare the system for Machine Learning with GPU"
-    echo "  resource-config     Change the configuration of onboarded device"
+    echo "  resource-config     Update the configuration of onboarded device"
     echo "  shell               Send commands and receive answers to a vm instance via DMS"
     echo "  peer                Interact with currently visible peers"
     echo "  chat                Start,Join or List Chat Requests"
+    echo "  device              Pause the device for job deployments"
     echo "  log                 Returns the path of an archive containing all log files"
     echo -e "  version             Current DMS Version \n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
@@ -98,6 +99,7 @@ onboard_usage() {
     echo "                               'nunet-test' - Development branch for Community Testers"
     echo "                               'nunet-staging' - Staging branch for Community Testers"
     echo "    -a, --address          Wallet Address (Public Key)"
+    echo "    -x, --ntx-price        Set NTX Price per minute for compute resources you are onboarding to NuNet"
     echo "    -C, --cardano          Allow deployment of a Cardano Node"
     echo "    -l, --local-enable     Enable Using Private Addresses. By default, server mode is enabled"
     echo "                           which prevents the DMS from scanning local networkk. It's recommended"
@@ -153,17 +155,111 @@ chat_join_usage() {
     exit
 }
 
+device_usage() {
+    echo -e "Usage: $SELF_NAME device COMMAND \n"
+    echo -e "Manage device status (online/offline).\n"
+    echo "Commands:"
+    echo -e "  status         Get current device status."
+    echo -e "  set            Set device status.\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+device_set_usage() {
+    echo -e "Usage: $SELF_NAME device set STATUS\n"
+    echo -e "Set device to online or offline.\n"
+    echo "Status Options:"
+    echo -e "  online         Set device to online - able to receive incoming jobs."
+    echo -e "  offline        Set device to offline - unable to receive incoming jobs.\n"
+    echo "Options:"
+    echo -e "    -h, --help              This Menu\n"
+    echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
+    exit
+}
+
 resource_config_usage() {
     echo -e "Usage: $SELF_NAME config [-mcvp] \n"
     echo -e "Change the configuration of onboarded device for make available on nunet.\n"
     echo "Options:"
     echo "    -m, --memory           Amount of memory in Megabytes"
     echo "    -c, --cpu              Amount of CPU in Megahertz"
+    echo "    -x, --ntx-price        Set NTX Price per minute for compute resources you onboarded to NuNet"
     echo "    -v, --verbose          Verbose output"
     echo -e "    -p, --pretty           Prettified JSON output\n"
     echo "For more information, visit https://gitlab.com/nunet/device-management-service/-/wikis/home"
     exit
 }
+
+device() {
+    if [[ ${#@} -lt 1 ]] ; then
+        device_usage
+    fi
+
+    args=($@)
+    subcmd=$1
+
+    devicesubcmds=("status" "set") # list of sub-sub-commands for device sub-command
+
+    if [[ " ${devicesubcmds[*]} " =~ " ${subcmd} " ]] ; then
+       device_$subcmd ${args[@]:1}
+    else
+        printf "${BAD_C}Command doesn't exist. Only 'device (status|set)'.${NORMAL_C}\n"
+        device_usage
+    fi
+}
+
+
+device_status() {
+    if [[ ${#@} -gt 0 ]]; then
+        case $1 in
+            "-h" | "--help")
+                pause_usage
+                ;;
+            *)
+                printf "${BAD_C}The 'pause' command does not accept arguments. ${NORMAL_C}\n"
+                pause_usage
+                ;;
+        esac
+        exit
+    fi
+
+    DEVICE_STATUS_RESPONSE=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/device/status)
+    error_msg=$(echo $DEVICE_STATUS_RESPONSE | jq '. | select(.error != null) | .error' 2>/dev/null)
+
+    if [[ -z "$error_msg" ]] ; then
+        current_device_status=$(echo $DEVICE_STATUS_RESPONSE | jq .online)
+        if [[ $current_device_status == "true" ]] ; then
+            printf "Status=${GOOD_C}Online${NORMAL_C}\n"
+        else
+            printf "Status=${INFO_C}Offline${NORMAL_C}\n"
+        fi
+    else
+        printf "${BAD_C}Error while trying to pause the device: $error_msg ${NORMAL_C}\n"
+    fi
+}
+
+device_set() {
+    if [[ ${#@} -lt 1 ]] ; then
+        device_set_usage
+    fi
+
+    if [[ $1 == "-h" || $1 == "--help" ]] ; then
+        device_set_usage
+    fi
+
+     if [[ $1 == "online" || $1 == "offline" ]] ; then
+        [ $1 == "online" ] && NEW_DEVICE_STATUS=true || NEW_DEVICE_STATUS=false
+        DEVICE_SET_RESPONSE=$(curl -s -X POST -d "{\"is_available\" : $NEW_DEVICE_STATUS}" $DMS_HOST:$DMS_PORT/api/v1/device/status)
+        error_msg=$(echo $DEVICE_SET_RESPONSE | jq '. | select(.error != null) | .error' 2>/dev/null)
+
+        if [[ -z "$error_msg" ]] ; then
+            success_msg=$(echo $DEVICE_SET_RESPONSE | jq -r '. | select(.message != null) | .message' 2>/dev/null)
+            printf "${GOOD_C}$success_msg${NORMAL_C}\n"
+        else
+            printf "${BAD_C}Error while trying to set the device status: $error_msg ${NORMAL_C}\n"
+        fi
+    fi
+}
+
 
 gpu_status() {
     if ! command -v nvidia-smi > /dev/null && ! command -v rocm-smi > /dev/null; then
@@ -482,7 +578,7 @@ wallet() {
 }
 
 onboard() {
-    N_ONBOARD_OPTS=$(getopt -a -n nunet-onboard -o m:c:n:a:Clvp: --long memory:,cpu:,nunet-channel:,address:,cardano,local-enable,verbose,pretty -- "$@")
+    N_ONBOARD_OPTS=$(getopt -a -n nunet-onboard -o m:c:n:a:x:Clvp: --long memory:,cpu:,nunet-channel:,address:,ntx-price:,cardano,local-enable,verbose,pretty -- "$@")
     eval set -- "$N_ONBOARD_OPTS"
 
     N_ONBOARD_CARDANO=false
@@ -495,14 +591,15 @@ onboard() {
     while :
         do
             case "$1" in
-                -m | --memory)        N_ONBOARD_MEM="${2%.*}"         ; shift 2 ;;
-                -c | --cpu)           N_ONBOARD_CPU="${2%.*}"         ; shift 2 ;;
-                -n | --nunet-channel) N_ONBOARD_CHAN="$2"             ; shift 2 ;;
-                -a | --address)       N_ONBOARD_ADD="$2"              ; shift 2 ;;
-                -C | --cardano)       N_ONBOARD_CARDANO=true          ; shift ;;
-                -l | --local-enable)  N_ONBOARD_SERVER_MODE=false     ; shift ;;
-                -v | --verbose)       N_ONBOARD_VERBOSE=1             ; shift ;;
-                -p | --pretty)        N_ONBOARD_PRETTY=1              ; shift ;;
+                -m | --memory)           N_ONBOARD_MEM="${2%.*}"                                                     ; shift 2 ;;
+                -c | --cpu)              N_ONBOARD_CPU="${2%.*}"                                                     ; shift 2 ;;
+                -n | --nunet-channel)    N_ONBOARD_CHAN="$2"                                                         ; shift 2 ;;
+                -a | --address)          N_ONBOARD_ADD="$2"                                                          ; shift 2 ;;
+                -x | --ntx-price)        N_ONBOARD_NTX_PRICE=$(echo "$2" | awk -F"[.]" '{ printf "%.6f", $1"."$2 }') ; shift 2 ;;
+                -C | --cardano)          N_ONBOARD_CARDANO=true                                                      ; shift ;;
+                -l | --local-enable)     N_ONBOARD_SERVER_MODE=false                                                 ; shift ;;
+                -v | --verbose)          N_ONBOARD_VERBOSE=1                                                         ; shift ;;
+                -p | --pretty)           N_ONBOARD_PRETTY=1                                                          ; shift ;;
                 --) shift; break ;;
                 *) echo "Unexpected option: $1."
                     onboard_usage ;;
@@ -529,6 +626,7 @@ onboard() {
     [[ -z $N_ONBOARD_MEM ]] && printf "${BAD_C}Error: -m | --memory must be specified.${NORMAL_C}\n" && onboard_usage
     [[ -z $N_ONBOARD_CHAN ]] && printf "${BAD_C}Error: -n | --nunet-channel must be specified.${NORMAL_C}\n" && onboard_usage
     [[ -z $N_ONBOARD_ADD ]] && printf "${BAD_C}Error: -a | --address must be specified.${NORMAL_C}\n" && onboard_usage
+    [[ -z $N_ONBOARD_NTX_PRICE ]] && printf "${BAD_C}Error: -x | --ntx-price must be specified.${NORMAL_C}\n" && onboard_usage
 
     N_AVAILABLE_RES=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/provisioned)
     N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
@@ -547,6 +645,9 @@ onboard() {
     elif [[ "$N_ONBOARD_CHAN" != "nunet-test" && "$N_ONBOARD_CHAN" != "nunet-staging" && "$N_ONBOARD_CHAN" != "nunet-team" && "$N_ONBOARD_CHAN" != "nunet-edge" ]] ; then
         printf "${BAD_C}NuNet Channel should be 'nunet-test' or 'nunet-staging' not $N_ONBOARD_CHAN ${NORMAL_C}\n"
         exit
+    elif (( $(awk 'BEGIN {print '"$N_ONBOARD_NTX_PRICE"' < 0}' ) )); then
+        printf "${BAD_C}NTX Price should be greater than 0 ${NORMAL_C}\n"
+        exit
     else
         if [[ "$N_ONBOARD_CHAN" == "nunet-team" || "$N_ONBOARD_CHAN" == "nunet-edge" ]] ; then
             while true; do
@@ -563,7 +664,8 @@ onboard() {
         N_ONBOARD_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
             -d "{\"memory\": $N_ONBOARD_MEM, \"cpu\": $N_ONBOARD_CPU, \
             \"channel\":\"$N_ONBOARD_CHAN\", \"payment_addr\": \"$N_ONBOARD_ADD\", \
-            \"cardano\": $N_ONBOARD_CARDANO, \"server_mode\": $N_ONBOARD_SERVER_MODE}" \
+            \"cardano\": $N_ONBOARD_CARDANO, \"server_mode\": $N_ONBOARD_SERVER_MODE,
+            \"ntx_price\": $N_ONBOARD_NTX_PRICE}" \
             $DMS_HOST:$DMS_PORT/api/v1/onboarding/onboard)
         # check if error
         N_ONBOARD_ERR_MSG=$(echo $N_ONBOARD_RESPONSE | jq -r '. | select(.error != null) | .error')
@@ -774,7 +876,7 @@ default-depreq-peer() {
 
 
 resource-config() {
-    N_CONFIG_OPTS=$(getopt -a -n nunet-onboard-config -o m:c:vp: --long memory:,cpu:,verbose,pretty -- "$@")
+    N_CONFIG_OPTS=$(getopt -a -n nunet-onboard-config -o m:c:x:vp: --long memory:,cpu:,ntx-price:,verbose,pretty -- "$@")
     eval set -- "$N_CONFIG_OPTS"
     if [[ ${#@} -le 1 ]] ; then
         resource_config_usage
@@ -783,18 +885,21 @@ resource-config() {
     while :
         do
             case "$1" in
-                -m | --memory)        N_CONFIG_MEM="${2%.*}"         ; shift 2 ;;
-                -c | --cpu)           N_CONFIG_CPU="${2%.*}"         ; shift 2 ;;
-                -v | --verbose)       N_CONFIG_VERBOSE=1             ; shift ;;
-                -p | --pretty)        N_CONFIG_PRETTY=1              ; shift ;;
+                -m | --memory)        N_CONFIG_MEM="${2%.*}"                                                         ; shift 2 ;;
+                -c | --cpu)           N_CONFIG_CPU="${2%.*}"                                                         ; shift 2 ;;
+                -x | --ntx-price)     N_CONFIG_NTX_PRICE=$(echo "$2" | awk -F"[.]" '{ printf "%.6f", $1"."$2 }')     ; shift 2 ;;
+                -v | --verbose)       N_CONFIG_VERBOSE=1                                                             ; shift ;;
+                -p | --pretty)        N_CONFIG_PRETTY=1                                                              ; shift ;;
                 --) shift; break ;;
                 *) echo "Unexpected option: $1."
-                    config_usage ;;
+                    resource_config_usage ;;
             esac
     done
 
-    [[ -z $N_CONFIG_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && config_usage
-    [[ -z $N_CONFIG_MEM ]] && printf "${BAD_C}Error: -m | --memory must be specified.${NORMAL_C}\n" && config_usage
+    [[ -z $N_CONFIG_CPU ]] && printf "${BAD_C}Error: -c | --cpu must be specified.${NORMAL_C}\n" && resource_config_usage
+    [[ -z $N_CONFIG_MEM ]] && printf "${BAD_C}Error: -m | --memory must be specified.${NORMAL_C}\n" && resource_config_usage
+    [[ -z $N_CONFIG_NTX_PRICE ]] && printf "${BAD_C}Error: -x | --ntx-price must be specified.${NORMAL_C}\n" && resource_config_usage
+
 
     N_AVAILABLE_RES=$(curl -s $DMS_HOST:$DMS_PORT/api/v1/onboarding/provisioned)
     N_AVAILABLE_MEM=$(echo $N_AVAILABLE_RES | jq ".memory")
@@ -809,9 +914,13 @@ resource-config() {
         printf "${BAD_C}CPU should be between 10%% and 90%% of the available CPU ($((N_AVAILABLE_CPU/10)) and $((N_AVAILABLE_CPU*9/10))) ${NORMAL_C}\n"
         printf "${INFO_C}Check capacity of resources with 'nunet capacity --pretty'${NORMAL_C}\n"
         exit
+    elif (( $(awk 'BEGIN {print '"$N_CONFIG_NTX_PRICE"' < 0}' ) )); then
+        printf "${BAD_C}NTX Price should be greater than 0 ${NORMAL_C}\n"
+        exit
     else
         N_CONFIG_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" \
-            -d "{\"memory\": $N_CONFIG_MEM, \"cpu\": $N_CONFIG_CPU}" \
+            -d "{\"memory\": $N_CONFIG_MEM, \"cpu\": $N_CONFIG_CPU,
+            \"ntx_price\": $N_CONFIG_NTX_PRICE}" \
             $DMS_HOST:$DMS_PORT/api/v1/onboarding/resource-config)
         # check if error
         N_CONFIG_ERR_MSG=$(echo $N_CONFIG_RESPONSE | jq '. | select(.error != null) | .error')
@@ -1273,7 +1382,7 @@ check_dms_run() {
 }
 
 
-cmds=("capacity" "wallet" "onboard" "offboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version" "default-depreq-peer")
+cmds=("capacity" "wallet" "onboard" "offboard" "info" "peer" "onboard-gpu" "onboard-ml" "shell" "chat" "log" "resource-config" "version" "default-depreq-peer" "device")
 
 if [ $# -eq  0 ] ; then
     usage

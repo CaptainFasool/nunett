@@ -11,16 +11,44 @@ import (
 const CIRendevousPoint string = "testing-nunet"
 
 func TestBootstrap(t *testing.T) {
+	t.Log("Starting TestBootstrap")
 	ctx := context.Background()
-	priv, _, _ := GenerateKey(0)
-	host, idht, _ := NewHost(ctx, priv, true)
-	defer host.Close()
-	// Test successful Bootstrap
-	err := Bootstrap(ctx, host, idht)
+	priv, _, err := GenerateKey(0)
 	if err != nil {
-		t.Errorf("Expected Bootstrap to succeed but got error: %v", err)
+		t.Fatalf("Failed to generate key: %v", err)
 	}
 
+	host, idht, err := NewHost(ctx, priv, true)
+	if err != nil {
+		t.Fatalf("Failed to create host: %v", err)
+	}
+	defer host.Close()
+	t.Log("Host created successfully")
+
+	// Test successful Bootstrap
+	err = Bootstrap(ctx, host, idht)
+	if err != nil {
+		t.Errorf("Expected Bootstrap to succeed but got error: %v", err)
+	} else {
+		t.Log("Bootstrap succeeded")
+	}
+
+}
+
+func TestPeersWithAvailability(t *testing.T) {
+	var peers []models.PeerData
+	var peer1, peer2, peer3 models.PeerData
+
+	peer1.IsAvailable = true
+	peer2.IsAvailable = true
+	peer3.IsAvailable = false
+
+	peers = append(peers, peer1, peer2, peer3)
+	res := PeersWithAvailability(peers)
+
+	assert.Equal(t, 2, len(res), "Expected 2 available peers but got a different count")
+	assert.True(t, res[0].IsAvailable, "Expected the first peer to be available")
+	assert.True(t, res[1].IsAvailable, "Expected the second peer to be available")
 }
 
 func TestPeersWithCardanoAllowed(t *testing.T) {
