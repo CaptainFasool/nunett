@@ -117,7 +117,7 @@ func fileStreamHandler(stream network.Stream) {
 	}
 }
 
-func incomingFileTransferRequests() (string, error) {
+func IncomingFileTransferRequests() (string, error) {
 	if currentFileTransfer.InboundFileStream == nil {
 		return "", fmt.Errorf("no incoming file transfer stream")
 	}
@@ -127,7 +127,7 @@ func incomingFileTransferRequests() (string, error) {
 		currentFileTransfer.Time, currentFileTransfer.File.Name, currentFileTransfer.File.Size), nil
 }
 
-func clearIncomingFileRequests() error {
+func ClearIncomingFileRequests() error {
 	if currentFileTransfer.InboundFileStream == nil {
 		return fmt.Errorf("no inbound file transfer stream")
 	}
