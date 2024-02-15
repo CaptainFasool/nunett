@@ -29,7 +29,7 @@ type IncomingFileTransfer struct {
 	InboundFileStream network.Stream
 }
 
-var currentFileTransfer IncomingFileTransfer
+var CurrentFileTransfer IncomingFileTransfer
 
 type FileTransferType uint8
 
@@ -63,7 +63,7 @@ func fileStreamHandler(stream network.Stream) {
 	zlog.Info("Got a new file stream!")
 
 	// XXX bad limit to 1 request - temporary
-	if currentFileTransfer.InboundFileStream != nil {
+	if CurrentFileTransfer.InboundFileStream != nil {
 		w := bufio.NewWriter(stream)
 		_, err := w.WriteString("Open Stream Length Exceeded. Closing Stream.\n")
 		if err != nil {
@@ -108,7 +108,7 @@ func fileStreamHandler(stream network.Stream) {
 	incomingFileTransfer.InboundFileStream = stream
 
 	// XXX bad limit to 1 request - temporary
-	currentFileTransfer = incomingFileTransfer
+	CurrentFileTransfer = incomingFileTransfer
 
 	// only pass depreq related file transfer requests to queue
 	if incomingFileTransfer.File.TransferType == FTDEPREQ {
@@ -118,20 +118,20 @@ func fileStreamHandler(stream network.Stream) {
 }
 
 func IncomingFileTransferRequests() (string, error) {
-	if currentFileTransfer.InboundFileStream == nil {
+	if CurrentFileTransfer.InboundFileStream == nil {
 		return "", fmt.Errorf("no incoming file transfer stream")
 	}
 
 	return fmt.Sprintf(
 		"Time: %s\nFile Name: %s\nFile Size: %d bytes\n",
-		currentFileTransfer.Time, currentFileTransfer.File.Name, currentFileTransfer.File.Size), nil
+		CurrentFileTransfer.Time, CurrentFileTransfer.File.Name, CurrentFileTransfer.File.Size), nil
 }
 
 func ClearIncomingFileRequests() error {
-	if currentFileTransfer.InboundFileStream == nil {
+	if CurrentFileTransfer.InboundFileStream == nil {
 		return fmt.Errorf("no inbound file transfer stream")
 	}
-	currentFileTransfer.InboundFileStream = nil
+	CurrentFileTransfer.InboundFileStream = nil
 	return nil
 }
 
@@ -185,7 +185,7 @@ func StreamReadFileWrite(ctxDone context.CancelFunc, incomingFileTransfer Incomi
 	if incomingFileTransfer.InboundFileStream != nil {
 		incomingFileTransfer.InboundFileStream.Reset()
 	}
-	currentFileTransfer = IncomingFileTransfer{}
+	CurrentFileTransfer = IncomingFileTransfer{}
 }
 
 // SendFileToPeer takes a libp2p peer id and a file path and sends the file to the peer.
