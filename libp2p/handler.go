@@ -20,7 +20,6 @@ import (
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
-	"gitlab.com/nunet/device-management-service/utils"
 	"golang.org/x/net/context"
 
 	"gitlab.com/nunet/device-management-service/models"

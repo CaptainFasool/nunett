@@ -92,6 +92,56 @@ func HandleListPeers(c *gin.Context) {
 	c.JSON(200, peers)
 }
 
+// HandleListDHTPeers  godoc
+//
+//	@Summary		Return list of peers which have sent a dht update
+//	@Description	Gets a list of peers the libp2p node has received a dht update from
+//	@Tags			p2p
+//	@Produce		json
+//	@Success		200	{string}	string
+//	@Router			/peers/dht [get]
+func HandleListDHTPeers(c *gin.Context) {
+	reqCtx := c.Request.Context()
+	peers, err := libp2p.ListDHTPeers(reqCtx)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	if len(peers) == 0 {
+		c.JSON(200, gin.H{"message": "no peers found"})
+		return
+	}
+	c.JSON(200, peers)
+}
+
+// HandleListKadDHTPeers  godoc
+//
+//	@Summary		Return list of peers which have sent a dht update
+//	@Description	Gets a list of peers the libp2p node has received a dht update from
+//	@Tags			p2p
+//	@Produce		json
+//	@Success		200	{string}	string
+//	@Router			/peers/kad-dht [get]
+func HandleListKadDHTPeers(c *gin.Context) {
+	reqCtx := c.Request.Context()
+
+	peers, err := libp2p.ListKadDHTPeers(c)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+	}
+	if len(peers) == 0 {
+		c.JSON(200, gin.H{"message": "no peers found"})
+		klogger.Logger.Error("No peers found")
+		return
+	}
+	resp, err := json.Marshal(peers)
+	if err != nil {
+		zlog.ErrorContext(reqCtx, "failed to json marshal DHT peers slice: %w", zap.Error(err))
+	}
+	klogger.Logger.Info("Response: " + string(resp))
+	c.JSON(200, peers)
+}
+
 // SelfPeerInfo  godoc
 //
 //	@Summary		Return self peer info
@@ -164,6 +214,27 @@ func StartChatHandler(c *gin.Context) {
 	libp2p.StartChat(c.Writer, c.Request, stream, id)
 }
 
+// HandleJoinChat  godoc
+//
+//	@Summary		Join chat with a peer
+//	@Description	Join a chat session started by a peer
+//	@Tags			chat
+//	@Success		200
+//	@Router			/peers/chat/join [get]
+func HandleJoinChat(c *gin.Context) {
+	streamID := c.Query("streamID")
+	if streamID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "stream ID not provided"})
+		return
+	}
+	stream, err := strconv.Atoi(streamID)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("invalid stream ID: %w", err)})
+		return
+	}
+	libp2p.JoinChat(c.Writer, c.Request, stream)
+}
+
 // HandleDumpDHT  godoc
 //
 //	@Summary		Return a dump of the dht
@@ -186,76 +257,6 @@ func HandleDumpDHT(c *gin.Context) {
 	c.JSON(200, dht)
 }
 
-// HandleClearFileTransferRequests  godoc
-// @Summary      Clear file transfer requests
-// @Description  Clear file transfer request streams from peers
-// @Tags         file
-// @Produce      json
-// @Success      200
-// @Router       /peers/file/clear [get]
-func HandleClearFileTransferRequests(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	span := trace.SpanFromContext(reqCtx)
-	span.SetAttributes(attribute.String("URL", "/peers/file/clear"))
-
-	err := libp2p.ClearIncomingFileRequests()
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"message": "successfully cleared inbound file transfer requests"})
-}
-
-// HandleListDHTPeers  godoc
-//
-//	@Summary		Return list of peers which have sent a dht update
-//	@Description	Gets a list of peers the libp2p node has received a dht update from
-//	@Tags			p2p
-//	@Produce		json
-//	@Success		200	{string}	string
-//	@Router			/peers/dht [get]
-func HandleListDHTPeers(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	peers, err := libp2p.ListDHTPeers(reqCtx)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	if len(peers) == 0 {
-		c.JSON(200, gin.H{"message": "no peers found"})
-		return
-	}
-	c.JSON(200, peers)
-}
-
-// HandleListKadDHTPeers  godoc
-//
-//	@Summary		Return list of peers which have sent a dht update
-//	@Description	Gets a list of peers the libp2p node has received a dht update from
-//	@Tags			p2p
-//	@Produce		json
-//	@Success		200	{string}	string
-//	@Router			/peers/kad-dht [get]
-func HandleListKadDHTPeers(c *gin.Context) {
-	reqCtx := c.Request.Context()
-
-	peers, err := libp2p.ListKadDHTPeers(c)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-	}
-	if len(peers) == 0 {
-		c.JSON(200, gin.H{"message": "no peers found"})
-		klogger.Logger.Error("No peers found")
-		return
-	}
-	resp, err := json.Marshal(peers)
-	if err != nil {
-		zlog.ErrorContext(reqCtx, "failed to json marshal DHT peers slice: %w", zap.Error(err))
-	}
-	klogger.Logger.Info("Response: " + string(resp))
-	c.JSON(200, peers)
-}
-
 // HandleDefaultDepReqPeer  godoc
 //
 //	@Summary		Manage default deplyment request receiver peer
@@ -275,6 +276,26 @@ func HandleDefaultDepReqPeer(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"message": msg})
+}
+
+// HandleClearFileTransferRequests  godoc
+// @Summary      Clear file transfer requests
+// @Description  Clear file transfer request streams from peers
+// @Tags         file
+// @Produce      json
+// @Success      200
+// @Router       /peers/file/clear [get]
+func HandleClearFileTransferRequests(c *gin.Context) {
+	reqCtx := c.Request.Context()
+	span := trace.SpanFromContext(reqCtx)
+	span.SetAttributes(attribute.String("URL", "/peers/file/clear"))
+
+	err := libp2p.ClearIncomingFileRequests()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"message": "successfully cleared inbound file transfer requests"})
 }
 
 // HandleListFileRequests  godoc
@@ -385,27 +406,6 @@ func HandleAcceptFileTransfer(c *gin.Context) {
 	ws.WriteMessage(1, []byte("transfer complete"))
 	ws.WriteMessage(1, []byte("File saved to: "+path))
 	ws.Close()
-}
-
-// HandleJoinChat  godoc
-//
-//	@Summary		Join chat with a peer
-//	@Description	Join a chat session started by a peer
-//	@Tags			chat
-//	@Success		200
-//	@Router			/peers/chat/join [get]
-func HandleJoinChat(c *gin.Context) {
-	streamID := c.Query("streamID")
-	if streamID == "" {
-		c.AbortWithStatusJSON(400, gin.H{"error": "stream ID not provided"})
-		return
-	}
-	stream, err := strconv.Atoi(streamID)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("invalid stream ID: %w", err)})
-		return
-	}
-	libp2p.JoinChat(c.Writer, c.Request, stream)
 }
 
 // DEBUG
