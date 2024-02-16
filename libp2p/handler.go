@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal"
@@ -146,7 +147,7 @@ func ListDHTPeers(ctx context.Context) ([]peer.ID, error) {
 	return dhtPeers, nil
 }
 
-func ListKadDHTPeers(ctx context.Context) ([]string, error) {
+func ListKadDHTPeers(ctx, reqCtx context.Context) ([]string, error) {
 	_, debug := os.LookupEnv("NUNET_DEBUG_VERBOSE")
 	if p2p.Host == nil {
 		return nil, fmt.Errorf("host node has not yet been initialized")
@@ -183,6 +184,12 @@ func ListKadDHTPeers(ctx context.Context) ([]string, error) {
 		}
 		dhtPeers = append(dhtPeers, peerInfo.PeerID)
 	}
+	logPeers, err := json.Marshal(dhtPeers)
+	if err != nil {
+		zlog.ErrorContext(reqCtx, "failed to json marshal DHT peers slice: %w", zap.Error(err))
+	}
+	klogger.Logger.Info("Response: " + string(logPeers))
+
 	return dhtPeers, nil
 }
 
@@ -368,90 +375,36 @@ func CleanupPeer(id string) error {
 }
 
 // DEBUG ONLY
-func PingPeer(ctx context.Context, id string) (bool, error) {
-	if id == "" {
-		return false, fmt.Errorf("peer ID not provided")
-	}
-	if id == p2p.Host.ID().String() {
-		return false, fmt.Errorf("peer ID cannot be self peer ID")
-	}
-
-	target, err := peer.Decode(id)
-	if err != nil {
-		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
-		return false, fmt.Errorf("could not decode string ID to peer ID: %w", err)
-	}
-
-	var aval bool
-	_, err = p2p.Host.Peerstore().Get(target, "peer_info")
-	if err != nil {
-		aval = false
-	} else {
-		aval = true
-	}
-
+func PingPeer(ctx context.Context, target peer.ID) (bool, ping.Result) {
 	pingCh, cancel := Ping(ctx, target)
 	defer cancel()
 	result := <-pingCh
-	zlog.Sugar().Infof("Pinged %s --> RTT: %s", target.String(), result.RTT)
-	if result.Error != nil {
-		return aval, fmt.Errorf("ping failed with peer %s: %w", id, result.Error)
-	}
-	return aval, nil
-	// c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
-}
 
-func OldPingPeer(ctx context.Context, id string) (*models.PingResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("peer ID not provided")
-	}
-	if id == p2p.Host.ID().String() {
-		return nil, fmt.Errorf("peer ID cannot be self peer ID")
-	}
-	target, err := peer.Decode(id)
-	if err != nil {
-		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
-		return nil, fmt.Errorf("could not decode string ID to peer ID: %w", err)
-	}
-
-	var aval bool
+	var available bool
 	_, err = p2p.Host.Peerstore().Get(target, "peer_info")
 	if err != nil {
-		aval = false
+		available = false
 	} else {
-		aval = true
+		available = true
 	}
 
-	result := OldPing(ctx, p2p.Host, target)
 	zlog.Sugar().Infof("Pinged %s --> RTT: %s", target.String(), result.RTT)
-	if result.Error != nil {
-		return &result, fmt.Errorf("could not ping peer %s: %w", target.String(), result.Error)
-		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, result.Error), "peer_in_dht": peerInDHT, "RTT": result.RTT})
-		return
-	}
-	c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
-
+	return available, result
 }
 
 // DEBUG ONLY
-func OldPingPeerHandler(c *gin.Context) {
-	peerID := c.Query("peerID")
-
-	if peerID == "" {
-		c.JSON(400, gin.H{"error": "peerID not provided"})
-		return
-	}
-	if peerID == p2p.Host.ID().String() {
-		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
-		return
-	}
-
-	targetPeer, err := peer.Decode(peerID)
+func OldPingPeer(ctx context.Context, target peer.ID) (bool, *models.PingResult) {
+	var available bool
+	_, err = p2p.Host.Peerstore().Get(target, "peer_info")
 	if err != nil {
-		c.JSON(400, gin.H{"error": "Could not decode string ID to peerID"})
-		return
+		available = false
+	} else {
+		available = true
 	}
 
+	result := OldPing(ctx, libp2p.Host, target)
+	zlog.Sugar().Infof("Pinged %s --> RTT: %s", target.String(), result.RTT)
+	return available, &result
 }
 
 // DEBUG ONLY
