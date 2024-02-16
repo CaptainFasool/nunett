@@ -147,9 +147,9 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 	metadata.GpuInfo = gpuInfo
 
 	channels := []string{"nunet-staging", "nunet-test", "nunet-team", "nunet-edge"}
-	err = validateChannel(channels, capacity.Channel)
-	if err != nil {
-		return nil, fmt.Errorf("invalid channel data: %w", err)
+	validChannel := utils.SliceContains(channels, capacity.Channel)
+	if !validChannel {
+		return nil, fmt.Errorf("invalid channel data: '%s' is not a valid channel", capacity.Channel)
 	}
 
 	metadata.Reserved.Memory = capacity.Memory
@@ -345,16 +345,5 @@ func validateCapacityForNunet(capacity models.CapacityForNunet) error {
 		return fmt.Errorf("memory should be between 10%% and 90%% of the available memory (%d and %d)", int64(totalMem/10), int64(totalMem*9/10))
 	}
 
-	return nil
-}
-
-func validateChannel(c []string, s string) error {
-	if s == "" {
-		return fmt.Errorf("channel string is empty")
-	}
-	contains := utils.SliceContains(c, s)
-	if !contains {
-		return fmt.Errorf("channel specified does not exist")
-	}
 	return nil
 }
