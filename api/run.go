@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/libp2p/machines"
 	"gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel/attribute"
@@ -61,4 +62,20 @@ func HandleDeploymentRequest(c *gin.Context) {
 		return
 	}
 	// TODO: Original func did not return a success response. Should we return it?
+}
+
+// HandleListCheckpoint  godoc
+//
+//	@Summary		Returns a list of absolute path to checkpoint files.
+//	@Description	ListCheckpointHandler scans data_dir/received_checkpoints and lists all the tar.gz files which can be used to resume a job. Returns a list of objects with absolute path and last modified date.
+//	@Tags			run
+//	@Success		200					{object}	[]checkpoint
+//	@Router			/run/checkpoints [get]
+func HandleListCheckpoint(c *gin.Context) {
+	checkpoints, err := libp2p.ListCheckpoints()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get checkpoint list"})
+		return
+	}
+	c.JSON(200, checkpoints)
 }
