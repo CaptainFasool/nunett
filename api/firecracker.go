@@ -1,8 +1,6 @@
 package api
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"go.opentelemetry.io/otel/attribute"
@@ -25,7 +23,7 @@ func HandleStartCustom(c *gin.Context) {
 	var body firecracker.CustomVM
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	err = firecracker.StartCustom(reqCtx, body)
@@ -52,7 +50,7 @@ func HandleStartDefault(c *gin.Context) {
 	var body firecracker.DefaultVM
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	err = firecracker.StartDefault(reqCtx, body)
