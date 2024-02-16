@@ -401,6 +401,38 @@ func PingPeer(ctx context.Context, id string) (bool, error) {
 	// c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
 }
 
+func OldPingPeer(ctx context.Context, id string) (*models.PingResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("peer ID not provided")
+	}
+	if id == p2p.Host.ID().String() {
+		return nil, fmt.Errorf("peer ID cannot be self peer ID")
+	}
+	target, err := peer.Decode(id)
+	if err != nil {
+		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
+		return nil, fmt.Errorf("could not decode string ID to peer ID: %w", err)
+	}
+
+	var aval bool
+	_, err = p2p.Host.Peerstore().Get(target, "peer_info")
+	if err != nil {
+		aval = false
+	} else {
+		aval = true
+	}
+
+	result := OldPing(ctx, p2p.Host, target)
+	zlog.Sugar().Infof("Pinged %s --> RTT: %s", target.String(), result.RTT)
+	if result.Error != nil {
+		return &result, fmt.Errorf("could not ping peer %s: %w", target.String(), result.Error)
+		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, result.Error), "peer_in_dht": peerInDHT, "RTT": result.RTT})
+		return
+	}
+	c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
+
+}
+
 // DEBUG ONLY
 func OldPingPeerHandler(c *gin.Context) {
 	peerID := c.Query("peerID")
@@ -416,27 +448,10 @@ func OldPingPeerHandler(c *gin.Context) {
 
 	targetPeer, err := peer.Decode(peerID)
 	if err != nil {
-		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
 		c.JSON(400, gin.H{"error": "Could not decode string ID to peerID"})
 		return
 	}
 
-	var peerInDHT bool
-	_, err = p2p.Host.Peerstore().Get(targetPeer, "peer_info")
-	if err != nil {
-		peerInDHT = false
-	} else {
-		peerInDHT = true
-	}
-
-	result := OldPingPeer(c.Request.Context(), p2p.Host, targetPeer)
-	zlog.Sugar().Infof("Pinged %s --> RTT: %s", targetPeer.String(), result.RTT)
-	if result.Success {
-		c.JSON(200, gin.H{"message": fmt.Sprintf("Successfully Pinged Peer: %s", peerID), "peer_in_dht": peerInDHT, "RTT": result.RTT})
-	} else {
-		c.JSON(400, gin.H{"message": fmt.Sprintf("Could not ping peer: %s -- %s", peerID, result.Error), "peer_in_dht": peerInDHT, "RTT": result.RTT})
-		return
-	}
 }
 
 // DEBUG ONLY
