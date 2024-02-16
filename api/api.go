@@ -7,13 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	"gitlab.com/nunet/device-management-service/firecracker"
-	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
-	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/libp2p/machines"
-	"gitlab.com/nunet/device-management-service/onboarding"
-	"gitlab.com/nunet/device-management-service/telemetry"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
@@ -25,81 +19,85 @@ func SetupRouter() *gin.Engine {
 
 	v1 := router.Group("/api/v1")
 
-	onboardingRoute := v1.Group("/onboarding")
+	onboarding := v1.Group("/onboarding")
 	{
-		onboardingRoute.GET("/provisioned", onboarding.ProvisionedCapacity)
-		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
-		onboardingRoute.POST("/onboard", onboarding.Onboard)
-		onboardingRoute.GET("/status", onboarding.Status)
-		onboardingRoute.DELETE("/offboard", onboarding.Offboard)
-		onboardingRoute.POST("/resource-config", onboarding.ResourceConfig)
-		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
+		onboarding.GET("/provisioned", HandleProvisionedCapacity)
+		onboarding.GET("/address/new", HandleCreatePaymentAddress)
+		onboarding.POST("/onboard", HandleOnboard)
+		onboarding.GET("/status", HandleOnboardStatus)
+		onboarding.DELETE("/offboard", HandleOffboard)
+		onboarding.POST("/resource-config", HandleResourceConfig)
+		onboarding.GET("/metadata", HandleGetMetadata)
 	}
 
 	device := v1.Group("/device")
 	{
-		device.GET("/status", libp2p.DeviceStatusHandler)
-		device.POST("/status", libp2p.DeviceStatusChangeHandler)
+		device.GET("/status", HandleDeviceStatus)
+		device.POST("/status", HandleChangeDeviceStatus)
 	}
 
-	virtualmachine := v1.Group("/vm")
+	vm := v1.Group("/vm")
 	{
-		virtualmachine.POST("/start-default", firecracker.StartDefault)
-		virtualmachine.POST("/start-custom", firecracker.StartCustom)
+		vm.POST("/start-default", HandleStartDefault)
+		vm.POST("/start-custom", HandleStartCustom)
 	}
 
 	run := v1.Group("/run")
 	{
-		run.GET("/deploy", machines.DeploymentRequestHandler) // websocket
-		run.POST("/request-service", machines.RequestServiceHandler)
-		run.GET("/checkpoints", libp2p.ListCheckpointHandler)
+		run.GET("/deploy", HandleDeploymentRequest) // websocket
+		run.POST("/request-service", HandleRequestService)
+		run.GET("/checkpoints", HandleListCheckpoint)
 	}
 
 	tx := v1.Group("/transactions")
 	{
-		tx.GET("", tokenomics.GetJobTxHashes)
-		tx.POST("/request-reward", tokenomics.HandleRequestReward)
-		run.POST("/send-status", tokenomics.HandleSendStatus)
-		tx.POST("/update-status", tokenomics.HandleUpdateStatus)
+		tx.GET("", HandleGetJobTxHashes)
+		tx.POST("/request-reward", HandleRequestReward)
+		tx.POST("/send-status", HandleSendStatus)
+		tx.POST("/update-status", HandleUpdateStatus)
 	}
 
 	tele := v1.Group("/telemetry")
 	{
-		tele.GET("/free", telemetry.GetFreeResource)
+		tele.GET("/free", HandleGetFreeResources)
 	}
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
 		dht := v1.Group("/dht")
 		{
-			dht.GET("", libp2p.DumpDHT)
-			dht.GET("/update", libp2p.ManualDHTUpdateHandler)
+			dht.GET("", HandleDumpDHT)
+			dht.GET("/update", HandleManualDHTUpdate)
 		}
-		kadDht := v1.Group("/kad-dht")
+		kadDHT := v1.Group("/kad-dht")
 		{
-			kadDht.GET("", libp2p.DumpKademliaDHT)
+			kadDHT.GET("", HandleDumpKademliaDHT)
 		}
-		v1.GET("/ping", libp2p.PingPeerHandler)
-		v1.GET("/oldping", libp2p.OldPingPeerHandler)
-		v1.GET("/cleanup", libp2p.CleanupPeerHandler)
+		v1.GET("/ping", HandlePingPeer)
+		v1.GET("/oldping", HandleOldPingPeer)
+		v1.GET("/cleanup", HandleCleanupPeer)
 	}
 
 	p2p := v1.Group("/peers")
 	{
 		// peer.GET("", machines.ListPeers)
-		p2p.GET("", libp2p.ListPeers)
-		p2p.GET("/dht", libp2p.ListDHTPeers)
-		p2p.GET("/kad-dht", libp2p.ListKadDHTPeers)
-		p2p.GET("/self", libp2p.SelfPeerInfo)
-		p2p.GET("/chat", libp2p.ListChatHandler)
-		p2p.GET("/depreq", libp2p.DefaultDepReqPeer)
-		p2p.GET("/chat/start", libp2p.StartChatHandler)
-		p2p.GET("/chat/join", libp2p.JoinChatHandler)
-		p2p.GET("/chat/clear", libp2p.ClearChatHandler)
-		p2p.GET("/file", libp2p.ListFileRequestsHandler)
-		p2p.GET("/file/send", libp2p.InitiateFileTransferHandler)
-		p2p.GET("/file/accept", libp2p.AcceptFileTransferHandler)
-		p2p.GET("/file/clear", libp2p.ClearFileTransferRequestseHandler)
-		p2p.GET("/dht/dump", libp2p.DumpDHT)
+		p2p.GET("", HandleListPeers)
+		p2p.GET("/dht", HandleListDHTPeers)
+		p2p.GET("/kad-dht", HandleListKadDHTPeers)
+		p2p.GET("/self", HandleSelfPeerInfo)
+		p2p.GET("/chat", HandleListChat)
+		p2p.GET("/depreq", HandleDefaultDepReqPeer)
+		// TODO: change to HandleStartChat
+		p2p.GET("/chat/start", StartChatHandler)
+		p2p.GET("/chat/join", HandleJoinChat)
+		// TODO: change to HandleChatClear
+		p2p.GET("/chat/clear", ClearChatHandler)
+		p2p.GET("/file", HandleListFileRequests)
+		// TODO: change name to HandleSendFileRequest
+		p2p.GET("/file/send", HandleInitiateFileTransfer)
+		p2p.GET("/file/accept", HandleAcceptFileTransfer)
+		p2p.GET("/file/clear", HandleClearFileTransferRequests)
+		// ?? duplicate func
+		// p2p.GET("/dht/dump", libp2p.DumpDHT)
 		// peer.GET("/shell", internal.HandleWebSocket)
 		// peer.GET("/log", internal.HandleWebSocket)
 	}
