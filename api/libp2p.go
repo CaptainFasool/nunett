@@ -1,12 +1,12 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
@@ -125,7 +125,7 @@ func HandleListDHTPeers(c *gin.Context) {
 func HandleListKadDHTPeers(c *gin.Context) {
 	reqCtx := c.Request.Context()
 
-	peers, err := libp2p.ListKadDHTPeers(c)
+	peers, err := libp2p.ListKadDHTPeers(c, reqCtx)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 	}
@@ -134,11 +134,6 @@ func HandleListKadDHTPeers(c *gin.Context) {
 		klogger.Logger.Error("No peers found")
 		return
 	}
-	resp, err := json.Marshal(peers)
-	if err != nil {
-		zlog.ErrorContext(reqCtx, "failed to json marshal DHT peers slice: %w", zap.Error(err))
-	}
-	klogger.Logger.Info("Response: " + string(resp))
 	c.JSON(200, peers)
 }
 
@@ -434,7 +429,7 @@ func HandleCleanupPeer(c *gin.Context) {
 }
 
 // DEBUG
-func PingPeerHandler(c *gin.Context) {
+func HandlePingPeer(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	id := c.Query("peerID")
 
@@ -446,12 +441,42 @@ func PingPeerHandler(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
 		return
 	}
-	status, err := libp2p.PingPeer(reqCtx, id)
+	target, err := peer.Decode(id)
 	if err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("could not ping peer: %w", err), "peer_in_dht": status})
+		c.JSON(400, gin.H{"error": "invalid string ID: could not decode string ID to peer ID"})
 		return
 	}
-	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": status})
+
+	status, result := libp2p.PingPeer(reqCtx, target)
+	if result.Error != nil {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("could not ping peer %s: %w", id, result.Error), "peer_in_dht": status, "RTT": result.RTT})
+		return
+	}
+	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": status, "RTT": result.RTT})
+}
+
+// DEBUG ONLY
+func HandleOldPingPeer(c *gin.Context) {
+	id := c.Query("peerID")
+	if id == "" {
+		c.JSON(400, gin.H{"error": "peer ID not provided"})
+		return
+	}
+	if id == libp2p.GetP2P().Host.ID().String() {
+		c.JSON(400, gin.H{"error": "peer ID cannot be self peer ID"})
+		return
+	}
+	target, err := peer.Decode(id)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid string ID: could not decode string ID to peer ID"})
+		return
+	}
+	status, result := libp2p.OldPingPeer(c, target)
+	if result.Error != nil {
+		c.JSON(400, gin.H{"error": fmt.Errorf("could not ping peer %s: %w", id, result.Error), "peer_in_dht": status, "RTT": result.RTT})
+		return
+	}
+	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": status, "RTT": result.RTT})
 }
 
 // DEBUG
