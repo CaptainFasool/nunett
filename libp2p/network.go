@@ -125,9 +125,9 @@ func PingHandler(s network.Stream) {
 }
 
 // Deprecated: Use Ping instead which returns a channel of ping results and a context cancel function
-// OldPingPeer manualy pings the given peer and returns the result which contains success/fail status,
+// OldPing manualy pings the given peer and returns the result which contains success/fail status,
 // RTT and and error message if any.
-func OldPingPeer(ctx context.Context, h host.Host, target peer.ID) models.PingResult {
+func OldPing(ctx context.Context, h host.Host, target peer.ID) models.PingResult {
 	var pingResult models.PingResult
 	start := time.Now()
 	pingCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
