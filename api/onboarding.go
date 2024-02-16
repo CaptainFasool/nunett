@@ -11,7 +11,7 @@ import (
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
-// ProvisionedCapacity      godoc
+// HandleProvisionedCapacity      godoc
 //
 //	@Summary		Returns provisioned capacity on host.
 //	@Description	Get total memory capacity in MB and CPU capacity in MHz.
@@ -23,6 +23,14 @@ func HandleProvisionedCapacity(c *gin.Context) {
 	c.JSON(200, library.GetTotalProvisioned())
 }
 
+// HandleGetMetadata      godoc
+//
+//	@Summary		Get current device info.
+//	@Description	Responds with metadata of current provideer
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.Metadata
+//	@Router			/onboarding/metadata [get]
 func HandleGetMetadata(c *gin.Context) {
 	metadata, err := onboarding.GetMetadata()
 	if err != nil {
@@ -32,6 +40,14 @@ func HandleGetMetadata(c *gin.Context) {
 	c.JSON(200, metadata)
 }
 
+// HandleCreatePaymentAddress      godoc
+//
+//	@Summary		Create a new payment address.
+//	@Description	Create a payment address from public key. Return payment address and private key.
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.BlockchainAddressPrivKey
+//	@Router			/onboarding/address/new [get]
 func HandleCreatePaymentAddress(c *gin.Context) {
 	wallet := c.DefaultQuery("blockchain", "cardano")
 	pair, err := onboarding.CreatePaymentAddress(wallet)
@@ -42,6 +58,14 @@ func HandleCreatePaymentAddress(c *gin.Context) {
 	c.JSON(200, pair)
 }
 
+// HandleOnboard      godoc
+//
+//	@Summary		Runs the onboarding process.
+//	@Description	Onboard runs onboarding script given the amount of resources to onboard.
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.Metadata
+//	@Router			/onboarding/onboard [post]
 func HandleOnboard(c *gin.Context) {
 	capacity := models.CapacityForNunet{
 		ServerMode: true,
@@ -61,6 +85,12 @@ func HandleOnboard(c *gin.Context) {
 	c.JSON(200, metadata)
 }
 
+// HandleOffboard      godoc
+// @Summary      Runs the offboarding process.
+// @Description  Offboard runs the offboarding script to remove resources associated with a device.
+// @Tags         onboarding
+// @Success      200  "Successfully Onboarded"
+// @Router       /onboarding/offboard [delete]
 func HandleOffboard(c *gin.Context) {
 	force, _ := strconv.ParseBool(c.DefaultQuery("force", "false"))
 
@@ -73,6 +103,19 @@ func HandleOffboard(c *gin.Context) {
 	c.JSON(200, nil)
 }
 
+// HandleOnboardStatus      godoc
+//
+//	@Summary		Onboarding status and other metadata.
+//	@Description	Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.
+//					  `onboarded` is true if the device is onboarded, false otherwise.
+//					  `error` is the error message if any related to onboarding status check
+//					  `machine_uuid` is the UUID of the machine
+//					  `metadata_path` is the path to metadataV2.json only if it exists
+//					  `database_path` is the path to nunet.db only if it exists
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object} models.OnboardingStatus
+//	@Router			/onboarding/status [get]
 func HandleOnboardStatus(c *gin.Context) {
 	status, err := onboarding.Status()
 	if err != nil {
@@ -82,6 +125,13 @@ func HandleOnboardStatus(c *gin.Context) {
 	c.JSON(200, status)
 }
 
+// HandleResourceConfig        godoc
+//
+//	@Summary	changes the amount of resources of onboarded device .
+//	@Tags		onboarding
+//	@Produce	json
+//	@Success	200	{object}	models.Metadata
+//	@Router		/onboarding/resource-config [post]
 func HandleResourceConfig(c *gin.Context) {
 	klogger.Logger.Info("device resource change started")
 	if c.Request.ContentLength == 0 {

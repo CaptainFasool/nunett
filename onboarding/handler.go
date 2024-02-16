@@ -25,15 +25,6 @@ import (
 var FS afero.Fs = afero.NewOsFs()
 var AFS *afero.Afero = &afero.Afero{Fs: FS}
 
-// GetMetadata      godoc
-//
-//	@Summary		Get current device info.
-//	@Description	Responds with metadata of current provideer
-//	@Tags			onboarding
-//	@Produce		json
-//	@Success		200	{object}	models.Metadata
-//	@Router			/onboarding/metadata [get]
-
 // GetMetadata reads metadataV2.json file and returns a models.MetadataV2 struct
 func GetMetadata() (*models.MetadataV2, error) {
 	metadataPath := utils.GetMetadataFilePath()
@@ -49,14 +40,6 @@ func GetMetadata() (*models.MetadataV2, error) {
 	return &metadata, nil
 }
 
-// CreatePaymentAddress      godoc
-//
-//	@Summary		Create a new payment address.
-//	@Description	Create a payment address from public key. Return payment address and private key.
-//	@Tags			onboarding
-//	@Produce		json
-//	@Success		200	{object}	models.BlockchainAddressPrivKey
-//	@Router			/onboarding/address/new [get]
 func CreatePaymentAddress(wallet string) (*models.BlockchainAddressPrivKey, error) {
 	var (
 		pair *models.BlockchainAddressPrivKey
@@ -75,19 +58,6 @@ func CreatePaymentAddress(wallet string) (*models.BlockchainAddressPrivKey, erro
 	return pair, nil
 }
 
-// Status      godoc
-//
-//	@Summary		Onboarding status and other metadata.
-//	@Description	Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.
-//					  `onboarded` is true if the device is onboarded, false otherwise.
-//					  `error` is the error message if any related to onboarding status check
-//					  `machine_uuid` is the UUID of the machine
-//					  `metadata_path` is the path to metadataV2.json only if it exists
-//					  `database_path` is the path to nunet.db only if it exists
-//	@Tags			onboarding
-//	@Produce		json
-//	@Success		200	{object} models.OnboardingStatus
-//	@Router			/onboarding/status [get]
 func Status() (*models.OnboardingStatus, error) {
 	var (
 		metadataPath string
@@ -127,14 +97,6 @@ func Status() (*models.OnboardingStatus, error) {
 	return &resp, nil
 }
 
-// Onboard      godoc
-//
-//	@Summary		Runs the onboarding process.
-//	@Description	Onboard runs onboarding script given the amount of resources to onboard.
-//	@Tags			onboarding
-//	@Produce		json
-//	@Success		200	{object}	models.Metadata
-//	@Router			/onboarding/onboard [post]
 func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.MetadataV2, error) {
 	configPath := config.GetConfig().General.MetadataPath
 	configExist, err := AFS.DirExists(configPath)
@@ -273,13 +235,6 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 	return &metadata, nil
 }
 
-// Config        godoc
-//
-//	@Summary	changes the amount of resources of onboarded device .
-//	@Tags		onboarding
-//	@Produce	json
-//	@Success	200	{object}	models.Metadata
-//	@Router		/onboarding/resource-config [post]
 func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*models.MetadataV2, error) {
 	onboarded, err := utils.IsOnboarded()
 	if err != nil {
@@ -329,12 +284,6 @@ func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*mod
 	return metadata, nil
 }
 
-// Offboard      godoc
-// @Summary      Runs the offboarding process.
-// @Description  Offboard runs the offboarding script to remove resources associated with a device.
-// @Tags         onboarding
-// @Success      200  "Successfully Onboarded"
-// @Router       /onboarding/offboard [delete]
 func Offboard(ctx context.Context, force bool) error {
 	klogger.Logger.Info("device offboarding started")
 	onboarded, err := utils.IsOnboarded()
