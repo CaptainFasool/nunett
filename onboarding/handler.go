@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
@@ -49,19 +47,6 @@ func GetMetadata() (*models.MetadataV2, error) {
 		return nil, fmt.Errorf("unable to unmarshal metadata: %w", err)
 	}
 	return &metadata, nil
-}
-
-// ProvisionedCapacity      godoc
-//
-//	@Summary		Returns provisioned capacity on host.
-//	@Description	Get total memory capacity in MB and CPU capacity in MHz.
-//	@Tags			onboarding
-//	@Produce		json
-//	@Success		200	{object}	models.Provisioned
-//	@Router			/onboarding/provisioned [get]
-func ProvisionedCapacity(c *gin.Context) {
-	total := library.GetTotalProvisioned()
-	c.JSON(http.StatusOK, total)
 }
 
 // CreatePaymentAddress      godoc

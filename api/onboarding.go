@@ -6,9 +6,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
+	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
+
+// ProvisionedCapacity      godoc
+//
+//	@Summary		Returns provisioned capacity on host.
+//	@Description	Get total memory capacity in MB and CPU capacity in MHz.
+//	@Tags			onboarding
+//	@Produce		json
+//	@Success		200	{object}	models.Provisioned
+//	@Router			/onboarding/provisioned [get]
+func HandleProvisionedCapacity(c *gin.Context) {
+	c.JSON(200, library.GetTotalProvisioned())
+}
 
 func HandleGetMetadata(c *gin.Context) {
 	metadata, err := onboarding.GetMetadata()
