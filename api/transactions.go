@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -22,12 +21,12 @@ func HandleGetJobTxHashes(c *gin.Context) {
 	clean := c.Query("clean_tx")
 	size, err := strconv.Atoi(sizeStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid size_done parameter"})
+		c.JSON(400, gin.H{"error": "invalid size_done parameter"})
 		return
 	}
 	hashes, err := tokenomics.GetJobTxHashes(size, clean)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": err.Error()})
 	}
 	c.JSON(200, hashes)
 }
@@ -44,12 +43,12 @@ func HandleRequestReward(c *gin.Context) {
 	var payload tokenomics.ClaimCardanoTokenBody
 	err := c.ShouldBindJSON(&payload)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 	resp, err := tokenomics.RequestReward(payload)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": err.Error()})
 	}
 	c.JSON(200, resp)
 }
@@ -66,7 +65,7 @@ func HandleSendStatus(c *gin.Context) {
 	body := models.BlockchainTxStatus{}
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot read payload body"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "cannot read payload body"})
 		return
 	}
 	status := tokenomics.SendStatus(body)
@@ -85,12 +84,12 @@ func HandleUpdateStatus(c *gin.Context) {
 	body := tokenomics.UpdateTxStatusBody{}
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "cannot read payload body"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
 		return
 	}
 	err = tokenomics.UpdateStatus(body)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": err.Error()})
 	}
 	c.JSON(200, gin.H{"message": "transaction statuses synchronized with blockchain successfully"})
 }
