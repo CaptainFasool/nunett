@@ -3,17 +3,14 @@ package api
 import (
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/internal"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
-
-// MISSING: Fix zlog bug
 
 // ListPeers  godoc
 //
@@ -270,6 +267,11 @@ func HandleInitiateFileTransfer(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "peer ID cannot be self peer ID"})
 		return
 	}
+	p, err := peer.Decode(id)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer string ID: could not decode string ID to peer ID"})
+		return
+	}
 
 	path := c.Query("filePath")
 	if len(path) == 0 {
@@ -277,7 +279,7 @@ func HandleInitiateFileTransfer(c *gin.Context) {
 		return
 	}
 
-	err := libp2p.InitiateTransferFile(c, c.Writer, c.Request, id, path)
+	err = libp2p.InitiateTransferFile(c, c.Writer, c.Request, p, path)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -312,31 +314,10 @@ func HandleAcceptFileTransfer(c *gin.Context) {
 		return
 	}
 
-	path, transferCh, err := libp2p.AcceptFileTransfer(c, libp2p.CurrentFileTransfer)
+	err = libp2p.AcceptPeerFileTransfer(c, c.Writer, c.Request)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": "could not accept file transfer with peer"})
 		return
 	}
-
-	// TODO: Create function just for handling WS upgrade and progress of the transfer
-	// so that both InitiateTransferFile and AcceptFileTransfer can reuse it
-
-	// upgrade to websocket and stream transfer progress
-	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		zlog.Sugar().Errorf("failed to set websocket upgrade: %w\n", err)
-		return
-	}
-
-	ws.WriteJSON(gin.H{"message": "File Transfer Accepted."})
-	for p := range transferCh {
-		ws.WriteJSON(gin.H{
-			"remaining_time": fmt.Sprintf("%v seconds", p.Remaining().Round(time.Second)),
-			"percentage":     fmt.Sprintf("%.2f %%", p.Percent()),
-			"size":           fmt.Sprintf("%.2f MB", p.N()/1048576),
-		})
-	}
-	ws.WriteMessage(1, []byte("transfer complete"))
-	ws.WriteMessage(1, []byte("File saved to: "+path))
-	ws.Close()
+	c.JSON(200, nil)
 }

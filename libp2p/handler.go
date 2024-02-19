@@ -463,13 +463,7 @@ func DumpKademliaDHT(ctx context.Context) ([]models.PeerData, error) {
 	return dhtContent, nil
 }
 
-func InitiateTransferFile(ctx context.Context, w http.ResponseWriter, r *http.Request, id, path string) error {
-	p, err := peer.Decode(id)
-	if err != nil {
-		zlog.Sugar().Errorf("could not decode string ID to peer ID: %w", err)
-		return fmt.Errorf("could not decode string ID to peer ID: %w", err)
-	}
-
+func InitiateTransferFile(ctx context.Context, w http.ResponseWriter, r *http.Request, id peer.ID, path string) error {
 	// upgrade to websocket and steam transfer progress
 	ws, err := internal.UpgradeConnection.Upgrade(w, r, nil)
 	if err != nil {
@@ -479,7 +473,7 @@ func InitiateTransferFile(ctx context.Context, w http.ResponseWriter, r *http.Re
 	// conn := internal.WebSocketConnection{Conn: ws}
 	// clients[conn] = peerID
 
-	transferCh, err := SendFileToPeer(ctx, p, path, FTMISC)
+	transferCh, err := SendFileToPeer(ctx, id, path, FTMISC)
 	if err != nil {
 		zlog.Sugar().Errorf("error: could not send file to peer - %v", err)
 		ws.Close()
@@ -495,6 +489,37 @@ func InitiateTransferFile(ctx context.Context, w http.ResponseWriter, r *http.Re
 		})
 	}
 	ws.WriteMessage(1, []byte("transfer complete"))
+	ws.Close()
+	return nil
+}
+
+// Temporary wrapper around AcceptFileTransfer, adds WebSocket layer
+func AcceptPeerFileTransfer(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	path, transferCh, err := AcceptFileTransfer(ctx, CurrentFileTransfer)
+	if err != nil {
+		return fmt.Errorf("could not accept file transfer: %w", err)
+	}
+
+	// TODO: Create function just for handling WS upgrade and progress of the transfer
+	// so that both InitiateTransferFile and AcceptFileTransfer can reuse it
+
+	// upgrade to websocket and stream transfer progress
+	ws, err := internal.UpgradeConnection.Upgrade(w, r, nil)
+	if err != nil {
+		zlog.Sugar().Errorf("failed to set websocket upgrade: %w\n", err)
+		return fmt.Errorf("failed to set websocket upgrade: %w", err)
+	}
+
+	ws.WriteJSON(gin.H{"message": "File Transfer Accepted."})
+	for p := range transferCh {
+		ws.WriteJSON(gin.H{
+			"remaining_time": fmt.Sprintf("%v seconds", p.Remaining().Round(time.Second)),
+			"percentage":     fmt.Sprintf("%.2f %%", p.Percent()),
+			"size":           fmt.Sprintf("%.2f MB", p.N()/1048576),
+		})
+	}
+	ws.WriteMessage(1, []byte("transfer complete"))
+	ws.WriteMessage(1, []byte("File saved to: "+path))
 	ws.Close()
 	return nil
 }
