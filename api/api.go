@@ -32,8 +32,8 @@ func SetupRouter() *gin.Engine {
 
 	device := v1.Group("/device")
 	{
-		device.GET("/status", HandleDeviceStatus)
-		device.POST("/status", HandleChangeDeviceStatus)
+		device.GET("/status", DeviceStatusHandler)
+		device.POST("/status", ChangeDeviceStatusHandler)
 	}
 
 	vm := v1.Group("/vm")
