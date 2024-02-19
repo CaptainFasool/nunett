@@ -6,75 +6,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
-	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
 // MISSING: Fix zlog bug
-
-// HandleDeviceStatus  godoc
-//
-// @Summary		    Retrieve device status
-// @Description	    Retrieve device status whether paused/offline (unable to receive job deployments) or online
-// @Tags			device
-// @Produce		    json
-// @Success		    200	{string}	string
-// @Router			/device/status [get]
-func HandleDeviceStatus(c *gin.Context) {
-	status, err := libp2p.DeviceStatus()
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"online": status})
-}
-
-// HandleChangeDeviceStatus  godoc
-//
-// @Summary		    Change device status between online/offline
-// @Description	    Change device status to online (able to receive jobs) or offline (unable to receive jobs).
-// @Tags			device
-// @Produce		    json
-// @Success		    200	{string}	string
-// @Router			/device/status [post]
-func HandleChangeDeviceStatus(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/device/pause"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Pause job onboarding", span)
-
-	if c.Request.ContentLength == 0 {
-		c.JSON(400, gin.H{"error": "no data provided"})
-		return
-	}
-
-	var status struct {
-		IsAvailable bool `json:"is_available"`
-	}
-
-	err := c.ShouldBindJSON(&status)
-	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-	reqCtx := c.Request.Context()
-	err = libp2p.ChangeDeviceStatus(reqCtx, status.IsAvailable)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	if status.IsAvailable {
-		c.JSON(200, gin.H{"message": "device status successfully changed to online"})
-	} else {
-		c.JSON(200, gin.H{"message": "device status successfully changed to offline"})
-	}
-}
 
 // ListPeers  godoc
 //
@@ -375,7 +314,6 @@ func HandleAcceptFileTransfer(c *gin.Context) {
 
 	path, transferCh, err := libp2p.AcceptFileTransfer(c, libp2p.CurrentFileTransfer)
 	if err != nil {
-		zlog.Sugar().Errorf("error: could not accept file transfer - %v", err)
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -401,95 +339,4 @@ func HandleAcceptFileTransfer(c *gin.Context) {
 	ws.WriteMessage(1, []byte("transfer complete"))
 	ws.WriteMessage(1, []byte("File saved to: "+path))
 	ws.Close()
-}
-
-// DEBUG
-func HandleManualDHTUpdate(c *gin.Context) {
-	go libp2p.UpdateKadDHT()
-	libp2p.GetDHTUpdates(c)
-}
-
-// DEBUG
-func HandleCleanupPeer(c *gin.Context) {
-	id := c.Query("peerID")
-
-	if id == "" {
-		c.JSON(400, gin.H{"error": "peer ID not provided"})
-		return
-	}
-	if id == libp2p.GetP2P().Host.ID().String() {
-		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
-		return
-	}
-	err := libp2p.CleanupPeer(id)
-	if err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("unable to cleanup peer: %w", err)})
-	}
-	c.JSON(200, gin.H{"message": fmt.Sprintf("successfully cleaned up peer: %s", id)})
-}
-
-// DEBUG
-func HandlePingPeer(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	id := c.Query("peerID")
-
-	if id == "" {
-		c.JSON(400, gin.H{"error": "peerID not provided"})
-		return
-	}
-	if id == libp2p.GetP2P().Host.ID().String() {
-		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
-		return
-	}
-	target, err := peer.Decode(id)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid string ID: could not decode string ID to peer ID"})
-		return
-	}
-
-	status, result := libp2p.PingPeer(reqCtx, target)
-	if result.Error != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("could not ping peer %s: %w", id, result.Error), "peer_in_dht": status, "RTT": result.RTT})
-		return
-	}
-	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": status, "RTT": result.RTT})
-}
-
-// DEBUG ONLY
-func HandleOldPingPeer(c *gin.Context) {
-	id := c.Query("peerID")
-	if id == "" {
-		c.JSON(400, gin.H{"error": "peer ID not provided"})
-		return
-	}
-	if id == libp2p.GetP2P().Host.ID().String() {
-		c.JSON(400, gin.H{"error": "peer ID cannot be self peer ID"})
-		return
-	}
-	target, err := peer.Decode(id)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid string ID: could not decode string ID to peer ID"})
-		return
-	}
-	status, result := libp2p.OldPingPeer(c, target)
-	if result.Error != nil {
-		c.JSON(400, gin.H{"error": fmt.Errorf("could not ping peer %s: %w", id, result.Error), "peer_in_dht": status, "RTT": result.RTT})
-		return
-	}
-	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": status, "RTT": result.RTT})
-}
-
-// DEBUG
-func HandleDumpKademliaDHT(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	dht, err := libp2p.DumpKademliaDHT(reqCtx)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	if len(dht) == 0 {
-		c.JSON(200, gin.H{"message": "empty DHT"})
-	} else {
-		c.JSON(200, dht)
-	}
 }
