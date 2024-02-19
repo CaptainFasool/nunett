@@ -402,7 +402,7 @@ func OldPingPeer(ctx context.Context, target peer.ID) (bool, *models.PingResult)
 		available = true
 	}
 
-	result := OldPing(ctx, libp2p.Host, target)
+	result := OldPing(ctx, p2p.Host, target)
 	zlog.Sugar().Infof("Pinged %s --> RTT: %s", target.String(), result.RTT)
 	return available, &result
 }
