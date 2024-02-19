@@ -149,7 +149,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 	channels := []string{"nunet-staging", "nunet-test", "nunet-team", "nunet-edge"}
 	validChannel := utils.SliceContains(channels, capacity.Channel)
 	if !validChannel {
-		return nil, fmt.Errorf("invalid channel data: '%s' is not a valid channel", capacity.Channel)
+		return nil, fmt.Errorf("invalid channel data: '%s' channel does not exist", capacity.Channel)
 	}
 
 	metadata.Reserved.Memory = capacity.Memory
