@@ -5,15 +5,14 @@ import (
 	"gitlab.com/nunet/device-management-service/telemetry"
 )
 
-// TODO: Func name different than doc name
-// CalcFreeResources godoc
+//	 GetFreeResources godoc
 //
-//	@Summary		Returns the amount of free resources available
-//	@Description	Checks and returns the amount of free resources available
-//	@Tags			telemetry
-//	@Produce		json
-//	@Success		200
-//	@Router			/telemetry/free [get]
+//		@Summary		Returns the amount of free resources available
+//		@Description	Checks and returns the amount of free resources available
+//		@Tags			telemetry
+//		@Produce		json
+//		@Success		200
+//		@Router			/telemetry/free [get]
 func HandleGetFreeResources(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	free, err := telemetry.GetFreeResource(reqCtx)
