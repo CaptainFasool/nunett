@@ -9,14 +9,14 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-// HandleGetJobTxHashes  godoc
+// GetJobTxHashesHandler  godoc
 //
 //	@Summary		Get list of TxHashes for jobs done.
 //	@Description	Get list of TxHashes along with the date and time of jobs done.
 //	@Tags			run
 //	@Success		200		{object}	TxHashResp
 //	@Router			/transactions [get]
-func HandleGetJobTxHashes(c *gin.Context) {
+func GetJobTxHashesHandler(c *gin.Context) {
 	sizeStr := c.Query("size_done")
 	clean := c.Query("clean_tx")
 	size, err := strconv.Atoi(sizeStr)
@@ -32,7 +32,7 @@ func HandleGetJobTxHashes(c *gin.Context) {
 	c.JSON(200, hashes)
 }
 
-// HandleRequestReward  godoc
+// RequestRewardHandler  godoc
 //
 //	@Summary		Get NTX tokens for work done.
 //	@Description	HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.
@@ -40,7 +40,7 @@ func HandleGetJobTxHashes(c *gin.Context) {
 //	@Param			body	body		ClaimCardanoTokenBody	true	"Claim Reward Body"
 //	@Success		200		{object}	rewardRespToCPD
 //	@Router			/transactions/request-reward [post]
-func HandleRequestReward(c *gin.Context) {
+func RequestRewardHandler(c *gin.Context) {
 	var payload tokenomics.ClaimCardanoTokenBody
 	err := c.ShouldBindJSON(&payload)
 	if err != nil {
@@ -55,7 +55,7 @@ func HandleRequestReward(c *gin.Context) {
 	c.JSON(200, resp)
 }
 
-// HandleSendStatus  godoc
+// SendTxStatusHandler  godoc
 //
 //	@Summary		Sends blockchain status of contract creation.
 //	@Description	HandleSendStatus is used by webapps to send status of blockchain activities. Such token withdrawl.
@@ -63,7 +63,7 @@ func HandleRequestReward(c *gin.Context) {
 //	@Param			body	body		models.BlockchainTxStatus	true	"Blockchain Transaction Status Body"
 //	@Success		200		{string}	string
 //	@Router			/transactions/send-status [post]
-func HandleSendStatus(c *gin.Context) {
+func SendTxStatusHandler(c *gin.Context) {
 	body := models.BlockchainTxStatus{}
 	err := c.BindJSON(&body)
 	if err != nil {
@@ -74,7 +74,7 @@ func HandleSendStatus(c *gin.Context) {
 	c.JSON(200, gin.H{"message": fmt.Sprintf("transaction status %s acknowledged", status)})
 }
 
-// HandleUpdateStatus  godoc
+// UpdateTxStatusHandler  godoc
 //
 //	@Summary		Updates blockchain transaction status of DB.
 //	@Description	HandleUpdateStatus is used by webapps to update status of saved transactions with fetching info from blockchain using koios REST API.
@@ -82,7 +82,7 @@ func HandleSendStatus(c *gin.Context) {
 //	@Param			body	body		updateTxStatusBody	true	"Transaction Status Update Body"
 //	@Success		200		{string}	string
 //	@Router			/transactions/update-status [post]
-func HandleUpdateStatus(c *gin.Context) {
+func UpdateTxStatusHandler(c *gin.Context) {
 	body := tokenomics.UpdateTxStatusBody{}
 	err := c.BindJSON(&body)
 	if err != nil {

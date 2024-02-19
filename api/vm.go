@@ -7,15 +7,15 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// HandleStartCustom godoc
+//	 StartCustomHandler godoc
 //
-//	@Summary		Start a VM with custom configuration.
-//	@Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
-//	@Tags			vm
-//	@Produce		json
-//	@Success		200
-//	@Router			/vm/start-custom [post]
-func HandleStartCustom(c *gin.Context) {
+//		@Summary		Start a VM with custom configuration.
+//		@Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
+//		@Tags			vm
+//		@Produce		json
+//		@Success		200
+//		@Router			/vm/start-custom [post]
+func StartCustomHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	span := trace.SpanFromContext(reqCtx)
 	span.SetAttributes(attribute.String("URL", "/vm/start-custom"))
@@ -34,7 +34,7 @@ func HandleStartCustom(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "VM started successfully"})
 }
 
-// HandleStartDefault godoc
+// StartDefaultHandler godoc
 //
 //	@Summary		Start a VM with default configuration.
 //	@Description	Everything except kernel files and filesystem file will be set by DMS itself.
@@ -42,7 +42,7 @@ func HandleStartCustom(c *gin.Context) {
 //	@Produce		json
 //	@Success		200
 //	@Router			/vm/start-default [post]
-func HandleStartDefault(c *gin.Context) {
+func StartDefaultHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	span := trace.SpanFromContext(reqCtx)
 	span.SetAttributes(attribute.String("URL", "/vm/start-default"))

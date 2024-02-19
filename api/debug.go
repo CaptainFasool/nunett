@@ -9,13 +9,13 @@ import (
 )
 
 // DEBUG
-func HandleManualDHTUpdate(c *gin.Context) {
+func ManualDHTUpdateHandler(c *gin.Context) {
 	go libp2p.UpdateKadDHT()
 	libp2p.GetDHTUpdates(c)
 }
 
 // DEBUG
-func HandleCleanupPeer(c *gin.Context) {
+func CleanupPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 
 	if id == "" {
@@ -35,7 +35,7 @@ func HandleCleanupPeer(c *gin.Context) {
 }
 
 // DEBUG
-func HandlePingPeer(c *gin.Context) {
+func PingPeerHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	id := c.Query("peerID")
 
@@ -62,7 +62,7 @@ func HandlePingPeer(c *gin.Context) {
 }
 
 // DEBUG ONLY
-func HandleOldPingPeer(c *gin.Context) {
+func OldPingPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 	if id == "" {
 		c.JSON(400, gin.H{"error": "peer ID not provided"})
@@ -86,7 +86,7 @@ func HandleOldPingPeer(c *gin.Context) {
 }
 
 // DEBUG
-func HandleDumpKademliaDHT(c *gin.Context) {
+func DumpKademliaDHTHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	dht, err := libp2p.DumpKademliaDHT(reqCtx)
 	if err != nil {

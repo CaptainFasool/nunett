@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// ListPeers  godoc
+// ListPeersHandler  godoc
 //
 //	@Summary		Return list of peers currently connected to
 //	@Description	Gets a list of peers the libp2p node can see within the network and return a list of peers
@@ -20,7 +20,7 @@ import (
 //	@Produce		json
 //	@Success		200	{string}	string
 //	@Router			/peers [get]
-func HandleListPeers(c *gin.Context) {
+func ListPeersHandler(c *gin.Context) {
 	peers, err := libp2p.ListPeers()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -29,7 +29,7 @@ func HandleListPeers(c *gin.Context) {
 	c.JSON(200, peers)
 }
 
-// HandleListDHTPeers  godoc
+// ListDHTPeersHandler  godoc
 //
 //	@Summary		Return list of peers which have sent a dht update
 //	@Description	Gets a list of peers the libp2p node has received a dht update from
@@ -37,7 +37,7 @@ func HandleListPeers(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{string}	string
 //	@Router			/peers/dht [get]
-func HandleListDHTPeers(c *gin.Context) {
+func ListDHTPeersHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	peers, err := libp2p.ListDHTPeers(reqCtx)
 	if err != nil {
@@ -51,7 +51,7 @@ func HandleListDHTPeers(c *gin.Context) {
 	c.JSON(200, peers)
 }
 
-// HandleListKadDHTPeers  godoc
+// ListKadDHTPeersHandler  godoc
 //
 //	@Summary		Return list of peers which have sent a dht update
 //	@Description	Gets a list of peers the libp2p node has received a dht update from
@@ -59,7 +59,7 @@ func HandleListDHTPeers(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{string}	string
 //	@Router			/peers/kad-dht [get]
-func HandleListKadDHTPeers(c *gin.Context) {
+func ListKadDHTPeersHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 
 	peers, err := libp2p.ListKadDHTPeers(c, reqCtx)
@@ -75,7 +75,7 @@ func HandleListKadDHTPeers(c *gin.Context) {
 	c.JSON(200, peers)
 }
 
-// SelfPeerInfo  godoc
+// SelfPeerInfoHandler  godoc
 //
 //	@Summary		Return self peer info
 //	@Description	Gets self peer info of libp2p node
@@ -83,7 +83,7 @@ func HandleListKadDHTPeers(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{string}	string
 //	@Router			/peers/self [get]
-func HandleSelfPeerInfo(c *gin.Context) {
+func SelfPeerInfoHandler(c *gin.Context) {
 	self, err := libp2p.SelfPeerInfo()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -92,7 +92,7 @@ func HandleSelfPeerInfo(c *gin.Context) {
 	c.JSON(200, self)
 }
 
-// HandleListChat  godoc
+// ListChatHandler  godoc
 //
 //	@Summary		List chat requests
 //	@Description	Get a list of chat requests from peers
@@ -100,7 +100,7 @@ func HandleSelfPeerInfo(c *gin.Context) {
 //	@Produce		json
 //	@Success		200
 //	@Router			/peers/chat [get]
-func HandleListChat(c *gin.Context) {
+func ListChatHandler(c *gin.Context) {
 	chats, err := libp2p.IncomingChatRequests()
 	if err != nil {
 		klogger.Logger.Error("List chat handler Error: " + err.Error())
@@ -147,14 +147,14 @@ func StartChatHandler(c *gin.Context) {
 	libp2p.StartChat(c.Writer, c.Request, stream, id)
 }
 
-// HandleJoinChat  godoc
+// JoinChatHandler  godoc
 //
 //	@Summary		Join chat with a peer
 //	@Description	Join a chat session started by a peer
 //	@Tags			chat
 //	@Success		200
 //	@Router			/peers/chat/join [get]
-func HandleJoinChat(c *gin.Context) {
+func JoinChatHandler(c *gin.Context) {
 	streamID := c.Query("streamID")
 	if streamID == "" {
 		c.AbortWithStatusJSON(400, gin.H{"error": "stream ID not provided"})
@@ -168,7 +168,7 @@ func HandleJoinChat(c *gin.Context) {
 	libp2p.JoinChat(c.Writer, c.Request, stream)
 }
 
-// HandleDumpDHT  godoc
+// DumpDHTHandler  godoc
 //
 //	@Summary		Return a dump of the dht
 //	@Description	Returns entire DHT content
@@ -176,7 +176,7 @@ func HandleJoinChat(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{string}	string
 //	@Router			/dht [get]
-func HandleDumpDHT(c *gin.Context) {
+func DumpDHTHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	dht, err := libp2p.DumpDHT(reqCtx)
 	if err != nil {
@@ -190,7 +190,7 @@ func HandleDumpDHT(c *gin.Context) {
 	c.JSON(200, dht)
 }
 
-// HandleDefaultDepReqPeer  godoc
+// DefaultDepReqPeerHandler  godoc
 //
 //	@Summary		Manage default deplyment request receiver peer
 //	@Description	Set peer as the default receipient of deployment requests by setting the peerID parameter on GET request.
@@ -199,7 +199,7 @@ func HandleDumpDHT(c *gin.Context) {
 //	@Tags			peers
 //	@Success		200
 //	@Router			/peers/depreq [get]
-func HandleDefaultDepReqPeer(c *gin.Context) {
+func DefaultDepReqPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 	reqCtx := c.Request.Context()
 
@@ -211,14 +211,14 @@ func HandleDefaultDepReqPeer(c *gin.Context) {
 	c.JSON(200, gin.H{"message": msg})
 }
 
-// HandleClearFileTransferRequests  godoc
+// ClearFileTransferRequestsHandler  godoc
 // @Summary      Clear file transfer requests
 // @Description  Clear file transfer request streams from peers
 // @Tags         file
 // @Produce      json
 // @Success      200
 // @Router       /peers/file/clear [get]
-func HandleClearFileTransferRequests(c *gin.Context) {
+func ClearFileTransferRequestsHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	span := trace.SpanFromContext(reqCtx)
 	span.SetAttributes(attribute.String("URL", "/peers/file/clear"))
@@ -231,14 +231,14 @@ func HandleClearFileTransferRequests(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "successfully cleared inbound file transfer requests"})
 }
 
-// HandleListFileRequests  godoc
+// ListFileTransferRequestsHandler  godoc
 // @Summary      List file transfer requests
 // @Description  Get a list of file transfer requests from peers
 // @Tags         file
 // @Produce      json
 // @Success      200
 // @Router       /peers/file [get]
-func HandleListFileRequests(c *gin.Context) {
+func ListFileTransferRequestsHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/file"))
 
@@ -250,13 +250,13 @@ func HandleListFileRequests(c *gin.Context) {
 	c.JSON(200, req)
 }
 
-// HandleInitiateFileTransfer  godoc
+// SendFileTransferHandler  godoc
 // @Summary      Send a file to a peer
 // @Description  Initiate file transfer to a peer. filePath and peerID are required arguments.
 // @Tags         file
 // @Success      200
 // @Router       /peers/file/send [get]
-func HandleInitiateFileTransfer(c *gin.Context) {
+func SendFileTransferHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/file/send"))
 
@@ -289,13 +289,13 @@ func HandleInitiateFileTransfer(c *gin.Context) {
 	c.JSON(200, nil)
 }
 
-// HandleAcceptFileTransfer  godoc
+// AcceptFileTransferHandler  godoc
 // @Summary      Accept incoming file transfer
 // @Description  Accept an incoming file transfer. Incoming file transfer stream ID is a required parameter.
 // @Tags         file
 // @Success      200
 // @Router       /peers/file/accept [get]
-func HandleAcceptFileTransfer(c *gin.Context) {
+func AcceptFileTransferHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/file/accept"))
 

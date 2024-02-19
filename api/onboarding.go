@@ -10,7 +10,7 @@ import (
 	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
-// HandleProvisionedCapacity      godoc
+// ProvisionedCapacityHandler      godoc
 //
 //	@Summary		Returns provisioned capacity on host.
 //	@Description	Get total memory capacity in MB and CPU capacity in MHz.
@@ -18,11 +18,11 @@ import (
 //	@Produce		json
 //	@Success		200	{object}	models.Provisioned
 //	@Router			/onboarding/provisioned [get]
-func HandleProvisionedCapacity(c *gin.Context) {
+func ProvisionedCapacityHandler(c *gin.Context) {
 	c.JSON(200, library.GetTotalProvisioned())
 }
 
-// HandleGetMetadata      godoc
+// GetMetadataHandler      godoc
 //
 //	@Summary		Get current device info.
 //	@Description	Responds with metadata of current provideer
@@ -30,7 +30,7 @@ func HandleProvisionedCapacity(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{object}	models.Metadata
 //	@Router			/onboarding/metadata [get]
-func HandleGetMetadata(c *gin.Context) {
+func GetMetadataHandler(c *gin.Context) {
 	metadata, err := onboarding.GetMetadata()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -39,7 +39,7 @@ func HandleGetMetadata(c *gin.Context) {
 	c.JSON(200, metadata)
 }
 
-// HandleCreatePaymentAddress      godoc
+// CreatePaymentAddressHandler      godoc
 //
 //	@Summary		Create a new payment address.
 //	@Description	Create a payment address from public key. Return payment address and private key.
@@ -47,7 +47,7 @@ func HandleGetMetadata(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{object}	models.BlockchainAddressPrivKey
 //	@Router			/onboarding/address/new [get]
-func HandleCreatePaymentAddress(c *gin.Context) {
+func CreatePaymentAddressHandler(c *gin.Context) {
 	wallet := c.DefaultQuery("blockchain", "cardano")
 	pair, err := onboarding.CreatePaymentAddress(wallet)
 	if err != nil {
@@ -57,7 +57,7 @@ func HandleCreatePaymentAddress(c *gin.Context) {
 	c.JSON(200, pair)
 }
 
-// HandleOnboard      godoc
+// OnboardHandler      godoc
 //
 //	@Summary		Runs the onboarding process.
 //	@Description	Onboard runs onboarding script given the amount of resources to onboard.
@@ -65,7 +65,7 @@ func HandleCreatePaymentAddress(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{object}	models.Metadata
 //	@Router			/onboarding/onboard [post]
-func HandleOnboard(c *gin.Context) {
+func OnboardHandler(c *gin.Context) {
 	capacity := models.CapacityForNunet{
 		ServerMode: true,
 	}
@@ -84,13 +84,13 @@ func HandleOnboard(c *gin.Context) {
 	c.JSON(200, metadata)
 }
 
-// HandleOffboard      godoc
+// OffboardHandler      godoc
 // @Summary      Runs the offboarding process.
 // @Description  Offboard runs the offboarding script to remove resources associated with a device.
 // @Tags         onboarding
 // @Success      200  "Successfully Onboarded"
 // @Router       /onboarding/offboard [delete]
-func HandleOffboard(c *gin.Context) {
+func OffboardHandler(c *gin.Context) {
 	query := c.DefaultQuery("force", "false")
 	force, err := strconv.ParseBool(query)
 	if err != nil {
@@ -107,7 +107,7 @@ func HandleOffboard(c *gin.Context) {
 	c.JSON(200, nil)
 }
 
-// HandleOnboardStatus      godoc
+// OnboardStatusHandler      godoc
 //
 //	@Summary		Onboarding status and other metadata.
 //	@Description	Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.
@@ -120,7 +120,7 @@ func HandleOffboard(c *gin.Context) {
 //	@Produce		json
 //	@Success		200	{object} models.OnboardingStatus
 //	@Router			/onboarding/status [get]
-func HandleOnboardStatus(c *gin.Context) {
+func OnboardStatusHandler(c *gin.Context) {
 	status, err := onboarding.Status()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -129,14 +129,14 @@ func HandleOnboardStatus(c *gin.Context) {
 	c.JSON(200, status)
 }
 
-// HandleResourceConfig        godoc
+// ResourceConfigHandler        godoc
 //
 //	@Summary	changes the amount of resources of onboarded device .
 //	@Tags		onboarding
 //	@Produce	json
 //	@Success	200	{object}	models.Metadata
 //	@Router		/onboarding/resource-config [post]
-func HandleResourceConfig(c *gin.Context) {
+func ResourceConfigHandler(c *gin.Context) {
 	klogger.Logger.Info("device resource change started")
 	if c.Request.ContentLength == 0 {
 		c.JSON(400, gin.H{"error": "request body is empty"})

@@ -12,15 +12,15 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-//	 HandleRequestService  godoc
+// RequestServiceHandler  godoc
 //
-//		@Summary		Informs parameters related to blockchain to request to run a service on NuNet
-//		@Description	RequestServiceHandler searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
-//		@Tags			run
-//		@Param			deployment_request	body		models.DeploymentRequest	true	"Deployment Request"
-//		@Success		200					{object}	fundingRespToSPD
-//		@Router			/run/request-service [post]
-func HandleRequestService(c *gin.Context) {
+//	@Summary		Informs parameters related to blockchain to request to run a service on NuNet
+//	@Description	RequestServiceHandler searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
+//	@Tags			run
+//	@Param			deployment_request	body		models.DeploymentRequest	true	"Deployment Request"
+//	@Success		200					{object}	fundingRespToSPD
+//	@Router			/run/request-service [post]
+func RequestServiceHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 
 	span := trace.SpanFromContext(c.Request.Context())
@@ -42,14 +42,14 @@ func HandleRequestService(c *gin.Context) {
 	c.JSON(200, resp)
 }
 
-// HandleDeploymentRequest  godoc
+// DeploymentRequestHandler  godoc
 //
 //	@Summary		Websocket endpoint responsible for sending deployment request and receiving deployment response.
 //	@Description	Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.
 //	@Tags			run
 //	@Success		200	{string}	string
 //	@Router			/run/deploy [get]
-func HandleDeploymentRequest(c *gin.Context) {
+func DeploymentRequestHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 
 	span := trace.SpanFromContext(reqCtx)
@@ -64,14 +64,14 @@ func HandleDeploymentRequest(c *gin.Context) {
 	// TODO: Original func did not return a success response. Should we return it?
 }
 
-// HandleListCheckpoint  godoc
+// ListCheckpointHandler godoc
 //
 //	@Summary		Returns a list of absolute path to checkpoint files.
 //	@Description	ListCheckpointHandler scans data_dir/received_checkpoints and lists all the tar.gz files which can be used to resume a job. Returns a list of objects with absolute path and last modified date.
 //	@Tags			run
 //	@Success		200					{object}	[]checkpoint
 //	@Router			/run/checkpoints [get]
-func HandleListCheckpoint(c *gin.Context) {
+func ListCheckpointHandler(c *gin.Context) {
 	checkpoints, err := libp2p.ListCheckpoints()
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get checkpoint list"})

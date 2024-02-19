@@ -21,13 +21,13 @@ func SetupRouter() *gin.Engine {
 
 	onboarding := v1.Group("/onboarding")
 	{
-		onboarding.GET("/provisioned", HandleProvisionedCapacity)
-		onboarding.GET("/address/new", HandleCreatePaymentAddress)
-		onboarding.POST("/onboard", HandleOnboard)
-		onboarding.GET("/status", HandleOnboardStatus)
-		onboarding.DELETE("/offboard", HandleOffboard)
-		onboarding.POST("/resource-config", HandleResourceConfig)
-		onboarding.GET("/metadata", HandleGetMetadata)
+		onboarding.GET("/provisioned", ProvisionedCapacityHandler)
+		onboarding.GET("/address/new", CreatePaymentAddressHandler)
+		onboarding.POST("/onboard", OnboardHandler)
+		onboarding.GET("/status", OnboardStatusHandler)
+		onboarding.DELETE("/offboard", OffboardHandler)
+		onboarding.POST("/resource-config", ResourceConfigHandler)
+		onboarding.GET("/metadata", GetMetadataHandler)
 	}
 
 	device := v1.Group("/device")
@@ -38,65 +38,61 @@ func SetupRouter() *gin.Engine {
 
 	vm := v1.Group("/vm")
 	{
-		vm.POST("/start-default", HandleStartDefault)
-		vm.POST("/start-custom", HandleStartCustom)
+		vm.POST("/start-default", StartDefaultHandler)
+		vm.POST("/start-custom", StartCustomHandler)
 	}
 
 	run := v1.Group("/run")
 	{
-		run.GET("/deploy", HandleDeploymentRequest) // websocket
-		run.POST("/request-service", HandleRequestService)
-		run.GET("/checkpoints", HandleListCheckpoint)
+		run.GET("/deploy", DeploymentRequestHandler) // websocket
+		run.POST("/request-service", RequestServiceHandler)
+		run.GET("/checkpoints", ListCheckpointHandler)
 	}
 
 	tx := v1.Group("/transactions")
 	{
-		tx.GET("", HandleGetJobTxHashes)
-		tx.POST("/request-reward", HandleRequestReward)
-		tx.POST("/send-status", HandleSendStatus)
-		tx.POST("/update-status", HandleUpdateStatus)
+		tx.GET("", GetJobTxHashesHandler)
+		tx.POST("/request-reward", RequestRewardHandler)
+		tx.POST("/send-status", SendTxStatusHandler)
+		tx.POST("/update-status", UpdateTxStatusHandler)
 	}
 
 	tele := v1.Group("/telemetry")
 	{
-		tele.GET("/free", HandleGetFreeResources)
+		tele.GET("/free", GetFreeResourcesHandler)
 	}
 
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
 		dht := v1.Group("/dht")
 		{
-			dht.GET("", HandleDumpDHT)
-			dht.GET("/update", HandleManualDHTUpdate)
+			dht.GET("", DumpDHTHandler)
+			dht.GET("/update", ManualDHTUpdateHandler)
 		}
 		kadDHT := v1.Group("/kad-dht")
 		{
-			kadDHT.GET("", HandleDumpKademliaDHT)
+			kadDHT.GET("", DumpKademliaDHTHandler)
 		}
-		v1.GET("/ping", HandlePingPeer)
-		v1.GET("/oldping", HandleOldPingPeer)
-		v1.GET("/cleanup", HandleCleanupPeer)
+		v1.GET("/ping", PingPeerHandler)
+		v1.GET("/oldping", OldPingPeerHandler)
+		v1.GET("/cleanup", CleanupPeerHandler)
 	}
 
 	p2p := v1.Group("/peers")
 	{
 		// peer.GET("", machines.ListPeers)
-		p2p.GET("", HandleListPeers)
-		p2p.GET("/dht", HandleListDHTPeers)
-		p2p.GET("/kad-dht", HandleListKadDHTPeers)
-		p2p.GET("/self", HandleSelfPeerInfo)
-		p2p.GET("/chat", HandleListChat)
-		p2p.GET("/depreq", HandleDefaultDepReqPeer)
-		// TODO: change to HandleStartChat
+		p2p.GET("", ListPeersHandler)
+		p2p.GET("/dht", ListDHTPeersHandler)
+		p2p.GET("/kad-dht", ListKadDHTPeersHandler)
+		p2p.GET("/self", SelfPeerInfoHandler)
+		p2p.GET("/chat", ListChatHandler)
+		p2p.GET("/depreq", DefaultDepReqPeerHandler)
 		p2p.GET("/chat/start", StartChatHandler)
-		p2p.GET("/chat/join", HandleJoinChat)
-		// TODO: change to HandleChatClear
+		p2p.GET("/chat/join", JoinChatHandler)
 		p2p.GET("/chat/clear", ClearChatHandler)
-		p2p.GET("/file", HandleListFileRequests)
-		// TODO: change name to HandleSendFileRequest
-		p2p.GET("/file/send", HandleInitiateFileTransfer)
-		p2p.GET("/file/accept", HandleAcceptFileTransfer)
-		p2p.GET("/file/clear", HandleClearFileTransferRequests)
-		// ?? duplicate func
+		p2p.GET("/file", ListFileTransferRequestsHandler)
+		p2p.GET("/file/send", SendFileTransferHandler)
+		p2p.GET("/file/accept", AcceptFileTransferHandler)
+		p2p.GET("/file/clear", ClearFileTransferRequestsHandler)
 		// p2p.GET("/dht/dump", libp2p.DumpDHT)
 		// peer.GET("/shell", internal.HandleWebSocket)
 		// peer.GET("/log", internal.HandleWebSocket)
