@@ -50,7 +50,7 @@ func DeviceStatus() (bool, error) {
 	return p.IsAvailable, nil
 }
 
-func ChangeDeviceStatus(ctx context.Context, status bool) error {
+func ChangeDeviceStatus(status bool) error {
 	if p2p.Host == nil {
 		return fmt.Errorf("host node has not yet been initialized")
 	}
