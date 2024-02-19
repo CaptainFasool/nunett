@@ -17,7 +17,8 @@ func HandleGetFreeResources(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	free, err := telemetry.GetFreeResource(reqCtx)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(200, free)
 }

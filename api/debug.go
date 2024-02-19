@@ -29,6 +29,7 @@ func HandleCleanupPeer(c *gin.Context) {
 	err := libp2p.CleanupPeer(id)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "unable to cleanup peer"})
+		return
 	}
 	c.JSON(200, gin.H{"message": fmt.Sprintf("successfully cleaned up peer: %s", id)})
 }
@@ -78,7 +79,7 @@ func HandleOldPingPeer(c *gin.Context) {
 	}
 	status, result := libp2p.OldPingPeer(c, target)
 	if result.Error != nil {
-		c.JSON(400, gin.H{"error": fmt.Errorf("could not ping peer %s: %w", id, result.Error), "peer_in_dht": status, "RTT": result.RTT})
+		c.JSON(500, gin.H{"error": fmt.Errorf("could not ping peer %s: %w", id, result.Error), "peer_in_dht": status, "RTT": result.RTT})
 		return
 	}
 	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": status, "RTT": result.RTT})
@@ -94,7 +95,7 @@ func HandleDumpKademliaDHT(c *gin.Context) {
 	}
 	if len(dht) == 0 {
 		c.JSON(200, gin.H{"message": "empty DHT"})
-	} else {
-		c.JSON(200, dht)
+		return
 	}
+	c.JSON(200, dht)
 }

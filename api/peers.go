@@ -24,6 +24,7 @@ func HandleListPeers(c *gin.Context) {
 	peers, err := libp2p.ListPeers()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(200, peers)
 }
@@ -64,6 +65,7 @@ func HandleListKadDHTPeers(c *gin.Context) {
 	peers, err := libp2p.ListKadDHTPeers(c, reqCtx)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
+		return
 	}
 	if len(peers) == 0 {
 		c.JSON(200, gin.H{"message": "no peers found"})

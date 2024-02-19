@@ -28,7 +28,7 @@ func HandleStartCustom(c *gin.Context) {
 	}
 	err = firecracker.StartCustom(reqCtx, body)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "VM started successfully"})
@@ -55,7 +55,7 @@ func HandleStartDefault(c *gin.Context) {
 	}
 	err = firecracker.StartDefault(reqCtx, body)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "VM started successfully"})

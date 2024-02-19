@@ -27,6 +27,7 @@ func HandleGetJobTxHashes(c *gin.Context) {
 	hashes, err := tokenomics.GetJobTxHashes(size, clean)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(200, hashes)
 }
@@ -49,6 +50,7 @@ func HandleRequestReward(c *gin.Context) {
 	resp, err := tokenomics.RequestReward(payload)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(200, resp)
 }
@@ -90,6 +92,7 @@ func HandleUpdateStatus(c *gin.Context) {
 	err = tokenomics.UpdateStatus(body)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(200, gin.H{"message": "transaction statuses synchronized with blockchain successfully"})
 }
