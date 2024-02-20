@@ -9,11 +9,11 @@ import (
 )
 
 var (
-	onboardCmd                                = NewOnboardCmd(networkService, utilsService)
-	flagCpu, flagMemory                       int64
-	flagChan, flagAddr, flagPlugin            string
-	flagCardano, flagLocal, flagIsUnavailable bool
-	flagNtxPrice                              float64
+	onboardCmd                                                = NewOnboardCmd(networkService, utilsService)
+	flagCpu, flagMemory                                       int64
+	flagChan, flagAddr, flagPlugin                            string
+	flagCardano, flagLocal, flagIsUnavailable, nonInteractive bool
+	flagNtxPrice                                              float64
 )
 
 func NewOnboardCmd(net backend.NetworkManager, utilsService backend.Utility) *cobra.Command {
@@ -47,9 +47,13 @@ func NewOnboardCmd(net backend.NetworkManager, utilsService backend.Utility) *co
 			}
 
 			if onboarded {
-				err := promptReonboard(cmd.InOrStdin(), cmd.OutOrStdout())
-				if err != nil {
-					return err
+				if nonInteractive {
+					fmt.Fprintln(cmd.OutOrStdout(), "Proceeding with reonboarding in non-interactive mode.")
+				} else {
+					err := promptReonboard(cmd.InOrStdin(), cmd.OutOrStdout())
+					if err != nil {
+						return err
+					}
 				}
 			}
 
@@ -82,5 +86,6 @@ func NewOnboardCmd(net backend.NetworkManager, utilsService backend.Utility) *co
 	cmd.Flags().BoolVarP(&flagIsUnavailable, "unavailable", "u", false, "unavailable for job deployment (default: false)")
 	cmd.Flags().BoolVarP(&flagLocal, "local-enable", "l", true, "set server mode (enable for local)")
 	cmd.Flags().BoolVarP(&flagCardano, "cardano", "C", false, "set Cardano wallet")
+	cmd.Flags().BoolVar(&nonInteractive, "non-interactive", false, "Run in non-interactive mode without prompts")
 	return cmd
 }

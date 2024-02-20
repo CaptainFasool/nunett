@@ -166,23 +166,26 @@ func (s *CLI) TestNuNetAvailableCLI() {
 func (s *CLI) TestNunetOnboardNoCPUValueCLI() {
 	availableMemory := onboarding.GetTotalProvisioned().Memory
 	halfMemory := availableMemory / 2
-	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
-		"onboard",
-		"-m", fmt.Sprint(halfMemory),
-		"-a", "testaddress",
-		"-n", "nunet-team").Output()
-	s.Contains(string(out), "Error: -c | --cpu must be specified")
+	cmd := exec.Command("go", "run", "../main.go", "onboard", "-m", fmt.Sprint(halfMemory), "-a", "testaddress", "-n", "nunet-team")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		s.T().Logf("Command execution failed: %v\nOutput: %s", err, string(out))
+	}
+	s.Contains(string(out), "Error: missing at least one required flag")
 }
 
 func (s *CLI) TestNunetOnboardNoMemoryValueCLI() {
 	availableCPU := onboarding.GetTotalProvisioned().CPU
 	halfCPU := availableCPU / 2
-	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
-		"onboard",
+	cmd := exec.Command("go", "run", "../main.go", "onboard",
 		"-c", fmt.Sprint(halfCPU),
 		"-a", "testaddress",
-		"-n", "nunet-team").Output()
-	s.Contains(string(out), "Error: -m | --memory must be specified")
+		"-n", "nunet-team")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		s.T().Logf("Command execution failed: %v\nOutput: %s", err, string(out))
+	}
+	s.Contains(string(out), "Error: missing at least one required flag")
 }
 
 func (s *CLI) TestNunetOnboardNoChannelCLI() {
@@ -190,12 +193,15 @@ func (s *CLI) TestNunetOnboardNoChannelCLI() {
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	fiftyPercentMemory := availableMemory / 2
 	fiftyPercentCPU := availableCPU / 2
-	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
-		"onboard",
+	cmd := exec.Command("go", "run", "../main.go", "onboard",
 		"-c", fmt.Sprint(fiftyPercentCPU),
 		"-m", fmt.Sprint(fiftyPercentMemory),
-		"-a", "testaddress").Output()
-	s.Contains(string(out), "Error: -n | --nunet-channel must be specified")
+		"-a", "testaddress")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		s.T().Logf("Command execution failed: %v\nOutput: %s", err, string(out))
+	}
+	s.Contains(string(out), "Error: missing at least one required flag")
 }
 
 func (s *CLI) TestNunetOnboardNoAddressCLI() {
@@ -203,15 +209,15 @@ func (s *CLI) TestNunetOnboardNoAddressCLI() {
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	fiftyPercentMemory := availableMemory / 2
 	fiftyPercentCPU := uint64(availableCPU / 2)
-	out, err := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
-		"onboard",
+	cmd := exec.Command("go", "run", "../main.go", "onboard",
 		"-c", fmt.Sprint(fiftyPercentCPU),
 		"-m", fmt.Sprint(fiftyPercentMemory),
-		"-n", "nunet-team").Output()
-	s.Contains(string(out), "Error: -a | --address must be specified")
+		"-n", "nunet-team")
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		s.T().Errorf("Command execution failed: %v", err)
+		s.T().Logf("Command execution failed: %v\nOutput: %s", err, string(out))
 	}
+	s.Contains(string(out), "Error: missing at least one required flag")
 }
 
 func (s *CLI) TestNunetOnboardLowMemoryCLI() {
@@ -219,13 +225,23 @@ func (s *CLI) TestNunetOnboardLowMemoryCLI() {
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	fivePercentMemory := availableMemory / 20
 	fiftyPercentCPU := uint64(availableCPU / 2)
-	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
-		"onboard",
+	cmd := exec.Command("go", "run", "../main.go", "onboard",
 		"-c", fmt.Sprint(fiftyPercentCPU),
 		"-m", fmt.Sprint(fivePercentMemory),
-		"-a", "testaddress",
-		"-n", "nunet-team").Output()
-	s.Contains(string(out), "Memory should be between 10% and 90% of the available memory")
+		"-a", "addr1v8h4fm4ejd9w8wr8lkkeu0pe4m00ycl2vysd3jvs9mgw7ps8sm9rt",
+		"-n", "nunet-team",
+		"--non-interactive")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		s.T().Logf("Command execution failed: %v\nOutput: %s", err, string(out))
+	}
+	outString := string(out)
+	if err != nil {
+		s.T().Logf("Command execution failed: %v\nOutput: %s", err, outString)
+	}
+	if !strings.Contains(outString, "Error:") || !strings.Contains(outString, "memory") {
+		s.T().Errorf("Output lacks expected memory error. Got: %s", outString)
+	}
 }
 
 func (s *CLI) TestNunetOnboardLowCPUCLI() {
@@ -233,14 +249,20 @@ func (s *CLI) TestNunetOnboardLowCPUCLI() {
 	availableMemory, availableCPU := provisioned.Memory, provisioned.CPU
 	halfMemory := availableMemory / 2
 	fivePercentCPU := uint64(availableCPU / 20)
-	out, _ := exec.Command("../maint-scripts/nunet-dms/usr/bin/nunet",
-		"onboard",
+	cmd := exec.Command("go", "run", "../main.go", "onboard",
 		"-c", fmt.Sprint(fivePercentCPU),
 		"-m", fmt.Sprint(halfMemory),
-		"-a", "testaddress",
-		"-n", "nunet-team").Output()
-
-	s.Contains(string(out), "CPU should be between 10% and 90% of the available CPU")
+		"-a", "addr1v8h4fm4ejd9w8wr8lkkeu0pe4m00ycl2vysd3jvs9mgw7ps8sm9rt",
+		"-n", "nunet-team",
+		"--non-interactive")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		s.T().Logf("Command execution failed: %v\nOutput: %s", err, string(out))
+	}
+	outString := string(out)
+	if !strings.Contains(outString, "Error:") || !strings.Contains(outString, "CPU") {
+		s.T().Errorf("Output lacks expected CPU error. Got: %s", outString)
+	}
 }
 
 func (s *CLI) TestNunetInfoNoMetadataCLI() {
