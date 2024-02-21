@@ -269,21 +269,11 @@ func JoinChat(w http.ResponseWriter, r *http.Request, id int) error {
 	return nil
 }
 
-func CreateChatStream(ctx context.Context, id string) (network.Stream, error) {
-	if len(id) == 0 {
-		return nil, fmt.Errorf("empty peer ID string")
-	}
-	if id == p2p.Host.ID().String() {
+func CreateChatStream(ctx context.Context, id peer.ID) (network.Stream, error) {
+	if id == p2p.Host.ID() {
 		return nil, fmt.Errorf("peer ID cannot be self peer ID")
 	}
-
-	p, err := peer.Decode(id)
-	if err != nil {
-		zlog.Sugar().Errorf("could not decode string ID to peer ID: %w", err)
-		return nil, fmt.Errorf("could not decode string ID to peer ID: %w", err)
-	}
-
-	stream, err := p2p.Host.NewStream(ctx, p, protocol.ID(ChatProtocolID))
+	stream, err := p2p.Host.NewStream(ctx, id, protocol.ID(ChatProtocolID))
 	if err != nil {
 		zlog.Sugar().ErrorfContext(ctx, "could not create stream with peer: %w", err)
 		return nil, fmt.Errorf("could not create stream with peer: %w", err)
@@ -358,19 +348,11 @@ func ManualDHTUpdate(ctx context.Context) {
 }
 
 // DEBUG ONLY
-func CleanupPeer(id string) error {
-	if id == "" {
-		return fmt.Errorf("peer ID not provided")
-	}
-	if id == p2p.Host.ID().String() {
+func CleanupPeer(id peer.ID) error {
+	if id == p2p.Host.ID() {
 		return fmt.Errorf("peer ID cannot be self peer ID")
 	}
-	target, err := peer.Decode(id)
-	if err != nil {
-		zlog.Sugar().Errorf("Could not decode string ID to peerID: %v", err)
-		return fmt.Errorf("could not decode string ID to peer ID: %w", err)
-	}
-	p2p.Host.Peerstore().RemovePeer(target)
+	p2p.Host.Peerstore().RemovePeer(id)
 	return nil
 }
 
