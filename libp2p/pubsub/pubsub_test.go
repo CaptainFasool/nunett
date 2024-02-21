@@ -3,6 +3,7 @@ package pubsub
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -34,16 +35,23 @@ func (s *PubSubTestSuite) SetupSuite() {
 	var err error
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
-	s.observerNode, err = startupHostPubSubTest(context.Background())
-	s.Require().NoError(err)
-
-	s.nodeAB, err = startupHostPubSubTest(context.Background(), s.observerNode.host)
-	s.Require().NoError(err)
-
-	s.nodeXY, err = startupHostPubSubTest(context.Background(), s.observerNode.host)
-	s.Require().NoError(err)
-
 	s.topicName = "test topic"
+
+	s.observerNode, err = startupHostPubSubTest(s.ctx, "")
+	s.Require().NoError(err)
+
+	s.nodeAB, err = startupHostPubSubTest(s.ctx, s.topicName, s.observerNode.host)
+	s.Require().NoError(err)
+
+	s.nodeXY, err = startupHostPubSubTest(s.ctx, s.topicName, s.observerNode.host)
+	s.Require().NoError(err)
+
+	// put 20 more nodes
+	for i := 0; i < 20; i++ {
+		_, err = startupHostPubSubTest(s.ctx, s.topicName, s.observerNode.host)
+		s.Require().NoError(err)
+	}
+
 	s.nodeAB.msg = "I love lasagna!"
 	s.nodeXY.msg = "Me too!"
 	s.observerNode.msg = "I must not catch my own message"
@@ -67,18 +75,21 @@ func (s *PubSubTestSuite) TestPubSub() {
 	go s.observerNode.topicSub.ListenForMessages(context.Background(), msgCh)
 	time.Sleep(1 * time.Second)
 
-	// joining nodeAB into the topic
-	s.nodeAB.topicSub, err = s.nodeAB.pubsub.JoinSubscribeTopic(s.ctx, s.topicName, false)
-	s.Require().NoError(err)
-
-	// joining nodeXY into the topic
-	s.nodeXY.topicSub, err = s.nodeXY.pubsub.JoinSubscribeTopic(s.ctx, s.topicName, false)
-	s.Require().NoError(err)
-
 	// Publishing message with observerNode which should be ignored by
 	// its own ListenForMessages()
 	s.NoError(s.observerNode.topicSub.Publish(s.observerNode.msg))
 	time.Sleep(1 * time.Second)
+
+	time.Sleep(60 * 2 * time.Second)
+
+	fmt.Printf("observer node known nodes: %v\n", s.observerNode.pubsub.ListPeers(s.topicName))
+	fmt.Printf("nodeAB known nodes: %v\n", s.nodeAB.pubsub.ListPeers(s.topicName))
+	fmt.Printf("nodeXY known nodes: %v\n", s.nodeXY.pubsub.ListPeers(s.topicName))
+
+	// print connected nodes based on host
+	fmt.Printf("observer node connected peers: %v\n", s.observerNode.host.Network().Peers())
+	fmt.Printf("nodeAB connected peers: %v\n", s.nodeAB.host.Network().Peers())
+	fmt.Printf("nodeXY connected peers: %v\n", s.nodeXY.host.Network().Peers())
 
 	// Publishing message with nodeAB and nodeXY
 	s.NoError(s.nodeAB.topicSub.Publish(s.nodeAB.msg))
@@ -124,7 +135,7 @@ func TestPubSubSuite(t *testing.T) {
 
 // startupHostPubSubTest initializes a libp2p host, a GossipSub router and connects
 // to given peers
-func startupHostPubSubTest(ctx context.Context, peers ...host.Host) (*psNodeConfigTest, error) {
+func startupHostPubSubTest(ctx context.Context, psTopic string, peers ...host.Host) (*psNodeConfigTest, error) {
 	var err error
 
 	host, err := libp2p.New()
@@ -141,14 +152,29 @@ func startupHostPubSubTest(ctx context.Context, peers ...host.Host) (*psNodeConf
 		return nil, err
 	}
 
+	ps := &PubSub{
+		gs,
+		host.ID().String(),
+		sync.Once{},
+		map[string]*PsTopicSubscription{},
+	}
+
+	if psTopic == "" {
+		return &psNodeConfigTest{
+			host:   host,
+			pubsub: ps,
+		}, nil
+	}
+
+	topicSub, err := ps.JoinSubscribeTopic(ctx, psTopic, false)
+	if err != nil {
+		return nil, err
+	}
+
 	return &psNodeConfigTest{
-		host: host,
-		pubsub: &PubSub{
-			gs,
-			host.ID().String(),
-			sync.Once{},
-			map[string]*PsTopicSubscription{},
-		},
+		host:     host,
+		pubsub:   ps,
+		topicSub: topicSub,
 	}, nil
 }
 
