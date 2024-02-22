@@ -17,16 +17,13 @@ func ManualDHTUpdateHandler(c *gin.Context) {
 // DEBUG
 func CleanupPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
+	p, err := peer.Decode(id)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid string ID: could not decode string ID to peer ID"})
+		return
+	}
 
-	if id == "" {
-		c.JSON(400, gin.H{"error": "peer ID not provided"})
-		return
-	}
-	if id == libp2p.GetP2P().Host.ID().String() {
-		c.JSON(400, gin.H{"error": "peerID can not be self peerID"})
-		return
-	}
-	err := libp2p.CleanupPeer(id)
+	err = libp2p.CleanupPeer(p)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "unable to cleanup peer"})
 		return

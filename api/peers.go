@@ -139,9 +139,15 @@ func StartChatHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	id := c.Query("peerID")
 
-	stream, err := libp2p.CreateChatStream(reqCtx, id)
+	p, err := peer.Decode(id)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(400, gin.H{"error": "invalid string ID: could not decode string ID to peer ID"})
+		return
+	}
+
+	stream, err := libp2p.CreateChatStream(reqCtx, p)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	libp2p.StartChat(c.Writer, c.Request, stream, id)
@@ -162,7 +168,7 @@ func JoinChatHandler(c *gin.Context) {
 	}
 	stream, err := strconv.Atoi(streamID)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("invalid stream ID: %w", err)})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid type for streamID"})
 		return
 	}
 	libp2p.JoinChat(c.Writer, c.Request, stream)
