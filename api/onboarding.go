@@ -88,7 +88,7 @@ func OnboardHandler(c *gin.Context) {
 // @Summary      Runs the offboarding process.
 // @Description  Offboard runs the offboarding script to remove resources associated with a device.
 // @Tags         onboarding
-// @Success      200  "Successfully Onboarded"
+// @Success      200  "device successfully offboarded"
 // @Router       /onboarding/offboard [delete]
 func OffboardHandler(c *gin.Context) {
 	query := c.DefaultQuery("force", "false")
@@ -104,7 +104,7 @@ func OffboardHandler(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, nil)
+    c.JSON(200, gin.H{"message": "device successfully offboarded"})
 }
 
 // OnboardStatusHandler      godoc
