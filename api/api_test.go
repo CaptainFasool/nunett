@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,16 +14,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/libp2p/machines"
 	"gitlab.com/nunet/device-management-service/onboarding"
 	"gitlab.com/nunet/device-management-service/utils"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
-	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	library "gitlab.com/nunet/device-management-service/lib"
 	dmslibp2p "gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
@@ -35,39 +34,88 @@ type MockOracle struct {
 	mock.Mock
 }
 
-// Mock implemention of the oracle's WithdrawTokenRequest method
 func (m *MockOracle) WithdrawTokenRequest(req *oracle.RewardRequest) (*oracle.RewardResponse, error) {
 	args := m.Called(req)
 	return args.Get(0).(*oracle.RewardResponse), args.Error(1)
 }
 
-func SetUpRouter() *gin.Engine {
+func Test_GetMetadataHandler(t *testing.T) {
+	onboarding.AFS.Fs = afero.NewMemMapFs()
+	metadata, err := WriteMockMetadata(onboarding.AFS.Fs)
+	if err != nil {
+		t.Errorf("could not write mock metadata: %v", err)
+	}
+	router := SetupMockRouter()
+	tests := []struct {
+		description  string
+		route        string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			description:  "GET /metadata",
+			route:        "/api/v1/onboarding/metadata",
+			expectedCode: 200,
+			expectedBody: metadata,
+		},
+	}
+	for _, tc := range tests {
+		req, _ := http.NewRequest("GET", tc.route, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
+		assert.Equal(t, tc.expectedBody, w.Body.String(), tc.description)
+	}
+}
+
+func SetupMockRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	v1 := router.Group("/api/v1")
-
-	onboardingRoute := v1.Group("/onboarding")
+	onboard := v1.Group("/onboarding")
 	{
-		onboardingRoute.GET("/metadata", onboarding.GetMetadata)
-		onboardingRoute.POST("/onboard", onboarding.Onboard)
-		onboardingRoute.GET("/provisioned", onboarding.ProvisionedCapacity)
-		onboardingRoute.GET("/address/new", onboarding.CreatePaymentAddress)
+		onboard.GET("/metadata", GetMetadataHandler)
+		onboard.POST("/onboard", OnboardHandler)
+		onboard.GET("/provisioned", ProvisionedCapacityHandler)
+		onboard.GET("/address/new", CreatePaymentAddressHandler)
 	}
 
 	run := v1.Group("/run")
 	{
-		run.POST("/request-service", machines.RequestServiceHandler)
-		run.GET("/deploy", machines.DeploymentRequestHandler)
+		run.POST("/request-service", RequestServiceHandler)
+		run.GET("/deploy", DeploymentRequestHandler)
 	}
 
-	txRoute := v1.Group("/transactions")
+	tx := v1.Group("/transactions")
 	{
-		txRoute.POST("/request-reward", tokenomics.HandleRequestReward)
-		txRoute.POST("/send-status", tokenomics.HandleSendStatus)
-		txRoute.GET("", tokenomics.GetJobTxHashes)
+		tx.POST("/request-reward", RequestRewardHandler)
+		tx.POST("/send-status", SendTxStatusHandler)
+		tx.GET("", GetJobTxHashesHandler)
 	}
-
 	return router
+}
+
+func WriteMockMetadata(fs afero.Fs) (string, error) {
+	path := utils.GetMetadataFilePath()
+	metadata := &models.MetadataV2{
+		Name:            "ExampleName",
+		UpdateTimestamp: 1625072042,
+		Network:         "192.168.1.1",
+		PublicKey:       "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD3",
+		NodeID:          "node-123",
+		AllowCardano:    true,
+		Dashboard:       "http://localhost:3000",
+	}
+	content, err := json.Marshal(metadata)
+	if err != nil {
+		return "", fmt.Errorf("could not marshal data into mock metadata: %w", err)
+	}
+	err = afero.WriteFile(fs, path, content, 0644)
+	if err != nil {
+		return "", fmt.Errorf("could not write content to mock metadata: %w", err)
+	}
+	buf := bytes.NewBuffer(content)
+	return buf.String(), nil
 }
 
 func startMockWebSocketServer() *http.Server {
@@ -98,7 +146,7 @@ func startMockWebSocketServer() *http.Server {
 
 func TestHandleDeploymentRequest(t *testing.T) {
 	// Setup the router
-	router := SetUpRouter()
+	router := SetupMockRouter()
 
 	// Start the mock WebSocket server
 	mockServer := startMockWebSocketServer()
@@ -185,7 +233,7 @@ func TestHandleRequestService(t *testing.T) {
 	}
 
 	// Setup the router
-	router := SetUpRouter()
+	router := SetupMockRouter()
 
 	// Setup host
 	privK, pubK, _ := dmslibp2p.GenerateKey(time.Now().Unix())
@@ -229,7 +277,7 @@ func TestHandleSendStatus(t *testing.T) {
 
 	db.DB = mockDB
 
-	router := SetUpRouter()
+	router := SetupMockRouter()
 
 	t.Run("Success", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -270,7 +318,7 @@ func TestGetJobTxHashes(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when migrating the database", err)
 	}
 
-	router := SetUpRouter()
+	router := SetupMockRouter()
 
 	// test without required parameter
 	w := httptest.NewRecorder()
@@ -303,7 +351,7 @@ func TestGetJobTxHashes(t *testing.T) {
 }
 
 func TestCardanoAddressRoute(t *testing.T) {
-	router := SetUpRouter()
+	router := SetupMockRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/onboarding/address/new", nil)
@@ -323,7 +371,7 @@ func TestCardanoAddressRoute(t *testing.T) {
 }
 
 func TestEthereumAddressRoute(t *testing.T) {
-	router := SetUpRouter()
+	router := SetupMockRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/onboarding/address/new?blockchain=ethereum", nil)
@@ -343,7 +391,7 @@ func TestEthereumAddressRoute(t *testing.T) {
 }
 
 func TestProvisionedRoute(t *testing.T) {
-	router := SetUpRouter()
+	router := SetupMockRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/onboarding/provisioned", nil)
@@ -356,7 +404,7 @@ func TestProvisionedRoute(t *testing.T) {
 
 func TestOnboardEmptyRequest(t *testing.T) {
 	expectedResponse := `{"error":"invalid request data"}`
-	router := SetUpRouter()
+	router := SetupMockRouter()
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/v1/onboarding/onboard", nil)
 	router.ServeHTTP(w, req)
@@ -372,7 +420,7 @@ func TestOnboard_CapacityTooLowTooHigh(t *testing.T) {
 	expectedCPUResponse := "CPU should be between 10% and 90% of the available CPU"
 	expectedRAMResponse := "memory should be between 10% and 90% of the available memory"
 
-	router := SetUpRouter()
+	router := SetupMockRouter()
 	w := httptest.NewRecorder()
 
 	type TestRequestPayload struct {
