@@ -438,3 +438,8 @@ func SaveServiceInfo(cpService models.Services) error {
 
 	return nil
 }
+
+func RandomBool() bool {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(2) == 1
+}
