@@ -151,6 +151,7 @@ func StartChatHandler(c *gin.Context) {
 		return
 	}
 	libp2p.StartChat(c.Writer, c.Request, stream, id)
+	// should it return a response?
 }
 
 // JoinChatHandler  godoc
@@ -172,6 +173,7 @@ func JoinChatHandler(c *gin.Context) {
 		return
 	}
 	libp2p.JoinChat(c.Writer, c.Request, stream)
+	// should it return a response?
 }
 
 // DumpDHTHandler  godoc
@@ -209,12 +211,12 @@ func DefaultDepReqPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 	reqCtx := c.Request.Context()
 
-	msg, err := libp2p.DefaultDepReqPeer(reqCtx, id)
+	target, err := libp2p.DefaultDepReqPeer(reqCtx, id)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, gin.H{"message": msg})
+	c.JSON(200, gin.H{"message": fmt.Sprintf("successfully set %s as target", target)})
 }
 
 // ClearFileTransferRequestsHandler  godoc

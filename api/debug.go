@@ -35,7 +35,6 @@ func CleanupPeerHandler(c *gin.Context) {
 func PingPeerHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	id := c.Query("peerID")
-
 	if id == "" {
 		c.JSON(400, gin.H{"error": "peerID not provided"})
 		return

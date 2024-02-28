@@ -9,12 +9,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/nunet/device-management-service/utils"
 )
 
+var deviceStatus bool
+
 func (h *MockHandler) DeviceStatusHandler(c *gin.Context) {
-	status := utils.RandomBool()
-	c.JSON(200, gin.H{"online": status})
+	c.JSON(200, gin.H{"online": deviceStatus})
 }
 
 func (h *MockHandler) ChangeDeviceStatusHandler(c *gin.Context) {
@@ -41,12 +41,33 @@ func (h *MockHandler) ChangeDeviceStatusHandler(c *gin.Context) {
 
 func TestDeviceStatusHandler(t *testing.T) {
 	router := SetupMockRouter()
+	tests := []struct {
+		description  string
+		status       bool
+		expectedCode int
+		expectedMsg  string
+	}{
+		{
+			description:  "device online",
+			status:       true,
+			expectedCode: 200,
+		},
+		{
+			description:  "device offline",
+			status:       false,
+			expectedCode: 200,
+		},
+	}
+	for _, tc := range tests {
+		deviceStatus = tc.status
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/device/status", nil)
-	router.ServeHTTP(w, req)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/device/status", nil)
+		router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
+		assert.Contains(t, tc.status, w.Body.String(), tc.description)
+	}
 }
 
 func TestChangeDeviceStatusHandler(t *testing.T) {

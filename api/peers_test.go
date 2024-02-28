@@ -1,11 +1,215 @@
 package api
 
 import (
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/stretchr/testify/assert"
+	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/models"
 )
+
+var defaultPeer string
+
+func (m *MockHandler) ListPeersHandler(c *gin.Context) {
+
+}
+
+func (m *MockHandler) ListDHTPeersHandler(c *gin.Context) {
+	if mockHostID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "host node has not yet been initialized"})
+		return
+	}
+	// TODO: create func for generating mock peers
+	peers := []peer.ID{"Qm0xbarbarbar", "Qm1xbazbazbaz", "Qm2xfoobarfoobar", "Qm3xfoobazfoobaz", "Qm4xfoofoofoo"}
+	c.JSON(200, peers)
+}
+
+func (m *MockHandler) ListKadDHTPeersHandler(c *gin.Context) {
+	if mockHostID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "host node has not yet been initialized"})
+		return
+	}
+	peers := []string{"Qm0xfoobar", "Qm1xfoobarbarbar", "Qm2xbazbazfoo", "Qm3xfoobarbarfoo"}
+	c.JSON(200, peers)
+}
+
+func (m *MockHandler) SelfPeerInfoHandler(c *gin.Context) {
+	if mockHostID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "host node has not yet been initialized"})
+		return
+	}
+	var (
+		self       libp2p.SelfPeer
+		multiaddrs []multiaddr.Multiaddr
+	)
+	self.ID = mockHostID
+	maddrStrings := []string{
+		"/ip4/127.0.0.1/tcp/8080",
+		"/ip6/::1/udp/3000",
+		"/dns4/example.com/tcp/443/https",
+	}
+	for _, maddrString := range maddrStrings {
+		maddr, err := multiaddr.NewMultiaddr(maddrString)
+		if err != nil {
+			continue
+		}
+		multiaddrs = append(multiaddrs, maddr)
+	}
+	self.Addrs = multiaddrs
+	c.JSON(200, self)
+}
+
+func (m *MockHandler) ListChatHandler(c *gin.Context) {
+	chats := []libp2p.OpenStream{
+		{
+			ID:         0,
+			StreamID:   "abc",
+			FromPeer:   "foobar",
+			TimeOpened: "192389203",
+		},
+		{
+			ID:         1,
+			StreamID:   "def",
+			FromPeer:   "barfoo",
+			TimeOpened: "942093409",
+		},
+		{
+			ID:         2,
+			StreamID:   "ghi",
+			FromPeer:   "bazfoo",
+			TimeOpened: "39840238",
+		},
+	}
+	c.JSON(200, chats)
+}
+
+func (m *MockHandler) ClearChatHandler(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound Chat Requests."})
+}
+
+func (m *MockHandler) StartChatHandler(c *gin.Context) {
+	id := c.Query("peerID")
+	if !validateMockID(id) {
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID query: string is not peerID"})
+		return
+	} else if id == mockHostID {
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID query: peerID cannot be self peer ID"})
+		return
+	}
+	fmt.Println("started chat with %s", id)
+}
+
+func (m *MockHandler) JoinChatHandler(c *gin.Context) {
+	id := c.Query("streamID")
+	if id == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "stream ID not provided"})
+		return
+	}
+	stream, err := strconv.Atoi(id)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid type for streamID"})
+		return
+	}
+	fmt.Println("joined chat %d", stream)
+}
+
+func (m *MockHandler) DumpDHTHandler(c *gin.Context) {
+	if mockHostID == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "host node has not yet been initialized"})
+		return
+	}
+	peers := []models.PeerData{
+		{
+			PeerID:      "foobarfoobarfoobar",
+			IsAvailable: false,
+		},
+		{
+			PeerID:      "foobazfoobazfoobaz",
+			IsAvailable: true,
+		},
+		{
+			PeerID:      "bazbazbazbazbazbaz",
+			IsAvailable: false,
+		},
+	}
+	c.JSON(200, peers)
+}
+
+func (m *MockHandler) DefaultDepReqPeerHandler(c *gin.Context) {
+	var target string
+	id := c.Query("peerID")
+	if id == "0" {
+		defaultPeer = ""
+	} else if id == "" && defaultPeer == "" {
+		target = ""
+	} else if id == "" {
+		target = defaultPeer
+	} else if id == mockHostID {
+		c.AbortWithStatusJSON(400, gin.H{"error": "target peer cannot be self peerID"})
+		return
+	} else if !validateMockID(id) {
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID"})
+		return
+	}
+	c.JSON(200, gin.H{"message": fmt.Sprint("successfully set %s as target peer", target)})
+}
+
+func (m *MockHandler) ClearFileTransferRequestsHandler(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "successfully cleared inbound file transfer requests"})
+}
+
+func (m *MockHandler) ListFileTransferRequestsHandler(c *gin.Context) {
+	result := fmt.Sprintf("Time: %s\nFile Name: %s\nFile Size: %d bytes\n", "989348", "foobar.tar.gz", 80)
+	c.JSON(200, result)
+}
+
+func (m *MockHandler) SendFileTransferHandler(c *gin.Context) {
+	id := c.Query("peerID")
+	if len(id) == 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peer ID not provided"})
+		return
+	}
+	if id == mockHostID {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peer ID cannot be self peer ID"})
+		return
+	}
+	if !validateMockID(id) {
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer string ID: could not decode string ID to peer ID"})
+		return
+	}
+	path := c.Query("filePath")
+	if len(path) == 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": "filepath not provided"})
+		return
+	}
+	c.JSON(200, nil)
+}
+
+func (m *MockHandler) AcceptFileTransferHandler(c *gin.Context) {
+	id := c.Query("streamID")
+	if id == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "stream ID not provided"})
+		return
+	}
+
+	stream, err := strconv.Atoi(id)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("invalid stream ID: %s", id)})
+		return
+	}
+	if stream != 0 {
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("unknown stream ID: %d", stream)})
+		return
+	}
+	c.JSON(200, nil)
+}
 
 func TestListPeersHandler(t *testing.T) {
 	router := SetupMockRouter()

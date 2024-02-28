@@ -15,9 +15,7 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-const (
-	version = "/api/v1"
-)
+var debug bool
 
 type MockOracle struct {
 	mock.Mock
@@ -45,18 +43,62 @@ func SetupMockRouter() *gin.Engine {
 		onboard.POST("/resource-config", m.ResourceConfigHandler)
 		onboard.DELETE("/onboarding/offboard", m.OffboardHandler)
 	}
-
+	device := v1.Group("/device")
+	{
+		device.GET("/status", m.DeviceStatusHandler)
+		device.POST("/status", m.ChangeDeviceStatusHandler)
+	}
+	vm := v1.Group("/vm")
+	{
+		vm.POST("/start-default", m.StartDefaultHandler)
+		vm.POST("/start-custom", m.StartCustomHandler)
+	}
 	run := v1.Group("/run")
 	{
-		run.POST("/request-service", RequestServiceHandler)
-		run.GET("/deploy", DeploymentRequestHandler)
+		run.POST("/request-service", m.RequestServiceHandler)
+		run.GET("/deploy", m.DeploymentRequestHandler)
 	}
-
 	tx := v1.Group("/transactions")
 	{
-		tx.POST("/request-reward", RequestRewardHandler)
-		tx.POST("/send-status", SendTxStatusHandler)
-		tx.GET("", GetJobTxHashesHandler)
+		tx.POST("/request-reward", m.RequestRewardHandler)
+		tx.POST("/send-status", m.SendTxStatusHandler)
+		tx.GET("", m.GetJobTxHashesHandler)
+	}
+	tele := v1.Group("/telemetry")
+	{
+		tele.GET("/free", m.GetFreeResourcesHandler)
+	}
+	if debug == true {
+		dht := v1.Group("/dht")
+		{
+			dht.GET("", m.DumpDHTHandler)
+			dht.GET("/update", ManualDHTUpdateHandler)
+		}
+		kadDHT := v1.Group("/kad-dht")
+		{
+			kadDHT.GET("", m.DumpKademliaDHTHandler)
+		}
+		v1.GET("/ping", m.PingPeerHandler)
+		v1.GET("/oldping", m.OldPingPeerHandler)
+		v1.GET("/cleanup", m.CleanupPeerHandler)
+	}
+	p2p := v1.Group("/peers")
+	{
+		p2p.GET("", m.ListPeersHandler)
+		p2p.GET("/dht", m.ListDHTPeersHandler)
+		p2p.GET("/kad-dht", m.ListKadDHTPeersHandler)
+		p2p.GET("/self", m.SelfPeerInfoHandler)
+		p2p.GET("/chat", m.ListChatHandler)
+		p2p.GET("/depreq", m.DefaultDepReqPeerHandler)
+		p2p.GET("/chat/start", m.StartChatHandler)
+		p2p.GET("/chat/join", m.JoinChatHandler)
+		p2p.GET("/chat/clear", m.ClearChatHandler)
+		p2p.GET("/file", m.ListFileTransferRequestsHandler)
+		p2p.GET("/file/send", m.SendFileTransferHandler)
+		p2p.GET("/file/accept", m.AcceptFileTransferHandler)
+		p2p.GET("/file/clear", m.ClearFileTransferRequestsHandler)
+		// peer.GET("/shell", internal.HandleWebSocket)
+		// peer.GET("/log", internal.HandleWebSocket)
 	}
 	return router
 }
