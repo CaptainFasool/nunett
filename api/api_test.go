@@ -9,27 +9,35 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
-	"github.com/stretchr/testify/mock"
-	"gitlab.com/nunet/device-management-service/integrations/oracle"
+	//	"github.com/stretchr/testify/mock"
+	//	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
 var debug bool
 
-type MockOracle struct {
-	mock.Mock
+type MockHandler struct {
+	buf *bytes.Buffer
 }
 
-func (o *MockOracle) WithdrawTokenRequest(req *oracle.RewardRequest) (*oracle.RewardResponse, error) {
-	args := o.Called(req)
-	return args.Get(0).(*oracle.RewardResponse), args.Error(1)
+func newMockHandler() *MockHandler {
+	return &MockHandler{
+		buf: new(bytes.Buffer),
+	}
 }
 
-type MockHandler struct{}
+// type MockOracle struct {
+// 	mock.Mock
+// }
+//
+// func (o *MockOracle) WithdrawTokenRequest(req *oracle.RewardRequest) (*oracle.RewardResponse, error) {
+// 	args := o.Called(req)
+// 	return args.Get(0).(*oracle.RewardResponse), args.Error(1)
+// }
 
 func SetupMockRouter() *gin.Engine {
-	m := MockHandler{}
+	m := newMockHandler()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	v1 := router.Group("/api/v1")
@@ -74,6 +82,7 @@ func SetupMockRouter() *gin.Engine {
 		dht := v1.Group("/dht")
 		{
 			dht.GET("", m.DumpDHTHandler)
+			// TODO: add this function to mock handler
 			dht.GET("/update", ManualDHTUpdateHandler)
 		}
 		kadDHT := v1.Group("/kad-dht")
