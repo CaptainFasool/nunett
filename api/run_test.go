@@ -105,7 +105,7 @@ func TestListCheckpointHandler(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 
-	var checks []checkpoint
-	err := json.Unmarshal(w.Body.Bytes(), checks)
+	var checks *[]checkpoint
+	err := json.Unmarshal(w.Body.Bytes(), &checks)
 	assert.NoError(t, err)
 }

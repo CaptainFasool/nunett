@@ -2,9 +2,9 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -13,26 +13,24 @@ import (
 
 var deviceStatus bool
 
+type deviceAvailable struct {
+	IsAvailable bool `json:"is_available"`
+}
+
 func (h *MockHandler) DeviceStatusHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"online": deviceStatus})
 }
 
 func (h *MockHandler) ChangeDeviceStatusHandler(c *gin.Context) {
-	var status struct {
-		IsAvailable bool `json:"is_available"`
-	}
-	if c.Request.ContentLength == 0 {
-		c.JSON(400, gin.H{"error": "empty payload data"})
-		return
-	}
-	err := c.ShouldBindJSON(&status)
+	var status *deviceAvailable
+	err := c.BindJSON(&status)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid payload data"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
 		return
 	}
 	var msg string
 	if status.IsAvailable {
-		msg = "device set to online"
+		msg = "device status set to online"
 	} else {
 		msg = "device status set to offline"
 	}
@@ -43,30 +41,33 @@ func TestDeviceStatusHandler(t *testing.T) {
 	router := SetupMockRouter()
 	tests := []struct {
 		description  string
-		status       bool
+		status       string
 		expectedCode int
 		expectedMsg  string
 	}{
 		{
 			description:  "device online",
-			status:       true,
+			status:       "true",
 			expectedCode: 200,
 		},
 		{
 			description:  "device offline",
-			status:       false,
+			status:       "false",
 			expectedCode: 200,
 		},
 	}
 	for _, tc := range tests {
-		deviceStatus = tc.status
+		status, err := strconv.ParseBool(tc.status)
+		assert.NoError(t, err)
+
+		deviceStatus = status
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/api/v1/device/status", nil)
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
-		assert.Contains(t, tc.status, w.Body.String(), tc.description)
+		assert.Contains(t, w.Body.String(), tc.status, tc.description)
 	}
 }
 
@@ -75,36 +76,35 @@ func TestChangeDeviceStatusHandler(t *testing.T) {
 
 	tests := []struct {
 		description  string
-		payload      map[string]bool
+		payload      []byte
 		expectedCode int
 		expectedMsg  string
 	}{
 		{
 			description:  "change status to online",
-			payload:      map[string]bool{"is_available": true},
+			payload:      []byte(`{"is_available": true}`),
 			expectedCode: 200,
-			expectedMsg:  "device set to online",
+			expectedMsg:  "device status set to online",
 		},
 		{
 			description:  "change status to offline",
-			payload:      map[string]bool{"is_available": false},
+			payload:      []byte(`{"is_available": false}`),
 			expectedCode: 200,
-			expectedMsg:  "device set to offline",
+			expectedMsg:  "device status set to offline",
 		},
 		{
 			description:  "invalid payload",
-			payload:      map[string]bool{},
+			payload:      []byte(`{"is_available": 350}`),
 			expectedCode: 400,
 		},
 	}
 
 	for _, tc := range tests {
-		bodyBytes, _ := json.Marshal(tc.payload)
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/api/v1/device/status", bytes.NewBuffer(bodyBytes))
+		req, _ := http.NewRequest("POST", "/api/v1/device/status", bytes.NewBuffer(tc.payload))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
-		assert.Equal(t, tc.expectedMsg, w.Body.String(), tc.description)
+		assert.Equal(t, tc.expectedCode, w.Code, tc.description, w.Body.String())
+		assert.Contains(t, w.Body.String(), tc.expectedMsg, tc.description)
 	}
 }

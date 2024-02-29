@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 var mockHostID = "Qm01testabcdefghjiklgfoobar123"
@@ -17,39 +18,39 @@ var mockHostID = "Qm01testabcdefghjiklgfoobar123"
 func (h *MockHandler) CleanupPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 	if !validateMockID(id) {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID query"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string is not valid peer ID"})
 		return
 	}
 	c.JSON(200, gin.H{"message": fmt.Sprintf("successfully cleaned up peer: %s", id)})
 }
 
-func (m *MockHandler) PingPeerHandler(c *gin.Context) {
+func (h *MockHandler) PingPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 	if !validateMockID(id) {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID query"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string is not valid peer ID"})
 		return
 	} else if id == mockHostID {
-		c.AbortWithStatusJSON(400, gin.H{"error": "peerID string cannot be self peer ID"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string cannot be self peer ID"})
 		return
 	}
 	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": true, "RTT": "28859000"})
 }
 
-func (m *MockHandler) OldPingPeerHandler(c *gin.Context) {
+func (h *MockHandler) OldPingPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 	if !validateMockID(id) {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID query"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string is not valid peer ID"})
 		return
 	} else if id == mockHostID {
-		c.AbortWithStatusJSON(400, gin.H{"error": "peerID string cannot be self peer ID"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string cannot be self peer ID"})
 		return
 	}
 	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": true, "RTT": "28859000"})
-
 }
 
-func (m *MockHandler) DumpKademliaDHTHandler(c *gin.Context) {
+func (h *MockHandler) DumpKademliaDHTHandler(c *gin.Context) {
 	// TODO: set this as a function with parameters
+	debug = true
 	dht := []models.PeerData{
 		{
 			PeerID:      "foobarfoobar123",
@@ -68,6 +69,7 @@ func (m *MockHandler) DumpKademliaDHTHandler(c *gin.Context) {
 }
 
 func TestCleanupPeerHandler(t *testing.T) {
+	debug = true
 	router := SetupMockRouter()
 
 	tests := []struct {
@@ -99,12 +101,13 @@ func TestCleanupPeerHandler(t *testing.T) {
 
 		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
 		if tc.expectedCode == 200 {
-			assert.Contains(t, tc.peerID, w.Body.String(), tc.description)
+			assert.Contains(t, w.Body.String(), tc.peerID, tc.description)
 		}
 	}
 }
 
 func TestPingPeerHandler(t *testing.T) {
+	debug = true
 	router := SetupMockRouter()
 
 	tests := []struct {
@@ -141,12 +144,13 @@ func TestPingPeerHandler(t *testing.T) {
 
 		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
 		if tc.expectedCode == 200 {
-			assert.Contains(t, tc.peerID, w.Body.String, tc.description)
+			assert.Contains(t, w.Body.String(), tc.peerID, tc.description)
 		}
 	}
 }
 
 func TestOldPingPeerHandler(t *testing.T) {
+	debug = true
 	router := SetupMockRouter()
 
 	tests := []struct {
@@ -178,21 +182,22 @@ func TestOldPingPeerHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/api/v1/old-ping?peerID="+tc.peerID, nil)
+		req, _ := http.NewRequest("GET", "/api/v1/oldping?peerID="+tc.peerID, nil)
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
 		if tc.expectedCode == 200 {
-			assert.Contains(t, tc.peerID, w.Body.String, tc.description)
+			assert.Contains(t, w.Body.String(), tc.peerID, tc.description)
 		}
 	}
 }
 
 func TestDumpKademliaDHTHandler(t *testing.T) {
+	debug = true
 	router := SetupMockRouter()
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/dump-dht", nil)
+	req, _ := http.NewRequest("GET", "/api/v1/kad-dht", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
@@ -203,4 +208,17 @@ func validateMockID(id string) bool {
 		return true
 	}
 	return false
+}
+
+func listMockPeers(n int) []models.PeerData {
+	var peers []models.PeerData
+	for i := 0; i < n; i++ {
+		id := utils.RandomString(7)
+		id = "Qm" + id
+		peer := models.PeerData{
+			PeerID: id,
+		}
+		peers = append(peers, peer)
+	}
+	return peers
 }

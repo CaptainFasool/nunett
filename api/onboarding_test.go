@@ -9,11 +9,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
 func (h *MockHandler) GetMetadataHandler(c *gin.Context) {
@@ -169,19 +166,16 @@ func (h *MockHandler) ResourceConfigHandler(c *gin.Context) {
 }
 
 func TestGetMetadataHandler(t *testing.T) {
-	var metadata models.MetadataV2
 	router := SetupMockRouter()
 	tests := []struct {
 		description  string
 		route        string
 		expectedCode int
-		expectedBody models.MetadataV2
 	}{
 		{
 			description:  "GET /onboarding/metadata",
 			route:        "/api/v1/onboarding/metadata",
 			expectedCode: 200,
-			expectedBody: metadata,
 		},
 	}
 	for _, tc := range tests {
@@ -191,7 +185,8 @@ func TestGetMetadataHandler(t *testing.T) {
 
 		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
 
-		err := json.Unmarshal(w.Body.Bytes(), metadata)
+		var metadata *models.MetadataV2
+		err := json.Unmarshal(w.Body.Bytes(), &metadata)
 		assert.NoError(t, err)
 	}
 }
@@ -259,28 +254,24 @@ func TestCreatePaymentAddressHandler(t *testing.T) {
 }
 
 func TestOnboardHandler(t *testing.T) {
-	onboarding.AFS.Fs = afero.NewMemMapFs()
-	onboarding.AFS.Mkdir(config.GetConfig().General.MetadataPath, 0777)
-
 	router := SetupMockRouter()
 
-	key, err := onboarding.CreatePaymentAddress("cardano")
-	if err != nil {
-		t.Errorf("could not create wallet addr: %v", err)
-	}
 	capacity := models.CapacityForNunet{
 		Memory:         4096,
 		CPU:            4096,
 		Channel:        "nunet-test",
-		PaymentAddress: key.Address,
+		PaymentAddress: "foobarfoobarfoobarfoobarfoobar",
 	}
 	bodyBytes, _ := json.Marshal(capacity)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/v1/onboarding/onboard", bytes.NewBuffer(bodyBytes))
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, "", w.Body.String())
 	assert.Equal(t, 200, w.Code)
+
+	var metadata *models.MetadataV2
+	err := json.Unmarshal(w.Body.Bytes(), &metadata)
+	assert.NoError(t, err)
 }
 
 func TestOffboardHandler(t *testing.T) {

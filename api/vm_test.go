@@ -50,7 +50,7 @@ func TestStartCustomHandler(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, "VM started successfully", w.Body.String())
+	assert.Contains(t, w.Body.String(), "VM started successfully")
 }
 
 func TestStartDefaultHandler(t *testing.T) {
@@ -69,5 +69,5 @@ func TestStartDefaultHandler(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, "VM started successfully", w.Body.String())
+	assert.Contains(t, w.Body.String(), "VM started successfully")
 }

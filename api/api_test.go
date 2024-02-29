@@ -41,7 +41,7 @@ func SetupMockRouter() *gin.Engine {
 		onboard.GET("/address/new", m.CreatePaymentAddressHandler)
 		onboard.POST("/onboard", m.OnboardHandler)
 		onboard.POST("/resource-config", m.ResourceConfigHandler)
-		onboard.DELETE("/onboarding/offboard", m.OffboardHandler)
+		onboard.DELETE("/offboard", m.OffboardHandler)
 	}
 	device := v1.Group("/device")
 	{
@@ -55,14 +55,16 @@ func SetupMockRouter() *gin.Engine {
 	}
 	run := v1.Group("/run")
 	{
-		run.POST("/request-service", m.RequestServiceHandler)
+		run.GET("/checkpoints", m.ListCheckpointHandler)
 		run.GET("/deploy", m.DeploymentRequestHandler)
+		run.POST("/request-service", m.RequestServiceHandler)
 	}
 	tx := v1.Group("/transactions")
 	{
+		tx.GET("", m.GetJobTxHashesHandler)
 		tx.POST("/request-reward", m.RequestRewardHandler)
 		tx.POST("/send-status", m.SendTxStatusHandler)
-		tx.GET("", m.GetJobTxHashesHandler)
+		tx.POST("/update-status", m.UpdateTxStatusHandler)
 	}
 	tele := v1.Group("/telemetry")
 	{

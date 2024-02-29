@@ -103,7 +103,7 @@ func (m *MockHandler) StartChatHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID query: peerID cannot be self peer ID"})
 		return
 	}
-	fmt.Println("started chat with %s", id)
+	fmt.Printf("started chat with %s\n", id)
 }
 
 func (m *MockHandler) JoinChatHandler(c *gin.Context) {
@@ -117,7 +117,7 @@ func (m *MockHandler) JoinChatHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid type for streamID"})
 		return
 	}
-	fmt.Println("joined chat %d", stream)
+	fmt.Printf("joined chat %d\n", stream)
 }
 
 func (m *MockHandler) DumpDHTHandler(c *gin.Context) {
@@ -158,7 +158,7 @@ func (m *MockHandler) DefaultDepReqPeerHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID"})
 		return
 	}
-	c.JSON(200, gin.H{"message": fmt.Sprint("successfully set %s as target peer", target)})
+	c.JSON(200, gin.H{"message": fmt.Sprintf("successfully set %s as target peer", target)})
 }
 
 func (m *MockHandler) ClearFileTransferRequestsHandler(c *gin.Context) {
@@ -281,7 +281,7 @@ func TestStartChatHandlerWithQueries(t *testing.T) {
 	}{
 		{
 			description:  "valid peer ID",
-			query:        "?peerID=somePeerID",
+			query:        "?peerID=Qmxfoobarfoobar",
 			expectedCode: 200,
 		},
 		{
@@ -359,7 +359,7 @@ func TestDefaultDepReqPeerHandlerWithQueries(t *testing.T) {
 	}{
 		{
 			description:  "valid peer ID",
-			query:        "?peerID=somePeerID",
+			query:        "?peerID=Qmxfoobarfoobarfoobar",
 			expectedCode: 200,
 		},
 		{
@@ -413,7 +413,7 @@ func TestSendFileTransferHandlerWithQueries(t *testing.T) {
 	}{
 		{
 			description:  "valid peer ID and file path",
-			query:        "?peerID=somePeerID&filePath=/path/to/file",
+			query:        "?peerID=Qmxabcabcabdffd&filePath=/foo/bar",
 			expectedCode: 200,
 		},
 		{
@@ -447,11 +447,16 @@ func TestAcceptFileTransferHandlerWithQueries(t *testing.T) {
 	}{
 		{
 			description:  "valid stream ID",
-			query:        "?streamID=123",
+			query:        "?streamID=0",
 			expectedCode: 200,
 		},
 		{
-			description:  "invalid stream ID",
+			description:  "invalid stream ID int value",
+			query:        "?streamID=23",
+			expectedCode: 400,
+		},
+		{
+			description:  "invalid type stream ID",
 			query:        "?streamID=abc",
 			expectedCode: 400,
 		},
