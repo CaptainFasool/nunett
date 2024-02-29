@@ -21,13 +21,13 @@ func SetupRouter() *gin.Engine {
 
 	onboarding := v1.Group("/onboarding")
 	{
+		onboarding.GET("/metadata", GetMetadataHandler)
 		onboarding.GET("/provisioned", ProvisionedCapacityHandler)
 		onboarding.GET("/address/new", CreatePaymentAddressHandler)
-		onboarding.POST("/onboard", OnboardHandler)
 		onboarding.GET("/status", OnboardStatusHandler)
-		onboarding.DELETE("/offboard", OffboardHandler)
+		onboarding.POST("/onboard", OnboardHandler)
 		onboarding.POST("/resource-config", ResourceConfigHandler)
-		onboarding.GET("/metadata", GetMetadataHandler)
+		onboarding.DELETE("/offboard", OffboardHandler)
 	}
 
 	device := v1.Group("/device")
@@ -45,8 +45,8 @@ func SetupRouter() *gin.Engine {
 	run := v1.Group("/run")
 	{
 		run.GET("/deploy", DeploymentRequestHandler) // websocket
-		run.POST("/request-service", RequestServiceHandler)
 		run.GET("/checkpoints", ListCheckpointHandler)
+		run.POST("/request-service", RequestServiceHandler)
 	}
 
 	tx := v1.Group("/transactions")
