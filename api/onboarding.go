@@ -33,7 +33,7 @@ func ProvisionedCapacityHandler(c *gin.Context) {
 func GetMetadataHandler(c *gin.Context) {
 	metadata, err := onboarding.GetMetadata()
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, metadata)
@@ -51,7 +51,7 @@ func CreatePaymentAddressHandler(c *gin.Context) {
 	wallet := c.DefaultQuery("blockchain", "cardano")
 	pair, err := onboarding.CreatePaymentAddress(wallet)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, pair)
@@ -78,7 +78,7 @@ func OnboardHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	metadata, err := onboarding.Onboard(reqCtx, capacity)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, metadata)
@@ -94,17 +94,17 @@ func OffboardHandler(c *gin.Context) {
 	query := c.DefaultQuery("force", "false")
 	force, err := strconv.ParseBool(query)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid query data"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data"})
 		return
 	}
 
 	reqCtx := c.Request.Context()
 	err = onboarding.Offboard(reqCtx, force)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
-    c.JSON(200, gin.H{"message": "device successfully offboarded"})
+	c.JSON(200, gin.H{"message": "device successfully offboarded"})
 }
 
 // OnboardStatusHandler      godoc
@@ -123,7 +123,7 @@ func OffboardHandler(c *gin.Context) {
 func OnboardStatusHandler(c *gin.Context) {
 	status, err := onboarding.Status()
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, status)
@@ -139,21 +139,21 @@ func OnboardStatusHandler(c *gin.Context) {
 func ResourceConfigHandler(c *gin.Context) {
 	klogger.Logger.Info("device resource change started")
 	if c.Request.ContentLength == 0 {
-		c.JSON(400, gin.H{"error": "request body is empty"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "request body is empty"})
 		return
 	}
 
 	var capacity models.CapacityForNunet
 	err := c.BindJSON(&capacity)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid request data"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid request data"})
 		return
 	}
 
 	reqCtx := c.Request.Context()
 	metadata, err := onboarding.ResourceConfig(reqCtx, capacity)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, metadata)
