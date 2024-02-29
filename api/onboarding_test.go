@@ -65,18 +65,23 @@ func (h *MockHandler) CreatePaymentAddressHandler(c *gin.Context) {
 		return
 	}
 	var addr, phrase string
+	var resp models.BlockchainAddressPrivKey
 	if wallet == "cardano" {
 		addr = "abc123xyz"
 		phrase = "barbarbarbar"
+		resp = models.BlockchainAddressPrivKey{
+			Address:  addr,
+			Mnemonic: phrase,
+		}
 	} else {
 		addr = "foobar123baz"
 		phrase = "bazbazbazbaz"
+		resp = models.BlockchainAddressPrivKey{
+			Address:    addr,
+			PrivateKey: phrase,
+		}
 	}
-	key := models.BlockchainAddressPrivKey{
-		Address:  addr,
-		Mnemonic: phrase,
-	}
-	c.JSON(200, key)
+	c.JSON(200, resp)
 }
 
 func (h *MockHandler) OnboardHandler(c *gin.Context) {
@@ -192,32 +197,17 @@ func TestGetMetadataHandler(t *testing.T) {
 }
 
 func TestProvisionedCapacityHandler(t *testing.T) {
-	var prov *models.Provisioned
 	router := SetupMockRouter()
-	tests := []struct {
-		description  string
-		route        string
-		expectedCode int
-		expectedBody *models.Provisioned
-	}{
-		{
-			description:  "GET /onboarding/provisioned",
-			route:        "/api/v1/onboarding/provisioned",
-			expectedCode: 200,
-			expectedBody: prov,
-		},
-	}
-	for _, tc := range tests {
-		req, _ := http.NewRequest("GET", tc.route, nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
 
-		err := json.Unmarshal(w.Body.Bytes(), &prov)
-		if err != nil {
-			t.Fatalf("could not unmarshal body to struct: %v", err)
-		}
-	}
+	req, _ := http.NewRequest("GET", "/api/v1/onboarding/provisioned", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+
+	var prov *models.Provisioned
+	err := json.Unmarshal(w.Body.Bytes(), &prov)
+	assert.NoError(t, err)
 }
 
 func TestCreatePaymentAddressHandler(t *testing.T) {
@@ -229,12 +219,12 @@ func TestCreatePaymentAddressHandler(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			description:  "cardano blockchain query",
+			description:  "cardano",
 			query:        "?blockchain=cardano",
 			expectedCode: 200,
 		},
 		{
-			description:  "ethereum blockchain query",
+			description:  "ethereum",
 			query:        "?blockchain=ethereum",
 			expectedCode: 200,
 		},
@@ -250,6 +240,15 @@ func TestCreatePaymentAddressHandler(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
+
+		var keypair *models.BlockchainAddressPrivKey
+		err := json.Unmarshal(w.Body.Bytes(), &keypair)
+		assert.NoError(t, err)
+		if tc.description == "cardano" && tc.query == "" {
+			assert.True(t, keypair.Mnemonic != "")
+		} else if tc.description == "ethereum" {
+			assert.True(t, keypair.PrivateKey != "")
+		}
 	}
 }
 
