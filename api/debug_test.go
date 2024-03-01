@@ -13,6 +13,10 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
+func (h *MockHandler) ManualDHTUpdateHandler(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DHT update initiated"})
+}
+
 func (h *MockHandler) CleanupPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 	if !validateMockID(id) {
@@ -53,6 +57,17 @@ func (h *MockHandler) DumpKademliaDHTHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(200, peers)
+}
+
+func TestManualDHTUpdateHandler(t *testing.T) {
+	debug = true
+	router := SetupMockRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/dht/update", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
 }
 
 func TestCleanupPeerHandler(t *testing.T) {
