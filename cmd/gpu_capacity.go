@@ -28,11 +28,6 @@ type ContainerOptions struct {
 
 var flagCudaTensor, flagRocmHip bool
 
-func init() {
-	gpuCapacityCmd.Flags().BoolVarP(&flagCudaTensor, "cuda-tensor", "c", false, "check CUDA Tensor")
-	gpuCapacityCmd.Flags().BoolVarP(&flagRocmHip, "rocm-hip", "r", false, "check ROCM-HIP")
-}
-
 var gpuCapacityCmd = &cobra.Command{
 	Use:     "capacity",
 	Short:   "Check availability of NVIDIA/AMD GPUs",
@@ -43,10 +38,8 @@ var gpuCapacityCmd = &cobra.Command{
 		rocm, _ := cmd.Flags().GetBool("rocm-hip")
 
 		if !cuda && !rocm {
-			fmt.Println(`Error: no flags specified
-
-For more help, check:
-    nunet gpu capacity --help`)
+			fmt.Println(`Error: no flags specified`)
+			cmd.Help()
 			os.Exit(1)
 		}
 

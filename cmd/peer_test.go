@@ -16,7 +16,7 @@ func Test_PeerCmdSubCommands(t *testing.T) {
 	assert := assert.New(t)
 	assert.True(cmd.HasAvailableSubCommands())
 
-	subcmd := []string{"list", "self"}
+	subcmd := []string{"list", "self", "default"}
 
 	cmds := cmd.Commands()
 	for _, child := range cmds {

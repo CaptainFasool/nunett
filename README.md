@@ -66,9 +66,9 @@ sudo apt -f install -y
 If you see a "Permission denied" error, don't worry, it's just a notice. Proceed to the next step.
 
 3. Check if DMS is running
-Look for "/usr/bin/nunet-dms" in the output of this command:
+Look for "/usr/bin/nunet" in the output of this command:
 ```
-ps aux | grep nunet-dms
+ps aux | grep nunet
 ```
 
 #### Remove DMS
