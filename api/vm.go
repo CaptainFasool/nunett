@@ -23,12 +23,12 @@ func StartCustomHandler(c *gin.Context) {
 	var body firecracker.CustomVM
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	err = firecracker.StartCustom(reqCtx, body)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "VM started successfully"})
@@ -50,12 +50,12 @@ func StartDefaultHandler(c *gin.Context) {
 	var body firecracker.DefaultVM
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	err = firecracker.StartDefault(reqCtx, body)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "VM started successfully"})

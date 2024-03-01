@@ -16,7 +16,7 @@ func (h *MockHandler) StartDefaultHandler(c *gin.Context) {
 	var body firecracker.DefaultVM
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "VM started successfully"})
@@ -26,7 +26,7 @@ func (h *MockHandler) StartCustomHandler(c *gin.Context) {
 	var body firecracker.CustomVM
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "VM started successfully"})
