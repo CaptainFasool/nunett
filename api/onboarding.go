@@ -71,7 +71,7 @@ func OnboardHandler(c *gin.Context) {
 	}
 	err := c.BindJSON(&capacity)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid request data"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid request data"})
 		return
 	}
 
