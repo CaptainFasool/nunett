@@ -7,7 +7,6 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -372,13 +371,21 @@ func ResourceConfig(c *gin.Context) {
 // @Description  Offboard runs the offboarding script to remove resources associated with a device.
 // @Tags         onboarding
 // @Success      200  "Successfully Onboarded"
-// @Router       /onboarding/offboard [delete]
+// @Router       /onboarding/offboard [get]
 func Offboard(c *gin.Context) {
 	klogger.Logger.Info("device offboarding started")
-	force, _ := strconv.ParseBool(c.DefaultQuery("force", "false"))
+	query := struct {
+		Force bool `json:"force"`
+	}{Force: false}
+
+	if err := c.BindJSON(&query); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
+		return
+	}
+
 	if onboarded, err := utils.IsOnboarded(); !onboarded {
 		if err != nil {
-			if !force {
+			if !query.Force {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "problem with state: " + err.Error()})
 				klogger.Logger.Error("offboarding error : " + err.Error())
 				return
@@ -393,10 +400,16 @@ func Offboard(c *gin.Context) {
 		}
 	}
 
+	err := libp2p.ShutdownNode()
+	if err != nil && !query.Force {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to properly shutdown the node"})
+		return
+	}
+
 	// remove the metadata file
-	err := os.Remove(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
+	err = os.Remove(fmt.Sprintf("%s/metadataV2.json", config.GetConfig().General.MetadataPath))
 	if err != nil {
-		if !force {
+		if !query.Force {
 			c.AbortWithStatusJSON(http.StatusInternalServerError,
 				gin.H{"error": "failed to delete metadata file"})
 			return
@@ -413,18 +426,13 @@ func Offboard(c *gin.Context) {
 		zlog.Error(result.Error.Error())
 	} else if result.RowsAffected == 0 {
 		zlog.Error("No rows affected")
-		if !force {
+		if !query.Force {
 			return
 		}
 	}
 
-	err = libp2p.ShutdownNode()
-	if err != nil && !force {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to properly shutdown the node"})
-		return
-	}
 	klogger.Logger.Info("device offboarded successfully")
-	c.JSON(http.StatusOK, gin.H{"message": "Successfully Offboarded", "forced": force})
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully Offboarded", "forced": query})
 }
 
 func fileExists(filename string) bool {

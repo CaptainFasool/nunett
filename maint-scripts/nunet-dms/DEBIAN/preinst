@@ -20,7 +20,13 @@ fi
 
 echo "Looking for old versions of nunet-dms ..."
 
+# XXX this can be removed once the new "nunet" binary has been in use for sometime
 if [ -f "/usr/bin/nunet-dms" ];then
     rm -f /usr/bin/nunet-dms
-    echo "Removed old nunet-dms from /usr/bin ..."
+    echo "Removed old nunet-dms binary from /usr/bin ..."
+fi
+
+if [ -f "/usr/bin/nunet" ];then
+    rm -f /usr/bin/nunet
+    echo "Removed old nunet binary from /usr/bin ..."
 fi

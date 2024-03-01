@@ -123,7 +123,7 @@ const docTemplate = `{
             }
         },
         "/onboarding/offboard": {
-            "delete": {
+            "get": {
                 "description": "Offboard runs the offboarding script to remove resources associated with a device.",
                 "tags": [
                     "onboarding"
@@ -1022,7 +1022,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.156",
+	Version:          "0.4.157",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
