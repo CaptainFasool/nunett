@@ -27,16 +27,15 @@ func RequestServiceHandler(c *gin.Context) {
 	span.SetAttributes(attribute.String("URL", "/run/request-service"))
 	kLogger.Info("Handle request service", span)
 
-	// receive deployment request
 	var depReq models.DeploymentRequest
 	err := c.BindJSON(&depReq)
 	if err != nil {
-		c.JSON(400, gin.H{"error": fmt.Errorf("invalid payload data for deployment request: %w", err)})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
 		return
 	}
 	resp, err := machines.RequestService(reqCtx, depReq)
 	if err != nil {
-		c.JSON(500, gin.H{"error": fmt.Errorf("failed to request service: %w", err)})
+		c.AbortWithStatusJSON(500, gin.H{"error": "failed to request service"})
 		return
 	}
 	c.JSON(200, resp)
@@ -58,7 +57,7 @@ func DeploymentRequestHandler(c *gin.Context) {
 
 	err := machines.DeploymentRequest(c, reqCtx, c.Writer, c.Request)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	// TODO: Original func did not return a success response. Should we return it?
@@ -74,7 +73,7 @@ func DeploymentRequestHandler(c *gin.Context) {
 func ListCheckpointHandler(c *gin.Context) {
 	checkpoints, err := libp2p.ListCheckpoints()
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to get checkpoint list"})
+		c.AbortWithStatusJSON(500, gin.H{"error": "failed to get checkpoint list"})
 		return
 	}
 	c.JSON(200, checkpoints)
