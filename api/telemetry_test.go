@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,4 +34,8 @@ func TestGetFreeResourcesHandler(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
+
+	var free *models.FreeResources
+	err := json.Unmarshal(w.Body.Bytes(), &free)
+	assert.NoError(t, err)
 }
