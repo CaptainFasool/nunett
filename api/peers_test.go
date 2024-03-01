@@ -88,6 +88,9 @@ func (m *MockHandler) ListChatHandler(c *gin.Context) {
 }
 
 func (m *MockHandler) ClearChatHandler(c *gin.Context) {
+	if mockInboundChats == 0 {
+		c.AbortWithStatusJSON(500, gin.H{"error": "no inbound message streams"})
+	}
 	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound Chat Requests."})
 }
 
@@ -250,22 +253,60 @@ func TestSelfPeerInfoHandler(t *testing.T) {
 
 func TestListChatHandler(t *testing.T) {
 	router := SetupMockRouter()
+	tests := []struct {
+		description  string
+		chats        int
+		expectedCode int
+	}{
+		{
+			description:  "no chats",
+			chats:        0,
+			expectedCode: 500,
+		},
+		{
+			description:  "available chats",
+			chats:        5,
+			expectedCode: 200,
+		},
+	}
+	for _, tc := range tests {
+		mockInboundChats = tc.chats
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/peers/chat", nil)
-	router.ServeHTTP(w, req)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/peers/chat", nil)
+		router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
+	}
 }
 
 func TestClearChatHandler(t *testing.T) {
 	router := SetupMockRouter()
+	tests := []struct {
+		description  string
+		chats        int
+		expectedCode int
+	}{
+		{
+			description:  "no chats",
+			chats:        0,
+			expectedCode: 500,
+		},
+		{
+			description:  "available chats",
+			chats:        5,
+			expectedCode: 200,
+		},
+	}
+	for _, tc := range tests {
+		mockInboundChats = tc.chats
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/peers/chat/clear", nil)
-	router.ServeHTTP(w, req)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/peers/chat/clear", nil)
+		router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
+	}
 }
 
 func TestStartChatHandlerWithQueries(t *testing.T) {
