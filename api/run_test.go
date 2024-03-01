@@ -32,7 +32,7 @@ func (h *MockHandler) RequestServiceHandler(c *gin.Context) {
 	var depReq models.DeploymentRequest
 	err := c.BindJSON(&depReq)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	resp := fundingRespToSPD{
