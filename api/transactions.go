@@ -21,12 +21,12 @@ func GetJobTxHashesHandler(c *gin.Context) {
 	clean := c.Query("clean_tx")
 	size, err := strconv.Atoi(sizeStr)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid size_done parameter"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid size_done parameter"})
 		return
 	}
 	hashes, err := tokenomics.GetJobTxHashes(size, clean)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, hashes)
@@ -49,7 +49,7 @@ func RequestRewardHandler(c *gin.Context) {
 	}
 	resp, err := tokenomics.RequestReward(payload)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, resp)
@@ -91,7 +91,7 @@ func UpdateTxStatusHandler(c *gin.Context) {
 	}
 	err = tokenomics.UpdateStatus(body)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "transaction statuses synchronized with blockchain successfully"})
