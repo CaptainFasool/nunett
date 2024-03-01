@@ -20,7 +20,7 @@ import (
 func DeviceStatusHandler(c *gin.Context) {
 	status, err := libp2p.DeviceStatus()
 	if err != nil {
-		c.JSON(500, gin.H{"error": "could not retrieve device status"})
+		c.AbortWithStatusJSON(500, gin.H{"error": "could not retrieve device status"})
 		return
 	}
 	c.JSON(200, gin.H{"online": status})
@@ -45,24 +45,26 @@ func ChangeDeviceStatusHandler(c *gin.Context) {
 	}
 
 	if c.Request.ContentLength == 0 {
-		c.JSON(400, gin.H{"error": "empty payload data"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "empty content data"})
 		return
 	}
 	err := c.ShouldBindJSON(&status)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid payload data"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
 		return
 	}
 
 	err = libp2p.ChangeDeviceStatus(status.IsAvailable)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "could not change device status"})
+		c.AbortWithStatusJSON(500, gin.H{"error": "could not change device status"})
 		return
 	}
 
+	var msg string
 	if status.IsAvailable {
-		c.JSON(200, gin.H{"message": "Device status successfully changed to online"})
+		msg = "Device status successfully changed to online"
 	} else {
-		c.JSON(200, gin.H{"message": "Device status successfully changed to offline"})
+		msg = "Device status successfully changed to offline"
 	}
+	c.JSON(200, gin.H{"message": msg})
 }
