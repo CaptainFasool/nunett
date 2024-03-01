@@ -23,7 +23,7 @@ import (
 func ListPeersHandler(c *gin.Context) {
 	peers, err := libp2p.ListPeers()
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, peers)
@@ -41,7 +41,7 @@ func ListDHTPeersHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	peers, err := libp2p.ListDHTPeers(reqCtx)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	if len(peers) == 0 {
@@ -64,7 +64,7 @@ func ListKadDHTPeersHandler(c *gin.Context) {
 
 	peers, err := libp2p.ListKadDHTPeers(c, reqCtx)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	if len(peers) == 0 {
@@ -86,7 +86,7 @@ func ListKadDHTPeersHandler(c *gin.Context) {
 func SelfPeerInfoHandler(c *gin.Context) {
 	self, err := libp2p.SelfPeerInfo()
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, self)
@@ -104,7 +104,7 @@ func ListChatHandler(c *gin.Context) {
 	chats, err := libp2p.IncomingChatRequests()
 	if err != nil {
 		klogger.Logger.Error("List chat handler Error: " + err.Error())
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, chats)
@@ -121,7 +121,7 @@ func ListChatHandler(c *gin.Context) {
 func ClearChatHandler(c *gin.Context) {
 	err := libp2p.ClearIncomingChatRequests()
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		klogger.Logger.Error("Clear chat handler Error: " + err.Error())
 		return
 	}
@@ -138,16 +138,19 @@ func ClearChatHandler(c *gin.Context) {
 func StartChatHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	id := c.Query("peerID")
-
+	if id == "" {
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid string ID: empty peer ID"})
+		return
+	}
 	p, err := peer.Decode(id)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid string ID: could not decode string ID to peer ID"})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid string ID: could not decode string ID to peer ID"})
 		return
 	}
 
 	stream, err := libp2p.CreateChatStream(reqCtx, p)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	libp2p.StartChat(c.Writer, c.Request, stream, id)
@@ -188,7 +191,7 @@ func DumpDHTHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	dht, err := libp2p.DumpDHT(reqCtx)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	if len(dht) == 0 {
@@ -213,7 +216,7 @@ func DefaultDepReqPeerHandler(c *gin.Context) {
 
 	target, err := libp2p.DefaultDepReqPeer(reqCtx, id)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": fmt.Sprintf("successfully set %s as target", target)})
@@ -233,7 +236,7 @@ func ClearFileTransferRequestsHandler(c *gin.Context) {
 
 	err := libp2p.ClearIncomingFileRequests()
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "successfully cleared inbound file transfer requests"})
@@ -252,7 +255,7 @@ func ListFileTransferRequestsHandler(c *gin.Context) {
 
 	req, err := libp2p.IncomingFileTransferRequests()
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, req)
@@ -269,17 +272,13 @@ func SendFileTransferHandler(c *gin.Context) {
 	span.SetAttributes(attribute.String("URL", "/peers/file/send"))
 
 	id := c.Query("peerID")
-	if len(id) == 0 {
-		c.AbortWithStatusJSON(400, gin.H{"error": "peer ID not provided"})
-		return
-	}
-	if id == libp2p.GetP2P().Host.ID().String() {
-		c.AbortWithStatusJSON(400, gin.H{"error": "peer ID cannot be self peer ID"})
-		return
-	}
 	p, err := peer.Decode(id)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer string ID: could not decode string ID to peer ID"})
+		return
+	}
+	if p == libp2p.GetP2P().Host.ID() {
+		c.AbortWithStatusJSON(400, gin.H{"error": "peer ID cannot be self peer ID"})
 		return
 	}
 
@@ -291,7 +290,7 @@ func SendFileTransferHandler(c *gin.Context) {
 
 	err = libp2p.InitiateTransferFile(c, c.Writer, c.Request, p, path)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, nil)
@@ -308,17 +307,11 @@ func AcceptFileTransferHandler(c *gin.Context) {
 	span.SetAttributes(attribute.String("URL", "/peers/file/accept"))
 
 	streamID := c.Query("streamID")
-	if streamID == "" {
-		c.AbortWithStatusJSON(400, gin.H{"error": "stream ID not provided"})
-		return
-	}
-
 	stream, err := strconv.Atoi(streamID)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("invalid stream ID: %s", streamID)})
+		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Errorf("invalid streamID query: %w", err)})
 		return
 	}
-
 	if stream != 0 {
 		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("unknown stream ID: %d", stream)})
 		return
@@ -326,7 +319,7 @@ func AcceptFileTransferHandler(c *gin.Context) {
 
 	err = libp2p.AcceptPeerFileTransfer(c, c.Writer, c.Request)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "could not accept file transfer with peer"})
+		c.AbortWithStatusJSON(500, gin.H{"error": "could not accept file transfer with peer"})
 		return
 	}
 	c.JSON(200, nil)
