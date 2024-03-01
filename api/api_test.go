@@ -15,7 +15,18 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-var debug bool
+var (
+	debug       bool
+	defaultPeer string
+	mockHostID  = "Qm01testabcdefghjiklgfoobar123"
+	// DumpKademliaDHTHandler
+	dumpKadDHTPeers int
+	// ListDHTPeersHandler
+	dhtPeers int
+	// ListKadDHTPeersHandler
+	kadDHTPeers      int
+	mockInboundChats int
+)
 
 type MockHandler struct {
 	buf *bytes.Buffer
