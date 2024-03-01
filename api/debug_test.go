@@ -13,9 +13,6 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-var mockHostID = "Qm01testabcdefghjiklgfoobar123"
-var dhtPeers int
-
 func (h *MockHandler) CleanupPeerHandler(c *gin.Context) {
 	id := c.Query("peerID")
 	if !validateMockID(id) {
@@ -50,7 +47,7 @@ func (h *MockHandler) OldPingPeerHandler(c *gin.Context) {
 }
 
 func (h *MockHandler) DumpKademliaDHTHandler(c *gin.Context) {
-	peers := mockDHTList()
+	peers := mockDumpList()
 	if len(peers) == 0 {
 		c.JSON(200, gin.H{"message": "no peers found"})
 		return
@@ -205,7 +202,7 @@ func TestDumpKademliaDHTHandler(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		dhtPeers = tc.peers
+		dumpKadDHTPeers = tc.peers
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/api/v1/kad-dht", nil)
@@ -229,8 +226,8 @@ func validateMockID(id string) bool {
 	return false
 }
 
-func mockDHTList() []models.PeerData {
-	if dhtPeers == 0 {
+func mockDumpList() []models.PeerData {
+	if dumpKadDHTPeers == 0 {
 		return []models.PeerData{}
 	}
 	return []models.PeerData{

@@ -15,10 +15,12 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-var defaultPeer string
-
 func (m *MockHandler) ListPeersHandler(c *gin.Context) {
-
+	peers, err := mockPeerAddrInfos()
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{"error": "could not get peer list"})
+	}
+	c.JSON(200, peers)
 }
 
 func (m *MockHandler) ListDHTPeersHandler(c *gin.Context) {
@@ -26,8 +28,7 @@ func (m *MockHandler) ListDHTPeersHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "host node has not yet been initialized"})
 		return
 	}
-	// TODO: create func for generating mock peers
-	peers := []peer.ID{"Qm0xbarbarbar", "Qm1xbazbazbaz", "Qm2xfoobarfoobar", "Qm3xfoobazfoobaz", "Qm4xfoofoofoo"}
+	peers := mockDHTPeers()
 	c.JSON(200, peers)
 }
 
@@ -36,7 +37,7 @@ func (m *MockHandler) ListKadDHTPeersHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "host node has not yet been initialized"})
 		return
 	}
-	peers := []string{"Qm0xfoobar", "Qm1xfoobarbarbar", "Qm2xbazbazfoo", "Qm3xfoobarbarfoo"}
+	peers := mockKadDHTPeers()
 	c.JSON(200, peers)
 }
 
@@ -45,29 +46,18 @@ func (m *MockHandler) SelfPeerInfoHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "host node has not yet been initialized"})
 		return
 	}
-	var (
-		self       libp2p.SelfPeer
-		multiaddrs []multiaddr.Multiaddr
-	)
-	self.ID = mockHostID
-	maddrStrings := []string{
-		"/ip4/127.0.0.1/tcp/8080",
-		"/ip6/::1/udp/3000",
-		"/dns4/example.com/tcp/443/https",
+	self := libp2p.SelfPeer{
+		ID:    mockHostID,
+		Addrs: mockMaddrs(),
 	}
-	for _, maddrString := range maddrStrings {
-		maddr, err := multiaddr.NewMultiaddr(maddrString)
-		if err != nil {
-			continue
-		}
-		multiaddrs = append(multiaddrs, maddr)
-	}
-	self.Addrs = multiaddrs
 	c.JSON(200, self)
 }
 
-func (m *MockHandler) ListChatHandler(c *gin.Context) {
-	chats := []libp2p.OpenStream{
+func mockListChat() ([]libp2p.OpenStream, error) {
+	if mockInboundChats == 0 {
+		return nil, fmt.Errorf("no incoming message stream")
+	}
+	return []libp2p.OpenStream{
 		{
 			ID:         0,
 			StreamID:   "abc",
@@ -86,6 +76,13 @@ func (m *MockHandler) ListChatHandler(c *gin.Context) {
 			FromPeer:   "bazfoo",
 			TimeOpened: "39840238",
 		},
+	}, nil
+}
+
+func (m *MockHandler) ListChatHandler(c *gin.Context) {
+	chats, err := mockListChat()
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 	}
 	c.JSON(200, chats)
 }
@@ -103,7 +100,7 @@ func (m *MockHandler) StartChatHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peerID query: peerID cannot be self peer ID"})
 		return
 	}
-	fmt.Printf("started chat with %s\n", id)
+	fmt.Fprintf(m.buf, "started chat with %s\n", id)
 }
 
 func (m *MockHandler) JoinChatHandler(c *gin.Context) {
@@ -117,7 +114,7 @@ func (m *MockHandler) JoinChatHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid type for streamID"})
 		return
 	}
-	fmt.Printf("joined chat %d\n", stream)
+	fmt.Fprintf(m.buf, "joined chat %d\n", stream)
 }
 
 func (m *MockHandler) DumpDHTHandler(c *gin.Context) {
@@ -314,17 +311,17 @@ func TestJoinChatHandlerWithQueries(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			description:  "Valid stream ID",
+			description:  "valid stream ID",
 			query:        "?streamID=123",
 			expectedCode: 200,
 		},
 		{
-			description:  "Invalid stream ID",
+			description:  "invalid stream ID",
 			query:        "?streamID=abc",
 			expectedCode: 400,
 		},
 		{
-			description:  "Missing stream ID",
+			description:  "missing stream ID",
 			query:        "",
 			expectedCode: 400,
 		},
@@ -474,4 +471,64 @@ func TestAcceptFileTransferHandlerWithQueries(t *testing.T) {
 
 		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
 	}
+}
+
+func mockPeerAddrInfos() ([]peer.AddrInfo, error) {
+	var addrInfos []peer.AddrInfo
+	peerData := []struct {
+		ID   string
+		Addr string
+	}{
+		{"12D3KooWEgUjXjxGnZL7DwExVnEz5pcL5U3jxKpB3o6XJgXrMuXz", "/ip4/127.0.0.1/tcp/13001"},
+		{"12D3KooWLrudbCjki3qfQpY8ghy7MbpHLWGvQYqXBL8Xs3ss2yLH", "/ip4/127.0.0.1/tcp/13002"},
+	}
+
+	for _, pd := range peerData {
+		pid, err := peer.Decode(pd.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode peer ID: %w", err)
+		}
+
+		maddr, err := multiaddr.NewMultiaddr(pd.Addr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create multiaddr: %w", err)
+		}
+
+		addrInfos = append(addrInfos, peer.AddrInfo{
+			ID:    pid,
+			Addrs: []multiaddr.Multiaddr{maddr},
+		})
+	}
+	return addrInfos, nil
+}
+
+func mockDHTPeers() []peer.ID {
+	if dhtPeers == 0 {
+		return []peer.ID{}
+	}
+	return []peer.ID{"Qm0xbarbarbar", "Qm1xbazbazbaz", "Qm2xfoobarfoobar", "Qm3xfoobazfoobaz", "Qm4xfoofoofoo"}
+}
+
+func mockKadDHTPeers() []string {
+	if kadDHTPeers == 0 {
+		return []string{}
+	}
+	return []string{"Qm0xfoobar", "Qm1xfoobarbarbar", "Qm2xbazbazfoo", "Qm3xfoobarbarfoo"}
+}
+
+func mockMaddrs() []multiaddr.Multiaddr {
+	var multiaddrs []multiaddr.Multiaddr
+	maddrStrings := []string{
+		"/ip4/127.0.0.1/tcp/8080",
+		"/ip6/::1/udp/3000",
+		"/dns4/example.com/tcp/443/https",
+	}
+	for _, maddrString := range maddrStrings {
+		maddr, err := multiaddr.NewMultiaddr(maddrString)
+		if err != nil {
+			continue
+		}
+		multiaddrs = append(multiaddrs, maddr)
+	}
+	return multiaddrs
 }
