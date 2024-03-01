@@ -93,8 +93,7 @@ func SetupMockRouter() *gin.Engine {
 		dht := v1.Group("/dht")
 		{
 			dht.GET("", m.DumpDHTHandler)
-			// TODO: add this function to mock handler
-			dht.GET("/update", ManualDHTUpdateHandler)
+			dht.GET("/update", m.ManualDHTUpdateHandler)
 		}
 		kadDHT := v1.Group("/kad-dht")
 		{
