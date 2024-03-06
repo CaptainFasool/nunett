@@ -298,6 +298,11 @@ func Offboard(ctx context.Context, force bool) error {
 		return fmt.Errorf("machine is not onboarded")
 	}
 
+	err = libp2p.ShutdownNode()
+	if err != nil {
+		return fmt.Errorf("unable to shutdown node: %w", err)
+	}
+
 	metadataPath := utils.GetMetadataFilePath()
 	err = os.Remove(metadataPath)
 	if err != nil && !force {
@@ -317,10 +322,6 @@ func Offboard(ctx context.Context, force bool) error {
 		return fmt.Errorf("unable to delete available resources on database: %w", err)
 	}
 
-	err = libp2p.ShutdownNode()
-	if err != nil {
-		return fmt.Errorf("unable to shutdown node: %w", err)
-	}
 	klogger.Logger.Info("device offboarded successfully")
 	return nil
 }

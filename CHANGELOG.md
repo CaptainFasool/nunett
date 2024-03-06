@@ -20,6 +20,20 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.157](#345)
+
+### Fixed
+- Capacity and info output format
+- Log and offboard command crash
+
+### Added
+- Allow setting default depreq peer with main app cli
+- CLI auto-completion configured for bash and zsh on postinst
+
+### Removed
+- Deprecated bash CLI and replaced with main app cli
+- Deleted cli_test for bash CLI
+
 ## [0.4.156](#337)
 
 ### Fixed

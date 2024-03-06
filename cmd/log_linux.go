@@ -16,12 +16,12 @@ const (
 	tarGzName = "nunet-log.tar.gz"
 )
 
-var logCmd = NewLogCmd(networkService, fileSystemService, journalService)
+var logCmd *cobra.Command
 
 func NewLogCmd(net backend.NetworkManager, fs backend.FileSystem, journal backend.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:     "log",
-		Short:   "Gather all logs into a tarball",
+		Short:   "Gather all logs into a tarball. COMMAND MUST RUN AS ROOT WITH SUDO",
 		PreRunE: isDMSRunning(net),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dmsLogDir := filepath.Join(logDir, "dms-log")
@@ -31,6 +31,10 @@ func NewLogCmd(net backend.NetworkManager, fs backend.FileSystem, journal backen
 			err := fs.MkdirAll(dmsLogDir, 0777)
 			if err != nil {
 				return fmt.Errorf("cannot create dms-log directory: %w", err)
+			}
+
+			if journal == nil {
+				return fmt.Errorf("journal service is not initialised")
 			}
 
 			// journal is initialized in init.go

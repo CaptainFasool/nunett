@@ -47,6 +47,13 @@ func Test_CapacityCmdWithoutFlags(t *testing.T) {
 	mockConn := &MockConnection{conns: conns}
 	mockUtils := &MockUtilsService{}
 	mockResources := &MockResources{}
+	expectedResponse := "Retrieve capacity of the machine, onboarded or available amount of resources\n"
+	expectedResponse += "\nUsage:\n  capacity [flags]\n"
+	expectedResponse += "\nFlags:\n"
+	expectedResponse += "  -a, --available   display amount of resources still available for onboarding\n"
+	expectedResponse += "  -f, --full        display device \n"
+	expectedResponse += "  -h, --help        help for capacity\n"
+	expectedResponse += "  -o, --onboarded   display amount of onboarded resources\n"
 
 	cmd := NewCapacityCmd(mockConn, mockResources, mockUtils)
 
@@ -56,7 +63,8 @@ func Test_CapacityCmdWithoutFlags(t *testing.T) {
 	cmd.SetErr(buf)
 
 	err := cmd.Execute()
-	assert.ErrorContains(err, "no flags specified")
+	assert.Nil(err)
+	assert.Equal(expectedResponse, buf.String())
 }
 
 func Test_CapacityCmdFull(t *testing.T) {

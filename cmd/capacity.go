@@ -44,7 +44,7 @@ func NewCapacityCmd(net backend.NetworkManager, resources backend.ResourceManage
 			}
 
 			if flagCombination == 0 {
-				return fmt.Errorf("no flags specified")
+				return cmd.Help()
 			}
 
 			var table *tablewriter.Table
