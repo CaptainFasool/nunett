@@ -27,7 +27,7 @@ func SetupRouter() *gin.Engine {
 		onboarding.GET("/status", OnboardStatusHandler)
 		onboarding.POST("/onboard", OnboardHandler)
 		onboarding.POST("/resource-config", ResourceConfigHandler)
-		onboarding.DELETE("/offboard", OffboardHandler)
+		onboarding.POST("/offboard", OffboardHandler)
 	}
 
 	device := v1.Group("/device")

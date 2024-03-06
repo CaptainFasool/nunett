@@ -89,7 +89,7 @@ func OnboardHandler(c *gin.Context) {
 // @Description  Offboard runs the offboarding script to remove resources associated with a device.
 // @Tags         onboarding
 // @Success      200  "device successfully offboarded"
-// @Router       /onboarding/offboard [delete]
+// @Router       /onboarding/offboard [post]
 func OffboardHandler(c *gin.Context) {
 	query := c.DefaultQuery("force", "false")
 	force, err := strconv.ParseBool(query)
