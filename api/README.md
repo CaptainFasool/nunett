@@ -54,7 +54,7 @@ The procedure to update the specifications is described in [Specification And Do
 
 The following sections describe the different functionality of the DMS covered in the `api` package.
 
-### device
+### Device Endpoints
 
 #### Device Status
 
@@ -76,18 +76,690 @@ Please see below for relevant specification and data models.
 
 #### Change Device Status
 
-### onboarding
+**endpoint**: `/device/status`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Success Message`
 
-### peers
+The endpoint changes the current status of the machine.
 
-### run
+Please see below for relevant specification and data models.
 
-### telemetry
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/device/Change_Device_Status.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
 
-### transactions
+### Onboarding endpoints
 
-### vm
+#### Create Payment Address
 
-### debug
+**endpoint**: `/onboarding/address/new`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Public-Private key pair & Mnemonic`
+
+This endpoint creates a new blockchain payment address for the user.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Create_Payment_Address.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Onboard
+
+**endpoint**: `/onboarding/onboard`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Machine Metadata`
+
+This endpoint executes the onboarding process for a compute provider device.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Onboard.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Get Metadata
+
+**endpoint**: `/onboarding/metadata`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Machine Metadata`
+
+This endpoint fetches the current metadata of the onboarded device.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Get_Metadata.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Provisioned Capacity
+
+**endpoint**: `/onboarding/provisioned`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Provisioned Capacity`
+
+This endpoint fetches the total capacity of the machine that is onboarded to Nunet.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Provisioned_Capacity.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Onboard Status
+
+**endpoint**: `/onboarding/status`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Onboarding status & Metadata`
+
+This endpoint returns onboarding status of the machine along with some metadata.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Onboard_Status.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Resource Config
+
+**endpoint**: `/onboarding/resource-config`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Machine Metadata`
+
+This endpoint allows the user to change the configuration of the resources onboarded to Nunet.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Resource_Config.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Offboard
+
+**endpoint**: `/onboarding/offboard`<br/>
+**method**: `HTTP DELETE`<br/>
+**output**: `Success Message`
+
+This endpoint allows the user to remove the resources onboarded to Nunet. 
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Offboard.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+### Peers Endpoints
+
+#### List Peers
+
+**endpoint**: `/peers`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Peer List`
+
+This endpoint gets a list of peers that the node can see within the network.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/List_Peers.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### List DHT Peers
+
+**endpoint**: `/peers/dht`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `DHT Peer List`
+
+This endpoint gets a list of peers that the node has received a dht update from.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/List_DHT_Peers.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### List Kad DHT Peers
+
+**endpoint**: `/peers/kad-dht`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `DHT Peer List`
+
+This endpoint gets a list of peers that the node has received a dht update from.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/List_KadDHT_Peers.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Self Peer Info
+
+**endpoint**: `/peers/self`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Peer Info`
+
+This endpoint gets the peer info of the libp2p node.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Self_Peer_Info.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### List Chat
+
+**endpoint**: `/peers/chat`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `List of chats`
+
+This endpoint gets the list of chat requests from peers.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/List_Chat.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Clear Chat
+
+**endpoint**: `/peers/chat/clear`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Message`
+
+This endpoint clears the chat request streams from peers.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Clear_Chat.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Start Chat
+
+**endpoint**: `/peers/chat/start`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `None`
+
+This endpoint starts a chat session with a peer.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Start_Chat.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Join Chat
+
+**endpoint**: `/peers/chat/join`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `None`
+
+This endpoint allows the user to join a chat session started by a peer.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Join_Chat.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Dump DHT
+
+**endpoint**: `/dht`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `DHT Content`
+
+This endpoint returns the entire DHT content.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Dump_DHT.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Default DepReq Peer
+
+**endpoint**: `/peers/depreq`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Message including peerID`
+
+This endpoint is used to set peer as the default receipient of deployment requests by setting the peerID parameter on GET request. 
+
+Note:
+* By sending a GET request without any parameters we get the peer currently set as default deployment request receiver. 
+
+* Sending a GET request with `peerID` parameter set to '0' will remove default deployment request receiver.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Default_DepReq_Peer.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Clear File Transfer Requests
+
+**endpoint**: `/peers/file/clear`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Message`
+
+This endpoint is used to clear file transfer request streams from peers.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Clear_File_Transfer_Requests.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### List File Transfer Requests
+
+**endpoint**: `/peers/file`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Message`
+
+This endpoint is used to get a list of file transfer requests from peers.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/List_File_Transfer_Requests.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Send File Transfer
+
+**endpoint**: `/peers/file/send`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `NIL`
+
+This endpoint is used to initiate file transfer to a peer. Note that `filePath` and `peerID` are required arguments.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Send_File_Transfer.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Accept File Transfer
+
+**endpoint**: `/peers/file/accept`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `NIL`
+
+This endpoint is used to initiate file transfer to a peer. Note that `filePath` and `peerID` are required arguments.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/peers/Accept_File_Transfer.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+### Run Endpoints
+
+#### Request Service
+
+**endpoint**: `/run/request-service`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Funding Response`
+
+This endpoint searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/run/Request_Service.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### Deployment Request
+
+**endpoint**: `/run/deploy`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `None`
+
+This endpoint loads deployment request from the database after a successful blockchain transaction has been made and passes it to compute provider.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/run/Deployment_Request.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+#### List Checkpoint
+
+**endpoint**: `/run/checkpoints`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Checkpoints`
+
+This endpoint scans lists all the files which can be used to resume a job. Returns a list of objects with absolute path and last modified date.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/run/List_Checkpoint.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+
+### Telemetry Endpoints
+
+#### Get Free Resources
+
+**endpoint**: `/telemetry/free`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Free resources`
+
+This endpoint checks and returns the amount of free resources available in a machine.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/telemetry/Get_Free_Resources.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+### Transactions Endpoints
+
+#### Get Job Transaction Hashes
+
+**endpoint**: `/transactions`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Transaction Hashes`
+
+This endpoint gets the list of transaction hashes along with the date and time of jobs done.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Get_JobTx_Hashes.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+#### Request Reward
+
+**endpoint**: `/transactions/request-reward`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Reward Response`
+
+This endpoint takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Request_Reward.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+#### Send Transaction Status
+
+**endpoint**: `/transactions/send-status`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Transaction Status`
+
+This endpoint returns the status of a blockchain transaction such as token withrawal.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Send_Tx_Status.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+#### Update Transaction Status
+
+**endpoint**: `/transactions/update-status`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Message`
+
+This endpoint updates the status of saved transactions by fetching info from blockchain using koios REST API.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Update_Tx_Status.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+### VM Endpoints
+
+#### Start Custom
+
+**endpoint**: `/vm/start-custom`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Message`
+
+This endpoint start a firecracker VM with custom configuration.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/vm/Start_Custom.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+#### Start Default
+
+**endpoint**: `/vm/start-default`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `Message`
+
+This endpoint start a firecracker VM with default configuration.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/vm/Start_Default.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+### Debug Endpoints
+
+These endpoints are only available when `DEBUG` mode is enabled.
+
+#### Manual DHT Update
+
+**endpoint**: `/dht/update`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Message`
+
+This endpoint initiates a manual update of the DHT.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/debug/Manual_DHT_Update.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+#### Cleanup Peer
+
+**endpoint**: `/cleanup`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Message`
+
+This endpoint removes a peer from the local database.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/debug/Cleanup_Peer.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+#### Ping Peer
+
+**endpoint**: `/ping`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Ping Peer Response`
+
+This endpoint pings a peer and checks the peer's presence in the DHT. It also returns the round trip time (RTT) for the ping.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/debug/Ping_Peer.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+#### Old Ping Peer
+
+**endpoint**: `/oldping`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Ping Peer Response`
+
+This endpoint pings a peer and checks the peer's presence in the DHT. It also returns the round trip time (RTT) for the ping.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/debug/Old_Ping_Peer.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
+#### Dump Kademlia DHT
+
+**endpoint**: `/kad-dht`<br/>
+**method**: `HTTP GET`<br/>
+**output**: `Ping Peer Response`
+
+This endpoint returns the DHT contents.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/debug/Dump_Kademlia_DHT.feature))   |
+| Request payload       | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - success     | entityDiagrams ([.mermaid](),[.svg]()) |
+| Return payload - error      | entityDiagrams ([.mermaid](),[.svg]()) |
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) |
+
 
 
