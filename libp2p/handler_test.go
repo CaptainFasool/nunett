@@ -98,6 +98,7 @@ func TestListPeers(t *testing.T) {
 }
 
 func TestSelfPeer(t *testing.T) {
+	db.ConnectDatabase()
 	router := SetUpRouter()
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
@@ -171,6 +172,7 @@ func TestStartChatNoPeerId(t *testing.T) {
 }
 
 func TestStartChatSelfPeerID(t *testing.T) {
+	db.ConnectDatabase()
 	router := SetUpRouter()
 
 	priv1, _, _ := GenerateKey(time.Now().Unix())
