@@ -31,8 +31,8 @@ var clients = make(map[internal.WebSocketConnection]string)
 
 // TODO: Move this struct somewhere else
 type SelfPeer struct {
-	ID    string                `json:"id"`
-	Addrs []multiaddr.Multiaddr `json:"addrs"`
+	ID    string
+	Addrs []multiaddr.Multiaddr
 }
 
 func DeviceStatus() (bool, error) {
@@ -194,19 +194,16 @@ func ListKadDHTPeers(ctx, reqCtx context.Context) ([]string, error) {
 }
 
 func SelfPeerInfo() (*SelfPeer, error) {
-	start := time.Now().UnixMilli()
 	if p2p.Host == nil {
 		return nil, fmt.Errorf("host node has not yet been initialized")
 	}
 
 	klogger.Logger.Info(" result : Self Peer ID " + p2p.Host.ID().String())
-	zlog.Sugar().Infof("----------klogger time taken=%d ms", time.Now().UnixMilli()-start)
 
 	var self SelfPeer
 	self.ID = p2p.Host.ID().String()
 	self.Addrs = p2p.Host.Addrs()
 
-	zlog.Sugar().Infof("----------overall time taken=%d ms", time.Now().UnixMilli()-start)
 	return &self, nil
 }
 
