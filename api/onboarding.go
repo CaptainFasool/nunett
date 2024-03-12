@@ -67,7 +67,8 @@ func CreatePaymentAddressHandler(c *gin.Context) {
 //	@Router			/onboarding/onboard [post]
 func OnboardHandler(c *gin.Context) {
 	capacity := models.CapacityForNunet{
-		ServerMode: true,
+		ServerMode:  true,
+		IsAvailable: true,
 	}
 	err := c.BindJSON(&capacity)
 	if err != nil {
