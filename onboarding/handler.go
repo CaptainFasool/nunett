@@ -89,7 +89,7 @@ func Status() (*models.OnboardingStatus, error) {
 
 	resp := models.OnboardingStatus{
 		Onboarded:    onboarded,
-		Error:        err.Error(),
+		Error:        err,
 		MachineUUID:  utils.GetMachineUUID(),
 		MetadataPath: metadataPath,
 		DatabasePath: dbPath,

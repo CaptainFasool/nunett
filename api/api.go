@@ -65,7 +65,6 @@ func SetupRouter() *gin.Engine {
 	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
 		dht := v1.Group("/dht")
 		{
-			dht.GET("", DumpDHTHandler)
 			dht.GET("/update", ManualDHTUpdateHandler)
 		}
 		kadDHT := v1.Group("/kad-dht")
@@ -79,9 +78,9 @@ func SetupRouter() *gin.Engine {
 
 	p2p := v1.Group("/peers")
 	{
-		// peer.GET("", machines.ListPeers)
 		p2p.GET("", ListPeersHandler)
 		p2p.GET("/dht", ListDHTPeersHandler)
+		p2p.GET("/dht/dump", DumpDHTHandler)
 		p2p.GET("/kad-dht", ListKadDHTPeersHandler)
 		p2p.GET("/self", SelfPeerInfoHandler)
 		p2p.GET("/chat", ListChatHandler)
@@ -93,9 +92,6 @@ func SetupRouter() *gin.Engine {
 		p2p.GET("/file/send", SendFileTransferHandler)
 		p2p.GET("/file/accept", AcceptFileTransferHandler)
 		p2p.GET("/file/clear", ClearFileTransferRequestsHandler)
-		// p2p.GET("/dht/dump", libp2p.DumpDHT)
-		// peer.GET("/shell", internal.HandleWebSocket)
-		// peer.GET("/log", internal.HandleWebSocket)
 	}
 
 	return router
