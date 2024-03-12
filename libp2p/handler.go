@@ -71,7 +71,7 @@ func ChangeDeviceStatus(status bool) error {
 
 	p.IsAvailable = status
 
-	err = p2p.Host.Peerstore().Put(p2p.Host.ID(), "peer_info", peerData)
+	err = p2p.Host.Peerstore().Put(p2p.Host.ID(), "peer_info", p)
 	if err != nil {
 		return fmt.Errorf("failed to put peer data into peerstore: %w", err)
 	}

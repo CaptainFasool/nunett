@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -36,7 +38,7 @@ func DeviceStatusHandler(c *gin.Context) {
 // @Router			/device/status [post]
 func ChangeDeviceStatusHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/device/pause"))
+	span.SetAttributes(attribute.String("URL", "/device/status"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 	kLogger.Info("Pause job onboarding", span)
 
@@ -54,9 +56,11 @@ func ChangeDeviceStatusHandler(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("\n\n\nstatus.IsAvailable: %v \n\n", status.IsAvailable)
+
 	err = libp2p.ChangeDeviceStatus(status.IsAvailable)
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": "could not change device status"})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
