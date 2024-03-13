@@ -201,7 +201,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 
 	err = libp2p.SaveNodeInfo(priv, pub, capacity.ServerMode, capacity.IsAvailable)
 	if err != nil {
-		return nil, fmt.Errorf("unable to save node info: %v")
+		return nil, fmt.Errorf("unable to save node info: %v", err)
 	}
 
 	err = telemetry.CalcFreeResAndUpdateDB()
