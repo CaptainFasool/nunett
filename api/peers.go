@@ -45,7 +45,7 @@ func ListDHTPeersHandler(c *gin.Context) {
 		return
 	}
 	if len(peers) == 0 {
-		c.JSON(200, gin.H{"message": "no peers found"})
+		c.JSON(404, gin.H{"message": "no peers found"})
 		return
 	}
 	c.JSON(200, peers)
@@ -68,7 +68,7 @@ func ListKadDHTPeersHandler(c *gin.Context) {
 		return
 	}
 	if len(peers) == 0 {
-		c.JSON(200, gin.H{"message": "no peers found"})
+		c.JSON(404, gin.H{"message": "no peers found"})
 		klogger.Logger.Error("No peers found")
 		return
 	}
@@ -104,7 +104,7 @@ func ListChatHandler(c *gin.Context) {
 	chats, err := libp2p.IncomingChatRequests()
 	if err != nil {
 		klogger.Logger.Error("List chat handler Error: " + err.Error())
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, chats)
@@ -121,8 +121,8 @@ func ListChatHandler(c *gin.Context) {
 func ClearChatHandler(c *gin.Context) {
 	err := libp2p.ClearIncomingChatRequests()
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		klogger.Logger.Error("Clear chat handler Error: " + err.Error())
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"message": "Successfully Cleard Inbound Chat Requests."})
@@ -223,12 +223,12 @@ func DefaultDepReqPeerHandler(c *gin.Context) {
 }
 
 // ClearFileTransferRequestsHandler  godoc
-// @Summary      Clear file transfer requests
-// @Description  Clear file transfer request streams from peers
-// @Tags         file
-// @Produce      json
-// @Success      200
-// @Router       /peers/file/clear [get]
+// @Summary			Clear file transfer requests
+// @Description		Clear file transfer request streams from peers
+// @Tags			file
+// @Produce			json
+// @Success			200
+// @Router			/peers/file/clear [get]
 func ClearFileTransferRequestsHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	span := trace.SpanFromContext(reqCtx)
@@ -243,30 +243,30 @@ func ClearFileTransferRequestsHandler(c *gin.Context) {
 }
 
 // ListFileTransferRequestsHandler  godoc
-// @Summary      List file transfer requests
-// @Description  Get a list of file transfer requests from peers
-// @Tags         file
-// @Produce      json
-// @Success      200
-// @Router       /peers/file [get]
+// @Summary			List file transfer requests
+// @Description		Get a list of file transfer requests from peers
+// @Tags			file
+// @Produce			json
+// @Success			200
+// @Router			/peers/file [get]
 func ListFileTransferRequestsHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/file"))
 
 	req, err := libp2p.IncomingFileTransferRequests()
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, req)
 }
 
 // SendFileTransferHandler  godoc
-// @Summary      Send a file to a peer
-// @Description  Initiate file transfer to a peer. filePath and peerID are required arguments.
-// @Tags         file
-// @Success      200
-// @Router       /peers/file/send [get]
+// @Summary			Send a file to a peer
+// @Description		Initiate file transfer to a peer. filePath and peerID are required arguments.
+// @Tags			file
+// @Success			200
+// @Router			/peers/file/send [get]
 func SendFileTransferHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/file/send"))
@@ -297,11 +297,11 @@ func SendFileTransferHandler(c *gin.Context) {
 }
 
 // AcceptFileTransferHandler  godoc
-// @Summary      Accept incoming file transfer
-// @Description  Accept an incoming file transfer. Incoming file transfer stream ID is a required parameter.
-// @Tags         file
-// @Success      200
-// @Router       /peers/file/accept [get]
+// @Summary			Accept incoming file transfer
+// @Description		Accept an incoming file transfer. Incoming file transfer stream ID is a required parameter.
+// @Tags			file
+// @Success			200
+// @Router			/peers/file/accept [get]
 func AcceptFileTransferHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/peers/file/accept"))

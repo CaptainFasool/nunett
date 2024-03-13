@@ -16,7 +16,7 @@ import (
 //	@Description	RequestServiceHandler searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
 //	@Tags			run
 //	@Param			deployment_request	body		models.DeploymentRequest	true	"Deployment Request"
-//	@Success		200					{object}	fundingRespToSPD
+//	@Success		200					{object}	machines.fundingRespToSPD
 //	@Router			/run/request-service [post]
 func RequestServiceHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
@@ -66,7 +66,7 @@ func DeploymentRequestHandler(c *gin.Context) {
 //	@Summary		Returns a list of absolute path to checkpoint files.
 //	@Description	ListCheckpointHandler scans data_dir/received_checkpoints and lists all the tar.gz files which can be used to resume a job. Returns a list of objects with absolute path and last modified date.
 //	@Tags			run
-//	@Success		200					{object}	[]checkpoint
+//	@Success		200					{object}	[]libp2p.checkpoint
 //	@Router			/run/checkpoints [get]
 func ListCheckpointHandler(c *gin.Context) {
 	checkpoints, err := libp2p.ListCheckpoints()

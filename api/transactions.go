@@ -14,7 +14,7 @@ import (
 //	@Summary		Get list of TxHashes for jobs done.
 //	@Description	Get list of TxHashes along with the date and time of jobs done.
 //	@Tags			run
-//	@Success		200		{object}	TxHashResp
+//	@Success		200		{object}	[]tokenomics.TxHashResp
 //	@Router			/transactions [get]
 func GetJobTxHashesHandler(c *gin.Context) {
 	sizeStr := c.Query("size_done")
@@ -37,8 +37,8 @@ func GetJobTxHashesHandler(c *gin.Context) {
 //	@Summary		Get NTX tokens for work done.
 //	@Description	HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.
 //	@Tags			run
-//	@Param			body	body		ClaimCardanoTokenBody	true	"Claim Reward Body"
-//	@Success		200		{object}	rewardRespToCPD
+//	@Param			body	body		tokenomics.ClaimCardanoTokenBody	true	"Claim Reward Body"
+//	@Success		200		{object}	tokenomics.rewardRespToCPD
 //	@Router			/transactions/request-reward [post]
 func RequestRewardHandler(c *gin.Context) {
 	var payload tokenomics.ClaimCardanoTokenBody
@@ -79,7 +79,7 @@ func SendTxStatusHandler(c *gin.Context) {
 //	@Summary		Updates blockchain transaction status of DB.
 //	@Description	HandleUpdateStatus is used by webapps to update status of saved transactions with fetching info from blockchain using koios REST API.
 //	@Tags			tx
-//	@Param			body	body		updateTxStatusBody	true	"Transaction Status Update Body"
+//	@Param			body	body		tokenomics.UpdateTxStatusBody	true	"Transaction Status Update Body"
 //	@Success		200		{string}	string
 //	@Router			/transactions/update-status [post]
 func UpdateTxStatusHandler(c *gin.Context) {

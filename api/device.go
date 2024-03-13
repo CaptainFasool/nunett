@@ -1,8 +1,6 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -13,11 +11,11 @@ import (
 
 // DeviceStatusHandler  godoc
 //
-// @Summary		    Retrieve device status
-// @Description	    Retrieve device status whether paused/offline (unable to receive job deployments) or online
+// @Summary			Retrieve device status
+// @Description		Retrieve device status whether paused/offline (unable to receive job deployments) or online
 // @Tags			device
-// @Produce		    json
-// @Success		    200	{string}	string
+// @Produce			json
+// @Success			200	{string}	string
 // @Router			/device/status [get]
 func DeviceStatusHandler(c *gin.Context) {
 	status, err := libp2p.DeviceStatus()
@@ -30,11 +28,11 @@ func DeviceStatusHandler(c *gin.Context) {
 
 // ChangeDeviceStatusHandler  godoc
 //
-// @Summary		    Change device status between online/offline
-// @Description	    Change device status to online (able to receive jobs) or offline (unable to receive jobs).
+// @Summary			Change device status between online/offline
+// @Description		Change device status to online (able to receive jobs) or offline (unable to receive jobs).
 // @Tags			device
-// @Produce		    json
-// @Success		    200	{string}	string
+// @Produce			json
+// @Success			200	{string}	string
 // @Router			/device/status [post]
 func ChangeDeviceStatusHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
@@ -55,8 +53,6 @@ func ChangeDeviceStatusHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
 		return
 	}
-
-	fmt.Printf("\n\n\nstatus.IsAvailable: %v \n\n", status.IsAvailable)
 
 	err = libp2p.ChangeDeviceStatus(status.IsAvailable)
 	if err != nil {

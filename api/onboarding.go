@@ -86,11 +86,13 @@ func OnboardHandler(c *gin.Context) {
 }
 
 // OffboardHandler      godoc
-// @Summary      Runs the offboarding process.
-// @Description  Offboard runs the offboarding script to remove resources associated with a device.
-// @Tags         onboarding
-// @Success      200  "device successfully offboarded"
-// @Router       /onboarding/offboard [post]
+//
+// @Summary		Runs the offboarding process.
+// @Description	Offboard runs offboarding process to remove the machine from the NuNet network.
+// @Tags		onboarding
+// @Produce		json
+// @Success      200              {string}  string    "device successfully offboarded"
+// @Router		/onboarding/offboard [post]
 func OffboardHandler(c *gin.Context) {
 	query := c.DefaultQuery("force", "false")
 	force, err := strconv.ParseBool(query)
@@ -112,11 +114,11 @@ func OffboardHandler(c *gin.Context) {
 //
 //	@Summary		Onboarding status and other metadata.
 //	@Description	Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.
-//					  `onboarded` is true if the device is onboarded, false otherwise.
-//					  `error` is the error message if any related to onboarding status check
-//					  `machine_uuid` is the UUID of the machine
-//					  `metadata_path` is the path to metadataV2.json only if it exists
-//					  `database_path` is the path to nunet.db only if it exists
+//	@Description	`onboarded` is true if the device is onboarded, false otherwise.
+//	@Description	`error` is the error message if any related to onboarding status check
+//	@Description	`machine_uuid` is the UUID of the machine
+//	@Description	`metadata_path` is the path to metadataV2.json only if it exists
+//	@Description	`database_path` is the path to nunet.db only if it exists
 //	@Tags			onboarding
 //	@Produce		json
 //	@Success		200	{object} models.OnboardingStatus
