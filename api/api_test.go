@@ -39,34 +39,6 @@ var (
 	mockInboundChats int
 )
 
-func ConnectTestDatabase() {
-	testDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		panic(err)
-	}
-	testDB.AutoMigrate(&models.ElasticToken{})
-	testDB.AutoMigrate(&models.VirtualMachine{})
-	testDB.AutoMigrate(&models.Machine{})
-	testDB.AutoMigrate(&models.AvailableResources{})
-	testDB.AutoMigrate(&models.FreeResources{})
-	testDB.AutoMigrate(&models.PeerInfo{})
-	testDB.AutoMigrate(&models.Services{})
-	testDB.AutoMigrate(&models.ServiceResourceRequirements{})
-	testDB.AutoMigrate(&models.ContainerImages{})
-	testDB.AutoMigrate(&models.RequestTracker{})
-	testDB.AutoMigrate(&models.Libp2pInfo{})
-	testDB.AutoMigrate(&models.DeploymentRequestFlat{})
-	testDB.AutoMigrate(&models.MachineUUID{})
-	testDB.AutoMigrate(&models.Connection{})
-	testDB.AutoMigrate(&models.LogBinAuth{})
-
-	db.DB = testDB
-	err = db.DB.Use(otelgorm.NewPlugin())
-	if err != nil {
-		panic(err)
-	}
-}
-
 func SetupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -141,6 +113,48 @@ func SetupTestRouter() *gin.Engine {
 		// peer.GET("/log", internal.HandleWebSocket)
 	}
 	return router
+}
+
+func ConnectTestDatabase() {
+	testDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	testDB.AutoMigrate(&models.ElasticToken{})
+	testDB.AutoMigrate(&models.VirtualMachine{})
+	testDB.AutoMigrate(&models.Machine{})
+	testDB.AutoMigrate(&models.AvailableResources{})
+	testDB.AutoMigrate(&models.FreeResources{})
+	testDB.AutoMigrate(&models.PeerInfo{})
+	testDB.AutoMigrate(&models.Services{})
+	testDB.AutoMigrate(&models.ServiceResourceRequirements{})
+	testDB.AutoMigrate(&models.ContainerImages{})
+	testDB.AutoMigrate(&models.RequestTracker{})
+	testDB.AutoMigrate(&models.Libp2pInfo{})
+	testDB.AutoMigrate(&models.DeploymentRequestFlat{})
+	testDB.AutoMigrate(&models.MachineUUID{})
+	testDB.AutoMigrate(&models.Connection{})
+	testDB.AutoMigrate(&models.LogBinAuth{})
+
+	db.DB = testDB
+	err = db.DB.Use(otelgorm.NewPlugin())
+	if err != nil {
+		panic(err)
+	}
+}
+
+func CleanupTestDatabase(testDB *gorm.DB) {
+	testDB.Migrator().DropTable(
+		&models.ElasticToken{}, &models.VirtualMachine{}, &models.Machine{}, &models.AvailableResources{},
+		&models.FreeResources{}, &models.PeerInfo{}, &models.Services{}, &models.ServiceResourceRequirements{},
+		&models.ContainerImages{}, &models.RequestTracker{}, &models.Libp2pInfo{}, &models.DeploymentRequestFlat{},
+		&models.MachineUUID{}, &models.Connection{}, &models.LogBinAuth{},
+	)
+	testDB.Exec("VACUUM")
+	sqlDB, err := testDB.DB()
+	if err == nil {
+		sqlDB.Close()
+	}
 }
 
 func WriteMockMetadata(fs afero.Fs) (string, error) {
