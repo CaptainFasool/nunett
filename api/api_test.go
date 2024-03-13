@@ -2,18 +2,29 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
-	//	"github.com/stretchr/testify/mock"
-	//	"gitlab.com/nunet/device-management-service/integrations/oracle"
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	//"github.com/stretchr/testify/mock"
+	//"gitlab.com/nunet/device-management-service/integrations/oracle"
+	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 )
+
+// type MockOracle struct {
+// 	mock.Mock
+// }
+//
+// func (o *MockOracle) WithdrawTokenRequest(req *oracle.RewardRequest) (*oracle.RewardResponse, error) {
+// 	args := o.Called(req)
+// 	return args.Get(0).(*oracle.RewardResponse), args.Error(1)
+// }
 
 var (
 	debug       bool
@@ -28,96 +39,104 @@ var (
 	mockInboundChats int
 )
 
-type MockHandler struct {
-	buf *bytes.Buffer
-}
+func ConnectTestDatabase() {
+	testDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	testDB.AutoMigrate(&models.ElasticToken{})
+	testDB.AutoMigrate(&models.VirtualMachine{})
+	testDB.AutoMigrate(&models.Machine{})
+	testDB.AutoMigrate(&models.AvailableResources{})
+	testDB.AutoMigrate(&models.FreeResources{})
+	testDB.AutoMigrate(&models.PeerInfo{})
+	testDB.AutoMigrate(&models.Services{})
+	testDB.AutoMigrate(&models.ServiceResourceRequirements{})
+	testDB.AutoMigrate(&models.ContainerImages{})
+	testDB.AutoMigrate(&models.RequestTracker{})
+	testDB.AutoMigrate(&models.Libp2pInfo{})
+	testDB.AutoMigrate(&models.DeploymentRequestFlat{})
+	testDB.AutoMigrate(&models.MachineUUID{})
+	testDB.AutoMigrate(&models.Connection{})
+	testDB.AutoMigrate(&models.LogBinAuth{})
 
-func newMockHandler() *MockHandler {
-	return &MockHandler{
-		buf: new(bytes.Buffer),
+	db.DB = testDB
+	err = db.DB.Use(otelgorm.NewPlugin())
+	if err != nil {
+		panic(err)
 	}
 }
 
-// type MockOracle struct {
-// 	mock.Mock
-// }
-//
-// func (o *MockOracle) WithdrawTokenRequest(req *oracle.RewardRequest) (*oracle.RewardResponse, error) {
-// 	args := o.Called(req)
-// 	return args.Get(0).(*oracle.RewardResponse), args.Error(1)
-// }
-
-func SetupMockRouter() *gin.Engine {
-	m := newMockHandler()
+func SetupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	v1 := router.Group("/api/v1")
 	onboard := v1.Group("/onboarding")
 	{
-		onboard.GET("/metadata", m.GetMetadataHandler)
-		onboard.GET("/status", m.OnboardStatusHandler)
-		onboard.GET("/provisioned", m.ProvisionedCapacityHandler)
-		onboard.GET("/address/new", m.CreatePaymentAddressHandler)
-		onboard.POST("/onboard", m.OnboardHandler)
-		onboard.POST("/resource-config", m.ResourceConfigHandler)
-		onboard.DELETE("/offboard", m.OffboardHandler)
+		onboard.GET("/metadata", GetMetadataHandler)
+		onboard.GET("/status", OnboardStatusHandler)
+		onboard.GET("/provisioned", ProvisionedCapacityHandler)
+		onboard.GET("/address/new", CreatePaymentAddressHandler)
+		onboard.POST("/onboard", OnboardHandler)
+		onboard.POST("/resource-config", ResourceConfigHandler)
+		onboard.DELETE("/offboard", OffboardHandler)
 	}
 	device := v1.Group("/device")
 	{
-		device.GET("/status", m.DeviceStatusHandler)
-		device.POST("/status", m.ChangeDeviceStatusHandler)
+		device.GET("/status", DeviceStatusHandler)
+		device.POST("/status", ChangeDeviceStatusHandler)
 	}
 	vm := v1.Group("/vm")
 	{
-		vm.POST("/start-default", m.StartDefaultHandler)
-		vm.POST("/start-custom", m.StartCustomHandler)
+		vm.POST("/start-default", StartDefaultHandler)
+		vm.POST("/start-custom", StartCustomHandler)
 	}
 	run := v1.Group("/run")
 	{
-		run.GET("/checkpoints", m.ListCheckpointHandler)
-		run.GET("/deploy", m.DeploymentRequestHandler)
-		run.POST("/request-service", m.RequestServiceHandler)
+		run.GET("/checkpoints", ListCheckpointHandler)
+		run.GET("/deploy", DeploymentRequestHandler)
+		run.POST("/request-service", RequestServiceHandler)
 	}
 	tx := v1.Group("/transactions")
 	{
-		tx.GET("", m.GetJobTxHashesHandler)
-		tx.POST("/request-reward", m.RequestRewardHandler)
-		tx.POST("/send-status", m.SendTxStatusHandler)
-		tx.POST("/update-status", m.UpdateTxStatusHandler)
+		tx.GET("", GetJobTxHashesHandler)
+		tx.POST("/request-reward", RequestRewardHandler)
+		tx.POST("/send-status", SendTxStatusHandler)
+		tx.POST("/update-status", UpdateTxStatusHandler)
 	}
 	tele := v1.Group("/telemetry")
 	{
-		tele.GET("/free", m.GetFreeResourcesHandler)
+		tele.GET("/free", GetFreeResourcesHandler)
 	}
 	if debug == true {
 		dht := v1.Group("/dht")
 		{
-			dht.GET("", m.DumpDHTHandler)
-			dht.GET("/update", m.ManualDHTUpdateHandler)
+			dht.GET("", DumpDHTHandler)
+			dht.GET("/update", ManualDHTUpdateHandler)
 		}
 		kadDHT := v1.Group("/kad-dht")
 		{
-			kadDHT.GET("", m.DumpKademliaDHTHandler)
+			kadDHT.GET("", DumpKademliaDHTHandler)
 		}
-		v1.GET("/ping", m.PingPeerHandler)
-		v1.GET("/oldping", m.OldPingPeerHandler)
-		v1.GET("/cleanup", m.CleanupPeerHandler)
+		v1.GET("/ping", PingPeerHandler)
+		v1.GET("/oldping", OldPingPeerHandler)
+		v1.GET("/cleanup", CleanupPeerHandler)
 	}
 	p2p := v1.Group("/peers")
 	{
-		p2p.GET("", m.ListPeersHandler)
-		p2p.GET("/dht", m.ListDHTPeersHandler)
-		p2p.GET("/kad-dht", m.ListKadDHTPeersHandler)
-		p2p.GET("/self", m.SelfPeerInfoHandler)
-		p2p.GET("/chat", m.ListChatHandler)
-		p2p.GET("/depreq", m.DefaultDepReqPeerHandler)
-		p2p.GET("/chat/start", m.StartChatHandler)
-		p2p.GET("/chat/join", m.JoinChatHandler)
-		p2p.GET("/chat/clear", m.ClearChatHandler)
-		p2p.GET("/file", m.ListFileTransferRequestsHandler)
-		p2p.GET("/file/send", m.SendFileTransferHandler)
-		p2p.GET("/file/accept", m.AcceptFileTransferHandler)
-		p2p.GET("/file/clear", m.ClearFileTransferRequestsHandler)
+		p2p.GET("", ListPeersHandler)
+		p2p.GET("/dht", ListDHTPeersHandler)
+		p2p.GET("/kad-dht", ListKadDHTPeersHandler)
+		p2p.GET("/self", SelfPeerInfoHandler)
+		p2p.GET("/chat", ListChatHandler)
+		p2p.GET("/depreq", DefaultDepReqPeerHandler)
+		p2p.GET("/chat/start", StartChatHandler)
+		p2p.GET("/chat/join", JoinChatHandler)
+		p2p.GET("/chat/clear", ClearChatHandler)
+		p2p.GET("/file", ListFileTransferRequestsHandler)
+		p2p.GET("/file/send", SendFileTransferHandler)
+		p2p.GET("/file/accept", AcceptFileTransferHandler)
+		p2p.GET("/file/clear", ClearFileTransferRequestsHandler)
 		// peer.GET("/shell", internal.HandleWebSocket)
 		// peer.GET("/log", internal.HandleWebSocket)
 	}
@@ -126,53 +145,40 @@ func SetupMockRouter() *gin.Engine {
 
 func WriteMockMetadata(fs afero.Fs) (string, error) {
 	path := utils.GetMetadataFilePath()
-	metadata := &models.MetadataV2{
-		Name:            "ExampleName",
-		UpdateTimestamp: 1625072042,
-		Network:         "192.168.1.1",
-		PublicKey:       "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD3",
-		NodeID:          "node-123",
-		AllowCardano:    true,
-		Dashboard:       "http://localhost:3000",
-	}
-	content, err := json.Marshal(metadata)
-	if err != nil {
-		return "", fmt.Errorf("could not marshal data into mock metadata: %w", err)
-	}
-	err = afero.WriteFile(fs, path, content, 0644)
+	err := afero.WriteFile(fs, path, []byte(testMetadata), 0644)
 	if err != nil {
 		return "", fmt.Errorf("could not write content to mock metadata: %w", err)
 	}
-	buf := bytes.NewBuffer(content)
+	buf := bytes.NewBuffer([]byte(testMetadata))
 	return buf.String(), nil
 }
 
-func startMockWebSocketServer() *http.Server {
-	upgrader := websocket.Upgrader{}
-	server := &http.Server{
-		Addr: "localhost:8080",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			conn, err := upgrader.Upgrade(w, r, nil)
-			if err != nil {
-				return
-			}
-			defer conn.Close()
-			for {
-				messageType, p, err := conn.ReadMessage()
-				if err != nil {
-					return
-				}
-				if err := conn.WriteMessage(messageType, p); err != nil {
-					return
-				}
-			}
-		}),
-	}
-
-	go server.ListenAndServe()
-	return server
-}
-
+// func startMockWebSocketServer() *http.Server {
+// 	upgrader := websocket.Upgrader{}
+// 	server := &http.Server{
+// 		Addr: "localhost:8080",
+// 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 			conn, err := upgrader.Upgrade(w, r, nil)
+// 			if err != nil {
+// 				return
+// 			}
+// 			defer conn.Close()
+// 			for {
+// 				messageType, p, err := conn.ReadMessage()
+// 				if err != nil {
+// 					return
+// 				}
+// 				if err := conn.WriteMessage(messageType, p); err != nil {
+// 					return
+// 				}
+// 			}
+// 		}),
+// 	}
+//
+// 	go server.ListenAndServe()
+// 	return server
+// }
+//
 // func TestHandleDeploymentRequest(t *testing.T) {
 // 	// Setup the router
 // 	router := SetupMockRouter()
