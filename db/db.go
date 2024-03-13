@@ -14,7 +14,6 @@ var DB *gorm.DB
 
 func ConnectDatabase() {
 	database, err := gorm.Open(sqlite.Open(fmt.Sprintf("%s/nunet.db", config.GetConfig().General.MetadataPath)), &gorm.Config{})
-
 	if err != nil {
 		panic("Failed to connect to database!")
 	}
