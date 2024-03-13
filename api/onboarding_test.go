@@ -5,199 +5,59 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
-func (h *MockHandler) GetMetadataHandler(c *gin.Context) {
-	metadata := models.MetadataV2{
-		Name:            "metadata",
-		UpdateTimestamp: 1633036800,
-		Resource: struct {
-			MemoryMax int64 `json:"memory_max,omitempty"`
-			TotalCore int64 `json:"total_core,omitempty"`
-			CPUMax    int64 `json:"cpu_max,omitempty"`
-		}{
-			MemoryMax: 16000,
-			TotalCore: 8,
-			CPUMax:    8,
-		},
-		Available: struct {
-			CPU    int64 `json:"cpu,omitempty"`
-			Memory int64 `json:"memory,omitempty"`
-		}{
-			CPU:    4,
-			Memory: 8000,
-		},
-		Reserved: struct {
-			CPU    int64 `json:"cpu,omitempty"`
-			Memory int64 `json:"memory,omitempty"`
-		}{
-			CPU:    4,
-			Memory: 8000,
-		},
-		Network:           "mainnet",
-		PublicKey:         "abc123xyz",
-		NodeID:            "node-001",
-		AllowCardano:      true,
-		NTXPricePerMinute: 0.1,
-	}
-	c.JSON(200, metadata)
-}
-
-func (h *MockHandler) ProvisionedCapacityHandler(c *gin.Context) {
-	prov := models.Provisioned{
-		CPU:      3.5,
-		Memory:   16384,
-		NumCores: 4,
-	}
-	c.JSON(200, prov)
-}
-
-func (h *MockHandler) CreatePaymentAddressHandler(c *gin.Context) {
-	wallet := c.DefaultQuery("blockchain", "cardano")
-	if wallet != "cardano" && wallet != "ethereum" {
-		c.JSON(400, gin.H{"error": "invalid query data"})
-		return
-	}
-	var addr, phrase string
-	var resp models.BlockchainAddressPrivKey
-	if wallet == "cardano" {
-		addr = "abc123xyz"
-		phrase = "barbarbarbar"
-		resp = models.BlockchainAddressPrivKey{
-			Address:  addr,
-			Mnemonic: phrase,
-		}
-	} else {
-		addr = "foobar123baz"
-		phrase = "bazbazbazbaz"
-		resp = models.BlockchainAddressPrivKey{
-			Address:    addr,
-			PrivateKey: phrase,
-		}
-	}
-	c.JSON(200, resp)
-}
-
-func (h *MockHandler) OnboardHandler(c *gin.Context) {
-	capacity := models.CapacityForNunet{
-		ServerMode: true,
-	}
-	err := c.BindJSON(&capacity)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid request data"})
-		return
-	}
-	metadata := models.MetadataV2{
-		Name:            "foobar",
-		UpdateTimestamp: 1625097600,
-		Reserved: struct {
-			CPU    int64 `json:"cpu,omitempty"`
-			Memory int64 `json:"memory,omitempty"`
-		}{
-			CPU:    capacity.CPU,
-			Memory: capacity.Memory,
-		},
-		Network:           capacity.Channel,
-		PublicKey:         "bazbazbaz",
-		NodeID:            "foo123bar",
-		AllowCardano:      capacity.Cardano,
-		NTXPricePerMinute: capacity.NTXPricePerMinute,
-	}
-	c.JSON(200, metadata)
-}
-
-func (h *MockHandler) OnboardStatusHandler(c *gin.Context) {
-	status := models.OnboardingStatus{
-		Onboarded:    true,
-		Error:        "",
-		MachineUUID:  "foo",
-		MetadataPath: "/.nunet/metadataV2.json",
-		DatabasePath: "/.nunet/nunet.db",
-	}
-	c.JSON(200, status)
-}
-
-func (h *MockHandler) OffboardHandler(c *gin.Context) {
-	query := c.DefaultQuery("force", "false")
-	force, err := strconv.ParseBool(query)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid query data"})
-		return
-	}
-	var msg string
-	if force {
-		msg = "forced offboard successfull"
-	} else {
-		msg = "offboard successfull"
-	}
-	c.JSON(200, gin.H{"message": msg})
-}
-
-func (h *MockHandler) ResourceConfigHandler(c *gin.Context) {
-	if c.Request.ContentLength == 0 {
-		c.JSON(400, gin.H{"error": "request body is empty"})
-		return
-	}
-
-	var capacity models.CapacityForNunet
-	err := c.BindJSON(&capacity)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid request data"})
-		return
-	}
-	metadata := models.MetadataV2{
-		Name:            "foobar",
-		UpdateTimestamp: 1625097600,
-		Reserved: struct {
-			CPU    int64 `json:"cpu,omitempty"`
-			Memory int64 `json:"memory,omitempty"`
-		}{
-			CPU:    capacity.CPU,
-			Memory: capacity.Memory,
-		},
-		Network:           capacity.Channel,
-		PublicKey:         "bazbazbaz",
-		NodeID:            "foo123bar",
-		AllowCardano:      capacity.Cardano,
-		NTXPricePerMinute: capacity.NTXPricePerMinute,
-	}
-	c.JSON(200, metadata)
-}
+var testMetadata string = `
+{
+ "update_timestamp": 1698332902,
+ "resource": {
+  "memory_max": 31674,
+  "total_core": 16,
+  "cpu_max": 67198
+ },
+ "available": {
+  "cpu": 42942,
+  "memory": 10340
+ },
+ "reserved": {
+  "cpu": 24256,
+  "memory": 21334
+ },
+ "network": "nunet-team",
+ "public_key": "addr_test1vzgxkngaw5dayp8xqzpmajrkm7f7fleyzqrjj8l8fp5e8jcc2p2dk",
+ "allow_cardano": true
+}`
 
 func TestGetMetadataHandler(t *testing.T) {
-	router := SetupMockRouter()
-	tests := []struct {
-		description  string
-		route        string
-		expectedCode int
-	}{
-		{
-			description:  "GET /onboarding/metadata",
-			route:        "/api/v1/onboarding/metadata",
-			expectedCode: 200,
-		},
-	}
-	for _, tc := range tests {
-		req, _ := http.NewRequest("GET", tc.route, nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+	onboarding.AFS.Fs = afero.NewMemMapFs()
 
-		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
+	// should I forcefully write the metadata or control it
+	// making another API call? or maybe using tables?
+	meta, err := WriteMockMetadata(onboarding.AFS.Fs)
+	assert.NoError(t, err)
 
-		var metadata *models.MetadataV2
-		err := json.Unmarshal(w.Body.Bytes(), &metadata)
-		assert.NoError(t, err)
-	}
+	router := SetupTestRouter()
+
+	req, _ := http.NewRequest("GET", "/api/v1/onboarding/metadata", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+
+	var metadata *models.MetadataV2
+	err = json.Unmarshal(w.Body.Bytes(), &metadata)
+	assert.NoError(t, err)
+	assert.Equal(t, w.Body.String(), meta)
 }
 
 func TestProvisionedCapacityHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	req, _ := http.NewRequest("GET", "/api/v1/onboarding/provisioned", nil)
 	w := httptest.NewRecorder()
@@ -211,10 +71,9 @@ func TestProvisionedCapacityHandler(t *testing.T) {
 }
 
 func TestCreatePaymentAddressHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 	tests := []struct {
 		description  string
-		route        string
 		query        string
 		expectedCode int
 	}{
@@ -252,8 +111,9 @@ func TestCreatePaymentAddressHandler(t *testing.T) {
 	}
 }
 
+// TODO: Handle DB operations
 func TestOnboardHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	capacity := models.CapacityForNunet{
 		Memory:         4096,
@@ -273,11 +133,11 @@ func TestOnboardHandler(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TODO: Handle DB operations
 func TestOffboardHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 	tests := []struct {
 		description  string
-		route        string
 		query        string
 		expectedCode int
 	}{
@@ -311,8 +171,9 @@ func TestOffboardHandler(t *testing.T) {
 	}
 }
 
+// TODO: Handle DB operations
 func TestOnboardStatusHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/onboarding/status", nil)
 	router.ServeHTTP(w, req)
@@ -320,8 +181,9 @@ func TestOnboardStatusHandler(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 }
 
+// TODO: Handle DB operations
 func TestResourceConfigHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 	capacity := models.CapacityForNunet{ServerMode: true}
 	bodyBytes, _ := json.Marshal(capacity)
 	w := httptest.NewRecorder()
