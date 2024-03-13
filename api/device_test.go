@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,28 +16,8 @@ type deviceAvailable struct {
 	IsAvailable bool `json:"is_available"`
 }
 
-func (h *MockHandler) DeviceStatusHandler(c *gin.Context) {
-	c.JSON(200, gin.H{"online": deviceStatus})
-}
-
-func (h *MockHandler) ChangeDeviceStatusHandler(c *gin.Context) {
-	var status *deviceAvailable
-	err := c.BindJSON(&status)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
-		return
-	}
-	var msg string
-	if status.IsAvailable {
-		msg = "device status set to online"
-	} else {
-		msg = "device status set to offline"
-	}
-	c.JSON(200, gin.H{"message": msg})
-}
-
 func TestDeviceStatusHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 	tests := []struct {
 		description  string
 		status       string
@@ -72,7 +51,7 @@ func TestDeviceStatusHandler(t *testing.T) {
 }
 
 func TestChangeDeviceStatusHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	tests := []struct {
 		description  string
