@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"sync"
@@ -696,7 +695,7 @@ func GenerateTestKeyPair() (crypto.PrivKey, crypto.PubKey, error) {
 func SetupDMSTestingConfiguration(tempDirectoryName string, port int) {
 	dmsTempDir := fmt.Sprintf("/tmp/nunet-%s", tempDirectoryName)
 	os.Mkdir(dmsTempDir, 0755)
-	ioutil.WriteFile(fmt.Sprintf("%s/metadataV2.json", dmsTempDir), []byte(testMetadata), 0644)
+	os.WriteFile(fmt.Sprintf("%s/metadataV2.json", dmsTempDir), []byte(testMetadata), 0644)
 	config.LoadConfig()
 	addrs := [2]string{fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port), fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port)}
 	config.SetConfig("general.metadata_path", dmsTempDir)
@@ -885,7 +884,7 @@ func (client *SPTestClient) GetNextDeploymentUpdate() (CPUpdate, error) {
 			return update, err
 		}
 	case libp2p.MsgJobStatus:
-		json.Unmarshal([]byte(depUpdate.Msg), &update.Services)
+		err = json.Unmarshal([]byte(depUpdate.Msg), &update.Services)
 		if err != nil {
 			return update, err
 		}
