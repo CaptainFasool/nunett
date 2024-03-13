@@ -2,66 +2,20 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-func (h *MockHandler) ManualDHTUpdateHandler(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "DHT update initiated"})
-}
-
-func (h *MockHandler) CleanupPeerHandler(c *gin.Context) {
-	id := c.Query("peerID")
-	if !validateMockID(id) {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string is not valid peer ID"})
-		return
-	}
-	c.JSON(200, gin.H{"message": fmt.Sprintf("successfully cleaned up peer: %s", id)})
-}
-
-func (h *MockHandler) PingPeerHandler(c *gin.Context) {
-	id := c.Query("peerID")
-	if !validateMockID(id) {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string is not valid peer ID"})
-		return
-	} else if id == mockHostID {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string cannot be self peer ID"})
-		return
-	}
-	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": true, "RTT": 28859000})
-}
-
-func (h *MockHandler) OldPingPeerHandler(c *gin.Context) {
-	id := c.Query("peerID")
-	if !validateMockID(id) {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string is not valid peer ID"})
-		return
-	} else if id == mockHostID {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data: peerID string cannot be self peer ID"})
-		return
-	}
-	c.JSON(200, gin.H{"message": fmt.Sprintf("ping successful with peer %s", id), "peer_in_dht": true, "RTT": "28859000"})
-}
-
-func (h *MockHandler) DumpKademliaDHTHandler(c *gin.Context) {
-	peers := mockDumpList()
-	if len(peers) == 0 {
-		c.JSON(200, gin.H{"message": "no peers found"})
-		return
-	}
-	c.JSON(200, peers)
-}
+// TODO: Implement one single function with t.Run() for cases
 
 func TestManualDHTUpdateHandler(t *testing.T) {
 	debug = true
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/dht/update", nil)
@@ -72,7 +26,7 @@ func TestManualDHTUpdateHandler(t *testing.T) {
 
 func TestCleanupPeerHandler(t *testing.T) {
 	debug = true
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	tests := []struct {
 		description  string
@@ -110,7 +64,7 @@ func TestCleanupPeerHandler(t *testing.T) {
 
 func TestPingPeerHandler(t *testing.T) {
 	debug = true
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	tests := []struct {
 		description  string
@@ -153,7 +107,7 @@ func TestPingPeerHandler(t *testing.T) {
 
 func TestOldPingPeerHandler(t *testing.T) {
 	debug = true
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	tests := []struct {
 		description  string
@@ -196,7 +150,7 @@ func TestOldPingPeerHandler(t *testing.T) {
 
 func TestDumpKademliaDHTHandler(t *testing.T) {
 	debug = true
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	tests := []struct {
 		description  string
