@@ -7,34 +7,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/firecracker"
 )
 
-func (h *MockHandler) StartDefaultHandler(c *gin.Context) {
-	var body firecracker.DefaultVM
-	err := c.BindJSON(&body)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"message": "VM started successfully"})
-}
-
-func (h *MockHandler) StartCustomHandler(c *gin.Context) {
-	var body firecracker.CustomVM
-	err := c.BindJSON(&body)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"message": "VM started successfully"})
-}
-
 // TODO: test it with incorrect bind json
 func TestStartCustomHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	body := firecracker.CustomVM{
 		KernelImagePath: "/foo/bar",
@@ -54,7 +33,7 @@ func TestStartCustomHandler(t *testing.T) {
 }
 
 func TestStartDefaultHandler(t *testing.T) {
-	router := SetupMockRouter()
+	router := SetupTestRouter()
 
 	body := firecracker.DefaultVM{
 		KernelImagePath: "/foo/bar",
