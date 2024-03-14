@@ -145,12 +145,12 @@ func Test_ChatStartCmdInitializeFail(t *testing.T) {
 	assert.ErrorContains(t, err, "websocket not found")
 }
 
-func Test_ChatStartCmdCloseFail(t *testing.T) {
+func Test_ChatStartCmdCloseOnEOF(t *testing.T) {
 	assert := assert.New(t)
 
 	mockP2P := &MockP2PService{}
 	mockUtils := &MockUtilsService{}
-	mockWebSocket := &MockWebSocket{closeErr: fmt.Errorf("impossible to close")}
+	mockWebSocket := &MockWebSocket{}
 
 	cmd := NewChatStartCmd(mockP2P, mockUtils, mockWebSocket)
 	cmd.SetArgs([]string{"Qm12345abcdef"})
@@ -162,7 +162,7 @@ func Test_ChatStartCmdCloseFail(t *testing.T) {
 	err := cmd.Execute()
 	assert.NoError(err)
 
-	assert.Contains(buf.String(), "impossible to close")
+	assert.Contains(buf.String(), "Error: EOF")
 }
 
 func Test_ChatStartCmdGoroutinesFail(t *testing.T) {

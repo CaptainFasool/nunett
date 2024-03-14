@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.158](#361)
+
+### Changed
+- Reorganized REST api functions to an api package
+- Separate REST handler and actual functionality
+
 ## [0.4.157](#345)
 
 ### Fixed
