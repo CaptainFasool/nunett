@@ -115,10 +115,10 @@ func SetupTestRouter() *gin.Engine {
 	return router
 }
 
-func ConnectTestDatabase() {
+func ConnectTestDatabase() (*gorm.DB, error) {
 	testDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 	testDB.AutoMigrate(&models.ElasticToken{})
 	testDB.AutoMigrate(&models.VirtualMachine{})
@@ -139,8 +139,9 @@ func ConnectTestDatabase() {
 	db.DB = testDB
 	err = db.DB.Use(otelgorm.NewPlugin())
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not use otelgorm: %w", err)
 	}
+	return db.DB, nil
 }
 
 func CleanupTestDatabase(testDB *gorm.DB) {
