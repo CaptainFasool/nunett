@@ -73,47 +73,56 @@ func TestProvisionedCapacityHandler(t *testing.T) {
 func TestCreatePaymentAddressHandler(t *testing.T) {
 	router := SetupTestRouter()
 	tests := []struct {
-		description  string
 		query        string
+		value        string
 		expectedCode int
 	}{
 		{
-			description:  "cardano",
-			query:        "?blockchain=cardano",
+			query:        "?blockchain=",
+			value:        "cardano",
 			expectedCode: 200,
 		},
 		{
-			description:  "ethereum",
-			query:        "?blockchain=ethereum",
+			query:        "?blockchain=",
+			value:        "ethereum",
 			expectedCode: 200,
 		},
 		{
-			description:  "empty blockchain query",
+			query:        "?blockchain=",
+			value:        "",
+			expectedCode: 200,
+		},
+		{
 			query:        "",
+			value:        "",
 			expectedCode: 200,
 		},
 	}
 	for _, tc := range tests {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/api/v1/onboarding/address/new"+tc.query, nil)
+		req, _ := http.NewRequest("GET", "/api/v1/onboarding/address/new"+tc.query+tc.value, nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
+		assert.Equal(t, tc.expectedCode, w.Code)
 
 		var keypair *models.BlockchainAddressPrivKey
 		err := json.Unmarshal(w.Body.Bytes(), &keypair)
 		assert.NoError(t, err)
-		if tc.description == "cardano" && tc.query == "" {
+		if tc.value == "cardano" || tc.value == "" {
 			assert.True(t, keypair.Mnemonic != "")
-		} else if tc.description == "ethereum" {
+		} else if tc.value == "ethereum" {
 			assert.True(t, keypair.PrivateKey != "")
 		}
 	}
 }
 
-// TODO: Handle DB operations
 func TestOnboardHandler(t *testing.T) {
 	router := SetupTestRouter()
+	db, err := ConnectTestDatabase()
+	if err != nil {
+		t.Fatalf("failed to connect to database: %v", err)
+	}
+	defer CleanupTestDatabase(db)
 
 	capacity := models.CapacityForNunet{
 		Memory:         4096,
@@ -129,13 +138,18 @@ func TestOnboardHandler(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 
 	var metadata *models.MetadataV2
-	err := json.Unmarshal(w.Body.Bytes(), &metadata)
+	err = json.Unmarshal(w.Body.Bytes(), &metadata)
 	assert.NoError(t, err)
 }
 
-// TODO: Handle DB operations
 func TestOffboardHandler(t *testing.T) {
 	router := SetupTestRouter()
+	db, err := ConnectTestDatabase()
+	if err != nil {
+		t.Fatalf("failed to connect to database: %v", err)
+	}
+	defer CleanupTestDatabase(db)
+
 	tests := []struct {
 		description  string
 		query        string
@@ -171,9 +185,14 @@ func TestOffboardHandler(t *testing.T) {
 	}
 }
 
-// TODO: Handle DB operations
 func TestOnboardStatusHandler(t *testing.T) {
 	router := SetupTestRouter()
+	db, err := ConnectTestDatabase()
+	if err != nil {
+		t.Fatalf("failed to connect to database: %v", err)
+	}
+	defer CleanupTestDatabase(db)
+
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/v1/onboarding/status", nil)
 	router.ServeHTTP(w, req)
@@ -181,9 +200,14 @@ func TestOnboardStatusHandler(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 }
 
-// TODO: Handle DB operations
 func TestResourceConfigHandler(t *testing.T) {
 	router := SetupTestRouter()
+	db, err := ConnectTestDatabase()
+	if err != nil {
+		t.Fatalf("failed to connect to database: %v", err)
+	}
+	defer CleanupTestDatabase(db)
+
 	capacity := models.CapacityForNunet{ServerMode: true}
 	bodyBytes, _ := json.Marshal(capacity)
 	w := httptest.NewRecorder()
