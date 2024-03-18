@@ -303,8 +303,7 @@ func Offboard(ctx context.Context, force bool) error {
 		return fmt.Errorf("unable to shutdown node: %w", err)
 	}
 
-	metadataPath := utils.GetMetadataFilePath()
-	err = os.Remove(metadataPath)
+	err = AFS.Remove(utils.GetMetadataFilePath())
 	if err != nil && !force {
 		return fmt.Errorf("failed to remove metadata file: %w", err)
 	} else if err != nil && force {
