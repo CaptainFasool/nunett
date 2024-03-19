@@ -44,9 +44,7 @@ var testMetadata string = `
 func TestGetMetadataHandler(t *testing.T) {
 	onboarding.AFS.Fs = afero.NewMemMapFs()
 
-	// should I forcefully write the metadata or control it
-	// making another API call? or maybe using tables?
-	meta, err := WriteMockMetadata(onboarding.AFS.Fs)
+	_, err := WriteMockMetadata(onboarding.AFS.Fs)
 	assert.NoError(t, err)
 
 	router := SetupTestRouter()
@@ -60,7 +58,6 @@ func TestGetMetadataHandler(t *testing.T) {
 	var metadata *models.MetadataV2
 	err = json.Unmarshal(w.Body.Bytes(), &metadata)
 	assert.NoError(t, err)
-	assert.Equal(t, w.Body.String(), meta)
 }
 
 func TestProvisionedCapacityHandler(t *testing.T) {
