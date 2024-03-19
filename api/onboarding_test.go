@@ -2,15 +2,22 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/nunet/device-management-service/internal/config"
+	library "gitlab.com/nunet/device-management-service/lib"
+	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/onboarding"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 var testMetadata string = `
@@ -143,6 +150,7 @@ func TestOnboardHandler(t *testing.T) {
 }
 
 func TestOffboardHandler(t *testing.T) {
+	// TODO: Shut up loggers
 	router := SetupTestRouter()
 	db, err := ConnectTestDatabase()
 	if err != nil {
@@ -150,39 +158,113 @@ func TestOffboardHandler(t *testing.T) {
 	}
 	defer CleanupTestDatabase(db)
 
+	onboarding.AFS.Fs = afero.NewMemMapFs()
+
+	// TODO: Add checking of metadata path
+	config.SetConfig("general.metadata_path", ".")
+	err = os.Chmod(config.GetConfig().General.MetadataPath, 0777)
+	if err != nil {
+		t.Fatalf("failed to set permissions to metadata dir: %v", err)
+	}
+
 	tests := []struct {
 		description  string
+		onboarded    bool
 		query        string
 		expectedCode int
 	}{
 		{
 			description:  "force query true",
+			onboarded:    true,
 			query:        "?force=true",
 			expectedCode: 200,
 		},
 		{
 			description:  "force query false",
+			onboarded:    true,
 			query:        "?force=false",
 			expectedCode: 200,
 		},
 		{
-			description:  "invalid force query",
-			query:        "?force=foobar",
-			expectedCode: 400,
-		},
-		{
 			description:  "missing force query",
+			onboarded:    true,
 			query:        "",
 			expectedCode: 200,
 		},
+		{
+			description:  "invalid force query",
+			onboarded:    true,
+			query:        "?force=foobar",
+			expectedCode: 400,
+		},
 	}
 	for _, tc := range tests {
+		var (
+			p2pInfo models.Libp2pInfo
+			avalRes models.AvailableResources
+		)
 		w := httptest.NewRecorder()
+		if tc.onboarded {
+			err := os.WriteFile(utils.GetMetadataFilePath(), []byte(testMetadata), 0644)
+			if err != nil {
+				t.Fatalf("could not write metadata file: %v", err)
+			}
+
+			onboardBody, err := onboardTestBody()
+			if err != nil {
+				t.Errorf("generating onboard test body: wanted nil, got %v", err)
+			}
+
+			_, err = onboarding.Onboard(context.Background(), *onboardBody)
+			if err != nil {
+				t.Fatalf("failed to onboard: %v", err)
+			}
+		}
 		req, _ := http.NewRequest("DELETE", "/api/v1/onboarding/offboard"+tc.query, nil)
 		router.ServeHTTP(w, req)
+		if w.Code != tc.expectedCode {
+			t.Fatalf("%s: wanted code %d, got %d", tc.description, tc.expectedCode, w.Code)
+		}
+		if w.Code == 200 {
+			// assert node shutdown
+			host := libp2p.GetP2P().Host
+			if host != nil {
+				t.Errorf("host should be nil, got %s", host.ID().String())
+			}
 
-		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
+			// assert libp2p info deletion
+			res := db.Limit(1).Find(&p2pInfo)
+			if res.RowsAffected != 0 {
+				t.Errorf("record failed to be deleted")
+			}
+
+			// assert metadata deletion
+			_, err = os.Stat(utils.GetMetadataFilePath())
+
+			// assert available resources deletion
+			res = db.Limit(1).Find(&avalRes)
+			if res.RowsAffected != 0 {
+				t.Errorf("record failed to be deleted")
+			}
+		} else if w.Code == 400 {
+			// assert node still initialized
+			host := libp2p.GetP2P().Host
+			if host == nil {
+				t.Errorf("host should have ID, but got nil")
+			}
+
+			// assert db records still exist
+			res := db.Limit(1).Find(&p2pInfo)
+			if res.RowsAffected == 0 {
+				t.Errorf("record should exist, but got deleted")
+			}
+			res = db.Limit(1).Find(&avalRes)
+			if res.RowsAffected == 0 {
+				t.Errorf("record should exist, but got deleted")
+			}
+		}
 	}
+
 }
 
 func TestOnboardStatusHandler(t *testing.T) {
@@ -215,4 +297,20 @@ func TestResourceConfigHandler(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
+}
+
+func onboardTestBody() (*models.CapacityForNunet, error) {
+	resources := library.GetTotalProvisioned()
+	avalMem := 0.5 * float64(resources.Memory)
+	avalCPU := 0.5 * resources.CPU
+	addr, err := onboarding.CreatePaymentAddress("cardano")
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate payment address")
+	}
+	return &models.CapacityForNunet{
+		Memory:         int64(avalMem),
+		CPU:            int64(avalCPU),
+		PaymentAddress: addr.Address,
+		Channel:        "nunet-test",
+	}, nil
 }
