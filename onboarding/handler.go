@@ -99,6 +99,7 @@ func Status() (*models.OnboardingStatus, error) {
 
 func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.MetadataV2, error) {
 	configPath := config.GetConfig().General.MetadataPath
+	// Best to replace with utils.CreateDirectoryIfNotExists?
 	configExist, err := AFS.DirExists(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not check if config directory exists: %w", err)
@@ -207,13 +208,13 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 	err = telemetry.CalcFreeResAndUpdateDB()
 	if err != nil {
 		// JUST LOG ERRORS
-		return nil, fmt.Errorf("could not calculate free resources and update database: %w", err)
+		zlog.Sugar().Errorf("could not calculate free resources and update database: %v", err)
 	}
 
 	err = libp2p.RunNode(priv, capacity.ServerMode, capacity.IsAvailable)
 	if err != nil {
 		// JUST LOG ERRORS
-		return nil, fmt.Errorf("unable to run libp2p node: %w", err)
+		zlog.Sugar().Errorf("unable to run libp2p node: %v", err)
 	}
 
 	// Ensure libp2p host is initialised
