@@ -11,7 +11,11 @@ The default setting is to use `pull` based orchestration. However, the user can 
 The details of all the operations involved in the job orchestration are described in the following sections.
 
 ### 1. Job Posting
-The first step is when a user posts a request to run a computing job. This should define various job requirements and preferences. User can also specify the type of orchestration desired. In absence of any preference, the default `pull` orchestration is used.
+The first step is when a user posts a request to run a computing job. This should define various job requirements and preferences.
+
+endpoint: `/orchestrator/postJob`
+method: `HTTP POST`
+output: `None`
 
 Please see below for relevant specification and data models.
 
@@ -21,6 +25,12 @@ Please see below for relevant specification and data models.
 | Request payload       | [jobDescription](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/jobs/data/jobDescription.payload.go)|
 | Return payload       | None |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobPosting.sequence.mermaid),[.svg]()) | 
+
+List of relevant functions:
+`dms.orchestrator.processJob` - This function will validate the job received, add metadata (if needed) and save the job to the local database.
+
+List of relevant data types:
+`dms.jobs.jobDescription` - This contains the job details and desired capability needed to execute the job.
 
 ### 2. Search and Match
 Once the DMS received a job posting, it will look to find nodes that can service the request. This is done by matching the job requirements with the available resources.
@@ -53,10 +63,32 @@ The second step is to shortlist the preferred compute provider peer based on som
 | Return payload       | [EligibleComputeProviderData](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/selectPreferredNode.sequence.mermaid),[.svg]()) |
 
+### 3. Job Request
+In case the shortlisted compute provider has not locked the resources while submitting the bid, the job request workflow is executed. This requires the compute provider DMS to lock the necessary resources required for the job and re-submit the bid. Note that at this stage compute provider can still decline the job request.
 
+Please see below for relevant specification and data models.
 
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Request payload       | [BidRequest](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bidRequest.payload.go) |
+| Return payload - request acceptance      | [Bid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bid.payload.go) |
+| Return payload - request denied      | [DeclineMessage](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/declineJobRequest.payload.go) |
+| Return payload - timeout      | [TimeoutResponse](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/timeoutJobRequest.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobRequest.sequence.mermaid),[.svg]()) |
 
+### 4. Contract Closure
+The service provider and the shortlisted compute provider verify that the counterparty is verified and approved by Nunet Solutions to participate in the network. This in an important step to establish trust before any work is performed. 
 
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Request payload       | [UUID]() |
+| Return payload - confirmation      | [Contract]() |
+| Return payload - verification failure      | [DeclineMessage](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/declineJobRequest.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/contractClosure.sequence.mermaid),[.svg]()) |
 
 
 
