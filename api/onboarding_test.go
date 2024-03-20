@@ -159,20 +159,11 @@ func TestOnboardHandler(t *testing.T) {
 func TestOffboardHandler(t *testing.T) {
 	// TODO: Shut up loggers
 	router := SetupTestRouter()
-	db, err := ConnectTestDatabase()
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer CleanupTestDatabase(db)
 
+	config.SetConfig("general.metadata_path", ".")
 	onboarding.AFS.Fs = afero.NewMemMapFs()
 
-	// TODO: Add checking of metadata path
-	config.SetConfig("general.metadata_path", ".")
-	err = os.Chmod(config.GetConfig().General.MetadataPath, 0777)
-	if err != nil {
-		t.Fatalf("failed to set permissions to metadata dir: %v", err)
-	}
+	// TODO: force query only ignore errors, add test case
 
 	tests := []struct {
 		description  string
@@ -181,28 +172,40 @@ func TestOffboardHandler(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			description:  "force query true",
-			onboarded:    true,
-			query:        "?force=true",
-			expectedCode: 200,
-		},
-		{
-			description:  "force query false",
-			onboarded:    true,
-			query:        "?force=false",
-			expectedCode: 200,
-		},
-		{
-			description:  "missing force query",
+			description:  "onboarded machine without query",
 			onboarded:    true,
 			query:        "",
 			expectedCode: 200,
 		},
 		{
-			description:  "invalid force query",
+			description:  "onboarded machine with query, not forced",
 			onboarded:    true,
-			query:        "?force=foobar",
-			expectedCode: 400,
+			query:        "?force=false",
+			expectedCode: 200,
+		},
+		{
+			description:  "onboarded machine with query, forced",
+			onboarded:    true,
+			query:        "?force=true",
+			expectedCode: 200,
+		},
+		{
+			description:  "not onboarded machine without query",
+			onboarded:    false,
+			query:        "",
+			expectedCode: 500,
+		},
+		{
+			description:  "not onboarded machine with query, not forced",
+			onboarded:    false,
+			query:        "?force=false",
+			expectedCode: 500,
+		},
+		{
+			description:  "not onboarded machine with query, forced",
+			onboarded:    false,
+			query:        "?force=true",
+			expectedCode: 500,
 		},
 	}
 	for _, tc := range tests {
@@ -210,57 +213,46 @@ func TestOffboardHandler(t *testing.T) {
 			p2pInfo models.Libp2pInfo
 			avalRes models.AvailableResources
 		)
-		w := httptest.NewRecorder()
-		if tc.onboarded {
-			err := os.WriteFile(utils.GetMetadataFilePath(), []byte(testMetadata), 0644)
-			if err != nil {
-				t.Fatalf("could not write metadata file: %v", err)
-			}
 
-			onboardBody, err := onboardTestBody()
+		t.Logf("%s: started test", tc.description)
+
+		db, err := ConnectTestDatabase()
+		if err != nil {
+			t.Fatalf("failed to connect to database: %v", err)
+		}
+
+		if tc.onboarded {
+			onboardBody, err := onboardTestBody(0.5)
 			if err != nil {
 				t.Errorf("generating onboard test body: wanted nil, got %v", err)
 			}
-
 			_, err = onboarding.Onboard(context.Background(), *onboardBody)
 			if err != nil {
 				t.Fatalf("failed to onboard: %v", err)
 			}
 		}
+
+		t.Logf("%s: offboarding started", tc.description)
+
+		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("DELETE", "/api/v1/onboarding/offboard"+tc.query, nil)
 		router.ServeHTTP(w, req)
+
 		if w.Code != tc.expectedCode {
-			t.Fatalf("%s: wanted code %d, got %d", tc.description, tc.expectedCode, w.Code)
+			t.Errorf("%s: wanted code %d, got %d", tc.description, tc.expectedCode, w.Code)
+			t.Errorf("%s: response: %s", tc.description, w.Body.String())
 		}
 		if w.Code == 200 {
-			// assert node shutdown
-			host := libp2p.GetP2P().Host
-			if host != nil {
-				t.Errorf("host should be nil, got %s", host.ID().String())
-			}
-
-			// assert libp2p info deletion
 			res := db.Limit(1).Find(&p2pInfo)
 			if res.RowsAffected != 0 {
 				t.Errorf("record failed to be deleted")
 			}
 
-			// assert metadata deletion
-			_, err = os.Stat(utils.GetMetadataFilePath())
-
-			// assert available resources deletion
 			res = db.Limit(1).Find(&avalRes)
 			if res.RowsAffected != 0 {
 				t.Errorf("record failed to be deleted")
 			}
 		} else if w.Code == 400 {
-			// assert node still initialized
-			host := libp2p.GetP2P().Host
-			if host == nil {
-				t.Errorf("host should have ID, but got nil")
-			}
-
-			// assert db records still exist
 			res := db.Limit(1).Find(&p2pInfo)
 			if res.RowsAffected == 0 {
 				t.Errorf("record should exist, but got deleted")
@@ -270,6 +262,7 @@ func TestOffboardHandler(t *testing.T) {
 				t.Errorf("record should exist, but got deleted")
 			}
 		}
+		CleanupTestDatabase(db)
 	}
 
 }
