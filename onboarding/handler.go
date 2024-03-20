@@ -288,15 +288,15 @@ func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*mod
 func Offboard(ctx context.Context, force bool) error {
 	klogger.Logger.Info("device offboarding started")
 	onboarded, err := utils.IsOnboarded()
-	if err != nil && !force {
-		return fmt.Errorf("could not retrieve onboard status: %w", err)
-	} else if err != nil && force {
+	if err != nil {
+		if !force {
+			klogger.Logger.Error("offboarding error : " + err.Error())
+			return fmt.Errorf("problem with onboarding state: %w", err)
+		}
 		zlog.Sugar().Errorf("problem with onboarding state: %v", err)
 		zlog.Info("continuing with offboarding because forced")
-	}
-
-	if !onboarded {
-		return fmt.Errorf("machine is not onboarded")
+	} else if !onboarded {
+		return fmt.Errorf("machine not onboarded")
 	}
 
 	err = libp2p.ShutdownNode()
@@ -305,9 +305,10 @@ func Offboard(ctx context.Context, force bool) error {
 	}
 
 	err = AFS.Remove(utils.GetMetadataFilePath())
-	if err != nil && !force {
-		return fmt.Errorf("failed to remove metadata file: %w", err)
-	} else if err != nil && force {
+	if err != nil {
+		if !force {
+			return fmt.Errorf("failed to remove metadata file: %w", err)
+		}
 		zlog.Sugar().Errorf("failed to delete metadata file - problem with onboarding state: %v", err)
 		zlog.Info("continuing with offboarding because forced")
 	}
@@ -317,9 +318,11 @@ func Offboard(ctx context.Context, force bool) error {
 	res := db.DB.WithContext(ctx).Where("id = ?", 1).Delete(&aval)
 	if res.Error != nil {
 		zlog.Error(res.Error.Error())
-	} else if res.RowsAffected == 0 && !force {
+	} else if res.RowsAffected == 0 {
 		zlog.Error("no rows were affected while deleting available resources")
-		return fmt.Errorf("unable to delete available resources on database: %w", err)
+		if !force {
+			return fmt.Errorf("unable to delete available resources on database: %w", err)
+		}
 	}
 
 	klogger.Logger.Info("device offboarded successfully")
