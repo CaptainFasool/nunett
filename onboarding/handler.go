@@ -105,7 +105,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 		return nil, fmt.Errorf("could not check if config directory exists: %w", err)
 	}
 	if !configExist {
-		return nil, fmt.Errorf("config directory does not exist: %w", err)
+		return nil, fmt.Errorf("config directory does not exist")
 	}
 
 	hostname, _ := os.Hostname()
