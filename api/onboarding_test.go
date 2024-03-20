@@ -309,34 +309,144 @@ func TestOffboardHandler(t *testing.T) {
 
 func TestOnboardStatusHandler(t *testing.T) {
 	router := SetupTestRouter()
-	db, err := ConnectTestDatabase()
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
+
+	config.SetConfig("general.metadata_path", ".")
+	onboarding.AFS.Fs = afero.NewMemMapFs()
+
+	tests := []struct {
+		description string
+		onboarded   bool
+		wantCode    int
+	}{
+		{
+			description: "machine onboarded",
+			onboarded:   true,
+			wantCode:    200,
+		},
+		{
+			description: "machine not onboarded",
+			onboarded:   false,
+			wantCode:    200,
+		},
 	}
-	defer CleanupTestDatabase(db)
+	for _, tc := range tests {
+		db, err := ConnectTestDatabase()
+		if err != nil {
+			t.Fatalf("failed to connect to database: %v", err)
+		}
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/onboarding/status", nil)
-	router.ServeHTTP(w, req)
+		if tc.onboarded {
+			onboardBody, err := onboardTestBody(0.5)
+			if err != nil {
+				t.Fatalf("could not generate onboard body: %v", err)
+			}
+			_, err = onboarding.Onboard(context.Background(), *onboardBody)
+			if err != nil {
+				t.Fatalf("failed to onboard: %v", err)
+			}
+		}
 
-	assert.Equal(t, 200, w.Code)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/v1/onboarding/status", nil)
+		router.ServeHTTP(w, req)
+
+		if w.Code != tc.wantCode {
+			t.Errorf("%s: wanted code %d, got %d", tc.description, tc.wantCode, w.Code)
+			t.Errorf("%s: response: %s", tc.description, w.Body.String())
+		}
+		if w.Code == 200 {
+			var status models.OnboardingStatus
+			err := json.Unmarshal(w.Body.Bytes(), &status)
+			if err != nil {
+				t.Errorf("%s: unmarshal error: wanted nil, got %v", tc.description, err)
+			}
+			assert.Equal(t, tc.onboarded, status.Onboarded)
+		}
+		CleanupTestDatabase(db)
+	}
 }
 
 func TestResourceConfigHandler(t *testing.T) {
 	router := SetupTestRouter()
-	db, err := ConnectTestDatabase()
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
+
+	config.SetConfig("general.metadata_path", ".")
+	onboarding.AFS.Fs = afero.NewMemMapFs()
+
+	tests := []struct {
+		description string
+		onboarded   bool
+		wantCode    int
+	}{
+		{
+			description: "onboarded with valid body",
+			onboarded:   true,
+			wantCode:    200,
+		},
+		{
+			description: "not onboarded",
+			onboarded:   false,
+			wantCode:    500,
+		},
 	}
-	defer CleanupTestDatabase(db)
+	for _, tc := range tests {
+		var (
+			onboardPercent = 0.5
+			configPercent  = 0.6
+		)
 
-	capacity := models.CapacityForNunet{ServerMode: true}
-	bodyBytes, _ := json.Marshal(capacity)
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/onboarding/resource-config", bytes.NewBuffer(bodyBytes))
-	router.ServeHTTP(w, req)
+		t.Logf("%s: starting test case", tc.description)
 
-	assert.Equal(t, 200, w.Code)
+		db, err := ConnectTestDatabase()
+		if err != nil {
+			t.Fatalf("failed to connect to database: %v", err)
+		}
+
+		if tc.onboarded {
+			t.Logf("%s: onboarding device", tc.description)
+
+			// onboard device
+			onboardBody, err := onboardTestBody(onboardPercent)
+			if err != nil {
+				t.Errorf("could not set onboard body: %v", err)
+			}
+			_, err = onboarding.Onboard(context.Background(), *onboardBody)
+			if err != nil {
+				t.Fatalf("failed to onboard: %v", err)
+			}
+
+			// TODO: store current Memory and CPU info
+		}
+		capacity, err := onboardTestBody(configPercent)
+		if err != nil {
+			t.Fatalf("could not create resource config body: %v", err)
+		}
+		bodyBytes, _ := json.Marshal(capacity)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/onboarding/resource-config", bytes.NewBuffer(bodyBytes))
+		router.ServeHTTP(w, req)
+
+		if w.Code != tc.wantCode {
+			t.Errorf("%s: wanted response code %d, got %d", tc.description, tc.wantCode, w.Code)
+			t.Errorf("%s: response: %s", tc.description, w.Body.String())
+		}
+		if w.Code == 200 {
+			var (
+				aval models.AvailableResources
+				free models.FreeResources
+			)
+			res := db.Limit(1).Find(&aval)
+			if res.RowsAffected == 0 {
+				t.Errorf("could not find available resources table")
+			}
+			res = db.Limit(1).Find(&free)
+			if res.RowsAffected == 0 {
+				t.Errorf("could not find free resources table")
+			}
+
+			// TODO: compare updated with previous record
+		}
+		CleanupTestDatabase(db)
+	}
 }
 
 func onboardTestBody(p float64) (*models.CapacityForNunet, error) {
