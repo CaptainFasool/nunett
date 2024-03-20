@@ -13,9 +13,9 @@ The details of all the operations involved in the job orchestration are describe
 ### 1. Job Posting
 The first step is when a user posts a request to run a computing job. This should define various job requirements and preferences.
 
-endpoint: `/orchestrator/postJob`
-method: `HTTP POST`
-output: `None`
+**endpoint**: `/orchestrator/postJob`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `None`
 
 Please see below for relevant specification and data models.
 
@@ -26,10 +26,10 @@ Please see below for relevant specification and data models.
 | Return payload       | None |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobPosting.sequence.mermaid),[.svg]()) | 
 
-List of relevant functions:
+List of relevant functions:<br/>
 `dms.orchestrator.processJob` - This function will validate the job received, add metadata (if needed) and save the job to the local database.
 
-List of relevant data types:
+List of relevant data types:<br/>
 `dms.jobs.jobDescription` - This contains the job details and desired capability needed to execute the job.
 
 ### 2. Search and Match
