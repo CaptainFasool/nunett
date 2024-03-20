@@ -136,18 +136,60 @@ func TestOnboardHandler(t *testing.T) {
 	}
 	defer CleanupTestDatabase(db)
 
-	capacity := models.CapacityForNunet{
-		Memory:         4096,
-		CPU:            4096,
-		Channel:        "nunet-test",
-		PaymentAddress: "foobarfoobarfoobarfoobarfoobar",
+	config.SetConfig("general.metadata_path", ".")
+	onboarding.AFS.Fs = afero.NewMemMapFs()
+
+	// TODO: test cases with invalid onboard parameters
+	onboardBody, err := onboardTestBody(0.5)
+	if err != nil {
+		t.Fatalf("failed to generate onboard request body: %v", err)
 	}
-	bodyBytes, _ := json.Marshal(capacity)
+	bodyBytes, _ := json.Marshal(&onboardBody)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/v1/onboarding/onboard", bytes.NewBuffer(bodyBytes))
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+	if w.Code != 200 {
+		t.Errorf("wanted 200 code, got %d", w.Code)
+		t.Errorf("got response: %s", w.Body.String())
+	}
+
+	var (
+		avalRes       models.AvailableResources
+		nodeInfo      models.Libp2pInfo
+		freeRes       models.FreeResources
+		elasticTokens []models.ElasticToken
+		logbinAuth    models.LogBinAuth
+	)
+	// assert metadata :165
+	res := db.Limit(1).Find(&avalRes)
+	if res.RowsAffected == 0 {
+		t.Errorf("available resources was not created")
+	}
+	res = db.Limit(1).Find(&nodeInfo)
+	if res.RowsAffected == 0 {
+		t.Errorf("node info was not created")
+	}
+	res = db.Limit(1).Find(&freeRes)
+	if res.RowsAffected == 0 {
+		t.Errorf("free resources was not created")
+	}
+	res = db.Limit(1).Find(&elasticTokens)
+	if res.RowsAffected == 0 {
+		t.Errorf("heartbeat tokens was not created")
+	}
+	res = db.Limit(1).Find(&logbinAuth)
+	if res.RowsAffected == 0 {
+		t.Errorf("logbin auth was not created")
+	}
+
+	// assert PeerStore :213
+
+	// assert Host :220
+	host := libp2p.GetP2P().Host
+	if host == nil {
+		t.Errorf("wanted initialized host, got nil")
+	}
 
 	var metadata *models.MetadataV2
 	err = json.Unmarshal(w.Body.Bytes(), &metadata)
@@ -297,10 +339,10 @@ func TestResourceConfigHandler(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 }
 
-func onboardTestBody() (*models.CapacityForNunet, error) {
+func onboardTestBody(p float64) (*models.CapacityForNunet, error) {
 	resources := library.GetTotalProvisioned()
-	avalMem := 0.5 * float64(resources.Memory)
-	avalCPU := 0.5 * resources.CPU
+	avalMem := p * float64(resources.Memory)
+	avalCPU := p * resources.CPU
 	addr, err := onboarding.CreatePaymentAddress("cardano")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate payment address")
