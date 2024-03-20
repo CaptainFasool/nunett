@@ -21,24 +21,24 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Job_Posting.feature))   |
 | Request payload       | [jobDescription](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/jobs/data/jobDescription.payload.go)|
 | Return payload       | None |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobPosting.sequence.mermaid),[.svg]()) | 
 
-List of relevant functions:<br/>
+**List of relevant functions**:<br/>
 `dms.orchestrator.processJob` - This function will validate the job received, add metadata (if needed) and save the job to the local database.
 
-List of relevant data types:<br/>
+**List of relevant data types**:<br/>
 `dms.jobs.jobDescription` - This contains the job details and desired capability needed to execute the job.
 
 ### 2. Search and Match
 Once the DMS received a job posting, it will look to find nodes that can service the request. This is done by matching the job requirements with the available resources.
 
 ### Configuration
-`defaultOrchestrationType`: As mentioned before, the default setting of the network is use `pull` search and match operation. This value is stored in `defaultOrchestrationType` parameter saved in the [config](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms/config) folder under `dms` package. The user can override this value to `push` during job request.
+`dms.dms.config.defaultOrchestrationType`: The default setting of the network is use `pull` search and match operation. This value is stored in `defaultOrchestrationType` parameter saved in the [config](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms/config) folder under `dms` package. The user can change this value to `push` if needed via CLI (Command Line Interface) or API. This functionality is covered in the [dms](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms) folder.
 
-`defaultSearchTimeout`: Each DMS will have default timeout value for the search operation. This value is stored in `defaultSearchTimeout` parameter saved in the [config](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms/config) folder under `dms` package. This can be overridden by the owner of the DMS.
+`dms.dms.config.defaultSearchTimeout`: Each DMS will have default timeout value for the search operation. This value is stored in `defaultSearchTimeout` parameter saved in the [config](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms/config) folder under `dms` package. This can be overridden by the owner of the DMS via CLI (Command Line Interface) or API. This functionality is covered in the [dms](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms) folder.
 
 ### Pull Based
 The first step is to request bids from the compute providers in the network. DMS compares the capability of the available resources against soft and hard constraints specified in the job requirements. The final outcome is a list of eligible compute providers with their bids.
