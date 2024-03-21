@@ -1,2 +1,130 @@
 ## Introduction
 This package takes care of job scheduling and management (manages jobs on other DMSs)
+
+## Job Orchestration
+The lifecyle of a job on Nunet platform consists of various operations from job posting to settlement of the contract. A key distinction to note is the option of two types of orchestration mechanisms: `push` and `pull`. Broadly speaking `pull` orchestration works on the premise that resource providers bid for jobs available in the network. 
+
+Whereas `push` orchestration develops on the idea that users choose from the available providers and their resources. However, given the decentralised and open nature of the platform, it may be required to engage the providers to get their current (latest) state and preferences. This leads to an overlap with the `pull` orchestration approach.
+
+The default setting is to use `pull` based orchestration. However, the user can choose to use `push` based orchestration to suit their needs.
+
+The details of all the operations involved in the job orchestration are described in the following sections.
+
+### 1. Job Posting
+
+* proposed 2024-03-21; by: @kabir.kbr; @janaina.senna; @0xPravar; *
+
+This is based on preliminary design, please refer to [research/blog/jobposting](https://nunet.gitlab.io/research/blog/posts/job-orchestration-details/#1-job-posting).
+
+The first step is when a user posts a request to run a computing job. This should define various job requirements and preferences.
+
+**endpoint**: `/orchestrator/postJob`<br/>
+**method**: `HTTP POST`<br/>
+**output**: `None`
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/orchestrator/Job_Posting.feature))   |
+| Request payload       | [jobDescription](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/jobs/data/jobDescription.payload.go)|
+| Return payload       | None |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/jobPosting.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/rendered/jobPosting.sequence.svg)) | 
+
+#### List of relevant functions
+
+* `dms.orchestrator.processJob()` - This function will validate the job received, add metadata (if needed) and save the job to the local database.
+
+#### List of relevant data types
+* `dms.jobs.jobDescription` - This contains the job details and desired capability needed to execute the job.
+
+
+### 2. Search and Match
+Once the DMS received a job posting, it will look to find nodes that can service the request. This is done by matching the job requirements with the available resources.
+
+### Configuration
+`dms.dms.config.defaultOrchestrationType`: The default setting of the network is use `pull` search and match operation. This value is stored in `defaultOrchestrationType` parameter saved in the [config](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms/config) folder under `dms` package. The user can change this value to `push` if needed via CLI (Command Line Interface) or API. This functionality is covered in the [dms](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms) folder.
+
+`dms.dms.config.defaultSearchTimeout`: Each DMS will have default timeout value for the search operation. This value is stored in `defaultSearchTimeout` parameter saved in the [config](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms/config) folder under `dms` package. This can be overridden by the owner of the DMS via CLI (Command Line Interface) or API. This functionality is covered in the [dms](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms) folder.
+
+### Pull Based
+The first step is that service provider DMS requests bids from the compute providers in the network. DMS on compute provider compares the capability of the available resources against soft and hard constraints specified in the job requirements. If all the requirements are met, it then decides whether to submit a bid. The final outcome is that service provider DMS has a list of eligible compute providers with their bids.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Request payload       | [BidRequest](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bidRequest.payload.go)|
+| Data at rest (CP DMS)      | [AvailableCapability](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/dms/data/availableCapability.payload.go) |
+| Data at rest (CP DMS)      | [CapabilityComparison](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/capabilityComparison.payload.go) |
+| Return payload       | [Bid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bid.payload.go) |
+| Data at rest (SP DMS)       | [EligibleComputeProvidersIndex](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/pullSearchAndMatch.sequence.mermaid),[.svg]()) |
+
+The second step is to shortlist the preferred compute provider peer based on some selection criteria. Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Request payload       | [EligibleComputeProvidersIndex](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
+| Return payload       | [EligibleComputeProviderData](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/selectPreferredNode.sequence.mermaid),[.svg]()) |
+
+**List of relevant functions**:<br/>
+`dms.network.publishJob()` - This function will take the `dms.orchestrator.bidRequest` as input and propogate it to the compute providers in the network.
+
+`dms.dms.availableResources()` - This function will return `dms.dms.availableCapability` which is the available resources/capability of the machine to perform a job.
+
+`dms.orchestrator.compare()` - This function takes `dms.jobs.jobDescription.requiredCapability` and `dms.dms.availableCapability` as input and returns `dms.orchestrator.capabilityComparison`.
+
+`dms.orchestrator.accept()` - This function takes `dms.orchestrator.capabilityComparison` and `dms.dms.config.capabilityComparator` as inputs and returns a `bool` which indicates whether the job can be accepted or not.
+
+`dms.orchestrator.createBid()` - This function returns `dms.orchestrator.bid` which is to be sent to service provider DMS.
+
+`dms.orchestrator.registerComputeBid()` - This function takes `dms.orchestrator.bid` as inputs and saves it to a table in the local database as `dms.orchestrator.computeProvidersIndex`.
+
+**List of relevant data types**:<br/>
+`dms.orchestrator.bidRequest` - This is sent to the compute providers based on which they can submit a bid.
+
+`dms.orchestrator.bid` - This is the bid that is submitted by the compute provider.
+
+`dms.dms.availableCapability` - This contains the available resources/capability of the machine to perform a job.
+
+`dms.orchestrator.capabilityComparison` - This contains the comparison of the job requirements with the available resources.
+
+`dms.orchestrator.computeProvidersIndex` - This contains the data of compute providers whose bids have been received. 
+
+### 3. Job Request
+In case the shortlisted compute provider has not locked the resources while submitting the bid, the job request workflow is executed. This requires the compute provider DMS to lock the necessary resources required for the job and re-submit the bid. Note that at this stage compute provider can still decline the job request.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Request payload       | [BidRequest](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bidRequest.payload.go) |
+| Return payload - request acceptance      | [Bid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bid.payload.go) |
+| Return payload - request denied      | [DeclineMessage](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/declineJobRequest.payload.go) |
+| Return payload - timeout      | [TimeoutResponse](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/timeoutJobRequest.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobRequest.sequence.mermaid),[.svg]()) |
+
+### 4. Contract Closure
+The service provider and the shortlisted compute provider verify that the counterparty is verified and approved by Nunet Solutions to participate in the network. This in an important step to establish trust before any work is performed. 
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Request payload       | [UUID]() |
+| Return payload - confirmation      | [Contract]() |
+| Return payload - verification failure      | [DeclineMessage](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/declineJobRequest.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/contractClosure.sequence.mermaid),[.svg]()) |
+
+
+
+
+
+
+
