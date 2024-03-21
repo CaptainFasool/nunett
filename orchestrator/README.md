@@ -27,7 +27,7 @@ Please see below for relevant specification and data models.
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobPosting.sequence.mermaid),[.svg]()) | 
 
 **List of relevant functions**:<br/>
-`dms.orchestrator.processJob` - This function will validate the job received, add metadata (if needed) and save the job to the local database.
+`dms.orchestrator.processJob()` - This function will validate the job received, add metadata (if needed) and save the job to the local database.
 
 **List of relevant data types**:<br/>
 `dms.jobs.jobDescription` - This contains the job details and desired capability needed to execute the job.
@@ -41,7 +41,7 @@ Once the DMS received a job posting, it will look to find nodes that can service
 `dms.dms.config.defaultSearchTimeout`: Each DMS will have default timeout value for the search operation. This value is stored in `defaultSearchTimeout` parameter saved in the [config](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms/config) folder under `dms` package. This can be overridden by the owner of the DMS via CLI (Command Line Interface) or API. This functionality is covered in the [dms](https://gitlab.com/nunet/device-management-service/-/tree/orchestrator-package-design/dms) folder.
 
 ### Pull Based
-The first step is to request bids from the compute providers in the network. DMS compares the capability of the available resources against soft and hard constraints specified in the job requirements. The final outcome is a list of eligible compute providers with their bids.
+The first step is that service provider DMS requests bids from the compute providers in the network. DMS on compute provider compares the capability of the available resources against soft and hard constraints specified in the job requirements. If all the requirements are met, it then decides whether to submit a bid. The final outcome is that service provider DMS has a list of eligible compute providers with their bids.
 
 Please see below for relevant specification and data models.
 
@@ -49,7 +49,8 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin]())   |
 | Request payload       | [BidRequest](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bidRequest.payload.go)|
-| Data at rest (CP DMS)      | [EligibleComputeProvidersData](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/capabilityComparison.payload.go) |
+| Data at rest (CP DMS)      | [AvailableCapability](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/dms/data/availableCapability.payload.go) |
+| Data at rest (CP DMS)      | [CapabilityComparison](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/capabilityComparison.payload.go) |
 | Return payload       | [Bid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bid.payload.go) |
 | Data at rest (SP DMS)       | [EligibleComputeProvidersIndex](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/pullSearchAndMatch.sequence.mermaid),[.svg]()) |
@@ -62,6 +63,30 @@ The second step is to shortlist the preferred compute provider peer based on som
 | Request payload       | [EligibleComputeProvidersIndex](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
 | Return payload       | [EligibleComputeProviderData](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/selectPreferredNode.sequence.mermaid),[.svg]()) |
+
+**List of relevant functions**:<br/>
+`dms.network.publishJob()` - This function will take the `dms.orchestrator.bidRequest` as input and propogate it to the compute providers in the network.
+
+`dms.dms.availableResources()` - This function will return `dms.dms.availableCapability` which is the available resources/capability of the machine to perform a job.
+
+`dms.orchestrator.compare()` - This function takes `dms.jobs.jobDescription.requiredCapability` and `dms.dms.availableCapability` as input and returns `dms.orchestrator.capabilityComparison`.
+
+`dms.orchestrator.accept()` - This function takes `dms.orchestrator.capabilityComparison` and `dms.dms.config.capabilityComparator` as inputs and returns a `bool` which indicates whether the job can be accepted or not.
+
+`dms.orchestrator.createBid()` - This function returns `dms.orchestrator.bid` which is to be sent to service provider DMS.
+
+`dms.orchestrator.registerComputeBid()` - This function takes `dms.orchestrator.bid` as inputs and saves it to a table in the local database as `dms.orchestrator.computeProvidersIndex`.
+
+**List of relevant data types**:<br/>
+`dms.orchestrator.bidRequest` - This is sent to the compute providers based on which they can submit a bid.
+
+`dms.orchestrator.bid` - This is the bid that is submitted by the compute provider.
+
+`dms.dms.availableCapability` - This contains the available resources/capability of the machine to perform a job.
+
+`dms.orchestrator.capabilityComparison` - This contains the comparison of the job requirements with the available resources.
+
+`dms.orchestrator.computeProvidersIndex` - This contains the data of compute providers whose bids have been received. 
 
 ### 3. Job Request
 In case the shortlisted compute provider has not locked the resources while submitting the bid, the job request workflow is executed. This requires the compute provider DMS to lock the necessary resources required for the job and re-submit the bid. Note that at this stage compute provider can still decline the job request.
