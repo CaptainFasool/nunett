@@ -26,10 +26,10 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Job_Posting.feature))   |
-| Request payload       | [jobDescription](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/jobs/data/jobDescription.payload.go)|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/orchestrator/Job_Posting.feature))   |
+| Request payload       | [jobDescription](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/jobs/data/jobDescription.payload.go)|
 | Return payload       | None |
-| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobPosting.sequence.mermaid),[.svg]()) | 
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/jobPosting.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/rendered/jobPosting.sequence.svg)) | 
 
 #### List of relevant functions
 
