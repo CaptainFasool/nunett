@@ -110,7 +110,9 @@ func subtractFromAvailableRes(gormDB *gorm.DB, resourcesUsage models.FreeResourc
 	}
 
 	freeRes.TotCpuHz = availableRes.TotCpuHz - resourcesUsage.TotCpuHz
-	freeRes.Vcpu = freeRes.TotCpuHz / int(availableRes.CpuHz)
+	if availableRes.CpuHz > 0 {
+		freeRes.Vcpu = freeRes.TotCpuHz / int(availableRes.CpuHz)
+	}
 	freeRes.Ram = availableRes.Ram - resourcesUsage.Ram
 	freeRes.Disk = float64(availableRes.Disk) - resourcesUsage.Disk
 	freeRes.NTXPricePerMinute = availableRes.NTXPricePerMinute
