@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.159](#376)
+
+### Removed
+- TxHash verification on incoming deployment request
+
 ## [0.4.158](#361)
 
 ### Changed
