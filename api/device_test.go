@@ -4,49 +4,86 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/buger/jsonparser"
+	"github.com/spf13/afero"
+	"gitlab.com/nunet/device-management-service/internal/config"
+	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry"
 )
-
-var deviceStatus bool
-
-type deviceAvailable struct {
-	IsAvailable bool `json:"is_available"`
-}
 
 func TestDeviceStatusHandler(t *testing.T) {
 	router := SetupTestRouter()
+
+	config.SetConfig("general.metadata_path", ".")
+	libp2p.FS = afero.NewMemMapFs()
+
+	_, err := WriteMockMetadata(libp2p.FS)
+	if err != nil {
+		t.Fatalf("impossible write test metadata: %v", err)
+	}
+
 	tests := []struct {
 		description  string
-		status       string
+		available    bool
 		expectedCode int
 		expectedMsg  string
 	}{
 		{
 			description:  "device online",
-			status:       "true",
+			available:    true,
 			expectedCode: 200,
 		},
 		{
 			description:  "device offline",
-			status:       "false",
+			available:    false,
 			expectedCode: 200,
 		},
 	}
 	for _, tc := range tests {
-		status, err := strconv.ParseBool(tc.status)
-		assert.NoError(t, err)
+		db, err := ConnectTestDatabase()
+		if err != nil {
+			t.Fatalf("could not connect to database: %v", err)
+		}
 
-		deviceStatus = status
+		priv, pub, err := libp2p.GenerateKey(0)
+		if err != nil {
+			t.Errorf("failed to generate test key: %v", err)
+		}
+		err = libp2p.SaveNodeInfo(priv, pub, true, tc.available)
+		if err != nil {
+			t.Errorf("failed to save node info: %v", err)
+		}
+		err = telemetry.CalcFreeResAndUpdateDB()
+		if err != nil {
+			t.Errorf("failed to update free resources: %v", err)
+		}
+		err = libp2p.RunNode(priv, true, tc.available)
+		if err != nil {
+			t.Errorf("failed to run node: %v", err)
+		}
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/api/v1/device/status", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
-		assert.Contains(t, w.Body.String(), tc.status, tc.description)
+		if w.Code != tc.expectedCode {
+			t.Errorf("%s: wanted code %d, got %d", tc.description, tc.expectedCode, w.Code)
+			t.Errorf("%s: response: %s", tc.description, w.Body.String())
+		}
+		if w.Code == 200 {
+			status, err := jsonparser.GetBoolean(w.Body.Bytes(), "online")
+			if err != nil {
+				t.Errorf("failed to get boolean value from response body: %v", err)
+			}
+			if status != tc.available {
+				t.Errorf("%s: wanted online set to %t, got %t", tc.description, tc.available, status)
+			}
+			libp2p.ShutdownNode()
+		}
+		CleanupTestDatabase(db)
 	}
 }
 
