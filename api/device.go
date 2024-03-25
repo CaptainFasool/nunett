@@ -20,7 +20,7 @@ import (
 func DeviceStatusHandler(c *gin.Context) {
 	status, err := libp2p.DeviceStatus()
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": "could not retrieve device status"})
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"online": status})

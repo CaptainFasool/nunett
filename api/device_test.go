@@ -81,8 +81,8 @@ func TestDeviceStatusHandler(t *testing.T) {
 			if status != tc.available {
 				t.Errorf("%s: wanted online set to %t, got %t", tc.description, tc.available, status)
 			}
-			libp2p.ShutdownNode()
 		}
+		libp2p.ShutdownNode()
 		CleanupTestDatabase(db)
 	}
 }
@@ -90,23 +90,43 @@ func TestDeviceStatusHandler(t *testing.T) {
 func TestChangeDeviceStatusHandler(t *testing.T) {
 	router := SetupTestRouter()
 
+	config.SetConfig("general.metadata_path", ".")
+	libp2p.FS = afero.NewMemMapFs()
+
+	_, err := WriteMockMetadata(libp2p.FS)
+	if err != nil {
+		t.Fatalf("impossible write test metadata: %v", err)
+	}
+
 	tests := []struct {
 		description  string
+		available    bool
 		payload      []byte
 		expectedCode int
-		expectedMsg  string
 	}{
 		{
 			description:  "change status to online",
+			available:    false,
 			payload:      []byte(`{"is_available": true}`),
 			expectedCode: 200,
-			expectedMsg:  "device status set to online",
 		},
 		{
 			description:  "change status to offline",
+			available:    true,
 			payload:      []byte(`{"is_available": false}`),
 			expectedCode: 200,
-			expectedMsg:  "device status set to offline",
+		},
+		{
+			description:  "change status to online being online",
+			available:    true,
+			payload:      []byte(`{"is_available": true}`),
+			expectedCode: 500,
+		},
+		{
+			description:  "change status to offline being offline",
+			available:    false,
+			payload:      []byte(`{"is_available": false}`),
+			expectedCode: 500,
 		},
 		{
 			description:  "invalid payload",
@@ -114,13 +134,49 @@ func TestChangeDeviceStatusHandler(t *testing.T) {
 			expectedCode: 400,
 		},
 	}
-
 	for _, tc := range tests {
+		db, err := ConnectTestDatabase()
+		if err != nil {
+			t.Fatalf("failed to connect to database: %v", err)
+		}
+
+		priv, pub, err := libp2p.GenerateKey(0)
+		if err != nil {
+			t.Errorf("failed to generate test key: %v", err)
+		}
+		err = libp2p.SaveNodeInfo(priv, pub, true, tc.available)
+		if err != nil {
+			t.Errorf("failed to save node info: %v", err)
+		}
+		err = telemetry.CalcFreeResAndUpdateDB()
+		if err != nil {
+			t.Errorf("failed to update free resources: %v", err)
+		}
+		err = libp2p.RunNode(priv, true, tc.available)
+		if err != nil {
+			t.Errorf("failed to run node: %v", err)
+		}
+
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/device/status", bytes.NewBuffer(tc.payload))
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, tc.expectedCode, w.Code, tc.description, w.Body.String())
-		assert.Contains(t, w.Body.String(), tc.expectedMsg, tc.description)
+		if w.Code != tc.expectedCode {
+			t.Errorf("%s: wanted code %d, got %d", tc.description, tc.expectedCode, w.Code)
+		}
+		if w.Code == 200 {
+			// assert DB value
+			var p2pInfo models.Libp2pInfo
+			res := db.Limit(1).Find(&p2pInfo)
+			if res.Error != nil {
+				t.Errorf("%s: failed to find p2pInfo in DB: %v", tc.description, res.Error)
+			}
+			res = db.Where("available = ?", !tc.available).First(&p2pInfo)
+			if res.Error != nil {
+				t.Errorf("%s: failed to assert value at database: %v", tc.description, res.Error)
+			}
+		}
+		libp2p.ShutdownNode()
+		CleanupTestDatabase(db)
 	}
 }
