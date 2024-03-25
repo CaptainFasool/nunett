@@ -115,10 +115,10 @@ sudo apt -f install -y
 ```
 
 
-Check if DMS is running. Either look for the _nunet-dms_ process with:
+Check if DMS is running. Either look for the _nunet_ process with:
 
 ```
-ps aux | grep nunet-dms
+ps aux | grep nunet
 ```
 or use systemd:
 ```

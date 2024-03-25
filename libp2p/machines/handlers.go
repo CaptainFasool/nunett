@@ -1,13 +1,13 @@
 package machines
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
@@ -39,66 +39,48 @@ type fundingRespToSPD struct {
 
 var depreqWsConn *internal.WebSocketConnection
 
-// RequestServiceHandler  godoc
-//
-//	@Summary		Informs parameters related to blockchain to request to run a service on NuNet
-//	@Description	RequestServiceHandler searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.
-//	@Tags			run
-//	@Param			deployment_request	body		models.DeploymentRequest	true	"Deployment Request"
-//	@Success		200					{object}	fundingRespToSPD
-//	@Router			/run/request-service [post]
-func RequestServiceHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/run/request-service"))
-	kLogger.Info("Handle request service", span)
-
-	// receive deployment request
-	var depReq models.DeploymentRequest
-	var depReqFlat models.DeploymentRequestFlat
-	if err := c.BindJSON(&depReq); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "json: cannot unmarshal object into Go"})
-		return
-	}
+func RequestService(ctx context.Context, depReq models.DeploymentRequest) (*fundingRespToSPD, error) {
+	_, debug := os.LookupEnv("NUNET_DEBUG_VERBOSE")
 
 	// Check if there is already a running job
 	if libp2p.IsDepReqStreamOpen() {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "a service is already running; only 1 service is supported at the moment"})
-		return
+		return nil, fmt.Errorf("a service is already running: only 1 service is supported at the moment")
 	}
 
 	// since IsDepReqStreamOpen() is false, we can assume that there is no running job because we've lost connection to the peer
-	if result := db.DB.Where("deleted_at IS NULL").Find(&depReqFlat).RowsAffected; result > 0 {
+	var depReqFlat models.DeploymentRequestFlat
+	result := db.DB.Where("deleted_at IS NULL").Find(&depReqFlat).RowsAffected
+	if result > 0 {
 		zlog.Sugar().Infof(
 			"Deployed job unknown status (outbound depReq not open anymore). Deleting DepReqFlat record (i=%d, n=%d) from DB",
 			depReqFlat.ID, result)
 		// XXX: Needs to be modified to take multiple deployment requests from same service provider
 		// deletes all the record in table; deletes == mark as delete
-		if err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error; err != nil {
+		err := db.DB.Where("deleted_at IS NULL").Delete(&depReqFlat).Error
+		if err != nil {
 			// TODO: Do not delete, update JobStatus
 			zlog.Sugar().Errorf("%v", err)
 		}
 	}
 
 	// add node_id and public_key in deployment request
-	pKey, err := libp2p.GetPublicKey()
+	pubKey, err := libp2p.GetPublicKey()
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "unable to obtain public key"})
-		return
+		return nil, fmt.Errorf("unable to obtain public key: %w", err)
 	}
-	selfNodeID := libp2p.GetP2P().Host.ID().String()
+	selfID := libp2p.GetP2P().Host.ID().String()
 
 	depReq.Timestamp = time.Now().In(time.UTC)
-	depReq.Params.LocalNodeID = selfNodeID
-	localPubKey, _ := pKey.Raw()
+	depReq.Params.LocalNodeID = selfID
+	localPubKey, _ := pubKey.Raw()
 	depReq.Params.LocalPublicKey = string(localPubKey)
 
 	// check if the pricing matched
-	estimatedNtx := CalculateStaticNtxGpu(depReq)
+	estimatedNTX := CalculateStaticNtxGpu(depReq)
 
-	zlog.Sugar().Infof("estimated ntx price %v", estimatedNtx)
-	if estimatedNtx > float64(depReq.MaxNtx) {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "nunet estimation price is greater than client price"})
-		return
+	zlog.Sugar().Infof("estimated ntx price %v", estimatedNTX)
+	if estimatedNTX > float64(depReq.MaxNtx) {
+		return nil, fmt.Errorf("NuNet estimation price is greater than client price")
 	}
 
 	var filteredPeers []models.PeerData
@@ -111,11 +93,12 @@ func RequestServiceHandler(c *gin.Context) {
 	} else if depReq.Params.RemoteNodeID != "" {
 		zlog.Sugar().Debugf("Going for target peer specified in deployment request: %s", depReq.Params.RemoteNodeID)
 		machines := libp2p.FetchMachines(libp2p.GetP2P().Host)
-		if selectedPeerInfo, ok := machines[depReq.Params.RemoteNodeID]; ok {
+
+		selectedPeerInfo, ok := machines[depReq.Params.RemoteNodeID]
+		if ok {
 			filteredPeers = libp2p.PeersWithMatchingSpec([]models.PeerData{selectedPeerInfo}, depReq)
 		} else {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "targeted peer is not within host DHT"})
-			return
+			return nil, fmt.Errorf("targeted peer is not within host DHT")
 		}
 	} else {
 		zlog.Debug("Filtering peers - no default target peer specified")
@@ -125,15 +108,15 @@ func RequestServiceHandler(c *gin.Context) {
 	zlog.Sugar().Infof("FILTERED PEERS: %+v", filteredPeers)
 
 	if len(filteredPeers) < 1 {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
-		return
+		return nil, fmt.Errorf("no peers found with matched specs")
 	}
 
 	var onlinePeer models.PeerData
 	var rtt time.Duration = 1000000000000000000
 	for _, node := range filteredPeers {
 		// check if tokenomics address is valid, if not, skip
-		if err = utils.ValidateAddress(node.TokenomicsAddress); err != nil {
+		err = utils.ValidateAddress(node.TokenomicsAddress)
+		if err != nil {
 			zlog.Sugar().Errorf("invalid tokenomics address: %v", err)
 			zlog.Sugar().Error("skipping peer due to invalid tokenomics address")
 			continue
@@ -142,12 +125,13 @@ func RequestServiceHandler(c *gin.Context) {
 		targetPeer, err := peer.Decode(node.PeerID)
 		if err != nil {
 			zlog.Sugar().Errorf("Error decoding peer ID: %v", err)
-			return
+			return nil, fmt.Errorf("could not decode peer ID: %w", err)
 		}
-		pingResult, pingCancel := libp2p.Ping(c.Request.Context(), targetPeer)
+		// CONTEXT: Request
+		pingResult, pingCancel := libp2p.Ping(ctx, targetPeer)
 		result := <-pingResult
 		if result.Error == nil {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			if debug {
 				zlog.Sugar().Info("Peer is online.", "RTT", result.RTT, "PeerID", node.PeerID)
 			}
 			if result.RTT < rtt {
@@ -155,7 +139,7 @@ func RequestServiceHandler(c *gin.Context) {
 				onlinePeer = node
 			}
 		} else {
-			if _, debugMode := os.LookupEnv("NUNET_DEBUG_VERBOSE"); debugMode {
+			if debug {
 				zlog.Sugar().Infof("Peer - %s is offline. Error: %v", node.PeerID, result.Error)
 			}
 		}
@@ -163,8 +147,7 @@ func RequestServiceHandler(c *gin.Context) {
 	}
 
 	if onlinePeer.PeerID == "" {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no peers found with matched specs"})
-		return
+		return nil, fmt.Errorf("no peers found with matched specs")
 	}
 	computeProvider := onlinePeer
 
@@ -174,7 +157,7 @@ func RequestServiceHandler(c *gin.Context) {
 	computeProviderPeerID, err := peer.Decode(computeProvider.PeerID)
 	if err != nil {
 		zlog.Sugar().Errorf("Error decoding peer ID: %v", err)
-		return
+		return nil, fmt.Errorf("could not decode compute provider ID: %w", err)
 	}
 	computeProviderPubKey, err := libp2p.GetP2P().Host.Peerstore().PubKey(computeProviderPeerID).Raw()
 	if err != nil {
@@ -188,12 +171,11 @@ func RequestServiceHandler(c *gin.Context) {
 	oracleResp, err := oracle.FundContractRequest(&oracle.FundingRequest{
 		ServiceProviderAddr: depReq.RequesterWalletAddress,
 		ComputeProviderAddr: computeProvider.TokenomicsAddress,
-		EstimatedPrice:      int64(estimatedNtx),
+		EstimatedPrice:      int64(estimatedNTX),
 	})
 	if err != nil {
 		zlog.Info("sending fund contract request to oracle failed")
-		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": err})
-		return
+		return nil, fmt.Errorf("sending fund contract request to oracle failed: %w", err)
 	}
 
 	// Seding hashes to CP's DMS in Deployment Request
@@ -212,58 +194,49 @@ func RequestServiceHandler(c *gin.Context) {
 	depReqFlat.DeploymentRequest = depReqStr
 	depReqFlat.JobStatus = "awaiting"
 
-	if err := db.DB.Create(&depReqFlat).Error; err != nil {
+	err = db.DB.Create(&depReqFlat).Error
+	if err != nil {
 		zlog.Info("cannot write to database")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "cannot write to database"})
-		return
+		return nil, fmt.Errorf("cannot write to database: %w", err)
 	}
 
 	// oracle outputs: estimated price, metadata hash, withdraw hash, refund hash, distribute hash
 	resp := fundingRespToSPD{
 		ComputeProviderAddr: computeProvider.TokenomicsAddress,
-		EstimatedPrice:      estimatedNtx,
+		EstimatedPrice:      estimatedNTX,
 		MetadataHash:        oracleResp.MetadataHash,
 		WithdrawHash:        oracleResp.WithdrawHash,
 		RefundHash:          oracleResp.RefundHash,
 		Distribute_50Hash:   oracleResp.Distribute_50Hash,
 		Distribute_75Hash:   oracleResp.Distribute_75Hash,
 	}
-	zlog.Sugar().Debugf("%s", resp)
-	c.JSON(200, resp)
+	zlog.Sugar().Debugf("%+v", resp)
+
 	go outgoingDepReqWebsock()
+	return &resp, nil
 }
 
-// DeploymentRequestHandler  godoc
-//
-//	@Summary		Websocket endpoint responsible for sending deployment request and receiving deployment response.
-//	@Description	Loads deployment request from the DB after a successful blockchain transaction has been made and passes it to compute provider.
-//	@Tags			run
-//	@Success		200	{string}	string
-//	@Router			/run/deploy [get]
-func DeploymentRequestHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/run/deploy"))
-	kLogger.Info("Handle deployment request", span)
-
-	ws, err := internal.UpgradeConnection.Upgrade(c.Writer, c.Request, nil)
+func DeploymentRequest(ctx, reqCtx context.Context, w http.ResponseWriter, r *http.Request) error {
+	ws, err := internal.UpgradeConnection.Upgrade(w, r, nil)
 	if err != nil {
-		zlog.Sugar().Errorf("Failed to set websocket upgrade: %v", err)
-		return
+		zlog.Sugar().Errorf("failed to set websocket upgrade: %v\n", err)
+		return fmt.Errorf("failed to set websocket upgrade: %w", err)
 	}
 
 	err = ws.WriteMessage(websocket.TextMessage, []byte("{\"action\": \"connected\", \"message\": \"You are connected to DMS for docker (GPU/CPU) deployment.\"}"))
 	if err != nil {
 		zlog.Error(err.Error())
+		return fmt.Errorf("could not write message to websocket: %w", err)
 	}
 
 	depreqWsConn = &internal.WebSocketConnection{Conn: ws}
 
-	go incomingDepReqWebsock(c)
-
+	go incomingDepReqWebsock(ctx, reqCtx)
+	return nil
 }
 
 // incomingDepReqWebsock listens for messages from websocket client
-func incomingDepReqWebsock(ctx *gin.Context) {
+func incomingDepReqWebsock(ctx, reqCtx context.Context) {
 	zlog.Info("Started listening for messages from websocket client")
 	listen := true
 	defer func() {
@@ -293,7 +266,7 @@ func incomingDepReqWebsock(ctx *gin.Context) {
 				listen = false
 			}
 			zlog.Sugar().Debugf("Received message from websocket client: %s", string(p))
-			err = handleWebsocketAction(ctx, p, depreqWsConn)
+			err = handleWebsocketAction(ctx, reqCtx, p, depreqWsConn)
 			if err != nil {
 				zlog.Sugar().Errorf("%v", err)
 			}
@@ -423,7 +396,7 @@ func outgoingDepReqWebsock() {
 	zlog.Info("Exiting outgoingDepReqWebsock")
 }
 
-func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebSocketConnection) error {
+func handleWebsocketAction(ctx, reqCtx context.Context, payload []byte, conn *internal.WebSocketConnection) error {
 	// convert json to go values
 	var m wsMessage
 	err := json.Unmarshal(payload, &m)
@@ -437,13 +410,13 @@ func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebS
 		err := json.Unmarshal(m.Message, &txStatus)
 		if err != nil || txStatus.TransactionStatus != "success" {
 			// Send event to Signoz
-			span := trace.SpanFromContext(ctx.Request.Context())
+			span := trace.SpanFromContext(reqCtx)
 			span.SetAttributes(attribute.String("URL", "/run/deploy"))
 			span.SetAttributes(attribute.String("TransactionStatus", "error"))
 			return err
 		}
 
-		err = sendDeploymentRequest(ctx, conn, txStatus.TxHash)
+		err = sendDeploymentRequest(ctx, reqCtx, conn, txStatus.TxHash)
 		if err != nil {
 			return fmt.Errorf(err.Error())
 		}
@@ -451,8 +424,8 @@ func handleWebsocketAction(ctx *gin.Context, payload []byte, conn *internal.WebS
 	return nil
 }
 
-func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection, txHash string) error {
-	span := trace.SpanFromContext(ctx.Request.Context())
+func sendDeploymentRequest(ctx, reqCtx context.Context, conn *internal.WebSocketConnection, txHash string) error {
+	span := trace.SpanFromContext(reqCtx)
 	span.SetAttributes(attribute.String("URL", "/run/deploy"))
 	span.SetAttributes(attribute.String("TransactionStatus", "success"))
 	kLogger.Info("send deployment request", span)
@@ -465,13 +438,14 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	var service models.Services
 
 	// SELECTs the first record; first record which is not marked as delete
-	if err := db.DB.First(&depReqFlat).Error; err != nil {
-		return err
+	err := db.DB.First(&depReqFlat).Error
+	if err != nil {
+		return fmt.Errorf("could not select first record on database: %w", err)
 	}
 
-	err := json.Unmarshal([]byte(depReqFlat.DeploymentRequest), &depReq)
+	err = json.Unmarshal([]byte(depReqFlat.DeploymentRequest), &depReq)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to unmarshal deployment request: %w", err)
 	}
 
 	depReq.TxHash = txHash
@@ -493,7 +467,8 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	service.Distribute_75Hash = depReq.Distribute_75Hash
 	service.TransactionType = "refund"
 
-	if err := db.DB.Create(&service).Error; err != nil {
+	err = db.DB.Create(&service).Error
+	if err != nil {
 		zlog.Sugar().Errorf("couldn't save service on SP side: %v", err)
 	}
 
@@ -501,12 +476,12 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	submitted := map[string]string{"action": libp2p.JobSubmitted}
 	err = conn.WriteJSON(submitted)
 	if err != nil {
-		return fmt.Errorf("unable to write to websocket: %v", err)
+		return fmt.Errorf("unable to write submit message to websocket: %w", err)
 	}
 
 	depReqStream, err := libp2p.SendDeploymentRequest(ctx, depReq)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send deployment request: %w", err)
 	}
 
 	// if this is a resume request, send the file as well
@@ -520,7 +495,7 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 		transferChan, err := libp2p.SendFileToPeer(ctx, remotePeerID, depReq.Params.ResumeJob.ProgressFile, libp2p.FTDEPREQ)
 		if err != nil {
 			zlog.Sugar().Errorf("error: couldn't send file to peer - %v", err)
-			return err
+			return fmt.Errorf("could not send file to peer %s: %w", remotePeerID, err)
 		}
 
 		// wait until transferChan is closed, which happens when file is transferred 100%
@@ -532,6 +507,5 @@ func sendDeploymentRequest(ctx *gin.Context, conn *internal.WebSocketConnection,
 	//      most importantly, depreq/depres messaging
 	//XXX: needs a lot of testing.
 	go libp2p.DeploymentUpdateListener(depReqStream)
-
 	return nil
 }

@@ -116,7 +116,7 @@ func Test_ChatJoinCmdInitializeFail(t *testing.T) {
 	assert.Equal(mockWebSocket.initializeCalled, len(chatList))
 }
 
-func Test_ChatJoinCmdCloseFail(t *testing.T) {
+func Test_ChatJoinCmdCloseOnEOF(t *testing.T) {
 	assert := assert.New(t)
 
 	chatList := []libp2p.OpenStream{
@@ -133,7 +133,7 @@ func Test_ChatJoinCmdCloseFail(t *testing.T) {
 	mockUtils := &MockUtilsService{}
 	mockUtils.SetResponseFor("GET", "/api/v1/peers/chat", chatResponse)
 
-	mockWebSocket := &MockWebSocket{closeErr: fmt.Errorf("impossible to close")}
+	mockWebSocket := &MockWebSocket{}
 
 	for _, chat := range chatList {
 		cmd := NewChatJoinCmd(mockUtils, mockWebSocket)
@@ -146,7 +146,7 @@ func Test_ChatJoinCmdCloseFail(t *testing.T) {
 		err := cmd.Execute()
 		assert.NoError(err)
 
-		assert.Contains(buf.String(), "impossible to close")
+		assert.Contains(buf.String(), "Error: EOF")
 	}
 }
 

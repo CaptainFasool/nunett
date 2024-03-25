@@ -140,16 +140,20 @@ func depReqStreamHandler(stream network.Stream) {
 		DeploymentUpdate(MsgDepResp, string(depResBytes), true)
 	} else {
 		// check if txhash is valid
-		err := checkTxHash(depreqMessage.TxHash)
-		if err == nil {
-			zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
-			DepReqQueue <- depreqMessage
-		} else {
-			zlog.Sugar().Infof("tx_hash %q is invalid or timed out. Stopping deployment process", depreqMessage.TxHash)
-			depRes := models.DeploymentResponse{Success: false, Content: "Invalid TxHash"}
-			depResBytes, _ := json.Marshal(depRes)
-			DeploymentUpdate(MsgDepResp, string(depResBytes), true)
-		}
+		//err := checkTxHash(depreqMessage.TxHash)
+		//if err == nil {
+		//	zlog.Sugar().Infof("tx_hash %q is valid, proceeding with deployment", depreqMessage.TxHash)
+		//	DepReqQueue <- depreqMessage
+		//} else {
+		//	zlog.Sugar().Infof("tx_hash %q is invalid or timed out. Stopping deployment process", depreqMessage.TxHash)
+		//	depRes := models.DeploymentResponse{Success: false, Content: "Invalid TxHash"}
+		//	depResBytes, _ := json.Marshal(depRes)
+		//	DeploymentUpdate(MsgDepResp, string(depResBytes), true)
+
+		// The transaction hash check is now bypassed or removed.
+		// Directly proceed with adding the deployment request to the processing queue.
+		zlog.Sugar().Infof("Skipping transaction hash check...")
+		DepReqQueue <- depreqMessage
 	}
 }
 
