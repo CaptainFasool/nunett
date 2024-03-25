@@ -123,15 +123,21 @@ const docTemplate = `{
             }
         },
         "/onboarding/offboard": {
-            "delete": {
-                "description": "Offboard runs the offboarding script to remove resources associated with a device.",
+            "post": {
+                "description": "Offboard runs offboarding process to remove the machine from the NuNet network.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "onboarding"
                 ],
                 "summary": "Runs the offboarding process.",
                 "responses": {
                     "200": {
-                        "description": "Successfully Onboarded"
+                        "description": "device successfully offboarded",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -197,7 +203,7 @@ const docTemplate = `{
         },
         "/onboarding/status": {
             "get": {
-                "description": "Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.",
+                "description": "Returns json with 5 parameters: onboarded, error, machine_uuid, metadata_path, database_path.\n` + "`" + `onboarded` + "`" + ` is true if the device is onboarded, false otherwise.\n` + "`" + `error` + "`" + ` is the error message if any related to onboarding status check\n` + "`" + `machine_uuid` + "`" + ` is the UUID of the machine\n` + "`" + `metadata_path` + "`" + ` is the path to metadataV2.json only if it exists\n` + "`" + `database_path` + "`" + ` is the path to nunet.db only if it exists",
                 "produces": [
                     "application/json"
                 ],
@@ -350,7 +356,7 @@ const docTemplate = `{
         },
         "/peers/file/accept": {
             "get": {
-                "description": "Accept an incoming file transfer. Incoming file transfre stream id is a required parameter.",
+                "description": "Accept an incoming file transfer. Incoming file transfer stream ID is a required parameter.",
                 "tags": [
                     "file"
                 ],
@@ -540,7 +546,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/tokenomics.TxHashResp"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/tokenomics.TxHashResp"
+                            }
                         }
                     }
                 }
@@ -616,7 +625,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tokenomics.updateTxStatusBody"
+                            "$ref": "#/definitions/tokenomics.UpdateTxStatusBody"
                         }
                     }
                 ],
@@ -672,11 +681,11 @@ const docTemplate = `{
                 "checkpoint_dir": {
                     "type": "string"
                 },
+                "filename_path": {
+                    "type": "string"
+                },
                 "last_modified": {
                     "type": "integer"
-                },
-                "path": {
-                    "type": "string"
                 }
             }
         },
@@ -924,9 +933,7 @@ const docTemplate = `{
                 "database_path": {
                     "type": "string"
                 },
-                "error": {
-                    "type": "string"
-                },
+                "error": {},
                 "machine_uuid": {
                     "type": "string"
                 },
@@ -977,6 +984,14 @@ const docTemplate = `{
                 }
             }
         },
+        "tokenomics.UpdateTxStatusBody": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                }
+            }
+        },
         "tokenomics.rewardRespToCPD": {
             "type": "object",
             "properties": {
@@ -1008,21 +1023,13 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "tokenomics.updateTxStatusBody": {
-            "type": "object",
-            "properties": {
-                "address": {
-                    "type": "string"
-                }
-            }
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.156",
+	Version:          "0.4.159",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

@@ -18,7 +18,7 @@
 
 # Requirements
 
-# golang is required to build the nunet-dms binary
+# golang is required to build the nunet binary
 # gcc is required to build go-ethereum
 # dpkg-deb is required to build go-ethereum
 
@@ -41,7 +41,7 @@ do
 
     go version # redundant check of go version
     make linux_$arch
-    cp builds/dms_linux_$arch $archDir/usr/bin/nunet-dms
+    cp builds/dms_linux_$arch $archDir/usr/bin/nunet
     ls -R $archDir/usr # to allow checking all files are where they're supposed to be
 
     gcc $projectRoot/maint-scripts/config_network.c -o $archDir/usr/bin/nunet-tap-config

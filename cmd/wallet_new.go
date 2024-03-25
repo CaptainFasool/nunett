@@ -32,6 +32,7 @@ func NewWalletNewCmd(wallet backend.WalletManager) *cobra.Command {
 			} else if eth {
 				pair, err = wallet.GetEthereumAddressAndPrivateKey()
 			} else {
+				cmd.Help()
 				return fmt.Errorf("no wallet flag specified")
 			}
 

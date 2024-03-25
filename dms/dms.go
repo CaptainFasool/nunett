@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"gitlab.com/nunet/device-management-service/api"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/firecracker"
@@ -15,7 +16,6 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/routes"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -68,7 +68,7 @@ func Run() {
 }
 
 func startServer() {
-	router := routes.SetupRouter()
+	router := api.SetupRouter()
 	// router.Use(otelgin.Middleware(tracing.MachineName))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

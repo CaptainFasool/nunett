@@ -20,5 +20,6 @@ func NewPeerCmd(net backend.NetworkManager) *cobra.Command {
 
 	cmd.AddCommand(peerListCmd)
 	cmd.AddCommand(peerSelfCmd)
+	cmd.AddCommand(peerDefaultCmd)
 	return cmd
 }

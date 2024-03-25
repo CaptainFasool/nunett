@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -28,14 +29,15 @@ func (ws *WebSocket) ReadMessage(ctx context.Context, w io.Writer) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		default:
 			_, msg, err := ws.Conn.ReadMessage()
 			if err != nil {
 				if websocket.IsCloseError(err,
 					websocket.CloseAbnormalClosure,
 					websocket.CloseGoingAway,
-					websocket.CloseNormalClosure) {
+					websocket.CloseNormalClosure) ||
+					strings.Contains(err.Error(), "use of closed network connection") {
 					return fmt.Errorf("connection closed")
 				} else {
 					return fmt.Errorf("error reading message: %w", err)
@@ -64,14 +66,15 @@ func (ws *WebSocket) WriteMessage(ctx context.Context, r io.Reader) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		case msg := <-inputChan:
 			err := ws.Conn.WriteMessage(websocket.TextMessage, []byte(msg))
 			if err != nil {
 				if websocket.IsCloseError(err,
 					websocket.CloseAbnormalClosure,
 					websocket.CloseGoingAway,
-					websocket.CloseNormalClosure) {
+					websocket.CloseNormalClosure) ||
+					strings.Contains(err.Error(), "use of closed network connection") {
 					return fmt.Errorf("connection closed")
 				} else {
 					return fmt.Errorf("error writing message: %w", err)
@@ -88,7 +91,7 @@ func (ws *WebSocket) Ping(ctx context.Context, w io.Writer) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		case <-ticker.C:
 			err := ws.Conn.WriteMessage(websocket.PingMessage, []byte{})
 			if err != nil {

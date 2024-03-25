@@ -22,6 +22,7 @@ func NewResourceConfigCmd(net backend.NetworkManager, utilsService backend.Utili
 
 			// check for both flags values
 			if memory == 0 || cpu == 0 || ntxPrice < 0 {
+				cmd.Help()
 				return fmt.Errorf("all flag values must be specified")
 			}
 
