@@ -54,7 +54,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Pull_Search_And_Match.feature))   |
 | Request payload       | [BidRequest](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bidRequest.payload.go)|
 | Data at rest (CP DMS)      | [AvailableCapability](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/dms/data/availableCapability.payload.go) |
 | Data at rest (CP DMS)      | [CapabilityComparison](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/capabilityComparison.payload.go) |
@@ -66,7 +66,7 @@ The second step is to shortlist the preferred compute provider peer based on som
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Select_Preferred_Node.feature))   |
 | Request payload       | [EligibleComputeProvidersIndex](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
 | Return payload       | [EligibleComputeProviderData](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/computeProviderIndex.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/selectPreferredNode.sequence.mermaid),[.svg]()) |
