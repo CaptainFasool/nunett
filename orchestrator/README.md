@@ -96,18 +96,45 @@ The second step is to shortlist the preferred compute provider peer based on som
 `dms.orchestrator.computeProvidersIndex` - This contains the data of compute providers whose bids have been received. 
 
 ### 3. Job Request
+DMS on service provider side checks whether the resources are locked by the preferred compute provider peer.
+
 In case the shortlisted compute provider has not locked the resources while submitting the bid, the job request workflow is executed. This requires the compute provider DMS to lock the necessary resources required for the job and re-submit the bid. Note that at this stage compute provider can still decline the job request.
 
 Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Job_Request.feature))   |
 | Request payload       | [BidRequest](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bidRequest.payload.go) |
 | Return payload - request acceptance      | [Bid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/bid.payload.go) |
 | Return payload - request denied      | [DeclineMessage](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/declineJobRequest.payload.go) |
 | Return payload - timeout      | [TimeoutResponse](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/timeoutJobRequest.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobRequest.sequence.mermaid),[.svg]()) |
+
+**List of relevant functions**:<br/>
+`dms.orchestrator.checkResourceLock()` - This function takes a value from `dms.orchestrator.computeProvidersIndex` as input and checks if the resources required for the job are locked by the compute provider. It returns a `bool` value as output.
+
+`dms.network.queryPeer()` - This function sends the request to lock resources to the the compute provider DMS. It takes `peerID` of the compute provider and `dms.orchestrator.bidRequest` as inputs.
+
+`dms.orchestrator.accept()` - This function decides whether to accept the job request. It takes `dms.orchestrator.bidRequest` as input and returns a `bool` value.
+
+`dms.orchestrator.lockResources()` - This function locks the necessary resources required for the job. It takes `dms.jobs.jobDescription` as input and returns `dms.orchestrator.bid`.
+
+`dms.database.saveEvent()` - This function saves the event to the local database. Input value is TBD.
+
+**List of relevant data types**:<br/>
+`dms.orchestrator.computeProvidersIndex` - This contains the data of compute providers whose bids have been received. 
+
+`dms.orchestrator.bidRequest` - This is sent to the chosen compute provider as part of job request.
+
+`dms.orchestrator.bid` - This is the bid that is returned by the compute provider after locking of resources for the job.
+
+`dms.orchestrator.declineJobRequest` - Message sent to the service provider if compute provider declines the job request.
+
+`dms.orchestrator.timeoutJobRequest` - Message sent to the service provider if timeout happens.
+
+`dms.database.declineJobEvent` - TBD
+
 
 ### 4. Contract Closure
 The service provider and the shortlisted compute provider verify that the counterparty is verified and approved by Nunet Solutions to participate in the network. This in an important step to establish trust before any work is performed. 
