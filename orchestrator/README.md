@@ -186,8 +186,30 @@ Please see below for relevant specification and data models.
 
 `dms.dms.config.ID` - This contains identifiers like UUID, Peer ID and DID for the DMS.
 
+### 5. Invocation and Allocation
+When the contract closure workflow is completed, both the service provider and compute provider DMS have an agreement and proof of contract with them. Then the service provider DMS will send an invocation to the compute provider DMS which results in job allocation being created. Allocation can be understood as an execution space / environment on actual hardware that enables a Job to be executed.
 
+Please see below for relevant specification and data models.
 
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Invocation_And_Allocation.feature))   |
+| Request payload     | [Invocation](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/data/invocation.payload.go) |
+| Data at rest       | [Allocation](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/executor/data/allocation.payload.go) |
+| Return payload      | [AllocationStartSuccess](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/data/allocationStartSuccess.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/invocationAndAllocation.sequence.mermaid),[.svg]()) |
 
+**List of relevant functions**:<br/>
 
+`dms.network.sendInvocation()` - This function sends the invocation to the compute provider DMS. It takes `dms.orchestrator.invocation` as input.
+
+`dms.executor.createAllocation()` - This function creates an allocation on the compute provider DMS. It takes `dms.orchestrator.invocation` as input and returns `dms.executor.Allocation`.
+
+**List of relevant data types**:<br/>
+
+`dms.orchestrator.invocation` - Invocation which is sent to the compute provider DMS. This contains job description and contract data.
+
+`dms.executor.Allocation` - This contains identifier of the allocation being created along with its status and errors (if any).
+
+`dms.orchestrator.allocationStartSuccess` - This is the response from the compute provider DMS to Service Provider once allocation has been created.
 
