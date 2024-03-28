@@ -2,14 +2,84 @@ package api
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
+
+type ProblemDetail struct {
+	Type     string        `json:"type,omitempty" validate:"uri"`
+	Status   int           `json:"status,omitempty"`
+	Title    string        `json:"title,omitempty"`
+	Detail   string        `json:"detail,omitempty"`
+	Instance string        `json:"instance,omitempty" validate:"uri"`
+	Errors   []ErrorDetail `json:"errors,omitempty"`
+}
+
+type ErrorDetail struct {
+	Detail  string `json:"detail"`
+	Pointer string `json:"pointer"`
+}
+
+type ProblemOption func(*ProblemDetail)
+
+func WithType(t string) ProblemOption {
+	return func(p *ProblemDetail) {
+		p.Type = t
+	}
+}
+
+func WithStatus(s int) ProblemOption {
+	return func(p *ProblemDetail) {
+		p.Status = s
+	}
+}
+
+func WithTitle(t string) ProblemOption {
+	return func(p *ProblemDetail) {
+		p.Title = t
+	}
+}
+
+func WithDetail(d string) ProblemOption {
+	return func(p *ProblemDetail) {
+		p.Detail = d
+	}
+}
+
+func WithInstance(i string) ProblemOption {
+	return func(p *ProblemDetail) {
+		p.Instance = i
+	}
+}
+
+func WithErrors(e []ErrorDetail) ProblemOption {
+	return func(p *ProblemDetail) {
+		p.Errors = e
+	}
+}
+
+func NewProblemDetail(options ...ProblemOption) ProblemDetail {
+	problem := ProblemDetail{}
+	for _, option := range options {
+		option(&problem)
+	}
+	return problem
+}
+
+//func NewEmptyRequestBodyProblem() ProblemDetail {
+//	return NewProblemDetail(
+//		WithStatus(http.StatusBadRequest),
+//		WithTitle("Empty Request Body"),
+//		WithDetail("Your request did not include a body."),
+//	)
+//}
 
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
@@ -112,4 +182,20 @@ func DefaultConfig() cors.Config {
 		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
 	}
+}
+
+func readableErrors(errs validator.ValidationErrors) []ErrorDetail {
+	var errors []ErrorDetail
+	for _, e := range errs {
+		var detail, pointer string
+		switch e.Tag() {
+		case "required":
+			detail = "is required"
+		default:
+			detail = "is invalid"
+		}
+		pointer = "#/" + strings.ToLower(e.Field())
+		errors = append(errors, ErrorDetail{Detail: detail, Pointer: pointer})
+	}
+	return errors
 }
