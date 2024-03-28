@@ -156,7 +156,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Contract_Closure.feature))   |
 | Request payload - payment included      | [ID](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/dms/config/data/id.payload.go) |
 | Request payload - payment not included      | [Contract](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/tokenomics/data/contract.payload.go) |
 | Return payload - Contract Exists      | [Contract](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/tokenomics/data/contract.payload.go) |
