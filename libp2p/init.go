@@ -5,7 +5,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
-	"gitlab.com/nunet/device-management-service/dms/config"
+	"gitlab.com/nunet/device-management-service/config"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/internal/logger"
 	"gitlab.com/nunet/device-management-service/models"

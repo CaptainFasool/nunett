@@ -115,7 +115,7 @@ func (h *MockHandler) OnboardHandler(c *gin.Context) {
 func (h *MockHandler) OnboardStatusHandler(c *gin.Context) {
 	status := models.OnboardingStatus{
 		Onboarded:    true,
-		Error:        "",
+		Error:        nil,
 		MachineUUID:  "foo",
 		MetadataPath: "/.nunet/metadataV2.json",
 		DatabasePath: "/.nunet/nunet.db",

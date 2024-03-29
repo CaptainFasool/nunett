@@ -10,8 +10,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"gitlab.com/nunet/device-management-service/config"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/dms/config"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"

@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gitlab.com/nunet/device-management-service/config"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/dms/config"
 	"gitlab.com/nunet/device-management-service/models"
 )
 

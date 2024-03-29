@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/nunet/device-management-service/dms/config"
+	"gitlab.com/nunet/device-management-service/config"
 
 	"github.com/gin-gonic/gin"
 )

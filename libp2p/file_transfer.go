@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"gitlab.com/nunet/device-management-service/dms/config"
+	"gitlab.com/nunet/device-management-service/config"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
