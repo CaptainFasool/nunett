@@ -40,21 +40,20 @@ func NewChatStartCmd(p2pService backend.PeerManager, utilsService backend.Utilit
 			if err != nil {
 				return fmt.Errorf("failed to initialize WebSocket client: %w", err)
 			}
-			defer func() {
-				err := wsClient.Close()
-				if err != nil {
-					log.Printf("failed to close WebSocket client: %v\n", err)
-				}
-			}()
 
 			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+
+			defer func() {
+				cancel()
+				wsClient.Close()
+			}()
 
 			go func() {
 				interrupt := make(chan os.Signal, 1)
 				signal.Notify(interrupt, os.Interrupt)
 				<-interrupt
 				cancel()
+				wsClient.Close()
 			}()
 
 			var wg sync.WaitGroup

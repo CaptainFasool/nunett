@@ -10,14 +10,14 @@ type BlockchainAddressPrivKey struct {
 
 // CapacityForNunet is a struct required in request body for the onboarding
 type CapacityForNunet struct {
-	Memory         int64  `json:"memory,omitempty"`
-	CPU            int64  `json:"cpu,omitempty"`
+	Memory            int64   `json:"memory,omitempty"`
+	CPU               int64   `json:"cpu,omitempty"`
 	NTXPricePerMinute float64 `json:"ntx_price,omitempty"`
-	Channel        string `json:"channel,omitempty"`
-	PaymentAddress string `json:"payment_addr,omitempty"`
-	Cardano        bool   `json:"cardano,omitempty"`
-	ServerMode     bool   `json:"server_mode,omitempty,"`
-	IsAvailable    bool   `json:"is_available"`
+	Channel           string  `json:"channel,omitempty"`
+	PaymentAddress    string  `json:"payment_addr,omitempty"`
+	Cardano           bool    `json:"cardano,omitempty"`
+	ServerMode        bool    `json:"server_mode,omitempty,"`
+	IsAvailable       bool    `json:"is_available"`
 }
 
 // Provisioned struct holds data about how much total resource
@@ -81,7 +81,7 @@ type MetadataV2 struct {
 
 type OnboardingStatus struct {
 	Onboarded    bool   `json:"onboarded"`
-	Error        string `json:"error"`
+	Error        error  `json:"error"`
 	MachineUUID  string `json:"machine_uuid"`
 	MetadataPath string `json:"metadata_path"`
 	DatabasePath string `json:"database_path"`

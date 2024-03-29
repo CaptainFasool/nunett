@@ -51,7 +51,7 @@ func GenerateSocketFile(n int) string {
 	return prefix + string(s) + ".socket"
 }
 
-func initVM(c *gin.Context, vm models.VirtualMachine) error {
+func initVM(vm models.VirtualMachine) error {
 	cmd := exec.Command("firecracker", "--api-sock", vm.SocketFile)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
 	// output, _ := cmd.CombinedOutput() // for debugging purpose

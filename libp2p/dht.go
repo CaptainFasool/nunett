@@ -353,6 +353,7 @@ func GetDHTUpdates(ctx context.Context) {
 		pingCancel()
 	}
 	gettingDHTUpdate = false
+	doneGettingDHTUpdate <- true
 	zlog.Debug("Done Getting DHT Updates")
 }
 
