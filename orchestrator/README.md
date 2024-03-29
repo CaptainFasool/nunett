@@ -218,7 +218,29 @@ Once allocation is created, the job execution starts on the compute provider mac
 
 Please see below for relevant specification and data models.
 
-### 6. Contract Settlement
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Job_Execution.feature))   |
+| Request payload     | None |
+| Return payload - success     | [Result](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/jobs/data/result.payload.go) |
+| Return payload - error     | [Result](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/executor/data/error.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobExecution.sequence.mermaid),[.svg]()) |
+
+**List of relevant functions**:<br/>
+
+`dms.executor.jobUpdate()` - This function sends job updates to the service provider while execution. It takes `dms.executor.allocation.AllocationID` as input and returns `dms.executor.jobStatusUpdate`.
+
+**List of relevant data types**:<br/>
+
+`dms.executor.jobStatusUpdate` - This is the status update sent by the compute provider DMS to the service provider DMS during job execution.
+
+`dms.jobs.result` - This includes the outcome of the work done by the compute provider along with proof.
+
+`dms.jobs.jobCompleted` - This is sent to Oracle after job is completed.
+
+`dms.executor.error` - This is an error response sent to Service Provider DMS in case of errors during job execution.
+
+### 7. Contract Settlement
 After job is completed, service provider verifies the work done using `Oracle`. If the work is correct, the `Contract-Database` makes the necessary transactions to settle the the contract.
 
 Please see below for relevant specification and data models.
