@@ -226,13 +226,13 @@ Please see below for relevant specification and data models.
 | Spec type              | Location |
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Contract_Settlement.feature))   |
-| Request payload     | [Invocation](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/jobVerification.payload.go) |
+| Request payload     | [JobVerification](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/jobVerification.payload.go) |
 | Return payload      | [Message](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/message.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/contractSettlement.sequence.mermaid),[.svg]()) |
 
 **List of relevant functions**:<br/>
 
-`oracle.verifyJob()` - This function sends the job and contract data to the Oracle for verification. It takes `dms.orchestrator.jobVerification` as input. 
+`oracle.verifyJob()` - This function sends the job and contract data to the Oracle for verification. It takes `dms.orchestrator.jobVerification` as input and returns `dms.orchestrator.jobVerificationResult`.
 
 **List of relevant data types**:<br/>
 
