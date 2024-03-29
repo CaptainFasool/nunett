@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/docker"
 	elk "gitlab.com/nunet/device-management-service/internal/heartbeat"
@@ -169,7 +168,7 @@ func handleCardanoDeployment(depReq models.DeploymentRequest) (string, error) {
 	}
 	jsonBody, _ := json.Marshal(startDefaultBody)
 
-	resp, err := utils.MakeInternalRequest(&gin.Context{}, "POST", "/api/v1/vm/start-default", "", jsonBody)
+	resp, err := utils.MakeInternalRequest(nil, "POST", "/api/v1/vm/start-default", "", jsonBody)
 	if err != nil {
 		zlog.Error(err.Error())
 	}
