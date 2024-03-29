@@ -11,7 +11,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/shirou/gopsutil/cpu"
-	"gitlab.com/nunet/device-management-service/dms/config"
+	"gitlab.com/nunet/device-management-service/config"
 	"gitlab.com/nunet/device-management-service/internal/logger"
 	"gitlab.com/nunet/device-management-service/models"
 )

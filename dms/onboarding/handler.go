@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"gitlab.com/nunet/device-management-service/config"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/dms/config"
 	library "gitlab.com/nunet/device-management-service/dms/lib"
 	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
