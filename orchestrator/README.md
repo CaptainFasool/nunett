@@ -232,10 +232,13 @@ Please see below for relevant specification and data models.
 
 **List of relevant functions**:<br/>
 
-`dms.orchestrator.verifyJob()` - This function sends the job and contract data to the Oracle for verification. It takes `dms.orchestrator.jobVerification` as input.
+`oracle.verifyJob()` - This function sends the job and contract data to the Oracle for verification. It takes `dms.orchestrator.jobVerification` as input. 
 
 **List of relevant data types**:<br/>
 
 `dms.orchestrator.jobVerification` - This contains job description and contract data along with job result. This is the data that is processed by Oracle to verify the job.
 
+`dms.orchestrator.jobVerificationResult` - This contains the result of the job verification done by Oracle.
+
 `dms.orchestrator.message` - This is the message that is sent to the other DMS after contract is settled and business ends.
+
