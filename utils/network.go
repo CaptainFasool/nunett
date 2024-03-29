@@ -8,7 +8,7 @@ import (
 	"net/url"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/config"
+	"gitlab.com/nunet/device-management-service/internal/config"
 )
 
 // InternalAPIURL is a helper method to compose API URLs

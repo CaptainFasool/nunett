@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
-	"gitlab.com/nunet/device-management-service/config"
+	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

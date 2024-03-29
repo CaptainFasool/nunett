@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"gitlab.com/nunet/device-management-service/config"
+	"gitlab.com/nunet/device-management-service/internal/config"
 )
 
 var (
