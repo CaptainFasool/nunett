@@ -5,23 +5,6 @@ import (
 	"gitlab.com/nunet/device-management-service/docs"
 )
 
-func init() {
-	rootCmd.AddCommand(gpuCmd)
-	rootCmd.AddCommand(offboardCmd)
-	rootCmd.AddCommand(onboardMLCmd)
-	rootCmd.AddCommand(chatCmd)
-	rootCmd.AddCommand(shellCmd)
-	rootCmd.AddCommand(runCmd)
-	rootCmd.AddCommand(peerCmd)
-	rootCmd.AddCommand(onboardCmd)
-	rootCmd.AddCommand(infoCmd)
-	rootCmd.AddCommand(deviceCmd)
-	rootCmd.AddCommand(capacityCmd)
-	rootCmd.AddCommand(resourceConfigCmd)
-	rootCmd.AddCommand(logCmd)
-	rootCmd.AddCommand(walletCmd)
-}
-
 var rootCmd = &cobra.Command{
 	Use:     "nunet",
 	Short:   "NuNet Device Management Service",

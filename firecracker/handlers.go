@@ -17,9 +17,23 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
 	"gitlab.com/nunet/device-management-service/models"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	"gitlab.com/nunet/device-management-service/utils"
 )
+
+type DefaultVM struct {
+	KernelImagePath string `json:"kernel_image_path"`
+	FilesystemPath  string `json:"filesystem_path"`
+	PublicKey       string `json:"public_key"`
+	NodeID          string `json:"node_id"`
+}
+
+type CustomVM struct {
+	KernelImagePath string `json:"kernel_image_path"`
+	FilesystemPath  string `json:"filesystem_path"`
+	VCPUCount       int    `json:"vcpu_count"`
+	MemSizeMib      int    `json:"mem_size_mib"`
+	TapDevice       string `json:"tap_device"`
+}
 
 func NewClient(sockFile string) *http.Client {
 	client := &http.Client{
@@ -33,87 +47,53 @@ func NewClient(sockFile string) *http.Client {
 	return client
 }
 
-// StartCustom godoc
-//
-//	@Summary		Start a VM with custom configuration.
-//	@Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
-//	@Tags			vm
-//	@Produce		json
-//	@Success		200
-//	@Router			/vm/start-custom [post]
-func StartCustom(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/vm/start-custom"))
-
-	type StartCustomBody struct {
-		KernelImagePath string `json:"kernel_image_path"`
-		FilesystemPath  string `json:"filesystem_path"`
-		VCPUCount       int    `json:"vcpu_count"`
-		MemSizeMib      int    `json:"mem_size_mib"`
-		TapDevice       string `json:"tap_device"`
-	}
-
-	body := StartCustomBody{}
-	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-
+func StartCustom(ctx context.Context, custom CustomVM) error {
 	tapDevName := networking.NextTapDevice()
 
 	vm := models.VirtualMachine{
 		SocketFile: GenerateSocketFile(10),
-		BootSource: body.KernelImagePath,
-		Filesystem: body.FilesystemPath,
-		VCPUCount:  body.VCPUCount,
-		MemSizeMib: body.MemSizeMib,
-		TapDevice:  body.TapDevice,
+		BootSource: custom.KernelImagePath,
+		Filesystem: custom.FilesystemPath,
+		VCPUCount:  custom.VCPUCount,
+		MemSizeMib: custom.MemSizeMib,
+		TapDevice:  custom.TapDevice,
 		State:      "awaiting",
 	}
 
-	result := db.DB.WithContext(c.Request.Context()).Create(&vm)
-	if result.Error != nil {
-		panic(result.Error)
+	res := db.DB.WithContext(ctx).Create(&vm)
+	if res.Error != nil {
+		return fmt.Errorf("could not create database table: %w", res.Error)
 	}
 
-	if err := initVM(c, vm); err != nil {
+	err := initVM(vm)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     err.Error(),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("could not initialize virtual machine: %w", err)
 	}
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
-	bootSourceBody.KernelImagePath = body.KernelImagePath
+	bootSourceBody.KernelImagePath = custom.KernelImagePath
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	if err := bootSource(c, vm, bootSourceBody); err != nil {
+	err = bootSource(nil, vm, bootSourceBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to configure boot source: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to configure boot source: %w", err)
 	}
 
 	// PUT /drives
 	drivesBody := models.Drives{}
 
 	drivesBody.DriveID = "rootfs"
-	drivesBody.PathOnHost = body.FilesystemPath
+	drivesBody.PathOnHost = custom.FilesystemPath
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
-	if err := drives(c, vm, drivesBody); err != nil {
+	err = drives(nil, vm, drivesBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to configure drives: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to configure drives: %w", err)
 	}
 
 	// PUT /machine-config
@@ -122,13 +102,10 @@ func StartCustom(c *gin.Context) {
 	machineConfigBody.MemSizeMib = vm.MemSizeMib
 	machineConfigBody.VCPUCount = vm.VCPUCount
 
-	if err := machineConfig(c, vm, machineConfigBody); err != nil {
+	err = machineConfig(nil, vm, machineConfigBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to configure machineConfig: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to configure machine config: %w", err)
 	}
 
 	// PUT /network-interfaces
@@ -137,137 +114,88 @@ func StartCustom(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 
-	if err := networkInterfaces(c, vm, networkInterfacesBody); err != nil {
+	err = networkInterfaces(nil, vm, networkInterfacesBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to configure network-interfaces: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to configure network-interfaces: %w", err)
 	}
 
 	mmdsConfigBody := models.MMDSConfig{}
 	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
 
-	if err := setupMMDS(c, vm, mmdsConfigBody); err != nil {
+	err = setupMMDS(nil, vm, mmdsConfigBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to setup MMDS: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to setup MMDS: %w", err)
 	}
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
 	//TODO: Currently passing fake data will be replaced with information from Deployment Request
-	mmdsMetadata.NodeId = "12343124-3423425234-23423534234"
-	mmdsMetadata.PKey = "3usf3/3gf/23r sdf3r2rdfsdfa"
+	mmdsMetadata.NodeId = utils.RandomString(15)
+	mmdsMetadata.PKey = utils.RandomString(15)
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
-	if err := passMMDSMsg(c, vm, mmdsMsg); err != nil {
+	err = passMMDSMsg(nil, vm, mmdsMsg)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to pass MMDS message: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to pass MMDS message: %w", err)
 	}
 
 	// POST /start
-	if err := startVM(c, vm); err != nil {
+	err = startVM(nil, vm)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     err.Error(),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("unable to start virtual machine: %w", err)
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":   "VM started successfully.",
-		"timestamp": time.Now().In(time.UTC),
-	})
+	return nil
 }
 
-// StartDefault godoc
-//
-//	@Summary		Start a VM with default configuration.
-//	@Description	Everything except kernel files and filesystem file will be set by DMS itself.
-//	@Tags			vm
-//	@Produce		json
-//	@Success		200
-//	@Router			/vm/start-default [post]
-func StartDefault(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/vm/start-default"))
-
-	type StartDefaultBody struct {
-		KernelImagePath string `json:"kernel_image_path"`
-		FilesystemPath  string `json:"filesystem_path"`
-		PublicKey       string `json:"public_key"`
-		NodeID          string `json:"node_id"`
-	}
-
-	body := StartDefaultBody{}
-	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-
+func StartDefault(ctx context.Context, def DefaultVM) error {
 	tapDevName := networking.NextTapDevice()
 
 	vm := models.VirtualMachine{
 		SocketFile: GenerateSocketFile(10),
-		BootSource: body.KernelImagePath,
-		Filesystem: body.FilesystemPath,
+		BootSource: def.KernelImagePath,
+		Filesystem: def.FilesystemPath,
 		TapDevice:  tapDevName,
 		State:      "awaiting",
 	}
 
-	result := db.DB.WithContext(c.Request.Context()).Create(&vm)
-	if result.Error != nil {
-		zlog.Panic(result.Error.Error())
+	res := db.DB.WithContext(ctx).Create(&vm)
+	if res.Error != nil {
+		zlog.Panic(res.Error.Error())
 	}
 
-	if err := initVM(c, vm); err != nil {
+	err := initVM(vm)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     err.Error(),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("could not initialize virtual machine: %w", err)
 	}
 
 	// PUT /boot-source
 	bootSourceBody := models.BootSource{}
-	bootSourceBody.KernelImagePath = body.KernelImagePath
+	bootSourceBody.KernelImagePath = def.KernelImagePath
 	bootSourceBody.BootArgs = "console=ttyS0 reboot=k panic=1 pci=off"
 
-	if err := bootSource(c, vm, bootSourceBody); err != nil {
+	err = bootSource(nil, vm, bootSourceBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to configure boot source: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to configure boot source: %w", err)
 	}
 
 	// PUT /drives
 	drivesBody := models.Drives{}
 
 	drivesBody.DriveID = "rootfs"
-	drivesBody.PathOnHost = body.FilesystemPath
+	drivesBody.PathOnHost = def.FilesystemPath
 	drivesBody.IsRootDevice = true
 	drivesBody.IsReadOnly = false
 
-	if err := drives(c, vm, drivesBody); err != nil {
+	err = drives(nil, vm, drivesBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to configure drives: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to configure drives: %w", err)
 	}
 
 	// PUT /machine-config
@@ -277,19 +205,16 @@ func StartDefault(c *gin.Context) {
 	machineConfigBody.VCPUCount = 2
 	vm.MemSizeMib = 1024
 	vm.VCPUCount = 2
-	result = db.DB.WithContext(c.Request.Context()).Save(&vm)
+	res = db.DB.WithContext(ctx).Save(&vm)
 
-	if result.Error != nil {
-		zlog.Panic(result.Error.Error())
+	if res.Error != nil {
+		zlog.Panic(res.Error.Error())
 	}
 
-	if err := machineConfig(c, vm, machineConfigBody); err != nil {
+	err = machineConfig(nil, vm, machineConfigBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to configure machineConfig: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to configure machineConfig: %w", err)
 	}
 
 	// PUT /network-interfaces
@@ -298,56 +223,40 @@ func StartDefault(c *gin.Context) {
 	networkInterfacesBody.GuestMac = "AA:FC:00:00:00:01"
 	networkInterfacesBody.HostDevName = tapDevName
 
-	if err := networkInterfaces(c, vm, networkInterfacesBody); err != nil {
+	err = networkInterfaces(nil, vm, networkInterfacesBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to configure network-interfaces: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to configure network-interfaces: %w", err)
 	}
 
 	mmdsConfigBody := models.MMDSConfig{}
 	mmdsConfigBody.NetworkInterface = append(mmdsConfigBody.NetworkInterface, networkInterfacesBody.IfaceID)
 
-	if err := setupMMDS(c, vm, mmdsConfigBody); err != nil {
+	err = setupMMDS(nil, vm, mmdsConfigBody)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to setup MMDS: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to setup MMDS: %w", err)
 	}
 
 	mmdsMsg := models.MMDSMsg{}
 	mmdsMetadata := models.MMDSMetadata{}
-	mmdsMetadata.NodeId = body.NodeID
-	mmdsMetadata.PKey = body.PublicKey
+	mmdsMetadata.NodeId = def.NodeID
+	mmdsMetadata.PKey = def.PublicKey
 	mmdsMsg.Latest.Metadata.MMDSMetadata = mmdsMetadata
 
-	if err := passMMDSMsg(c, vm, mmdsMsg); err != nil {
+	err = passMMDSMsg(nil, vm, mmdsMsg)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     fmt.Sprintf("Failed to pass MMDS message: %v", err.Error()),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("failed to pass MMDS message: %w", err)
 	}
 
 	// POST /start
-	if err := startVM(c, vm); err != nil {
+	err = startVM(nil, vm)
+	if err != nil {
 		zlog.Sugar().Errorln(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     err.Error(),
-			"timestamp": time.Now().In(time.UTC),
-		})
-		return
+		return fmt.Errorf("unable to start virtual machine: %w", err)
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":   "VM started successfully.",
-		"timestamp": time.Now().In(time.UTC),
-	})
+	return nil
 }
 
 func runFromConfig(c *gin.Context, vm models.VirtualMachine) {

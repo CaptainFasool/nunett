@@ -3,7 +3,7 @@
 # This script is intended for developers who are developing and testing on their local system.
 
 systemctl stop nunet-dms
-rm -rf /usr/bin/nunet-dms
+rm -rf /usr/bin/nunet
 rm -rf /etc/nunet/*V2.json
 rm -rf /etc/nunet/nunet.db
 rm -rf /etc/nunet/sockets/

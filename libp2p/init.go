@@ -47,9 +47,10 @@ const (
 )
 
 var (
-	zlog             otelzap.Logger
-	kadPrefix        = dht.ProtocolPrefix("/nunet")
-	gettingDHTUpdate = false
+	zlog                 otelzap.Logger
+	kadPrefix            = dht.ProtocolPrefix("/nunet")
+	gettingDHTUpdate     = false
+	doneGettingDHTUpdate = make(chan bool) // XXX dirty hack to wait for DHT update to finish - should be removed
 
 	// bootstrap peers provided by NuNet
 	NuNetBootstrapPeers []multiaddr.Multiaddr

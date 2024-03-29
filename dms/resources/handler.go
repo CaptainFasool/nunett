@@ -1,10 +1,9 @@
 package resources
 
 import (
+	"context"
 	"fmt"
-	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel/attribute"
@@ -12,32 +11,23 @@ import (
 	"gorm.io/gorm"
 )
 
-// CalcFreeResources godoc
-//
-//	@Summary		Returns the amount of free resources available
-//	@Description	Checks and returns the amount of free resources available
-//	@Tags			telemetry
-//	@Produce		json
-//	@Success		200
-//	@Router			/telemetry/free [get]
-func GetFreeResource(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
+func GetFreeResource(ctx context.Context) (*models.FreeResources, error) {
+	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("URL", "/telemetry/free"))
 
 	err := CalcFreeResAndUpdateDB()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
+		return nil, fmt.Errorf("could not calculate free resources and update database: %w", err)
 	}
 
-	var freeResource models.FreeResources
-	if res := db.DB.WithContext(c.Request.Context()).Find(&freeResource); res.RowsAffected == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": res.Error})
-		return
+	var free models.FreeResources
+	res := db.DB.WithContext(ctx).Find(&free)
+	if res.Error != nil {
+		return nil, fmt.Errorf("could not find free resources table: %w", res.Error)
+	} else if res.RowsAffected == 0 {
+		return nil, fmt.Errorf("no rows were affected")
 	}
-
-	c.JSON(http.StatusOK, freeResource)
-
+	return &free, nil
 }
 
 func updateDBFreeResources(freeRes models.FreeResources) error {

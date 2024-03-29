@@ -281,6 +281,10 @@ func ShutdownNode() error {
 	stopDHTUpdate <- true
 	stopDHTCleanup <- true
 
+	// XXX wait for GetDHTUpdates to finish
+	// https://gitlab.com/nunet/device-management-service/-/merge_requests/182#note_1797374647
+	<-doneGettingDHTUpdate
+
 	for _, node := range p2p.Host.Peerstore().Peers() {
 		p2p.Host.Network().ClosePeer(node)
 		p2p.Host.Peerstore().Put(node, "peer_info", nil)

@@ -161,6 +161,26 @@ func Test_InfoCmd(t *testing.T) {
         "public_key": "abc123"
     }`)
 
+	expectedResponse := "+----------------------+----------+\n"
+	expectedResponse += "|         INFO         |  VALUE   |\n"
+	expectedResponse += "+----------------------+----------+\n"
+	expectedResponse += "| Name                 | metadata |\n"
+	expectedResponse += "| Update Timestamp     |        0 |\n"
+	expectedResponse += "| Memory Max           |      256 |\n"
+	expectedResponse += "| Total Core           |        4 |\n"
+	expectedResponse += "| CPU Max              |      700 |\n"
+	expectedResponse += "| Available CPU        |      690 |\n"
+	expectedResponse += "| Available Memory     |      246 |\n"
+	expectedResponse += "| Reserved CPU         |       10 |\n"
+	expectedResponse += "| Reserved Memory      |       10 |\n"
+	expectedResponse += "| Network              | tcp      |\n"
+	expectedResponse += "| Public Key           | abc123   |\n"
+	expectedResponse += "| Node ID              |          |\n"
+	expectedResponse += "| Allow Cardano        | false    |\n"
+	expectedResponse += "| Dashboard            |          |\n"
+	expectedResponse += "| NTX Price Per Minute | 0.000000 |\n"
+	expectedResponse += "+----------------------+----------+\n"
+
 	// write mock content inside metadata
 	err = afero.WriteFile(mockFS, metadataFullPath, mockMetadataJSON, 0644)
 	if err != nil {
@@ -192,7 +212,7 @@ func Test_InfoCmd(t *testing.T) {
 	expected := new(bytes.Buffer)
 	printMetadata(expected, &metadata)
 
-	assert.Equal(buf.String(), expected.String())
+	assert.Equal(expectedResponse, buf.String())
 
 	buf.Reset()
 	expected.Reset()

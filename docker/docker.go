@@ -876,7 +876,7 @@ func beforeContainerTimeout(dc *client.Client, containerID string, callID int64,
 // fetchOnboardedResources returns cpuQuota and memoryMax (in bytes) onboarded to nunet
 func fetchOnboardedResources() (cpuQuota, memoryMax int64, err error) {
 	// call 'nunet info' command internally and get the reserved_cpu, cpu_max and reserved ram
-	metadata, err := onboarding.FetchMetadata()
+	metadata, err := onboarding.GetMetadata()
 	if err != nil {
 		zlog.Sugar().Errorf("Error fetching metadata: %v", err)
 		// will return 0, 0, err
