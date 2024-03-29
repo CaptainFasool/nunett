@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"gitlab.com/nunet/device-management-service/db"
-	library "gitlab.com/nunet/device-management-service/dms/lib"
 	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
@@ -111,9 +110,9 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 
 	currentTime := time.Now().Unix()
 
-	totalCpu := library.GetTotalProvisioned().CPU
-	totalMem := library.GetTotalProvisioned().Memory
-	numCores := library.GetTotalProvisioned().NumCores
+	totalCpu := resources.GetTotalProvisioned().CPU
+	totalMem := resources.GetTotalProvisioned().Memory
+	numCores := resources.GetTotalProvisioned().NumCores
 
 	var metadata models.MetadataV2
 	metadata.Name = hostname
@@ -140,7 +139,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 		metadata.AllowCardano = true
 	}
 
-	gpuInfo, err := library.Check_gpu()
+	gpuInfo, err := resources.Check_gpu()
 	if err != nil {
 		zlog.Sugar().Errorf("unable to detect GPU: %v ", err.Error())
 	}
@@ -170,11 +169,11 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 	avalRes := models.AvailableResources{
 		TotCpuHz:          int(capacity.CPU),
 		CpuNo:             int(numCores),
-		CpuHz:             library.Hz_per_cpu(),
+		CpuHz:             resources.Hz_per_cpu(),
 		PriceCpu:          0, // TODO: Get price of CPU
 		Ram:               int(capacity.Memory),
 		PriceRam:          0, // TODO: Get price of RAM
-		Vcpu:              int(math.Floor((float64(capacity.CPU)) / library.Hz_per_cpu())),
+		Vcpu:              int(math.Floor((float64(capacity.CPU)) / resources.Hz_per_cpu())),
 		Disk:              0,
 		PriceDisk:         0,
 		NTXPricePerMinute: capacity.NTXPricePerMinute,
@@ -335,8 +334,8 @@ func fileExists(filename string) bool {
 }
 
 func validateCapacityForNunet(capacity models.CapacityForNunet) error {
-	totalCpu := library.GetTotalProvisioned().CPU
-	totalMem := library.GetTotalProvisioned().Memory
+	totalCpu := resources.GetTotalProvisioned().CPU
+	totalMem := resources.GetTotalProvisioned().Memory
 
 	if capacity.CPU > int64(totalCpu*9/10) || capacity.CPU < int64(totalCpu/10) {
 		return fmt.Errorf("CPU should be between 10%% and 90%% of the available CPU (%d and %d)", int64(totalCpu/10), int64(totalCpu*9/10))

@@ -9,7 +9,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 
-	library "gitlab.com/nunet/device-management-service/dms/lib"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -37,15 +37,15 @@ var onboardMLCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		vendors, err := library.DetectGPUVendors()
+		vendors, err := resources.DetectGPUVendors()
 		if err != nil {
 			fmt.Println("Error detecting GPUs:", err)
 			os.Exit(1)
 		}
 
 		// check for GPU vendors
-		hasAMD := containsVendor(vendors, library.AMD)
-		hasNVIDIA := containsVendor(vendors, library.NVIDIA)
+		hasAMD := containsVendor(vendors, resources.AMD)
+		hasNVIDIA := containsVendor(vendors, resources.NVIDIA)
 
 		if !hasAMD && !hasNVIDIA {
 			fmt.Println(`No AMD or NVIDIA GPU(s) detected...`)
