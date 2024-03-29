@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.160](#366)
+
+### Fix
+- Problem with vm start request on firecracker depreq
+
 ## [0.4.159](#376)
 
 ### Removed
