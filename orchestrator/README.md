@@ -213,3 +213,29 @@ Please see below for relevant specification and data models.
 
 `dms.orchestrator.allocationStartSuccess` - This is the response from the compute provider DMS to Service Provider once allocation has been created.
 
+### 6. Job Execution
+Once allocation is created, the job execution starts on the compute provider machine. 
+
+Please see below for relevant specification and data models.
+
+### 6. Contract Settlement
+After job is completed, service provider verifies the work done using `Oracle`. If the work is correct, the `Contract-Database` makes the necessary transactions to settle the the contract.
+
+Please see below for relevant specification and data models.
+
+| Spec type              | Location |
+---|---|
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Contract_Settlement.feature))   |
+| Request payload     | [Invocation](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/jobVerification.payload.go) |
+| Return payload      | [Message](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/message.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/contractSettlement.sequence.mermaid),[.svg]()) |
+
+**List of relevant functions**:<br/>
+
+`dms.orchestrator.verifyJob()` - This function sends the job and contract data to the Oracle for verification. It takes `dms.orchestrator.jobVerification` as input.
+
+**List of relevant data types**:<br/>
+
+`dms.orchestrator.jobVerification` - This contains job description and contract data along with job result. This is the data that is processed by Oracle to verify the job.
+
+`dms.orchestrator.message` - This is the message that is sent to the other DMS after contract is settled and business ends.
