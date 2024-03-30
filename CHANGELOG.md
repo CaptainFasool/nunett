@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.162](#206)
+
+### Added
+- Repositories for db module. First phase of db refactoring 
+
 ## [0.4.161](#353)
 
 ### Changed
