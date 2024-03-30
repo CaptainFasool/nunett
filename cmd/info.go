@@ -36,7 +36,7 @@ func NewInfoCmd(net backend.NetworkManager, utilsService backend.Utility) *cobra
 	}
 }
 
-func displayMetadataInTable(w io.Writer, metadata *models.MetadataV2) {
+func displayMetadataInTable(w io.Writer, metadata *models.Metadata) {
 	table := tablewriter.NewWriter(w)
 	table.SetHeader([]string{"Info", "Value"})
 

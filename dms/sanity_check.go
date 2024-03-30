@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/docker"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/telemetry"
 	"gorm.io/gorm"
 )
 
@@ -32,5 +32,5 @@ func SanityCheck(gormDB *gorm.DB) {
 		gormDB.Save(&service)
 	}
 
-	telemetry.CalcFreeResAndUpdateDB()
+	resources.CalcFreeResAndUpdateDB()
 }

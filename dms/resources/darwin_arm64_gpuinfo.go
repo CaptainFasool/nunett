@@ -1,6 +1,6 @@
 //go:build darwin && (arm64 || amd64)
 
-package library
+package resources
 
 type GPUInfo struct {
 	GPUName     string
@@ -8,17 +8,6 @@ type GPUInfo struct {
 	UsedMemory  uint64
 	FreeMemory  uint64
 	Vendor      GPUVendor
-}
-
-func (v GPUVendor) String() string {
-	switch v {
-	case NVIDIA:
-		return "NVIDIA"
-	case AMD:
-		return "AMD"
-	default:
-		return "Unknown"
-	}
 }
 
 func GetGPUInfo() ([][]GPUInfo, error) {

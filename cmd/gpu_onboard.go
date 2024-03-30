@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	library "gitlab.com/nunet/device-management-service/lib"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
@@ -30,14 +30,14 @@ var gpuOnboardCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		vendors, err := library.DetectGPUVendors()
+		vendors, err := resources.DetectGPUVendors()
 		if err != nil {
 			fmt.Println("Error detecting GPUs:", err)
 			os.Exit(1)
 		}
 
-		hasAMD := containsVendor(vendors, library.AMD)
-		hasNVIDIA := containsVendor(vendors, library.NVIDIA)
+		hasAMD := containsVendor(vendors, resources.AMD)
+		hasNVIDIA := containsVendor(vendors, resources.NVIDIA)
 
 		if !hasAMD && !hasNVIDIA {
 			fmt.Println(`No AMD or NVIDIA GPU(s) detected...`)
@@ -77,7 +77,7 @@ var gpuOnboardCmd = &cobra.Command{
 			}
 
 			if hasNVIDIA {
-				NVIDIAGPUs, err := library.GetNVIDIAGPUInfo()
+				NVIDIAGPUs, err := resources.GetNVIDIAGPUInfo()
 				if err != nil {
 					fmt.Println("Error while fetching NVIDIA info:", err)
 					os.Exit(1)
@@ -91,7 +91,7 @@ var gpuOnboardCmd = &cobra.Command{
 					os.Exit(1)
 				}
 
-				err = promptDriverInstallation(cmd.InOrStdin(), cmd.OutOrStdout(), library.NVIDIA, nvidiaDriverPath)
+				err = promptDriverInstallation(cmd.InOrStdin(), cmd.OutOrStdout(), resources.NVIDIA, nvidiaDriverPath)
 				if err != nil {
 					fmt.Println("Error during NVIDIA drivers installation:", err)
 					os.Exit(1)
@@ -99,7 +99,7 @@ var gpuOnboardCmd = &cobra.Command{
 			}
 
 			if hasAMD {
-				AMDGPUs, err := library.GetAMDGPUInfo()
+				AMDGPUs, err := resources.GetAMDGPUInfo()
 				if err != nil {
 					fmt.Println("Error while fetching AMD info:", err)
 					os.Exit(1)
@@ -107,7 +107,7 @@ var gpuOnboardCmd = &cobra.Command{
 
 				printGPUs(AMDGPUs)
 
-				err = promptDriverInstallation(cmd.InOrStdin(), cmd.OutOrStdout(), library.AMD, amdDriverPath)
+				err = promptDriverInstallation(cmd.InOrStdin(), cmd.OutOrStdout(), resources.AMD, amdDriverPath)
 				if err != nil {
 					fmt.Println("Error during AMD drivers installation:", err)
 					os.Exit(1)
@@ -121,7 +121,7 @@ var gpuOnboardCmd = &cobra.Command{
 
 // containsVendor takes a slice of GPUVendor structs that were detected in the system
 // and look for a specific vendor, returning true if it is found.
-func containsVendor(vendors []library.GPUVendor, target library.GPUVendor) bool {
+func containsVendor(vendors []resources.GPUVendor, target resources.GPUVendor) bool {
 	for _, v := range vendors {
 		if v == target {
 			return true
@@ -166,7 +166,7 @@ func promptContainer(in io.Reader, out io.Writer, containerPath string) error {
 
 // promptDriverInstallation takes GPUVendor (for printing) and the installation script as inputs.
 // It prompts the user for confirmation and if confirmed it runs the script.
-func promptDriverInstallation(in io.Reader, out io.Writer, vendor library.GPUVendor, scriptPath string) error {
+func promptDriverInstallation(in io.Reader, out io.Writer, vendor resources.GPUVendor, scriptPath string) error {
 	prompt := fmt.Sprintf("Do you want to proceed with %s driver installation? (y/N)", vendor.String())
 
 	proceed, err := utils.PromptYesNo(in, out, prompt)
@@ -187,7 +187,7 @@ func promptDriverInstallation(in io.Reader, out io.Writer, vendor library.GPUVen
 // printGPUs display a list of detected GPUs in the machine.
 // It takes a slice of GPUInfo structs as input, get the vendor from the first element
 // and then iterate over each element to display the GPU card series.
-func printGPUs(gpus []library.GPUInfo) {
+func printGPUs(gpus []resources.GPUInfo) {
 	var vendor string
 
 	if len(gpus) == 0 {

@@ -1,8 +1,8 @@
 package backend
 
 import (
+	"gitlab.com/nunet/device-management-service/dms/onboarding"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
 type Resources struct{}

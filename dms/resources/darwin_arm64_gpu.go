@@ -1,6 +1,6 @@
 //go:build darwin && (amd64 || arm64)
 
-package library
+package resources
 
 import (
 	"gitlab.com/nunet/device-management-service/models"

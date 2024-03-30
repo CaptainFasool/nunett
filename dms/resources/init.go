@@ -1,4 +1,4 @@
-package library
+package resources
 
 import (
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
@@ -9,7 +9,7 @@ import (
 var zlog otelzap.Logger
 
 func init() {
-	zlog = logger.OtelZapLogger("library")
+	zlog = logger.OtelZapLogger("resources")
 	klogger.InitializeLogger(klogger.LogLevelWarning)
 
 }

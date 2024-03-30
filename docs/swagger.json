@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.160"
+        "version": "0.4.161"
     },
     "host": "localhost:9999",
     "basePath": "/api/v1",
@@ -865,18 +865,44 @@
                 }
             }
         },
+        "models.Gpu": {
+            "type": "object",
+            "properties": {
+                "free_vram": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tot_vram": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.Metadata": {
             "type": "object",
             "properties": {
+                "allow_cardano": {
+                    "type": "boolean"
+                },
                 "available": {
                     "type": "object",
                     "properties": {
-                        "ram": {
+                        "cpu": {
                             "type": "integer"
                         },
-                        "update_timestamp": {
+                        "memory": {
                             "type": "integer"
                         }
+                    }
+                },
+                "dashboard": {
+                    "type": "string"
+                },
+                "gpu_info": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Gpu"
                     }
                 },
                 "name": {
@@ -884,6 +910,12 @@
                 },
                 "network": {
                     "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "ntx_price": {
+                    "type": "number"
                 },
                 "public_key": {
                     "type": "string"
@@ -903,21 +935,18 @@
                     "type": "object",
                     "properties": {
                         "cpu_max": {
-                            "type": "number"
+                            "type": "integer"
                         },
-                        "cpu_usage": {
-                            "type": "number"
-                        },
-                        "ram_max": {
+                        "memory_max": {
                             "type": "integer"
                         },
                         "total_core": {
                             "type": "integer"
-                        },
-                        "update_timestamp": {
-                            "type": "integer"
                         }
                     }
+                },
+                "update_timestamp": {
+                    "type": "integer"
                 }
             }
         },

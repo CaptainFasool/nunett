@@ -16,8 +16,10 @@ import (
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -45,25 +47,56 @@ func Run() {
 	time.Sleep(time.Second * 5)
 
 	// get managed VMs, assume previous run left some VM running
-	firecracker.RunPreviouslyRunningVMs()
+	firecracker.RestoreVMs()
 
-	// Recreate host with previous keys
-	libp2p.CheckOnboarding()
-	if libp2p.GetP2P().Host != nil {
-		SanityCheck(db.DB)
-		heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+	// check if onboarded
+	if onboarded, _ := utils.IsOnboarded(); onboarded {
+		metadata, err := utils.ReadMetadataFile()
+		if err != nil {
+			zlog.Sugar().Errorf("unable to read metadata.json: %v", err)
+			os.Exit(1)
+		}
+		ValidateOnboarding(metadata)
+
+		p2pParams := GetP2PParams()
+		priv, err := crypto.UnmarshalPrivateKey(p2pParams.PrivateKey)
+		if err != nil {
+			zlog.Sugar().Fatalf("unable to unmarshal private key: %v", err)
+		}
+
+		libp2p.RunNode(priv, p2pParams.ServerMode, p2pParams.Available)
+		if libp2p.GetP2P().Host != nil {
+			SanityCheck(db.DB)
+			heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+		}
 	}
 
 	// wait for SIGINT or SIGTERM
-	select {
-	case sig := <-internal.ShutdownChan:
-		fmt.Printf("Shutting down after getting a %v...", sig)
+	sig := <-internal.ShutdownChan
+	fmt.Printf("Shutting down after receiving %v...\n", sig)
 
-		// add actual cleanup code here
-		fmt.Println("Cleaning up before shutting down")
+	// add actual cleanup code here
+	fmt.Println("Cleaning up before shutting down")
 
-		// exit
-		os.Exit(0)
+	// exit
+	os.Exit(0)
+}
+
+func GetP2PParams() (libp2pInfo models.Libp2pInfo) {
+	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
+	if result.Error == nil && libp2pInfo.PrivateKey != nil {
+		return
+	}
+	return
+}
+
+func ValidateOnboarding(metadata *models.Metadata) {
+	// Check 1: Check if payment address is valid
+	err := utils.ValidateAddress(metadata.PublicKey)
+	if err != nil {
+		zlog.Sugar().Errorf("the payment address %s is not valid", metadata.PublicKey)
+		zlog.Sugar().Error("exiting DMS")
+		os.Exit(1)
 	}
 }
 

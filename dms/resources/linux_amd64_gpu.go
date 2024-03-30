@@ -1,13 +1,13 @@
 //go:build linux && amd64
 
-package library
+package resources
 
 import (
 	"fmt"
 
 	"gitlab.com/nunet/device-management-service/models"
 	// "gitlab.com/nunet/device-management-service/library/gpudetect"
-	// "gitlab.com/nunet/device-management-service/onboarding/gpuinfo"
+	// "gitlab.com/nunet/device-management-service/dms/onboarding/gpuinfo"
 )
 
 func Check_gpu() ([]models.Gpu, error) {
