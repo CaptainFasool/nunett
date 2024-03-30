@@ -13,17 +13,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/db"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/firecracker/networking"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/telemetry"
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-// RunPreviouslyRunningVMs runs `runFromConfig` for every firecracker VM record found in
+// RestoreVMs runs `runFromConfig` for every firecracker VM record found in
 // local DB which are marked `running`.
-func RunPreviouslyRunningVMs() error {
+func RestoreVMs() error {
 	var vms []models.VirtualMachine
 
 	if result := db.DB.Where("state = ?", "running").Find(&vms); result.Error != nil {
@@ -171,12 +171,12 @@ func startVM(c *gin.Context, vm models.VirtualMachine) error {
 
 	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
-	err := telemetry.CalcFreeResAndUpdateDB()
+	err := resources.CalcFreeResAndUpdateDB()
 	if err != nil {
 		return fmt.Errorf("Error calculating and updating FreeResources: %v", err)
 	}
 
-	_, err = telemetry.GetFreeResources()
+	_, err = resources.GetFreeResources()
 	if err != nil {
 		return fmt.Errorf("Error getting freeResources: %v", err)
 	}
@@ -197,12 +197,12 @@ func stopVM(c *gin.Context, vm models.VirtualMachine) error {
 
 	db.DB.WithContext(c.Request.Context()).Save(&vm)
 
-	err := telemetry.CalcFreeResAndUpdateDB()
+	err := resources.CalcFreeResAndUpdateDB()
 	if err != nil {
 		return fmt.Errorf("Error calculating and updating FreeResources: %v", err)
 	}
 
-	_, err = telemetry.GetFreeResources()
+	_, err = resources.GetFreeResources()
 	if err != nil {
 		return fmt.Errorf("Error getting freeResources: %v", err)
 	}

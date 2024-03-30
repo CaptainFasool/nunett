@@ -6,7 +6,6 @@ import (
 
 	"github.com/coreos/go-systemd/sdjournal"
 	"gitlab.com/nunet/device-management-service/cmd/backend"
-	// "gitlab.com/nunet/device-management-service/internal/config"
 )
 
 var (

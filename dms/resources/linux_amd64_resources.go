@@ -1,6 +1,6 @@
-//go:build darwin && amd64
+//go:build linux && amd64
 
-package library
+package resources
 
 import (
 	"github.com/shirou/gopsutil/cpu"
@@ -19,33 +19,33 @@ func totalRamInMB() uint64 {
 
 // totalCPUInMHz fetches compute capacity of the host machine
 func totalCPUInMHz() float64 {
+	cores, _ := cpu.Info()
+
 	var totalCompute float64
-	cpus, _ := cpu.Info()
-	for cpu := range cpus {
-		totalCompute += float64(cpus[cpu].Cores) * cpus[cpu].Mhz
+
+	for i := 0; i < len(cores); i++ {
+		totalCompute += cores[i].Mhz
 	}
+
 	return totalCompute
 }
 
 // fetches the max clock speed of a single core
 // Assuming all cores have the same clock speed
 func Hz_per_cpu() float64 {
-	cpu, _ := cpu.Info()
-	return cpu[0].Mhz
+	cores, _ := cpu.Info()
+
+	return cores[0].Mhz
 }
 
 // GetTotalProvisioned returns Provisioned struct with provisioned memory and CPU.
 func GetTotalProvisioned() *models.Provisioned {
-	var totalCores int32
-	cpus, _ := cpu.Info()
-	for cpu := range cpus {
-		totalCores += cpus[cpu].Cores
-	}
+	cores, _ := cpu.Info()
 
 	provisioned := &models.Provisioned{
 		CPU:      totalCPUInMHz(),
 		Memory:   totalRamInMB(),
-		NumCores: uint64(totalCores),
+		NumCores: uint64(len(cores)),
 	}
 	return provisioned
 }

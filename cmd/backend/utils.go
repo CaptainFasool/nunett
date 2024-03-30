@@ -25,7 +25,7 @@ func (u *Utils) IsOnboarded() (bool, error) {
 	return onboarded, nil
 }
 
-func (u *Utils) ReadMetadataFile() (*models.MetadataV2, error) {
+func (u *Utils) ReadMetadataFile() (*models.Metadata, error) {
 	return utils.ReadMetadataFile()
 }
 

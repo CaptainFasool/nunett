@@ -9,18 +9,18 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"sync"
 	"testing"
 	"time"
-	"log"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
-	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/cardano"
+	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/heartbeat"
@@ -193,9 +193,9 @@ func (spClient *SPTestClient) RunJob() {
 // Test that the CP DMS will run a job with a valid tx hash
 func (s *TestHarness) TestDMSRunsValidJob() {
 	spClient, err := CreateServiceProviderTestingClient(s)
-	s.Nil(err, "Failed to create testing client");
+	s.Nil(err, "Failed to create testing client")
 
-	const ntxAmount = 2;
+	const ntxAmount = 2
 
 	tx_hash, err := cardano.PayToScript(ntxAmount, TesterKeyHash, TesterKeyHash)
 	if err != nil {
@@ -563,56 +563,56 @@ func (s *TestHarness) TestCPCannotWithdrawForInvalidResults() {
 // Test if the CP can successfully withdraw
 func (s *TestHarness) TestValidCPWithdrawal() {
 	hash, err := cardano.PayToScript(1, SPKeyHash, CPKeyHash)
-	if (err != nil) {
-		s.Fail("Failed to pay to script");
+	if err != nil {
+		s.Fail("Failed to pay to script")
 	}
-	log.Printf("Transaction Hash %s", hash);
+	log.Printf("Transaction Hash %s", hash)
 	err = cardano.WaitForTransaction(hash, TxConfirmationTimeoutMinutes)
-	if (err != nil) {
-		s.Fail("Failed to get tx confirmation");
+	if err != nil {
+		s.Fail("Failed to get tx confirmation")
 	}
 	err = cardano.SpendFromScript(hash, 0, cardano.Withdraw)
 	if err != nil {
-		s.Fail("Failed to spend from script");
+		s.Fail("Failed to spend from script")
 	}
 }
 
 // Test if the SP can successfully refund
 func (s *TestHarness) TestValidSPRefund() {
 	hash, err := cardano.PayToScript(1, SPKeyHash, CPKeyHash)
-	if (err != nil) {
-		s.Fail("Failed to pay to script");
+	if err != nil {
+		s.Fail("Failed to pay to script")
 	}
-	log.Printf("Transaction Hash %s", hash);
+	log.Printf("Transaction Hash %s", hash)
 	err = cardano.WaitForTransaction(hash, TxConfirmationTimeoutMinutes)
-	if (err != nil) {
-		s.Fail("Failed to get tx confirmation");
+	if err != nil {
+		s.Fail("Failed to get tx confirmation")
 	}
 	err = cardano.SpendFromScript(hash, 0, cardano.Refund)
 	if err != nil {
-		s.Fail("Failed to spend from script");
+		s.Fail("Failed to spend from script")
 	}
 }
 
 // Test if the SP can successfully refund after timeout
-func ( s *TestHarness ) TestValidSPRefundAfterTimeout() {
+func (s *TestHarness) TestValidSPRefundAfterTimeout() {
 	const ntxAmount = 2
 
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client")
 
 	hash, err := cardano.PayToScript(ntxAmount, SPKeyHash, CPKeyHash)
-	if (err != nil) {
-		s.Fail("Failed to pay to script");
+	if err != nil {
+		s.Fail("Failed to pay to script")
 	}
-	log.Printf("Transaction Hash %s", hash);
+	log.Printf("Transaction Hash %s", hash)
 	err = cardano.WaitForTransaction(hash, TxConfirmationTimeoutMinutes)
-	if (err != nil) {
-		s.Fail("Failed to get tx confirmation");
+	if err != nil {
+		s.Fail("Failed to get tx confirmation")
 	}
 
 	req := spClient.DefaultDeploymentRequest(hash)
-	req.MaxNtx = ntxAmount;
+	req.MaxNtx = ntxAmount
 
 	spClient.SendDeploymentRequest(req)
 
@@ -621,29 +621,29 @@ func ( s *TestHarness ) TestValidSPRefundAfterTimeout() {
 
 	err = cardano.SpendFromScript(hash, 0, cardano.Refund)
 	if err != nil {
-		s.Fail("Failed to spend from script");
+		s.Fail("Failed to spend from script")
 	}
 }
 
 // Test if the SP can successfully refund after timeout with the CP offline
-func ( s *TestHarness ) TestValidSPRefundWithOfflineCP() {
+func (s *TestHarness) TestValidSPRefundWithOfflineCP() {
 	const ntxAmount = 2
 
 	spClient, err := CreateServiceProviderTestingClient(s)
 	s.Nil(err, "Failed to create testing client")
 
 	hash, err := cardano.PayToScript(ntxAmount, SPKeyHash, CPKeyHash)
-	if (err != nil) {
-		s.Fail("Failed to pay to script");
+	if err != nil {
+		s.Fail("Failed to pay to script")
 	}
-	log.Printf("Transaction Hash %s", hash);
+	log.Printf("Transaction Hash %s", hash)
 	err = cardano.WaitForTransaction(hash, TxConfirmationTimeoutMinutes)
-	if (err != nil) {
-		s.Fail("Failed to get tx confirmation");
+	if err != nil {
+		s.Fail("Failed to get tx confirmation")
 	}
 
 	req := spClient.DefaultDeploymentRequest(hash)
-	req.MaxNtx = ntxAmount;
+	req.MaxNtx = ntxAmount
 
 	spClient.SendDeploymentRequest(req)
 
@@ -655,7 +655,7 @@ func ( s *TestHarness ) TestValidSPRefundWithOfflineCP() {
 
 	err = cardano.SpendFromScript(hash, 0, cardano.Refund)
 	if err != nil {
-		s.Fail("Failed to spend from script");
+		s.Fail("Failed to spend from script")
 	}
 }
 

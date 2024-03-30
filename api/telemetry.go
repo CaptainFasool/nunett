@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/telemetry"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 )
 
 // GetFreeResourcesHandler godoc
@@ -15,7 +15,7 @@ import (
 //	@Router			/telemetry/free [get]
 func GetFreeResourcesHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
-	free, err := telemetry.GetFreeResource(reqCtx)
+	free, err := resources.GetFreeResource(reqCtx)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return

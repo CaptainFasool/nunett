@@ -28,33 +28,8 @@ type Provisioned struct {
 	NumCores uint64  `json:"total_cores,omitempty"`
 }
 
-// Metadata has an older version of schema for metadata.json.
-//
-// Deprecated: This Metadata was used in nunet-adapter time.
-// Use MetadataV2 instead.
+// Metadata - machine metadata of onboarding parameters
 type Metadata struct {
-	Name     string `json:"name,omitempty"`
-	Resource struct {
-		UpdateTimestamp int     `json:"update_timestamp,omitempty"`
-		RAMMax          int     `json:"ram_max,omitempty"`
-		TotalCore       int     `json:"total_core,omitempty"`
-		CPUMax          float32 `json:"cpu_max,omitempty"`
-		CPUUsage        float32 `json:"cpu_usage,omitempty"`
-	} `json:"resource,omitempty"`
-	Available struct {
-		UpdateTimestamp int `json:"update_timestamp,omitempty"`
-		RAM             int `json:"ram,omitempty"`
-	} `json:"available,omitempty"`
-	Reserved struct {
-		CPU    int `json:"cpu,omitempty"`
-		Memory int `json:"memory,omitempty"`
-	} `json:"reserved,omitempty"`
-	Network   string `json:"network,omitempty"`
-	PublicKey string `json:"public_key,omitempty"`
-}
-
-// MetadataV2 has a newer version of schema for metadata.json.
-type MetadataV2 struct {
 	Name            string `json:"name,omitempty"`
 	UpdateTimestamp int64  `json:"update_timestamp,omitempty"`
 	Resource        struct {

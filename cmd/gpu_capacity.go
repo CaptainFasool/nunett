@@ -13,7 +13,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
-	library "gitlab.com/nunet/device-management-service/lib"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 )
 
 // ContainerOptions set parameters for running a Docker container (NVIDIA/AMD)
@@ -43,14 +43,14 @@ var gpuCapacityCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		vendors, err := library.DetectGPUVendors()
+		vendors, err := resources.DetectGPUVendors()
 		if err != nil {
 			fmt.Println("Error detecting GPU vendors:", err)
 			os.Exit(1)
 		}
 
-		hasAMD := containsVendor(vendors, library.AMD)
-		hasNVIDIA := containsVendor(vendors, library.NVIDIA)
+		hasAMD := containsVendor(vendors, resources.AMD)
+		hasNVIDIA := containsVendor(vendors, resources.NVIDIA)
 
 		if !hasAMD && !hasNVIDIA {
 			fmt.Println("No AMD or NVIDIA GPU(s) detected...")
