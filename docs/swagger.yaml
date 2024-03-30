@@ -130,19 +130,40 @@ definitions:
       withdraw_hash:
         type: string
     type: object
+  models.Gpu:
+    properties:
+      free_vram:
+        type: integer
+      name:
+        type: string
+      tot_vram:
+        type: integer
+    type: object
   models.Metadata:
     properties:
+      allow_cardano:
+        type: boolean
       available:
         properties:
-          ram:
+          cpu:
             type: integer
-          update_timestamp:
+          memory:
             type: integer
         type: object
+      dashboard:
+        type: string
+      gpu_info:
+        items:
+          $ref: '#/definitions/models.Gpu'
+        type: array
       name:
         type: string
       network:
         type: string
+      node_id:
+        type: string
+      ntx_price:
+        type: number
       public_key:
         type: string
       reserved:
@@ -155,16 +176,14 @@ definitions:
       resource:
         properties:
           cpu_max:
-            type: number
-          cpu_usage:
-            type: number
-          ram_max:
+            type: integer
+          memory_max:
             type: integer
           total_core:
             type: integer
-          update_timestamp:
-            type: integer
         type: object
+      update_timestamp:
+        type: integer
     type: object
   models.OnboardingStatus:
     properties:
@@ -241,7 +260,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.160
+  version: 0.4.161
 paths:
   /device/status:
     get:

@@ -871,18 +871,44 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Gpu": {
+            "type": "object",
+            "properties": {
+                "free_vram": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tot_vram": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.Metadata": {
             "type": "object",
             "properties": {
+                "allow_cardano": {
+                    "type": "boolean"
+                },
                 "available": {
                     "type": "object",
                     "properties": {
-                        "ram": {
+                        "cpu": {
                             "type": "integer"
                         },
-                        "update_timestamp": {
+                        "memory": {
                             "type": "integer"
                         }
+                    }
+                },
+                "dashboard": {
+                    "type": "string"
+                },
+                "gpu_info": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Gpu"
                     }
                 },
                 "name": {
@@ -890,6 +916,12 @@ const docTemplate = `{
                 },
                 "network": {
                     "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "ntx_price": {
+                    "type": "number"
                 },
                 "public_key": {
                     "type": "string"
@@ -909,21 +941,18 @@ const docTemplate = `{
                     "type": "object",
                     "properties": {
                         "cpu_max": {
-                            "type": "number"
+                            "type": "integer"
                         },
-                        "cpu_usage": {
-                            "type": "number"
-                        },
-                        "ram_max": {
+                        "memory_max": {
                             "type": "integer"
                         },
                         "total_core": {
                             "type": "integer"
-                        },
-                        "update_timestamp": {
-                            "type": "integer"
                         }
                     }
+                },
+                "update_timestamp": {
+                    "type": "integer"
                 }
             }
         },
@@ -1029,7 +1058,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.160",
+	Version:          "0.4.161",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

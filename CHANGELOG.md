@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.161](#353)
+
+### Changed
+- Moved onboarding and resource related code to dms package
+- Refactored CheckOnboarding
+
 ## [0.4.160](#366)
 
 ### Fix
