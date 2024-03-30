@@ -21,9 +21,9 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-// RunPreviouslyRunningVMs runs `runFromConfig` for every firecracker VM record found in
+// RestoreVMs runs `runFromConfig` for every firecracker VM record found in
 // local DB which are marked `running`.
-func RunPreviouslyRunningVMs() error {
+func RestoreVMs() error {
 	var vms []models.VirtualMachine
 
 	if result := db.DB.Where("state = ?", "running").Find(&vms); result.Error != nil {

@@ -67,18 +67,18 @@ func (mu *MockUtilsService) IsOnboarded() (bool, error) {
 	}
 }
 
-func (mu *MockUtilsService) ReadMetadataFile() (*models.MetadataV2, error) {
+func (mu *MockUtilsService) ReadMetadataFile() (*models.Metadata, error) {
 	metadataPath := config.GetConfig().MetadataPath
 	metadataFullPath := fmt.Sprintf("%s/metadataV2.json", metadataPath)
 
 	metadataFile, err := afero.ReadFile(mockFS, metadataFullPath)
 	if err != nil {
-		return &models.MetadataV2{}, fmt.Errorf("cannot read file: %w", err)
+		return &models.Metadata{}, fmt.Errorf("cannot read file: %w", err)
 	}
-	var metadata models.MetadataV2
+	var metadata models.Metadata
 	err = json.Unmarshal(metadataFile, &metadata)
 	if err != nil {
-		return &models.MetadataV2{}, fmt.Errorf("could not unmarshal metadata: %w", err)
+		return &models.Metadata{}, fmt.Errorf("could not unmarshal metadata: %w", err)
 	}
 
 	return &metadata, nil
@@ -203,7 +203,7 @@ func Test_InfoCmd(t *testing.T) {
 		t.Fatalf("error executing command: %v", err)
 	}
 
-	var metadata models.MetadataV2
+	var metadata models.Metadata
 	err = json.Unmarshal(mockMetadataJSON, &metadata)
 	if err != nil {
 		t.Fatalf("error unmarshaling metadata JSON: %v", err)

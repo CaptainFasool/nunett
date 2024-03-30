@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
+
 	//	"github.com/stretchr/testify/mock"
 	//	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/models"
@@ -126,7 +127,7 @@ func SetupMockRouter() *gin.Engine {
 
 func WriteMockMetadata(fs afero.Fs) (string, error) {
 	path := utils.GetMetadataFilePath()
-	metadata := &models.MetadataV2{
+	metadata := &models.Metadata{
 		Name:            "ExampleName",
 		UpdateTimestamp: 1625072042,
 		Network:         "192.168.1.1",

@@ -25,13 +25,13 @@ var FS afero.Fs = afero.NewOsFs()
 var AFS *afero.Afero = &afero.Afero{Fs: FS}
 
 // GetMetadata reads metadataV2.json file and returns a models.MetadataV2 struct
-func GetMetadata() (*models.MetadataV2, error) {
+func GetMetadata() (*models.Metadata, error) {
 	metadataPath := utils.GetMetadataFilePath()
 	content, err := AFS.ReadFile(metadataPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read metadata file: %w", err)
 	}
-	var metadata models.MetadataV2
+	var metadata models.Metadata
 	err = json.Unmarshal(content, &metadata)
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal metadata: %w", err)
@@ -96,7 +96,7 @@ func Status() (*models.OnboardingStatus, error) {
 	return &resp, nil
 }
 
-func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.MetadataV2, error) {
+func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Metadata, error) {
 	configPath := config.GetConfig().General.MetadataPath
 	configExist, err := AFS.DirExists(configPath)
 	if err != nil {
@@ -108,15 +108,13 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 
 	hostname, _ := os.Hostname()
 
-	currentTime := time.Now().Unix()
-
 	totalCpu := resources.GetTotalProvisioned().CPU
 	totalMem := resources.GetTotalProvisioned().Memory
 	numCores := resources.GetTotalProvisioned().NumCores
 
-	var metadata models.MetadataV2
+	var metadata models.Metadata
 	metadata.Name = hostname
-	metadata.UpdateTimestamp = currentTime
+	metadata.UpdateTimestamp = time.Now().Unix()
 	metadata.Resource.MemoryMax = int64(totalMem)
 	metadata.Resource.TotalCore = int64(numCores)
 	metadata.Resource.CPUMax = int64(totalCpu)
@@ -193,34 +191,17 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 		}
 	}
 
-	priv, pub, err := libp2p.GenerateKey(0)
-	if err != nil {
-		return nil, fmt.Errorf("unable to generate key pair: %w", err)
-	}
-
-	err = libp2p.SaveNodeInfo(priv, pub, capacity.ServerMode, capacity.IsAvailable)
-	if err != nil {
-		return nil, fmt.Errorf("unable to save node info: %v")
-	}
-
 	err = resources.CalcFreeResAndUpdateDB()
 	if err != nil {
 		// JUST LOG ERRORS
 		return nil, fmt.Errorf("could not calculate free resources and update database: %w", err)
 	}
 
-	err = libp2p.RunNode(priv, capacity.ServerMode, capacity.IsAvailable)
+	hostID, err := libp2p.RegisterRunNewNode(capacity.ServerMode, capacity.IsAvailable)
 	if err != nil {
-		// JUST LOG ERRORS
-		return nil, fmt.Errorf("unable to run libp2p node: %w", err)
+		return nil, fmt.Errorf("could not register and run new node: %w", err)
 	}
 
-	// Ensure libp2p host is initialised
-	if libp2p.GetP2P().Host == nil {
-		return nil, fmt.Errorf("libp2p host is not initialised")
-	}
-
-	hostID := libp2p.GetP2P().Host.ID().String()
 	_, err = heartbeat.NewToken(hostID, capacity.Channel)
 	if err != nil {
 		zlog.Sugar().Errorf("unable to get new telemetry token: %v", err)
@@ -234,7 +215,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 	return &metadata, nil
 }
 
-func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*models.MetadataV2, error) {
+func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*models.Metadata, error) {
 	onboarded, err := utils.IsOnboarded()
 	if err != nil {
 		return nil, fmt.Errorf("could not check onboard status: %w", err)
@@ -323,14 +304,6 @@ func Offboard(ctx context.Context, force bool) error {
 
 	klogger.Logger.Info("device offboarded successfully")
 	return nil
-}
-
-func fileExists(filename string) bool {
-	info, err := AFS.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
 }
 
 func validateCapacityForNunet(capacity models.CapacityForNunet) error {

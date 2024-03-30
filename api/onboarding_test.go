@@ -14,7 +14,7 @@ import (
 )
 
 func (h *MockHandler) GetMetadataHandler(c *gin.Context) {
-	metadata := models.MetadataV2{
+	metadata := models.Metadata{
 		Name:            "metadata",
 		UpdateTimestamp: 1633036800,
 		Resource: struct {
@@ -93,7 +93,7 @@ func (h *MockHandler) OnboardHandler(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid request data"})
 		return
 	}
-	metadata := models.MetadataV2{
+	metadata := models.Metadata{
 		Name:            "foobar",
 		UpdateTimestamp: 1625097600,
 		Reserved: struct {
@@ -151,7 +151,7 @@ func (h *MockHandler) ResourceConfigHandler(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid request data"})
 		return
 	}
-	metadata := models.MetadataV2{
+	metadata := models.Metadata{
 		Name:            "foobar",
 		UpdateTimestamp: 1625097600,
 		Reserved: struct {
@@ -190,7 +190,7 @@ func TestGetMetadataHandler(t *testing.T) {
 
 		assert.Equal(t, tc.expectedCode, w.Code, tc.description)
 
-		var metadata *models.MetadataV2
+		var metadata *models.Metadata
 		err := json.Unmarshal(w.Body.Bytes(), &metadata)
 		assert.NoError(t, err)
 	}
@@ -268,7 +268,7 @@ func TestOnboardHandler(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 
-	var metadata *models.MetadataV2
+	var metadata *models.Metadata
 	err := json.Unmarshal(w.Body.Bytes(), &metadata)
 	assert.NoError(t, err)
 }
