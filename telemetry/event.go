@@ -1,46 +1,73 @@
 package telemetry
 
 import time
-import dms.config
+import dms
 import os
 
 type Collector interface {
-	observe() 
+	observeEvent()
+	getObservedLevel()
+	getEndpoint() 
 }
 
 type FileCollector struct {
-	logFile File	 
+	logFile string	 
+}
+
+type DatabaseCollector struct {
+	databaseEndpoint string
 }
 
 type OpenTelemetryCollector struct {
-	endpoint string
+	otEndpoint string
+}
+
+type ReputationCollector struct {
+
 }
 
 type Observable interface {
+	getObservabilityLevel() ObservabilityLevel
+	getCollectors() []Collector
+}
+
+type Event interface {
 	timestamp() Time
 	context() Context
 	message() string
-	level() ObservabilityLevel
-	observe() bool
-}
-
-func timestamp() Time {
-	return time.Now()
 }
 
 type Message struct {
+	// interfaces
+	Event
+	Observable
 
+	// fields
+	sender dms.ID
+	receiver dms.ID
+	headers Headers
+	payload Payload
 }
 
-type Event struct {
-
+func (m Message) timestamp() Time {
+	return time.Now()
 }
 
-type ObservabilityLevel {
-	TRACE = iota
-	DEBUG = iota
-	INFO = iota
-	WARN = iota
-	ERROR = iota
-	FATAL = iota
+
+type LocalEvent struct {
+	Event
+	Observable
+}
+
+// other methods for the 
+
+type ObservabilityLevel float32
+
+const {
+	TRACE ObservabilityLevel = 1.0
+	DEBUG ObservabilityLevel = 2.0
+	INFO ObservabilityLevel = 3.0
+	WARN ObservabilityLevel = 4.0
+	ERROR ObservabilityLevel = 5.0
+	FATAL ObservabilityLevel = 6.0
 }
