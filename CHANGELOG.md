@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.163](#364)
+
+### Fixed
+- Total vram instead of visible only for AMD GPUs
+
 ## [0.4.162](#206)
 
 ### Added

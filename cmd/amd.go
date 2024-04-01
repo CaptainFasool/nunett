@@ -47,13 +47,13 @@ func (a *amdGPU) utilizationRate() uint32 {
 }
 
 func (a *amdGPU) memory() memoryInfo {
-	patternTotal := fmt.Sprintf(`GPU\[%d\]\s+: vis_vram Total Memory \(B\): (\d+)`, a.index)
+	patternTotal := fmt.Sprintf(`GPU\[%d\]\s+: vram Total Memory \(B\): (\d+)`, a.index)
 	reTotal := regexp.MustCompile(patternTotal)
 
-	patternUsed := fmt.Sprintf(`GPU\[%d\]\s+: vis_vram Total Used Memory \(B\): (\d+)`, a.index)
+	patternUsed := fmt.Sprintf(`GPU\[%d\]\s+: vram Total Used Memory \(B\): (\d+)`, a.index)
 	reUsed := regexp.MustCompile(patternUsed)
 
-	rocmOutput, err := runShellCmd("rocm-smi --showmeminfo vis_vram")
+	rocmOutput, err := runShellCmd("rocm-smi --showmeminfo vram")
 	if err != nil {
 		return memoryInfo{}
 	}
