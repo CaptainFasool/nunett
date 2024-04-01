@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"time"
 
@@ -17,8 +19,30 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
+func registerPprofRoutes(r *gin.Engine) {
+	// Convert http.Handler to gin.HandlerFunc
+	wrapHandler := func(h http.Handler) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			h.ServeHTTP(c.Writer, c.Request)
+		}
+	}
+
+	// Register pprof handlers
+	r.GET("/debug/pprof/", wrapHandler(http.HandlerFunc(pprof.Index)))
+	r.GET("/debug/pprof/cmdline", wrapHandler(http.HandlerFunc(pprof.Cmdline)))
+	r.GET("/debug/pprof/profile", wrapHandler(http.HandlerFunc(pprof.Profile)))
+	r.GET("/debug/pprof/symbol", wrapHandler(http.HandlerFunc(pprof.Symbol)))
+	r.GET("/debug/pprof/trace", wrapHandler(http.HandlerFunc(pprof.Trace)))
+	r.GET("/debug/pprof/heap", wrapHandler(http.HandlerFunc(pprof.Handler("heap").ServeHTTP)))
+	r.GET("/debug/pprof/goroutine", wrapHandler(http.HandlerFunc(pprof.Handler("goroutine").ServeHTTP)))
+	r.GET("/debug/pprof/threadcreate", wrapHandler(http.HandlerFunc(pprof.Handler("threadcreate").ServeHTTP)))
+	r.GET("/debug/pprof/block", wrapHandler(http.HandlerFunc(pprof.Handler("block").ServeHTTP)))
+	r.GET("/debug/pprof/mutex", wrapHandler(http.HandlerFunc(pprof.Handler("mutex").ServeHTTP)))
+}
+
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
+	registerPprofRoutes(router)
 	router.Use(cors.New(getCustomCorsConfig()))
 
 	router.Use(otelgin.Middleware(tracing.ServiceName))

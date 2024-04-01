@@ -5,13 +5,22 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/libp2p/go-libp2p/core/network"
+	"golang.org/x/sync/errgroup"
 )
 
 // TODO: var vpns map[vpnID]*VPN
 var vpn *VPN
+
+var packetPool = sync.Pool{
+	New: func() interface{} {
+		// Adjust the size according to your typical packet size
+		return make([]byte, 1600) // Slightly larger than the MTU size to accommodate various packet sizes
+	},
+}
 
 // CreateAndInviteHandler godoc
 // @Summary      Creates a vpn inviting a list of peers
@@ -68,105 +77,131 @@ func DownHandler(c *gin.Context) {
 // following the protocol VPNProtocolID. It handles two types of messages:
 // 1. VPN creation where there is no vpn yet; 2. VPN internal messaging
 func vpnStreamHandler(stream network.Stream) {
-	if vpn == nil {
-		zlog.Sugar().Debug("No vpn found, checking if it's a vpn invite message")
+	defer stream.Close()
 
-		ctx := context.Background()
-		ctx, cancel := context.WithCancel(ctx)
+	// Use a single goroutine per stream to reduce context switching overhead
+	g, ctx := errgroup.WithContext(context.Background())
 
-		// First read the message size
-		var length uint16
-		err := binary.Read(stream, binary.LittleEndian, &length)
-		if err != nil {
-			stream.Close()
-			zlog.Sugar().Errorf("Couldn't read message size from stream. Error: %w", err)
-			return
-		}
+	g.Go(func() error {
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				if vpn == nil {
+					zlog.Sugar().Debug("No vpn found, checking if it's a vpn invite message")
 
-		// Allocate enough space for the full message
-		vpnMsgJson := make([]byte, length)
+					ctx := context.Background()
+					ctx, cancel := context.WithCancel(ctx)
 
-		// Read the message
-		_, err = stream.Read(vpnMsgJson)
-		if err != nil {
-			stream.Close()
-			zlog.Sugar().Errorf("Couldn't read message from stream. Error: %w", err)
-			return
-		}
+					// First read the message size
+					var length uint16
+					err := binary.Read(stream, binary.LittleEndian, &length)
+					if err != nil {
+						stream.Close()
+						zlog.Sugar().Errorf("Couldn't read message size from stream. Error: %w", err)
+					}
 
-		// Unmarshal the JSON
-		vpnMsg := vpnMessage{}
-		err = json.Unmarshal(vpnMsgJson, &vpnMsg)
-		if err != nil {
-			stream.Close()
-			zlog.Sugar().Errorf("Couldn't unmarshal vpn message. Error: %w", err)
-			return
-		}
+					// Allocate enough space for the full message
+					vpnMsgJson := make([]byte, length)
 
-		if vpnMsg.MsgType == msgVPNCreationInvite {
-			zlog.Sugar().Debugf("Received vpn creation invite")
-			zlog.Sugar().Debugf("Routing table: %s", vpnMsg.Msg)
-			routingTable := &vpnRouter{}
-			err := json.Unmarshal([]byte(vpnMsg.Msg), &routingTable)
-			if err != nil {
-				zlog.Sugar().Errorf("Unable to decode vpn message. Closing stream. Error: %v", err)
-				stream.Reset()
-				return
+					// Read the message
+					_, err = stream.Read(vpnMsgJson)
+					if err != nil {
+						stream.Close()
+						zlog.Sugar().Errorf("Couldn't read message from stream. Error: %w", err)
+					}
+
+					// Unmarshal the JSON
+					vpnMsg := vpnMessage{}
+					err = json.Unmarshal(vpnMsgJson, &vpnMsg)
+					if err != nil {
+						stream.Close()
+						zlog.Sugar().Errorf("Couldn't unmarshal vpn message. Error: %w", err)
+					}
+
+					if vpnMsg.MsgType == msgVPNCreationInvite {
+						zlog.Sugar().Debugf("Received vpn creation invite")
+						zlog.Sugar().Debugf("Routing table: %s", vpnMsg.Msg)
+						routingTable := &vpnRouter{}
+						err := json.Unmarshal([]byte(vpnMsg.Msg), &routingTable)
+						if err != nil {
+							zlog.Sugar().Errorf("Unable to decode vpn message. Closing stream. Error: %v", err)
+							stream.Reset()
+						}
+
+						vpn, err = JoinVPN(ctx, cancel, *routingTable)
+						if err != nil {
+							zlog.Sugar().Errorf("Unable to join vpn. Closing stream. Error: %v", err)
+							stream.Reset()
+							cancel()
+						}
+						zlog.Sugar().Info("Successfully joined vpn")
+					}
+				}
+
+				// If tunneling device was not iniated yet, just close the stream
+				if vpn.tunDev == nil {
+					zlog.Sugar().Errorf("tunDev was not iniated")
+					stream.Reset()
+				}
+				// If the remote node ID isn't in the list of known nodes don't respond.
+				if _, ok := vpn.routingTable[stream.Conn().RemotePeer()]; !ok {
+					zlog.Sugar().Errorf("Peer %s not on the routing table",
+						stream.Conn().RemotePeer().Pretty())
+					stream.Reset()
+				}
+				packet := packetPool.Get().([]byte) // Retrieve a packet buffer from the pool
+				defer packetPool.Put(&packet)       // Make sure to put the packet back into the pool
+
+				// Read packet size
+				packetSize := make([]byte, 2)
+				if _, err := stream.Read(packetSize); err != nil {
+					return err // Stream read error
+				}
+
+				// Decode the incoming packet's size from binary.
+				size := binary.LittleEndian.Uint16(packetSize) // Decode packet size
+
+				// Read the packet based on the decoded size
+				if _, err := stream.Read(packet[:size]); err != nil {
+					return err // Packet read error
+				}
+
+				// Process the packet, e.g., write to the TUN device or handle VPN logic
+				if err := processPacket(size, packet[:size], stream); err != nil {
+					return err // Packet processing error
+				}
+
 			}
-
-			vpn, err = JoinVPN(ctx, cancel, *routingTable)
-			if err != nil {
-				zlog.Sugar().Errorf("Unable to join vpn. Closing stream. Error: %v", err)
-				stream.Reset()
-				cancel()
-				return
-			}
-			zlog.Sugar().Info("Successfully joined vpn")
 		}
-	}
+	})
 
-	// If tunneling device was not iniated yet, just close the stream
-	if vpn.tunDev == nil {
-		zlog.Sugar().Errorf("tunDev was not iniated")
-		stream.Reset()
-		return
+	// Wait for the goroutine to finish and check for errors
+	if err := g.Wait(); err != nil {
+		// Log or handle the error as needed
+		zlog.Sugar().Errorf("Error in vpnStreamHandler: %v", err)
 	}
-	// If the remote node ID isn't in the list of known nodes don't respond.
-	if _, ok := vpn.routingTable[stream.Conn().RemotePeer()]; !ok {
-		zlog.Sugar().Errorf("Peer %s not on the routing table",
-			stream.Conn().RemotePeer().Pretty())
-		stream.Reset()
-		return
-	}
-	var packet = make([]byte, 1420)
-	var packetSize = make([]byte, 2)
-	for {
-		// Read the incoming packet's size as a binary value.
-		zlog.Sugar().Debug("[VPN] Receiving packet from libp2p stream")
-		_, err := stream.Read(packetSize)
+}
+
+// processPacket placeholder function remains unchanged, implement as needed
+func processPacket(size uint16, packet []byte, stream network.Stream) error {
+	// Your packet processing logic here (e.g., writing to the TUN device)
+	// Read in the packet until completion.
+	var plen uint16 = 0
+	for plen < size {
+		tmp, err := stream.Read(packet[plen:size])
+		plen += uint16(tmp)
 		if err != nil {
-			zlog.Sugar().Errorf("[VPN] error reading size packet from stream: %v", err)
+			zlog.Sugar().Errorf("[VPN] error reading packet's data from stream: %v", err)
 			stream.Close()
-			return
+			return err
 		}
-
-		// Decode the incoming packet's size from binary.
-		size := binary.LittleEndian.Uint16(packetSize)
-
-		// Read in the packet until completion.
-		var plen uint16 = 0
-		for plen < size {
-			tmp, err := stream.Read(packet[plen:size])
-			plen += uint16(tmp)
-			if err != nil {
-				zlog.Sugar().Errorf("[VPN] error reading packet's data from stream: %v", err)
-				stream.Close()
-				return
-			}
-		}
-		zlog.Sugar().Debug("Writing packet to Tunneling interface")
-		vpn.tunDev.Iface.Write(packet[:size])
 	}
+	zlog.Sugar().Debug("Writing packet to Tunneling interface")
+	vpn.tunDev.Iface.Write(packet[:size])
+
+	return nil
 }
 
 // JoinHandler godoc
