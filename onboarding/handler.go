@@ -127,7 +127,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 		return nil, fmt.Errorf("could not validate payment address: %w", err)
 	}
 
-	err = validateCapacityForNunet(capacity)
+	err = validateMemoryAndCPU(capacity.CPU, capacity.Memory)
 	if err != nil {
 		return nil, fmt.Errorf("could not validate capacity data: %w", err)
 	}
@@ -201,7 +201,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 
 	err = libp2p.SaveNodeInfo(priv, pub, capacity.ServerMode, capacity.IsAvailable)
 	if err != nil {
-		return nil, fmt.Errorf("unable to save node info: %v")
+		return nil, fmt.Errorf("unable to save node info: %v", err)
 	}
 
 	err = telemetry.CalcFreeResAndUpdateDB()
@@ -235,7 +235,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 	return &metadata, nil
 }
 
-func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*models.MetadataV2, error) {
+func ResourceConfig(ctx context.Context, resource models.ResourceConfig) (*models.MetadataV2, error) {
 	onboarded, err := utils.IsOnboarded()
 	if err != nil {
 		return nil, fmt.Errorf("could not check onboard status: %w", err)
@@ -244,7 +244,7 @@ func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*mod
 		return nil, fmt.Errorf("machine is not onboarded")
 	}
 
-	err = validateCapacityForNunet(capacity)
+	err = validateMemoryAndCPU(resource.CPU, resource.Memory)
 	if err != nil {
 		return nil, fmt.Errorf("could not validate capacity data: %w", err)
 	}
@@ -253,18 +253,18 @@ func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*mod
 	if err != nil {
 		return nil, fmt.Errorf("could not read metadata file: %w", err)
 	}
-	metadata.Reserved.CPU = capacity.CPU
-	metadata.Reserved.Memory = capacity.Memory
-	metadata.NTXPricePerMinute = capacity.NTXPricePerMinute
+	metadata.Reserved.CPU = resource.CPU
+	metadata.Reserved.Memory = resource.Memory
+	metadata.NTXPricePerMinute = resource.NTXPricePerMinute
 
 	var aval models.AvailableResources
 	res := db.DB.WithContext(ctx).First(&aval)
 	if res.RowsAffected == 0 {
 		return nil, fmt.Errorf("no rows affected in available resources table")
 	}
-	aval.TotCpuHz = int(capacity.CPU)
-	aval.Ram = int(capacity.Memory)
-	aval.NTXPricePerMinute = capacity.NTXPricePerMinute
+	aval.TotCpuHz = int(resource.CPU)
+	aval.Ram = int(resource.Memory)
+	aval.NTXPricePerMinute = resource.NTXPricePerMinute
 
 	db.DB.Save(&aval)
 
@@ -334,16 +334,23 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func validateCapacityForNunet(capacity models.CapacityForNunet) error {
-	totalCpu := library.GetTotalProvisioned().CPU
-	totalMem := library.GetTotalProvisioned().Memory
-
-	if capacity.CPU > int64(totalCpu*9/10) || capacity.CPU < int64(totalCpu/10) {
-		return fmt.Errorf("CPU should be between 10%% and 90%% of the available CPU (%d and %d)", int64(totalCpu/10), int64(totalCpu*9/10))
+func validateResource(requested, total int64, resourceType string) error {
+	min := total / 10
+	max := total * 9 / 10
+	if requested < min || requested > max {
+		return fmt.Errorf("%s should be between 10%% and 90%% of the available %s (%d and %d)", resourceType, resourceType, min, max)
 	}
+	return nil
+}
 
-	if capacity.Memory > int64(totalMem*9/10) || capacity.Memory < int64(totalMem/10) {
-		return fmt.Errorf("memory should be between 10%% and 90%% of the available memory (%d and %d)", int64(totalMem/10), int64(totalMem*9/10))
+func validateMemoryAndCPU(cpu, memory int64) error {
+	total := library.GetTotalProvisioned()
+
+	if err := validateResource(cpu, int64(total.CPU), "CPU"); err != nil {
+		return err
+	}
+	if err := validateResource(cpu, int64(total.Memory), "memory"); err != nil {
+		return err
 	}
 
 	return nil
