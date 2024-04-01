@@ -35,6 +35,7 @@ func (p2p DMSp2p) StartDiscovery(ctx context.Context, rendezvous string) {
 				zlog.Sugar().Errorln(err)
 				return
 			}
+			p2p.peers = filterAddrs(p2p.peers)
 			err = p2p.dialPeers(ctx)
 			if err != nil {
 				zlog.Sugar().Errorln(err)
@@ -81,7 +82,6 @@ func discoverPeers(ctx context.Context, node host.Host, idht *dht.IpfsDHT, rende
 	if err != nil {
 		return []peer.AddrInfo{}, fmt.Errorf("failed to discover peers: %v", err)
 	}
-	peers = filterAddrs(peers)
 	zlog.Sugar().Debugf("Discover - found peers: %v", peers)
 	return peers, nil
 }
