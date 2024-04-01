@@ -15,11 +15,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal"
-	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // Constants containing all message types happening between peers.
@@ -84,11 +81,6 @@ func writeToStream(stream network.Stream, msg string, failReason string) {
 func depReqStreamHandler(stream network.Stream) {
 	ctx := context.Background()
 	defer ctx.Done()
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.String("MsgType", MsgDepReq))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
-	kLogger.Info("Deployment request stream handler", span)
-
 	zlog.InfoContext(ctx, "Got a new depReq stream!")
 
 	// limit to 1 request
@@ -339,12 +331,6 @@ func DeploymentUpdateListener(stream network.Stream) {
 func DeploymentUpdate(msgType string, msg string, close bool) error {
 	ctx := context.Background()
 	defer ctx.Done()
-
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.String("MsgType", msgType))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
-	kLogger.Info("Deployment update", span)
-
 	zlog.Sugar().DebugfContext(ctx, "DeploymentUpdate -- msgType: %s -- closeStream: %t -- msg: %s", msgType, close, msg)
 
 	// Construct the outer message before sending
@@ -386,9 +372,6 @@ func DeploymentUpdate(msgType string, msg string, close bool) error {
 }
 
 func SendDeploymentRequest(ctx context.Context, depReq models.DeploymentRequest) (network.Stream, error) {
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.String("MsgType", MsgDepReq))
-	span.SetAttributes(attribute.String("PeerID", p2p.Host.ID().String()))
 	zlog.InfoContext(ctx, "Creating a new depReq!")
 
 	// limit to 1 request

@@ -20,6 +20,17 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.164](#340)
+
+### Fixed
+- Tests that cause timeout or crash
+
+### Removed
+- Spans from p2p messaging due to interruption of tests
+
+### Changed
+- Moved peer filter call out of discover
+
 ## [0.4.163](#364)
 
 ### Fixed
