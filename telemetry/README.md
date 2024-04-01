@@ -4,7 +4,7 @@ This package contains logs, tracers and everything related to telemetry. The des
 
 ## Interfaces and types
 
-* _proposed 2024-04-01 by @kabir_
+* _proposed 2024-04-02; by: @kabir.kbr;_
 
 ### Collector
 
@@ -61,17 +61,17 @@ See current reference model [local_event.go](open-api/platform-data-model/device
 ## 1. Register Collector
 
 _proposed 2024-04-01; by: @kabir.kbr;_
-
+_**TBD**_
 
 
 Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/orchestrator/Job_Posting.feature))   |
-| Request payload       | [jobDescription](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/jobs/data/jobDescription.payload.go)|
+| Features / test case specifications | Scenarios ([.gherkin]())   |
+| Request payload       | []()|
 | Return payload       | None |
-| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/jobPosting.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/rendered/jobPosting.sequence.svg)) | 
+| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
 
 
 
