@@ -38,7 +38,7 @@ func GetGPUInfo() ([][]GPUInfo, error) {
 }
 
 func GetAMDGPUInfo() ([]GPUInfo, error) {
-	cmd := exec.Command("rocm-smi", "--showid", "--showproductname", "--showmeminfo", "vis_vram")
+	cmd := exec.Command("rocm-smi", "--showid", "--showproductname", "--showmeminfo", "vram")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
