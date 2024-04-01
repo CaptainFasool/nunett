@@ -84,13 +84,13 @@ func NewValidationProblem(e error) ProblemDetail {
 	)
 }
 
-//func NewEmptyRequestBodyProblem() ProblemDetail {
-//	return NewProblemDetail(
-//		WithStatus(http.StatusBadRequest),
-//		WithTitle("Empty Request Body"),
-//		WithDetail("Your request did not include a body."),
-//	)
-//}
+func NewEmptyBodyProblem() ProblemDetail {
+	return NewProblemDetail(
+		WithStatus(http.StatusBadRequest),
+		WithTitle("Empty Request Body"),
+		WithDetail("Your request did not include a body."),
+	)
+}
 
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
@@ -202,6 +202,8 @@ func readableErrors(errs validator.ValidationErrors) []ErrorDetail {
 		switch e.Tag() {
 		case "required":
 			detail = "is required"
+		case "boolean":
+			detail = "is not a boolean"
 		default:
 			detail = "is invalid"
 		}
