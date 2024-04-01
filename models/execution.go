@@ -26,11 +26,11 @@ type ExecutionResult struct {
 }
 
 // NewExecutionResult creates a new ExecutionResult object
-func NewExecutionResult() *ExecutionResult {
+func NewExecutionResult(code int) *ExecutionResult {
 	return &ExecutionResult{
 		STDOUT:   "",
 		STDERR:   "",
-		ExitCode: -1,
+		ExitCode: code,
 	}
 }
 
