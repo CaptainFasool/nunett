@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -71,6 +72,16 @@ func NewProblemDetail(options ...ProblemOption) ProblemDetail {
 		option(&problem)
 	}
 	return problem
+}
+
+func NewValidationProblem(e error) ProblemDetail {
+	errs := e.(validator.ValidationErrors)
+	return NewProblemDetail(
+		WithStatus(http.StatusBadRequest),
+		WithTitle("Input Validation Error"),
+		WithDetail("You request body have invalid parameters."),
+		WithErrors(readableErrors(errs)),
+	)
 }
 
 //func NewEmptyRequestBodyProblem() ProblemDetail {
