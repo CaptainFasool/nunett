@@ -1,7 +1,7 @@
 package api
 
 import (
-	"strconv"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
@@ -70,9 +70,9 @@ func OnboardHandler(c *gin.Context) {
 		ServerMode:  true,
 		IsAvailable: true,
 	}
-	err := c.BindJSON(&capacity)
+	err := c.ShouldBindJSON(&capacity)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid request data"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
 
