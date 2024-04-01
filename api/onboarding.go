@@ -132,29 +132,58 @@ func OnboardStatusHandler(c *gin.Context) {
 	c.JSON(200, status)
 }
 
+// OffboardHandler      godoc
+//
+// @Summary		Runs the offboarding process.
+// @Description	Offboard runs offboarding process to remove the machine from the NuNet network.
+// @Tags		onboarding
+// @Produce		json
+// @Success      200              {string}  string    "device successfully offboarded"
+// @Router		/onboarding/offboard [post]
+func OffboardHandler(c *gin.Context) {
+	type offboardQuery struct {
+		Force bool `form:"force" binding:"omitempty,boolean"`
+	}
+
+	var query offboardQuery
+	err := c.ShouldBindQuery(&query)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
+		return
+	}
+
+	reqCtx := c.Request.Context()
+	err = onboarding.Offboard(reqCtx, query.Force)
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"message": "device successfully offboarded"})
+}
+
 // ResourceConfigHandler        godoc
 //
-//	@Summary	changes the amount of resources of onboarded device .
+//	@Summary	changes the amount of resources of onboarded device
 //	@Tags		onboarding
 //	@Produce	json
 //	@Success	200	{object}	models.Metadata
 //	@Router		/onboarding/resource-config [post]
 func ResourceConfigHandler(c *gin.Context) {
-	klogger.Logger.Info("device resource change started")
 	if c.Request.ContentLength == 0 {
-		c.AbortWithStatusJSON(400, gin.H{"error": "request body is empty"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
 	}
 
-	var capacity models.CapacityForNunet
-	err := c.BindJSON(&capacity)
+	klogger.Logger.Info("device resource change started")
+
+	var resource models.ResourceConfig
+	err := c.ShouldBindJSON(&resource)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid request data"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
 
-	reqCtx := c.Request.Context()
-	metadata, err := onboarding.ResourceConfig(reqCtx, capacity)
+	metadata, err := onboarding.ResourceConfig(c.Request.Context(), resource)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
