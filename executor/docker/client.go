@@ -3,8 +3,11 @@ package docker
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -257,4 +261,40 @@ func (c *Client) FindContainer(ctx context.Context, label string, value string) 
 	}
 
 	return "", fmt.Errorf("unable to find container for %s=%s", label, value)
+}
+
+// PullImage pulls a Docker image from a registry.
+func (c *Client) PullImage(ctx context.Context, imageName string) (string, error) {
+	out, err := c.client.ImagePull(ctx, imageName, types.ImagePullOptions{})
+	if err != nil {
+		zlog.Sugar().Errorf("unable to pull image: %v", err)
+		return "", err
+	}
+
+	defer out.Close()
+	d := json.NewDecoder(io.TeeReader(out, os.Stdout))
+
+	var message jsonmessage.JSONMessage
+	var digest string
+	for {
+		if err := d.Decode(&message); err != nil {
+			if err == io.EOF {
+				break
+			}
+			zlog.Sugar().Errorf("unable pull image: %v", err)
+			return "", err
+		}
+		if message.Aux != nil {
+			continue
+		}
+		if message.Error != nil {
+			zlog.Sugar().Errorf("unable pull image: %v", message.Error.Message)
+			return "", errors.New(message.Error.Message)
+		}
+		if strings.HasPrefix(message.Status, "Digest") {
+			digest = strings.TrimPrefix(message.Status, "Digest: ")
+		}
+	}
+
+	return digest, nil
 }
