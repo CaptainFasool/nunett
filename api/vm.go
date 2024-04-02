@@ -1,32 +1,39 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
-//	 StartCustomHandler godoc
+// StartCustomHandler godoc
 //
-//		@Summary		Start a VM with custom configuration.
-//		@Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
-//		@Tags			vm
-//		@Produce		json
-//		@Success		200
-//		@Router			/vm/start-custom [post]
+//	@Summary		Start a VM with custom configuration.
+//	@Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
+//	@Tags			vm
+//	@Produce		json
+//	@Success		200
+//	@Router			/vm/start-custom [post]
 func StartCustomHandler(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	span := trace.SpanFromContext(reqCtx)
+	if c.Request.ContentLength == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
+		return
+	}
+
+	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/vm/start-custom"))
 
 	var body firecracker.CustomVM
-	err := c.BindJSON(&body)
+	err := c.ShouldBindJSON(&body)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
-	err = firecracker.StartCustom(reqCtx, body)
+	err = firecracker.StartCustom(c.Request.Context(), body)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
@@ -43,17 +50,21 @@ func StartCustomHandler(c *gin.Context) {
 //	@Success		200
 //	@Router			/vm/start-default [post]
 func StartDefaultHandler(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	span := trace.SpanFromContext(reqCtx)
+	if c.Request.ContentLength == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
+		return
+	}
+
+	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/vm/start-default"))
 
 	var body firecracker.DefaultVM
-	err := c.BindJSON(&body)
+	err := c.ShouldBindJSON(&body)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
-	err = firecracker.StartDefault(reqCtx, body)
+	err = firecracker.StartDefault(c.Request.Context(), body)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
