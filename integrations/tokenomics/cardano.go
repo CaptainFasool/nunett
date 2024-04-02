@@ -16,7 +16,7 @@ type TxHashResp struct {
 }
 type ClaimCardanoTokenBody struct {
 	ComputeProviderAddress string `json:"compute_provider_address"`
-	TxHash                 string `json:"tx_hash"`
+	TxHash                 string `json:"tx_hash" binding:"required"`
 }
 type rewardRespToCPD struct {
 	ServiceProviderAddr string `json:"service_provider_addr"`
@@ -30,7 +30,7 @@ type rewardRespToCPD struct {
 	Action              string `json:"action,omitempty"`
 }
 type UpdateTxStatusBody struct {
-	Address string `json:"address,omitempty"`
+	Address string `json:"address,omitempty" binding:"required"`
 }
 
 func GetJobTxHashes(size int, clean string) ([]TxHashResp, error) {
