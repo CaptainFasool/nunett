@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"strconv"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
@@ -17,14 +17,16 @@ import (
 //	@Success		200		{object}	[]tokenomics.TxHashResp
 //	@Router			/transactions [get]
 func GetJobTxHashesHandler(c *gin.Context) {
-	sizeStr := c.Query("size_done")
-	clean := c.Query("clean_tx")
-	size, err := strconv.Atoi(sizeStr)
+	var queries struct {
+		SizeDone int    `json:"size_done" binding:"number"`
+		CleanTx  string `json:"clean_tx"`
+	}
+	err := c.ShouldBindQuery(&queries)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid size_done parameter"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
-	hashes, err := tokenomics.GetJobTxHashes(size, clean)
+	hashes, err := tokenomics.GetJobTxHashes(queries.SizeDone, queries.CleanTx)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
@@ -41,13 +43,18 @@ func GetJobTxHashesHandler(c *gin.Context) {
 //	@Success		200		{object}	tokenomics.rewardRespToCPD
 //	@Router			/transactions/request-reward [post]
 func RequestRewardHandler(c *gin.Context) {
-	var payload tokenomics.ClaimCardanoTokenBody
-	err := c.ShouldBindJSON(&payload)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "Invalid JSON format"})
+	if c.Request.ContentLength == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
 	}
-	resp, err := tokenomics.RequestReward(payload)
+
+	var claim tokenomics.ClaimCardanoTokenBody
+	err := c.ShouldBindJSON(&claim)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
+		return
+	}
+	resp, err := tokenomics.RequestReward(claim)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
@@ -64,10 +71,15 @@ func RequestRewardHandler(c *gin.Context) {
 //	@Success		200		{string}	string
 //	@Router			/transactions/send-status [post]
 func SendTxStatusHandler(c *gin.Context) {
-	body := models.BlockchainTxStatus{}
-	err := c.BindJSON(&body)
+	if c.Request.ContentLength == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
+		return
+	}
+
+	var body models.BlockchainTxStatus
+	err := c.ShouldBindJSON(&body)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "cannot read payload body"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
 	status := tokenomics.SendStatus(body)
@@ -83,13 +95,18 @@ func SendTxStatusHandler(c *gin.Context) {
 //	@Success		200		{string}	string
 //	@Router			/transactions/update-status [post]
 func UpdateTxStatusHandler(c *gin.Context) {
-	body := tokenomics.UpdateTxStatusBody{}
-	err := c.BindJSON(&body)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
+	if c.Request.ContentLength == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
 	}
-	err = tokenomics.UpdateStatus(body)
+
+	var status tokenomics.UpdateTxStatusBody
+	err := c.ShouldBindJSON(&status)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
+		return
+	}
+	err = tokenomics.UpdateStatus(status)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
