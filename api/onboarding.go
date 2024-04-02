@@ -85,31 +85,6 @@ func OnboardHandler(c *gin.Context) {
 	c.JSON(200, metadata)
 }
 
-// OffboardHandler      godoc
-//
-// @Summary		Runs the offboarding process.
-// @Description	Offboard runs offboarding process to remove the machine from the NuNet network.
-// @Tags		onboarding
-// @Produce		json
-// @Success      200              {string}  string    "device successfully offboarded"
-// @Router		/onboarding/offboard [post]
-func OffboardHandler(c *gin.Context) {
-	query := c.DefaultQuery("force", "false")
-	force, err := strconv.ParseBool(query)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid query data"})
-		return
-	}
-
-	reqCtx := c.Request.Context()
-	err = onboarding.Offboard(reqCtx, force)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"message": "device successfully offboarded"})
-}
-
 // OnboardStatusHandler      godoc
 //
 //	@Summary		Onboarding status and other metadata.
@@ -134,12 +109,12 @@ func OnboardStatusHandler(c *gin.Context) {
 
 // OffboardHandler      godoc
 //
-// @Summary		Runs the offboarding process.
-// @Description	Offboard runs offboarding process to remove the machine from the NuNet network.
-// @Tags		onboarding
-// @Produce		json
-// @Success      200              {string}  string    "device successfully offboarded"
-// @Router		/onboarding/offboard [post]
+//	@Summary		Runs the offboarding process.
+//	@Description	Offboard runs offboarding process to remove the machine from the NuNet network.
+//	@Tags		onboarding
+//	@Produce		json
+//	@Success      200              {string}  string    "device successfully offboarded"
+//	@Router		/onboarding/offboard [post]
 func OffboardHandler(c *gin.Context) {
 	type offboardQuery struct {
 		Force bool `form:"force" binding:"omitempty,boolean"`
@@ -152,8 +127,7 @@ func OffboardHandler(c *gin.Context) {
 		return
 	}
 
-	reqCtx := c.Request.Context()
-	err = onboarding.Offboard(reqCtx, query.Force)
+	err = onboarding.Offboard(c.Request.Context(), query.Force)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
