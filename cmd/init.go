@@ -55,4 +55,6 @@ func init() {
 	rootCmd.AddCommand(walletCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(autocompleteCmd)
+	rootCmd.AddCommand(sendFileCmd)
+	rootCmd.AddCommand(acceptFileCmd)
 }
