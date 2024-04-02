@@ -38,7 +38,7 @@ A generic event data type `gEvent` is then a type which joins together two inter
 
 Developers are expected to choose to choose actions of the code to be considered events and observed at different levels by using `gEvent` implementations.
 
-See current reference model [event.go](open-api/platform-data-model/device-management-service/telemetry/data/event.go).
+See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
 
 
 `Event` is an interface which defines methods to be implemented by a generic event of type `gEvent` and by that determines data that need to be included in each event for it be eligible to observation.
