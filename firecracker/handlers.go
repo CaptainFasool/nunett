@@ -21,17 +21,17 @@ import (
 )
 
 type DefaultVM struct {
-	KernelImagePath string `json:"kernel_image_path"`
-	FilesystemPath  string `json:"filesystem_path"`
+	KernelImagePath string `json:"kernel_image_path" binding:"required"`
+	FilesystemPath  string `json:"filesystem_path" binding:"required"`
 	PublicKey       string `json:"public_key"`
 	NodeID          string `json:"node_id"`
 }
 
 type CustomVM struct {
-	KernelImagePath string `json:"kernel_image_path"`
-	FilesystemPath  string `json:"filesystem_path"`
-	VCPUCount       int    `json:"vcpu_count"`
-	MemSizeMib      int    `json:"mem_size_mib"`
+	KernelImagePath string `json:"kernel_image_path" binding:"required"`
+	FilesystemPath  string `json:"filesystem_path" binding:"required"`
+	VCPUCount       int    `json:"vcpu_count" binding:"required"`
+	MemSizeMib      int    `json:"mem_size_mib" binding:"required"`
 	TapDevice       string `json:"tap_device"`
 }
 
