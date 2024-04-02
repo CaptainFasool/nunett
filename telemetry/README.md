@@ -17,7 +17,7 @@ The goal is to allow third parties to propose their collectors and for `dms` to 
 * `OpenTelemetryCollector`, sending telemetry events to the registered open telemetry collector using open-telemetry format;
 * `ReputationCollector` is not scheduled for the implementation now, but is considered for the future to be able to register reputation systems that will collect events for providing reputation services on the platform; 
 
-See current reference model [collector.go](open-api/platform-data-model/device-management-service/telemetry/data/collector.go).
+See current reference model [collector.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/collector.go).
 
 ### Observable
 
@@ -27,7 +27,7 @@ The `Observable` interface determines how and which events hapenning in the syst
 
 Any event that implements `Observable` interface can be observed by the collectors that are determined to be activated as a result of matching `ObservabilityLevel` declared by an event and the `ObservabilityLevel` environment variable.
 
-See current reference model [observable.go](open-api/platform-data-model/device-management-service/telemetry/data/observable.go).
+See current reference model [observable.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/observable.go).
 
 
 ### Event
@@ -38,7 +38,7 @@ A generic event data type `gEvent` is then a type which joins together two inter
 
 Developers are expected to choose to choose actions of the code to be considered events and observed at different levels by using `gEvent` implementations.
 
-See current reference model [event.go](open-api/platform-data-model/device-management-service/telemetry/data/event.go).
+See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
 
 
 ### Message
@@ -47,13 +47,13 @@ A `Message` is a special event of which defines a message between two `dms`es ru
 
 All `Messages` should have a capability to be observed via `OpenTelemetryCollector` implementation -- extending `ObservabilityLevel` concept and type for determining when and how an observation takes place (e.g. during debugging, testing or in production). 
 
-See current reference model [message.go](open-api/platform-data-model/device-management-service/telemetry/data/message.go).
+See current reference model [message.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/message.go).
 
 ## LocalEvent
 
 `LocalEvent` type is an `gEvent` that is not a `Message` but still considered important enough to be observed. 
 
-See current reference model [local_event.go](open-api/platform-data-model/device-management-service/telemetry/data/local_event.go).
+See current reference model [local_event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/local_event.go).
 
 
 ## Functions
