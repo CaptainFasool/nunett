@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -23,7 +25,11 @@ func DeviceStatusHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(500, gin.H{"error": "could not retrieve device status"})
 		return
 	}
-	c.JSON(200, gin.H{"online": status})
+	var payload struct {
+		IsAvailable bool `json:"is_available" binding:"boolean"`
+	}
+	payload.IsAvailable = status
+	c.JSON(200, gin.H{"device": payload})
 }
 
 // ChangeDeviceStatusHandler  godoc
@@ -35,36 +41,30 @@ func DeviceStatusHandler(c *gin.Context) {
 // @Success			200	{string}	string
 // @Router			/device/status [post]
 func ChangeDeviceStatusHandler(c *gin.Context) {
+	if c.Request.ContentLength == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
+		return
+	}
+
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/device/status"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 	kLogger.Info("Pause job onboarding", span)
 
-	var status struct {
-		IsAvailable bool `json:"is_available"`
+	var deviceStatus struct {
+		IsAvailable bool `json:"is_available" binding:"required,boolean"`
 	}
-
-	if c.Request.ContentLength == 0 {
-		c.AbortWithStatusJSON(400, gin.H{"error": "empty content data"})
-		return
-	}
-	err := c.ShouldBindJSON(&status)
+	err := c.ShouldBindJSON(&deviceStatus)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
 
-	err = libp2p.ChangeDeviceStatus(status.IsAvailable)
+	err = libp2p.ChangeDeviceStatus(deviceStatus.IsAvailable)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	var msg string
-	if status.IsAvailable {
-		msg = "Device status successfully changed to online"
-	} else {
-		msg = "Device status successfully changed to offline"
-	}
-	c.JSON(200, gin.H{"message": msg})
+	c.JSON(200, gin.H{"device": deviceStatus})
 }
