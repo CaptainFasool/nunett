@@ -214,15 +214,15 @@ func GetMetadataFilePath() string {
 }
 
 // ReadMetadata returns metadata from metadataV2.json file
-func ReadMetadataFile() (*models.MetadataV2, error) {
+func ReadMetadataFile() (*models.Metadata, error) {
 	metadataF, err := os.ReadFile(GetMetadataFilePath())
 	if err != nil {
-		return &models.MetadataV2{}, err
+		return &models.Metadata{}, err
 	}
-	var metadata models.MetadataV2
+	var metadata models.Metadata
 	err = json.Unmarshal(metadataF, &metadata)
 	if err != nil {
-		return &models.MetadataV2{}, err
+		return &models.Metadata{}, err
 	}
 	return &metadata, nil
 }

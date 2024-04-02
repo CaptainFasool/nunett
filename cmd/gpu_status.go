@@ -12,7 +12,7 @@ import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
-	library "gitlab.com/nunet/device-management-service/lib"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 )
 
 var gpuStatusCmd = &cobra.Command{
@@ -21,14 +21,14 @@ var gpuStatusCmd = &cobra.Command{
 	Long:    ``,
 	PreRunE: isDMSRunning(networkService),
 	Run: func(cmd *cobra.Command, args []string) {
-		vendors, err := library.DetectGPUVendors()
+		vendors, err := resources.DetectGPUVendors()
 		if err != nil {
 			fmt.Println("Error trying to detect GPU(s):", err)
 			os.Exit(1)
 		}
 
-		hasAMD := containsVendor(vendors, library.AMD)
-		hasNVIDIA := containsVendor(vendors, library.NVIDIA)
+		hasAMD := containsVendor(vendors, resources.AMD)
+		hasNVIDIA := containsVendor(vendors, resources.NVIDIA)
 
 		if hasNVIDIA && hasAMD {
 			// NVML initialization

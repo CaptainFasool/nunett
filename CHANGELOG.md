@@ -20,6 +20,38 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.164](#340)
+
+### Fixed
+- Tests that cause timeout or crash
+
+### Removed
+- Spans from p2p messaging due to interruption of tests
+
+### Changed
+- Moved peer filter call out of discover
+
+## [0.4.163](#364)
+
+### Fixed
+- Total vram instead of visible only for AMD GPUs
+
+## [0.4.162](#206)
+
+### Added
+- Repositories for db module. First phase of db refactoring 
+
+## [0.4.161](#353)
+
+### Changed
+- Moved onboarding and resource related code to dms package
+- Refactored CheckOnboarding
+
+## [0.4.160](#366)
+
+### Fix
+- Problem with vm start request on firecracker depreq
+
 ## [0.4.159](#376)
 
 ### Removed

@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/dms/onboarding"
+	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
-	library "gitlab.com/nunet/device-management-service/lib"
 	"gitlab.com/nunet/device-management-service/models"
-	"gitlab.com/nunet/device-management-service/onboarding"
 )
 
 // ProvisionedCapacityHandler      godoc
@@ -19,7 +19,7 @@ import (
 //	@Success		200	{object}	models.Provisioned
 //	@Router			/onboarding/provisioned [get]
 func ProvisionedCapacityHandler(c *gin.Context) {
-	c.JSON(200, library.GetTotalProvisioned())
+	c.JSON(200, resources.GetTotalProvisioned())
 }
 
 // GetMetadataHandler      godoc

@@ -59,42 +59,6 @@ func GetP2P() DMSp2p {
 	return p2p
 }
 
-func CheckOnboarding() {
-	// Check 1: Check if payment address is valid
-	metadata, err := utils.ReadMetadataFile()
-	if err != nil {
-		zlog.Sugar().Errorf("unable to read metadata.json: %v", err)
-		return
-	}
-
-	err = utils.ValidateAddress(metadata.PublicKey)
-	if err != nil {
-		zlog.Sugar().Errorf("the payment address %s is not valid", metadata.PublicKey)
-		zlog.Sugar().Error("exiting DMS")
-		os.Exit(1)
-	}
-
-	// Check 2: Check for saved metadata and create a new host
-	var libp2pInfo models.Libp2pInfo
-	result := db.DB.Where("id = ?", 1).Find(&libp2pInfo)
-	if result.Error != nil {
-		panic(result.Error)
-	}
-	if libp2pInfo.PrivateKey != nil {
-		// Recreate private key
-		priv, err := crypto.UnmarshalPrivateKey(libp2pInfo.PrivateKey)
-		if err != nil {
-			panic(err)
-		}
-		RunNode(priv, libp2pInfo.ServerMode, libp2pInfo.Available)
-	} else {
-		zlog.Error("metadata file found but unable to find private key. Improper State. Exiting.")
-		utils.DeleteFile(utils.GetMetadataFilePath(), true)
-		zlog.Info("deleted metadata file with backup matadataV2.json.deleted-<timestamp>")
-		os.Exit(1)
-	}
-}
-
 func RunNode(priv crypto.PrivKey, server bool, available bool) error {
 	ctx := context.Background()
 
@@ -128,7 +92,7 @@ func RunNode(priv crypto.PrivKey, server bool, available bool) error {
 	if err != nil {
 		return fmt.Errorf("metadata.json does not exists or not readable: %v", err)
 	}
-	var metadata2 models.MetadataV2
+	var metadata2 models.Metadata
 	err = json.Unmarshal(content, &metadata2)
 	if err != nil {
 		return fmt.Errorf("unable to parse metadata.json: %v", err)
@@ -244,6 +208,25 @@ func RunNode(priv crypto.PrivKey, server bool, available bool) error {
 		}
 	}()
 	return nil
+}
+
+func RegisterRunNewNode(serverMode bool, isAvailable bool) (peerID string, err error) {
+	priv, pub, err := GenerateKey(0)
+	if err != nil {
+		return "", fmt.Errorf("unable to generate key pair: %w", err)
+	}
+
+	err = SaveNodeInfo(priv, pub, serverMode, isAvailable)
+	if err != nil {
+		return "", fmt.Errorf("unable to save node info: %w", err)
+	}
+
+	err = RunNode(priv, isAvailable, isAvailable)
+	if err != nil {
+		return "", fmt.Errorf("unable to run libp2p node: %w", err)
+	}
+
+	return p2p.Host.ID().String(), nil
 }
 
 func GenerateKey(seed int64) (crypto.PrivKey, crypto.PubKey, error) {

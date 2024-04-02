@@ -46,7 +46,7 @@ func TestDepReq(t *testing.T) {
 	// initialize first node
 	defer ctx.Done()
 	priv1, _, _ := libp2p.GenerateKey(time.Now().Unix())
-	var metadata models.MetadataV2
+	var metadata models.Metadata
 	metadata.AllowCardano = false
 	metadata.Network = channelName
 	meta, _ := json.Marshal(metadata)

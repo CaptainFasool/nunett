@@ -265,7 +265,7 @@ func selfPeerAddrs(body []byte) (addrsByte []byte, err error) {
 }
 
 // printMetadata takes models.MetadataV2 struct as input and display it in YAML-like format for better readability
-func printMetadata(w io.Writer, metadata *models.MetadataV2) {
+func printMetadata(w io.Writer, metadata *models.Metadata) {
 	fmt.Fprintln(w, "metadata:")
 
 	if metadata.Name != "" {
@@ -377,7 +377,7 @@ func setFullData(provisioned *models.Provisioned) []string {
 	}
 }
 
-func setAvailableData(metadata *models.MetadataV2) []string {
+func setAvailableData(metadata *models.Metadata) []string {
 	return []string{
 		"Available",
 		fmt.Sprintf("%d", metadata.Available.Memory),
@@ -386,7 +386,7 @@ func setAvailableData(metadata *models.MetadataV2) []string {
 	}
 }
 
-func setOnboardedData(metadata *models.MetadataV2) []string {
+func setOnboardedData(metadata *models.Metadata) []string {
 	return []string{
 		"Onboarded",
 		fmt.Sprintf("%d", metadata.Reserved.Memory),
