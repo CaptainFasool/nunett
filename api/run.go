@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
@@ -19,19 +21,23 @@ import (
 //	@Success		200					{object}	machines.fundingRespToSPD
 //	@Router			/run/request-service [post]
 func RequestServiceHandler(c *gin.Context) {
-	reqCtx := c.Request.Context()
+	if c.Request.ContentLength == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
+		return
+	}
 
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/run/request-service"))
 	kLogger.Info("Handle request service", span)
 
 	var depReq models.DeploymentRequest
-	err := c.BindJSON(&depReq)
+	err := c.ShouldBindJSON(&depReq)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
-	resp, err := machines.RequestService(reqCtx, depReq)
+
+	resp, err := machines.RequestService(c.Request.Context(), depReq)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": "failed to request service"})
 		return
