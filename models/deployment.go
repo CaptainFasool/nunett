@@ -67,6 +67,6 @@ type DeploymentRequestFlat struct {
 
 type BlockchainTxStatus struct {
 	TransactionType   string `json:"transaction_type"` // No need of this param maybe be deprecated in future
-	TransactionStatus string `json:"transaction_status"`
+	TransactionStatus string `json:"transaction_status" binding:"required"`
 	TxHash            string `json:"tx_hash"`
 }
