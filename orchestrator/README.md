@@ -12,7 +12,7 @@ The details of all the operations involved in the job orchestration are describe
 
 ### 1. Job Posting
 
-* proposed 2024-03-21; by: @kabir.kbr; @janaina.senna; @0xPravar; *
+* _proposed 2024-03-21; by: @kabir.kbr; @janaina.senna; @0xPravar_
 
 This is based on preliminary design, please refer to [research/blog/jobposting](https://nunet.gitlab.io/research/blog/posts/job-orchestration-details/#1-job-posting).
 
@@ -41,7 +41,7 @@ Please see below for relevant specification and data models.
 
 ### 2. Search and Match
 
-* proposed 2024-03-27; by: @kabir.kbr; @janaina.senna; @0xPravar; *
+* _proposed 2024-03-27; by: @kabir.kbr; @janaina.senna; @0xPravar_
 
 Once the DMS received a job posting, it will look to find nodes that can service the request. This is done by matching the job requirements with the available resources.
 
@@ -100,7 +100,7 @@ The second step is to shortlist the preferred compute provider peer based on som
 
 ### 3. Job Request
 
-* proposed 2024-03-27; by: @kabir.kbr; @janaina.senna; @0xPravar; *
+* _proposed 2024-03-27; by: @kabir.kbr; @janaina.senna; @0xPravar_
 
 DMS on service provider side checks whether the resources are locked by the preferred compute provider peer.
 
@@ -144,7 +144,7 @@ Please see below for relevant specification and data models.
 
 ### 4. Contract Closure
 
-* proposed 2024-03-27; by: @kabir.kbr; @janaina.senna; @0xPravar; *
+* _proposed 2024-03-27; by: @kabir.kbr; @janaina.senna; @0xPravar_
 
 The service provider and the shortlisted compute provider verify that the counterparty is a verified entity and approved by Nunet Solutions to participate in the network. This in an important step to establish trust before any work is performed.
 
@@ -156,7 +156,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Contract_Closure.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/orchestrator/Contract_Closure.feature))   |
 | Request payload - payment included      | [ID](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/dms/config/data/id.payload.go) |
 | Request payload - payment not included      | [Contract](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/tokenomics/data/contract.payload.go) |
 | Return payload - Contract Exists      | [Contract](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/tokenomics/data/contract.payload.go) |
@@ -187,17 +187,20 @@ Please see below for relevant specification and data models.
 `dms.dms.config.ID` - This contains identifiers like UUID, Peer ID and DID for the DMS.
 
 ### 5. Invocation and Allocation
+
+* _proposed 2024-03-29; by: @kabir.kbr; @janaina.senna; @0xPravar_
+
 When the contract closure workflow is completed, both the service provider and compute provider DMS have an agreement and proof of contract with them. Then the service provider DMS will send an invocation to the compute provider DMS which results in job allocation being created. Allocation can be understood as an execution space / environment on actual hardware that enables a Job to be executed.
 
 Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Invocation_And_Allocation.feature))   |
-| Request payload     | [Invocation](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/invocation.payload.go) |
-| Data at rest       | [Allocation](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/executor/data/allocation.payload.go) |
-| Return payload      | [AllocationStartSuccess](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/allocationStartSuccess.payload.go) |
-| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/invocationAndAllocation.sequence.mermaid),[.svg]()) |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/orchestrator/Invocation_And_Allocation.feature))   |
+| Request payload     | [Invocation](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/data/invocation.payload.go) |
+| Data at rest       | [Allocation](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/executor/data/allocation.payload.go) |
+| Return payload      | [AllocationStartSuccess](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/data/allocationStartSuccess.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/invocationAndAllocation.sequence.mermaid),[.svg]()) |
 
 **List of relevant functions**:<br/>
 
@@ -214,17 +217,20 @@ Please see below for relevant specification and data models.
 `dms.orchestrator.allocationStartSuccess` - This is the response from the compute provider DMS to Service Provider once allocation has been created.
 
 ### 6. Job Execution
+
+* _proposed 2024-03-29; by: @kabir.kbr; @janaina.senna; @0xPravar_
+
 Once allocation is created, the job execution starts on the compute provider machine. 
 
 Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Job_Execution.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/orchestrator/Job_Execution.feature))   |
 | Request payload     | None |
-| Return payload - success     | [Result](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/jobs/data/result.payload.go) |
-| Return payload - error     | [Result](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/executor/data/error.payload.go) |
-| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/jobExecution.sequence.mermaid),[.svg]()) |
+| Return payload - success     | [Result](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/jobs/data/result.payload.go) |
+| Return payload - error     | [Result](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/executor/data/error.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/jobExecution.sequence.mermaid),[.svg]()) |
 
 **List of relevant functions**:<br/>
 
@@ -241,16 +247,19 @@ Please see below for relevant specification and data models.
 `dms.executor.error` - This is an error response sent to Service Provider DMS in case of errors during job execution.
 
 ### 7. Contract Settlement
+
+* _proposed 2024-03-29; by: @kabir.kbr; @janaina.senna; @0xPravar_
+
 After job is completed, service provider verifies the work done using `Oracle`. If the work is correct, the `Contract-Database` makes the necessary transactions to settle the the contract.
 
 Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/orchestrator-package-design/stages/functional_tests/features/device-management-service/orchestrator/Contract_Settlement.feature))   |
-| Request payload     | [JobVerification](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/jobVerification.payload.go) |
-| Return payload      | [Message](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/data/message.payload.go) |
-| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/orchestrator-package-design/device-management-service/orchestrator/sequences/contractSettlement.sequence.mermaid),[.svg]()) |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/orchestrator/Contract_Settlement.feature))   |
+| Request payload     | [JobVerification](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/data/jobVerification.payload.go) |
+| Return payload      | [Message](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/data/message.payload.go) |
+| Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/orchestrator/sequences/contractSettlement.sequence.mermaid),[.svg]()) |
 
 **List of relevant functions**:<br/>
 
