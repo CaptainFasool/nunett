@@ -38,6 +38,7 @@ A generic event data type `gEvent` is then a type which joins together two inter
 
 Developers are expected to choose to choose actions of the code to be considered events and observed at different levels by using `gEvent` implementations.
 
+<<<<<<< HEAD
 See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
 
 ### Message
@@ -70,8 +71,3 @@ _proposed 2024-04-09; by: @kabir.kbr;_
 The `gEvent` implements both `Event` and `Observable` interfaces which enables to mark each event in the program (chosen by a programmer) as an observable event and, provided the combination of `EventCategory` and `ObservabilityLevel` send telemetry information to registered collectors (e.g. `OpenTelemetryCollector`). 
 
 * A correctly constructed event of `gEvent` type is observed by calling the `observeEvent()` method defined in `Observable` interface -- see [Feature: Observe gEvent](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/observeEvent.feature).
-
-
-
-
-
