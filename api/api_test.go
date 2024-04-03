@@ -5,13 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 
-	//	"github.com/stretchr/testify/mock"
-	//	"gitlab.com/nunet/device-management-service/integrations/oracle"
+	"gitlab.com/nunet/device-management-service/firecracker"
+	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
 )
@@ -172,6 +175,81 @@ func startMockWebSocketServer() *http.Server {
 
 	go server.ListenAndServe()
 	return server
+}
+
+func TestProblemDetails(t *testing.T) {
+	router := SetupRouter()
+
+	// for /device/status endpoint
+	type statusBody struct {
+		IsAvailable bool `json:"is_available" binding:"required,boolean"`
+	}
+
+	tests := []struct {
+		endpoint string
+		body     any
+	}{
+		{
+			endpoint: "onboarding/onboard",
+			body:     models.CapacityForNunet{},
+		},
+		{
+			endpoint: "onboarding/resource-config",
+			body:     models.ResourceConfig{},
+		},
+		{
+			endpoint: "device/status",
+			body:     statusBody{},
+		},
+		{
+			endpoint: "vm/start-default",
+			body:     firecracker.DefaultVM{},
+		},
+		{
+			endpoint: "vm/start-custom",
+			body:     firecracker.CustomVM{},
+		},
+		{
+			endpoint: "transactions/request-reward",
+			body:     tokenomics.ClaimCardanoTokenBody{},
+		},
+		{
+			endpoint: "transactions/send-status",
+			body:     models.BlockchainTxStatus{},
+		},
+		{
+			endpoint: "transactions/update-status",
+			body:     tokenomics.UpdateTxStatusBody{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run("missing request body", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("POST", "/api/v1/"+tt.endpoint, bytes.NewBuffer([]byte("")))
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, 400, w.Code)
+
+			var problem ProblemDetail
+			err := json.Unmarshal(w.Body.Bytes(), &problem)
+			assert.NoError(t, err)
+			assert.Equal(t, problem, NewEmptyBodyProblem())
+		})
+		t.Run("invalid request body", func(t *testing.T) {
+			bodyBytes, err := json.Marshal(tt.body)
+			assert.NoError(t, err)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("POST", "/api/v1/"+tt.endpoint, bytes.NewBuffer(bodyBytes))
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, 400, w.Code)
+
+			var problem ProblemDetail
+			err = json.Unmarshal(w.Body.Bytes(), &problem)
+			assert.NoError(t, err)
+		})
+	}
 }
 
 // func TestHandleDeploymentRequest(t *testing.T) {
