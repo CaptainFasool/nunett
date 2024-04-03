@@ -68,12 +68,11 @@ func WithErrors(e []ErrorDetail) ProblemOption {
 }
 
 func NewValidationProblem(e error) ProblemDetail {
-	errs := e.(validator.ValidationErrors)
 	return NewProblemDetail(
 		WithStatus(http.StatusBadRequest),
 		WithTitle("Input Validation Error"),
 		WithDetail("You request body have invalid parameters."),
-		WithErrors(readableErrors(errs)),
+		WithErrors(readableErrors(e)),
 	)
 }
 
@@ -87,20 +86,24 @@ func NewEmptyBodyProblem() ProblemDetail {
 
 // TODO: Update readableErrors to accept a ut.Translator parameter for human-readable messages
 // (github.com/go-playground/universal-translator)
-func readableErrors(errs validator.ValidationErrors) []ErrorDetail {
+func readableErrors(err error) []ErrorDetail {
 	var errors []ErrorDetail
-	for _, e := range errs {
-		var detail, pointer string
-		switch e.Tag() {
-		case "required":
-			detail = "is required"
-		case "boolean":
-			detail = "is not a boolean"
-		default:
-			detail = "is invalid"
+	errs, ok := err.(validator.ValidationErrors)
+	if ok {
+		for _, e := range errs {
+			var detail, pointer string
+			switch e.Tag() {
+			case "required":
+				detail = "is required"
+			case "boolean":
+				detail = "is not a boolean"
+			default:
+				detail = "is invalid"
+			}
+			pointer = "#/" + strings.ToLower(e.Field())
+			errors = append(errors, ErrorDetail{Detail: detail, Pointer: pointer})
 		}
-		pointer = "#/" + strings.ToLower(e.Field())
-		errors = append(errors, ErrorDetail{Detail: detail, Pointer: pointer})
+
 	}
 	return errors
 }
