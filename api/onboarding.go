@@ -115,12 +115,12 @@ func OnboardStatusHandler(c *gin.Context) {
 
 // OffboardHandler      godoc
 //
-//	@Summary		Runs the offboarding process.
+//	@Summary	Runs the offboarding process.
 //	@Description	Offboard runs offboarding process to remove the machine from the NuNet network.
 //	@Tags		onboarding
-//	@Produce		json
-//	@Success      200              {string}  string    "device successfully offboarded"
-//	@Router		/onboarding/offboard [post]
+//	@Produce	json
+//	@Success      	200	{string}  string    "device successfully offboarded"
+//	@Router		/onboarding/offboard [delete]
 func OffboardHandler(c *gin.Context) {
 	type offboardQuery struct {
 		Force bool `form:"force" binding:"omitempty,boolean"`
@@ -153,17 +153,16 @@ func ResourceConfigHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
 	}
-
-	klogger.Logger.Info("device resource change started")
-
-	var resource models.ResourceConfig
-	err := c.ShouldBindJSON(&resource)
+	var body models.ResourceConfig
+	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
 
-	metadata, err := onboarding.ResourceConfig(c.Request.Context(), resource)
+	klogger.Logger.Info("device resource change started")
+
+	metadata, err := onboarding.ResourceConfig(c.Request.Context(), body)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return

@@ -46,25 +46,25 @@ func ChangeDeviceStatusHandler(c *gin.Context) {
 		return
 	}
 
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/device/status"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Pause job onboarding", span)
-
-	var deviceStatus struct {
+	type deviceStatus struct {
 		IsAvailable bool `json:"is_available" binding:"required,boolean"`
 	}
-	err := c.ShouldBindJSON(&deviceStatus)
+	var status deviceStatus
+	err := c.ShouldBindJSON(&status)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
 
-	err = libp2p.ChangeDeviceStatus(deviceStatus.IsAvailable)
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/device/status"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Pause job onboarding", span)
+
+	err = libp2p.ChangeDeviceStatus(status.IsAvailable)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
-
-	c.JSON(200, gin.H{"device": deviceStatus})
+	c.JSON(200, gin.H{"device": status})
 }
