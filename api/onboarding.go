@@ -66,10 +66,16 @@ func CreatePaymentAddressHandler(c *gin.Context) {
 //	@Success		200	{object}	models.Metadata
 //	@Router			/onboarding/onboard [post]
 func OnboardHandler(c *gin.Context) {
+	if c.Request.ContentLength == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
+		return
+	}
+
 	capacity := models.CapacityForNunet{
 		ServerMode:  true,
 		IsAvailable: true,
 	}
+
 	err := c.ShouldBindJSON(&capacity)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
