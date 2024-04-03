@@ -10,6 +10,8 @@ Here is quick overview of the contents of this directory:
 
 * [api](api.go): This file contains router setup using Gin framework. It also applies Cross-Origin Resource Sharing (CORS) middleware and OpenTelemetry middleware for tracing. Further it lists down the endpoint URLs and the associated handler functions.
 
+* [errors](errors.go): This file contains structure and constructors for [Problem Details](https://datatracker.ietf.org/doc/html/rfc9457) return payload
+
 * [debug](debug.go): This file contains endpoints which are only available when `DEBUG` mode is enabled.
 
 * [device](device.go): This file contains endpoints to retrieve and modify the device status.
