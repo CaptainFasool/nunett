@@ -40,16 +40,11 @@ Developers are expected to choose to choose actions of the code to be considered
 
 See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
 
+### Message
 
-`Event` is an interface which defines methods to be implemented by a generic event of type `gEvent` and by that determines data that need to be included in each event for it be eligible to observation.
+`Message` is one of the key primitives of the NuNet platform -- the angle of the the architecture mostly influenced by the Actor model. A `Message` interfece defines two methods: `send()` and `recevive()`. A generic type `gMessage` implements `Message` interface and requires neccessary fields `sender`, `receiver`, `header` and `payload`. The current reasoning to define `Message` and `gMessage` within telemetry package is the relation between `Message` type and `Event` interface since both `send()` and `receive()` result in an `gEvent`.
 
-`EventCategory` is needed in order to account for the reasons for why we are doing observation of certain events and these are different from `ObservabilityLevel`s. Currently we are having the following event categories: `ACCOUNTING`, `LOGGING`, `TRACING`. Note that there is clear relation between `EventCategory` and `Collector` types.
-
-A generic event data type `gEvent` is then a type which joins together two interfaces -- `Event` and `Observable` -- and by that allows to a) gahter all information needed to observe an event and 2) direct the collection of that information to all registered collectors.
-
-Developers are expected to choose to choose actions of the code to be considered events and observed at different levels by using `gEvent` implementations.
-
-See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
+See current reference model [message.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/message.go).
 
 ## Functions
 
