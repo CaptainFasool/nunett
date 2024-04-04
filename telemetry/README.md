@@ -40,21 +40,11 @@ Developers are expected to choose to choose actions of the code to be considered
 
 See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
 
-
 ### Message
 
-A `Message` is a special event of which defines a message between two `dms`es running in the network. In terms of Actor model, `Message` is one of the key primitives of the whole system. Besides being a special type of generic event `Message` extends `gEvent` by adding neccessary fields `sender`, `receiver`, `header` and `payload`, which may get some of their structures via `gEvent.context()` method.
-
-All `Messages` should have a capability to be observed via `OpenTelemetryCollector` implementation -- extending `ObservabilityLevel` concept and type for determining when and how an observation takes place (e.g. during debugging, testing or in production). 
+`Message` is one of the key primitives of the NuNet platform -- the angle of the the architecture mostly influenced by the Actor model. A `Message` interfece defines two methods: `send()` and `recevive()`. A generic type `gMessage` implements `Message` interface and requires neccessary fields `sender`, `receiver`, `header` and `payload`. The current reasoning to define `Message` and `gMessage` within telemetry package is the relation between `Message` type and `Event` interface since both `send()` and `receive()` result in an `gEvent`.
 
 See current reference model [message.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/message.go).
-
-## LocalEvent
-
-`LocalEvent` type is an `gEvent` that is not a `Message` but still considered important enough to be observed. 
-
-See current reference model [local_event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/local_event.go).
-
 
 ## Functions
 
