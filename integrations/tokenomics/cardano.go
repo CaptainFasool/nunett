@@ -14,10 +14,12 @@ type TxHashResp struct {
 	TransactionType string `json:"transaction_type"`
 	DateTime        string `json:"date_time"`
 }
+
 type ClaimCardanoTokenBody struct {
 	ComputeProviderAddress string `json:"compute_provider_address"`
 	TxHash                 string `json:"tx_hash" binding:"required"`
 }
+
 type rewardRespToCPD struct {
 	ServiceProviderAddr string `json:"service_provider_addr"`
 	ComputeProviderAddr string `json:"compute_provider_addr"`
@@ -29,6 +31,7 @@ type rewardRespToCPD struct {
 	MessageHashAction   string `json:"message_hash_action,omitempty"`
 	Action              string `json:"action,omitempty"`
 }
+
 type UpdateTxStatusBody struct {
 	Address string `json:"address,omitempty" binding:"required"`
 }
