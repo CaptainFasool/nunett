@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/dms/onboarding"
@@ -82,8 +83,7 @@ func OnboardHandler(c *gin.Context) {
 		return
 	}
 
-	reqCtx := c.Request.Context()
-	metadata, err := onboarding.Onboard(reqCtx, capacity)
+	metadata, err := onboarding.Onboard(c.Request.Context(), capacity)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
@@ -122,18 +122,14 @@ func OnboardStatusHandler(c *gin.Context) {
 //	@Success      	200	{string}  string    "device successfully offboarded"
 //	@Router		/onboarding/offboard [delete]
 func OffboardHandler(c *gin.Context) {
-	type offboardQuery struct {
-		Force bool `form:"force" binding:"omitempty,boolean"`
-	}
-
-	var query offboardQuery
-	err := c.ShouldBindQuery(&query)
+	query := c.DefaultQuery("force", "false")
+	force, err := strconv.ParseBool(query)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
+		c.AbortWithStatusJSON(400, gin.H{"error": "query parameters have invalid value"})
 		return
 	}
 
-	err = onboarding.Offboard(c.Request.Context(), query.Force)
+	err = onboarding.Offboard(c.Request.Context(), force)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
@@ -153,6 +149,7 @@ func ResourceConfigHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
 	}
+
 	var body models.ResourceConfig
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
