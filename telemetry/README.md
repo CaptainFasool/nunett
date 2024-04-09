@@ -17,7 +17,7 @@ The goal is to allow third parties to propose their collectors and for `dms` to 
 * `OpenTelemetryCollector`, sending telemetry events to the registered open telemetry collector using open-telemetry format;
 * `ReputationCollector` is not scheduled for the implementation now, but is considered for the future to be able to register reputation systems that will collect events for providing reputation services on the platform; 
 
-See current reference model [collector.go](open-api/platform-data-model/device-management-service/telemetry/data/collector.go).
+See current reference model [collector.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/collector.go).
 
 ### Observable
 
@@ -27,7 +27,7 @@ The `Observable` interface determines how and which events hapenning in the syst
 
 Any event that implements `Observable` interface can be observed by the collectors that are determined to be activated as a result of matching `ObservabilityLevel` declared by an event and the `ObservabilityLevel` environment variable.
 
-See current reference model [observable.go](open-api/platform-data-model/device-management-service/telemetry/data/observable.go).
+See current reference model [observable.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/observable.go).
 
 
 ### Event
@@ -38,41 +38,38 @@ A generic event data type `gEvent` is then a type which joins together two inter
 
 Developers are expected to choose to choose actions of the code to be considered events and observed at different levels by using `gEvent` implementations.
 
-See current reference model [event.go](open-api/platform-data-model/device-management-service/telemetry/data/event.go).
-
+See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
 
 ### Message
 
-A `Message` is a special event of which defines a message between two `dms`es running in the network. In terms of Actor model, `Message` is one of the key primitives of the whole system. Besides being a special type of generic event `Message` extends `gEvent` by adding neccessary fields `sender`, `receiver`, `header` and `payload`, which may get some of their structures via `gEvent.context()` method.
+`Message` is one of the key primitives of the NuNet platform -- the angle of the the architecture mostly influenced by the Actor model. A `Message` interfece defines two methods: `send()` and `recevive()`. A generic type `gMessage` implements `Message` interface and requires neccessary fields `sender`, `receiver`, `header` and `payload`. The current reasoning to define `Message` and `gMessage` within telemetry package is the relation between `Message` type and `Event` interface since both `send()` and `receive()` result in an `gEvent`.
 
-All `Messages` should have a capability to be observed via `OpenTelemetryCollector` implementation -- extending `ObservabilityLevel` concept and type for determining when and how an observation takes place (e.g. during debugging, testing or in production). 
-
-See current reference model [message.go](open-api/platform-data-model/device-management-service/telemetry/data/message.go).
-
-## LocalEvent
-
-`LocalEvent` type is an `gEvent` that is not a `Message` but still considered important enough to be observed. 
-
-See current reference model [local_event.go](open-api/platform-data-model/device-management-service/telemetry/data/local_event.go).
-
+See current reference model [message.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/message.go).
 
 ## Functions
 
-## 1. Register Collector
+## 1. Register Collector(s)
 
-_proposed 2024-04-01; by: @kabir.kbr;_
-_**TBD**_
+_proposed 2024-04-08; by: @kabir.kbr;_
 
+* signature: `dms.telemetry.registerCollector(gEvent gEvent, collector Collector) -> bool`;
+* input #1: a variable of an generic event `dms.telemetry.gEvent` which will   
+* input #2: a variable describing collector to be registered `dms.telemetry.Collector` ([link](#collector));
+* output type `dms.telemetry.gEvent` ([link](#event));
 
-Please see below for relevant specification and data models.
+`registerCollector` function takes two parameters of type `gEvent` and `Collector` and outputs  `gEvent` type variable with the `Collector` registered in it.
 
-| Spec type              | Location |
----|---|
-| Features / test case specifications | Scenarios ([.gherkin]())   |
-| Request payload       | []()|
-| Return payload       | None |
-| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+* the main functionality of registering collectors is to automatically read default configuration of collectors and register them all into the generic event, which shall be used for instrumenting all events in the program -- see [Scenario: Register default collectors automatically](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/registerCollector.feature);
+* We also need to ensure that we could register collectors on demand, when they supplied in any manner (possibly also including via cli in the future) -- see: [Scenario: Register custom collectors manually](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/registerCollector.feature)
+   * The most important is the `OpenTelemetryCollector`, which will be used to collect data about all instrumented events;
 
+## 2. Observe events
+
+_proposed 2024-04-09; by: @kabir.kbr;_
+
+The `gEvent` implements both `Event` and `Observable` interfaces which enables to mark each event in the program (chosen by a programmer) as an observable event and, provided the combination of `EventCategory` and `ObservabilityLevel` send telemetry information to registered collectors (e.g. `OpenTelemetryCollector`). 
+
+* A correctly constructed event of `gEvent` type is observed by calling the `observeEvent()` method defined in `Observable` interface -- see [Feature: Observe gEvent](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/observeEvent.feature).
 
 
 
