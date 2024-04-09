@@ -52,7 +52,7 @@ See current reference model [message.go](https://gitlab.com/nunet/open-api/platf
 
 _proposed 2024-04-08; by: @kabir.kbr;_
 
-* signature: `dms.telemetry.registerCollector(gEvent gEvent, collector Collector) -> gEvent`;
+* signature: `dms.telemetry.registerCollector(gEvent gEvent, collector Collector) -> bool`;
 * input #1: a variable of an generic event `dms.telemetry.gEvent` which will   
 * input #2: a variable describing collector to be registered `dms.telemetry.Collector` ([link](#collector));
 * output type `dms.telemetry.gEvent` ([link](#event));
@@ -70,3 +70,8 @@ _proposed 2024-04-09; by: @kabir.kbr;_
 The `gEvent` implements both `Event` and `Observable` interfaces which enables to mark each event in the program (chosen by a programmer) as an observable event and, provided the combination of `EventCategory` and `ObservabilityLevel` send telemetry information to registered collectors (e.g. `OpenTelemetryCollector`). 
 
 * A correctly constructed event of `gEvent` type is observed by calling the `observeEvent()` method defined in `Observable` interface -- see [Feature: Observe gEvent](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/observeEvent.feature).
+
+
+
+
+
