@@ -22,6 +22,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/dms/onboarding"
@@ -127,6 +128,28 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 			CPUQuota:       cpuQuota,
 			CPUPeriod:      cpuPeriod,
 		},
+	}
+
+	if depReq.Params.Container.PortBindingWithoutIP != "" {
+		vpnAddr, err := libp2p.GetVPNAddrOfHost()
+		if err != nil {
+			zlog.Sugar().Error("Error getting VPN address: %w", err)
+		}
+
+		_, portBindings, err := nat.ParsePortSpecs([]string{
+			"%s:%s", vpnAddr, depReq.Params.Container.PortBindingWithoutIP,
+		})
+
+		if err != nil {
+			zlog.Sugar().Errorf("Error binding ports to container: %v", err)
+			depRes := models.DeploymentResponse{
+				Success: false,
+				Content: "Problem binding ports to container. Unable to process request.",
+			}
+			resCh <- depRes
+		}
+
+		hostConfig.PortBindings = portBindings
 	}
 
 	hostConfigAMDGPU := container.HostConfig{}

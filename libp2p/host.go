@@ -79,6 +79,7 @@ func RunNode(priv crypto.PrivKey, server bool, available bool) error {
 	host.SetStreamHandler(protocol.ID(DepReqProtocolID), depReqStreamHandler)
 	host.SetStreamHandler(protocol.ID(ChatProtocolID), chatStreamHandler)
 	host.SetStreamHandler(protocol.ID(FileTransferProtocolID), fileStreamHandler)
+	host.SetStreamHandler(protocol.ID(VPNProtocolID), vpnStreamHandler)
 
 	p2p.peers, err = discoverPeers(ctx, p2p.Host, p2p.DHT, utils.GetChannelName())
 	if err != nil {

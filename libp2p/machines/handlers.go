@@ -93,13 +93,7 @@ func RequestService(ctx context.Context, depReq models.DeploymentRequest) (*fund
 	} else if depReq.Params.RemoteNodeID != "" {
 		zlog.Sugar().Debugf("Going for target peer specified in deployment request: %s", depReq.Params.RemoteNodeID)
 		machines := libp2p.FetchMachines(libp2p.GetP2P().Host)
-
-		selectedPeerInfo, ok := machines[depReq.Params.RemoteNodeID]
-		if ok {
-			filteredPeers = libp2p.PeersWithMatchingSpec([]models.PeerData{selectedPeerInfo}, depReq)
-		} else {
-			return nil, fmt.Errorf("targeted peer is not within host DHT")
-		}
+		filteredPeers = libp2p.PeersWithMatchingSpec([]models.PeerData{machines[depReq.Params.RemoteNodeID]}, depReq)
 	} else {
 		zlog.Debug("Filtering peers - no default target peer specified")
 		filteredPeers = FilterPeers(depReq, libp2p.GetP2P().Host)

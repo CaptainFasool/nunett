@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -57,6 +59,19 @@ type OpenStream struct {
 	StreamID   string `json:"stream_id"`
 	FromPeer   string `json:"from_peer"`
 	TimeOpened string `json:"time_opened"`
+}
+
+type InvalidDepReqError struct {
+	Param string
+	Err   error
+}
+
+func (e *InvalidDepReqError) Error() string {
+	return fmt.Sprintf("Invalid %s. Error: %v", e.Param, e.Err)
+}
+
+func (e *InvalidDepReqError) Unwrap() error {
+	return e.Err
 }
 
 func writeToStream(stream network.Stream, msg string, failReason string) {
@@ -147,6 +162,25 @@ func depReqStreamHandler(stream network.Stream) {
 		zlog.Sugar().Infof("Skipping transaction hash check...")
 		DepReqQueue <- depreqMessage
 	}
+}
+
+// validateDeploymentRequest validates the deployment request parameters. It returns an
+// error and a string categorizing which parameter is invalid
+func validateDeploymentRequest(depReq models.DeploymentRequest) error {
+
+	if err := checkTxHash(depReq.TxHash); err != nil {
+		return &InvalidDepReqError{Param: "TxHash", Err: err}
+	}
+
+	if depReq.Params.Container.PortBindingWithoutIP != "" {
+		if _, _, err := nat.ParsePortSpecs([]string{
+			"%s:%s", depReq.Params.Container.PortBindingWithoutIP,
+		}); err != nil {
+			return &InvalidDepReqError{Param: "PortBindingWithoutIP", Err: err}
+		}
+	}
+
+	return nil
 }
 
 func checkTxHash(txHash string) error {

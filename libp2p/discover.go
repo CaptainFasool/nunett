@@ -99,3 +99,41 @@ func filterAddrs(peers []peer.AddrInfo) []peer.AddrInfo {
 	}
 	return filtered
 }
+
+func dialPeersContinuously(ctx context.Context, h host.Host, idht *dht.IpfsDHT, peers []peer.ID) {
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			for _, id := range peers {
+				if id == h.ID() {
+					continue
+				}
+				if err := findAndDialPeer(ctx, h, idht, id); err != nil {
+					zlog.Sugar().Debugf(
+						"Unexpected error when finding or dialing the peer %v, Error: %v",
+						id, err)
+				}
+
+			}
+		}
+	}
+}
+
+func findAndDialPeer(ctx context.Context, h host.Host, idht *dht.IpfsDHT, id peer.ID) error {
+	if h.Network().Connectedness(id) != network.Connected {
+		addrs, err := idht.FindPeer(ctx, id)
+		if err != nil {
+			return fmt.Errorf("Couldn't find peer, Error: %w", err)
+		}
+		_, err = h.Network().DialPeer(ctx, addrs.ID)
+		if err != nil {
+			return fmt.Errorf("Couldn't dial peer, Error: %w", err)
+		}
+	}
+	return nil
+}
