@@ -21,14 +21,14 @@ import (
 //	@Success		200					{object}	machines.fundingRespToSPD
 //	@Router			/run/request-service [post]
 func RequestServiceHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/run/request-service"))
+	kLogger.Info("Handle request service", span)
+
 	if c.Request.ContentLength == 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
 	}
-
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/run/request-service"))
-	kLogger.Info("Handle request service", span)
 
 	var depReq models.DeploymentRequest
 	err := c.ShouldBindJSON(&depReq)

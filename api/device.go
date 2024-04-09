@@ -41,6 +41,11 @@ func DeviceStatusHandler(c *gin.Context) {
 // @Success			200	{string}	string
 // @Router			/device/status [post]
 func ChangeDeviceStatusHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/device/status"))
+	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	kLogger.Info("Pause job onboarding", span)
+
 	if c.Request.ContentLength == 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
@@ -55,11 +60,6 @@ func ChangeDeviceStatusHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
-
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/device/status"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Pause job onboarding", span)
 
 	err = libp2p.ChangeDeviceStatus(status.IsAvailable)
 	if err != nil {

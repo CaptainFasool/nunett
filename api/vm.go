@@ -18,13 +18,13 @@ import (
 //	@Success		200
 //	@Router			/vm/start-custom [post]
 func StartCustomHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/vm/start-custom"))
+
 	if c.Request.ContentLength == 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
 	}
-
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/vm/start-custom"))
 
 	var body firecracker.CustomVM
 	err := c.ShouldBindJSON(&body)
@@ -32,6 +32,7 @@ func StartCustomHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
+
 	err = firecracker.StartCustom(c.Request.Context(), body)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
@@ -49,13 +50,13 @@ func StartCustomHandler(c *gin.Context) {
 //	@Success		200
 //	@Router			/vm/start-default [post]
 func StartDefaultHandler(c *gin.Context) {
+	span := trace.SpanFromContext(c.Request.Context())
+	span.SetAttributes(attribute.String("URL", "/vm/start-default"))
+
 	if c.Request.ContentLength == 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewEmptyBodyProblem())
 		return
 	}
-
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/vm/start-default"))
 
 	var body firecracker.DefaultVM
 	err := c.ShouldBindJSON(&body)
@@ -63,6 +64,7 @@ func StartDefaultHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, NewValidationProblem(err))
 		return
 	}
+
 	err = firecracker.StartDefault(c.Request.Context(), body)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
