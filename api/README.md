@@ -88,10 +88,11 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/device/Change_Device_Status.feature))   |
-| Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/currentDeviceStatus.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/deviceStatusChangeSuccess.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/deviceStatusChangeError.payload.mermaid),[.svg]()) |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/device/Change_Device_Status.feature)) |
+| Request payload       | [DeviceStatus](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/device_status.payload.go)|
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/ChangeDeviceStatusHandler.sequence.mermaid?ref_type=heads),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/ChangeDeviceStatusHandler.sequence.svg?ref_type=heads)) | 
 
 ### Onboarding endpoints
@@ -129,8 +130,9 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Onboard.feature))   |
 | Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/capacityForNunet.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/metadataV2.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/onboardingError.payload.mermaid),[.svg]()) |
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/OnboardHandler.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/OnboardHandler.sequence.svg)) | 
 
 #### Get Metadata
@@ -201,8 +203,9 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Resource_Config.feature))   |
 | Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/capacityForNunet.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/metadataV2.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/changeResourceConfigError.payload.mermaid),[.svg]()) |
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/ResourceConfigHandler.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/ResourceConfigHandler.sequence.svg)) | 
 
 #### Offboard
@@ -500,8 +503,9 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/run/Request_Service.feature))   |
 | Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/deploymentRequest.payload.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/requestServiceResponse.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/requestServiceError.payload.mermaid),[.svg]()) |
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/RequestServiceHandler.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/RequestServiceHandler.sequence.svg)) | 
 
 #### Deployment Request
@@ -594,8 +598,9 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Request_Reward.feature))   |
 | Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/claimCardanoTokenBody.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/requestRewardResponse.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/requestRewardError.payload.mermaid),[.svg]()) |
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/RequestRewardHandler.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/RequestRewardHandler.sequence.svg)) |
 
 #### Send Transaction Status
@@ -612,8 +617,9 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Send_Tx_Status.feature))   |
 | Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/blockchainTxStatus.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/txStatus.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/sendTxStatusError.payload.mermaid),[.svg]()) |
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/SendTxStatusHandler.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/SendTxStatusHandler.sequence.svg)) |
 
 #### Update Transaction Status
@@ -630,8 +636,9 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Update_Tx_Status.feature))   |
 | Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/updateTxStatusBody.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/updateTxStatusSuccess.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/updateTxStatusError.payload.mermaid),[.svg]()) |
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/UpdateTxStatusHandler.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/UpdateTxStatusHandler.sequence.svg)) |
 
 ### VM Endpoints
@@ -650,8 +657,9 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/vm/Start_Custom.feature))   |
 | Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/customVM.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/startCustomSuccess.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/startCustomError.payload.mermaid),[.svg]()) |
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/StartCustomHandler.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/StartCustomHandler.sequence.svg)) |
 
 #### Start Default
@@ -668,8 +676,9 @@ Please see below for relevant specification and data models.
 ---|---|
 | Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/vm/Start_Default.feature))   |
 | Request payload       | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/defaultVM.payload.mermaid),[.svg]()) |
-| Return payload - success     | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/startDefaultSuccess.payload.mermaid),[.svg]()) |
-| Return payload - error      | entityDiagrams ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/data/startDefaultError.payload.mermaid),[.svg]()) |
+| Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
+| Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
+| Return payload - 5xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
 | Processes / Functions | sequenceDiagram ([.mermaid](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/StartDefaultHandler.sequence.mermaid),[.svg](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/dms-rest-api/device-management-service/api/sequences/rendered/StartDefaultHandler.sequence.svg)) |
 
 ### Debug Endpoints
