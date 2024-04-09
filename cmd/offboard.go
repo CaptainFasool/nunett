@@ -38,7 +38,7 @@ var offboardCmd = &cobra.Command{
 			force, _ := cmd.Flags().GetBool("force")
 			query := bytes.NewBufferString(fmt.Sprintf(`{"force": %t}`, force))
 
-			body, err := utils.ResponseBody(nil, "POST", "/api/v1/onboarding/offboard", "", query.Bytes())
+			body, err := utils.ResponseBody(nil, "DELETE", "/api/v1/onboarding/offboard", "", query.Bytes())
 			if err != nil {
 				fmt.Println("Error getting response body:", err)
 				os.Exit(1)
