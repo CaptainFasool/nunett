@@ -128,7 +128,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Onboard.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/onboarding/Onboard.feature))   |
 | Request payload       | [CapacityForNunet](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/onboard.payload.go) |
 | Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
 | Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
@@ -201,7 +201,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/onboarding/Resource_Config.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/onboarding/Resource_Config.feature))   |
 | Request payload       | [ResourceConfig](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/resource_config.payload.go) |
 | Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
 | Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
@@ -501,7 +501,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/run/Request_Service.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/run/Request_Service.feature))   |
 | Request payload       | [DeploymentRequest](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/request_service.payload.go) |
 | Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
 | Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
@@ -596,7 +596,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Request_Reward.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/transactions/Request_Reward.feature))   |
 | Request payload       | [RequestReward](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/request_reward.payload.go) |
 | Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
 | Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
@@ -615,7 +615,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Send_Tx_Status.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/transactions/Send_Tx_Status.feature))   |
 | Request payload       | [BlockchainTxStatus](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/send_tx_status.payload.go) |
 | Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
 | Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
@@ -634,7 +634,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/transactions/Update_Tx_Status.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/transactions/Update_Tx_Status.feature))   |
 | Request payload       | [UpdateTxStatus](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/update_tx_status.payload.go) |
 | Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
 | Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
@@ -655,7 +655,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/vm/Start_Custom.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/vm/Start_Custom.feature))   |
 | Request payload       | [CustomVM](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/custom_vm.payload.go) |
 | Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
 | Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
@@ -674,7 +674,7 @@ Please see below for relevant specification and data models.
 
 | Spec type              | Location |
 ---|---|
-| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/dms-rest-api/stages/functional_tests/features/device-management-service/api/vm/Start_Default.feature))   |
+| Features / test case specifications | Scenarios ([.gherkin](https://gitlab.com/nunet/test-suite/-/blob/rest-api-validation/stages/functional_tests/features/device-management-service/api/vm/Start_Default.feature))   |
 | Request payload       | [DefaultVM](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/default_vm.payload.go) |
 | Return payload - 2xx  | [ResponseHeader](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/response_header.payload.go) |
 | Return payload - 4xx  | [ProblemDetail](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/rest-api-validation/device-management-service/api/data/problem_details.payload.go) |
