@@ -103,7 +103,6 @@ func readableErrors(err error) []ErrorDetail {
 			pointer = "#/" + strings.ToLower(e.Field())
 			errors = append(errors, ErrorDetail{Detail: detail, Pointer: pointer})
 		}
-
 	}
 	return errors
 }
