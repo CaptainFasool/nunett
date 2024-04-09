@@ -48,21 +48,28 @@ See current reference model [message.go](https://gitlab.com/nunet/open-api/platf
 
 ## Functions
 
-## 1. Register Collector
+## 1. Register Collector(s)
 
-_proposed 2024-04-01; by: @kabir.kbr;_
-_**TBD**_
+_proposed 2024-04-08; by: @kabir.kbr;_
 
+* signature: `dms.telemetry.registerCollector(gEvent gEvent, collector Collector) -> bool`;
+* input #1: a variable of an generic event `dms.telemetry.gEvent` which will   
+* input #2: a variable describing collector to be registered `dms.telemetry.Collector` ([link](#collector));
+* output type `dms.telemetry.gEvent` ([link](#event));
 
-Please see below for relevant specification and data models.
+`registerCollector` function takes two parameters of type `gEvent` and `Collector` and outputs  `gEvent` type variable with the `Collector` registered in it.
 
-| Spec type              | Location |
----|---|
-| Features / test case specifications | Scenarios ([.gherkin]())   |
-| Request payload       | []()|
-| Return payload       | None |
-| Processes / Functions | sequenceDiagram ([.mermaid](),[.svg]()) | 
+* the main functionality of registering collectors is to automatically read default configuration of collectors and register them all into the generic event, which shall be used for instrumenting all events in the program -- see [Scenario: Register default collectors automatically](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/registerCollector.feature);
+* We also need to ensure that we could register collectors on demand, when they supplied in any manner (possibly also including via cli in the future) -- see: [Scenario: Register custom collectors manually](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/registerCollector.feature)
+   * The most important is the `OpenTelemetryCollector`, which will be used to collect data about all instrumented events;
 
+## 2. Observe events
+
+_proposed 2024-04-09; by: @kabir.kbr;_
+
+The `gEvent` implements both `Event` and `Observable` interfaces which enables to mark each event in the program (chosen by a programmer) as an observable event and, provided the combination of `EventCategory` and `ObservabilityLevel` send telemetry information to registered collectors (e.g. `OpenTelemetryCollector`). 
+
+* A correctly constructed event of `gEvent` type is observed by calling the `observeEvent()` method defined in `Observable` interface -- see [Feature: Observe gEvent](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/observeEvent.feature).
 
 
 
