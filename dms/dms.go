@@ -12,11 +12,11 @@ import (
 	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
-	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -41,8 +41,8 @@ func Run() {
 
 	go messaging.FileTransferWorker(ctx)
 
-	heartbeat.Done = make(chan bool)
-	go heartbeat.Heartbeat()
+	telemetry.Done = make(chan bool)
+	go telemetry.Heartbeat()
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
 
@@ -67,7 +67,7 @@ func Run() {
 		libp2p.RunNode(priv, p2pParams.ServerMode, p2pParams.Available)
 		if libp2p.GetP2P().Host != nil {
 			SanityCheck(db.DB)
-			heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
+			telemetry.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
 		}
 	}
 

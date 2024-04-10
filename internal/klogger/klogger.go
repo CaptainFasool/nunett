@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"time"
 
-	"gitlab.com/nunet/device-management-service/internal/heartbeat"
+	"gitlab.com/nunet/device-management-service/telemetry"
 )
 
 // LogLevel represents different log levels
@@ -49,19 +49,19 @@ func (cl *CustomLogger) log(level string, message string) {
 // Info logs an informational message
 func (cl *CustomLogger) Info(message string) {
 	cl.log("INFO", message)
-	heartbeat.DmsLoggs(message, "INFO")
+	telemetry.DmsLoggs(message, "INFO")
 }
 
 // Warning logs a warning message
 func (cl *CustomLogger) Warning(message string) {
 	cl.log("WARNING", message)
-	heartbeat.DmsLoggs(message, "Warning")
+	telemetry.DmsLoggs(message, "Warning")
 }
 
 // Error logs an error message
 func (cl *CustomLogger) Error(message string) {
 	cl.log("ERROR", message)
-	heartbeat.DmsLoggs(message, "Error")
+	telemetry.DmsLoggs(message, "Error")
 }
 
 // InitializeLogger initializes the global logger with the specified log level

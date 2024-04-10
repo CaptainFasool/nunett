@@ -1,4 +1,4 @@
-package heartbeat
+package telemetry
 
 import (
 	"github.com/elastic/go-elasticsearch/v8"
@@ -8,13 +8,12 @@ import (
 )
 
 var (
-	zlog     otelzap.Logger
-	elastictoken models.ElasticToken
-	esClient *elasticsearch.Client
+	zlog            otelzap.Logger
+	elastictoken    models.ElasticToken
+	esClient        *elasticsearch.Client
 	esClientHealthy bool
 )
 
 func init() {
-	zlog = logger.OtelZapLogger("internal/heartbeat")
+	zlog = logger.OtelZapLogger("telemetry")
 }
-

@@ -12,10 +12,10 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/internal/config"
-	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/telemetry"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/spf13/afero"
@@ -202,7 +202,7 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 		return nil, fmt.Errorf("could not register and run new node: %w", err)
 	}
 
-	_, err = heartbeat.NewToken(hostID, capacity.Channel)
+	_, err = telemetry.NewToken(hostID, capacity.Channel)
 	if err != nil {
 		zlog.Sugar().Errorf("unable to get new telemetry token: %v", err)
 	}
