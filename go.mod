@@ -233,4 +233,7 @@ require (
 	github.com/uptrace/opentelemetry-go-extra/otelzap v0.1.21
 )
 
-require github.com/cosmos/btcutil v1.0.5
+require (
+	github.com/cosmos/btcutil v1.0.5
+	github.com/libp2p/go-libp2p-core v0.20.1
+)

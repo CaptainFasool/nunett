@@ -1,94 +1,52 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"os"
-	"time"
+	"log"
+	"net/url"
 
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/gorilla/websocket"
+
 	"github.com/spf13/cobra"
-	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
-// sendFileCmd represents the command to send a file to a peer over the p2p network, specifying the peer ID, file path, and transfer type.
-var sendFileCmd = &cobra.Command{
-	Use:   "send-file <peer-id> <file-path> <transfer-type>",
-	Short: "Send a file to a peer over the p2p network",
-	Long: `Send a file to a peer over the p2p network. 
-	       The transfer type should be one of: 0 for FTDEPREQ, 1 for FTMISC.`,
-	Args: cobra.ExactArgs(3),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
+func NewSendFileCmd(utilsService backend.Utility) *cobra.Command {
+	return &cobra.Command{
+		Use:   "send-file <peer-id> <file-path>",
+		Short: "Send a file to a peer over the p2p network via WebSocket",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			// Perform any necessary onboarding checks
+			if err := checkOnboarded(utilsService); err != nil {
+				log.Fatal("Onboarding check failed:", err)
+			}
 
-		peerID, err := peer.Decode(args[0])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Invalid peer ID: %v\n", err)
-			return err
-		}
-
-		filePath := args[1]
-		transferTypeArg := args[2]
-		var transferType libp2p.FileTransferType
-
-		switch transferTypeArg {
-		case "0":
-			transferType = libp2p.FTDEPREQ
-		case "1":
-			transferType = libp2p.FTMISC
-		default:
-			fmt.Fprintf(os.Stderr, "Invalid transfer type. Use '0' for FTDEPREQ or '1' for FTMISC.\n")
-			return fmt.Errorf("invalid transfer type: %s", transferTypeArg)
-		}
-
-		progressChan, err := libp2p.SendFileToPeer(ctx, peerID, filePath, transferType)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to send file: %v\n", err)
-			return err
-		}
-
-		for progress := range progressChan {
-			fmt.Printf("\rTransfer progress: %.2f%% complete", progress.Percent)
-		}
-
-		fmt.Println("\nFile has been sent successfully.")
-		return nil
-	},
+			peerID, filePath := args[0], args[1]
+			sendFileViaWebSocket(peerID, filePath)
+		},
+	}
 }
 
-// acceptFileCmd represents the command to accept an incoming file transfer
-var acceptFileCmd = &cobra.Command{
-	Use:   "accept-file",
-	Short: "Accept an incoming file transfer",
-	Long:  "Accept the most recent incoming file transfer request.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if libp2p.CurrentFileTransfer.InboundFileStream == nil {
-			fmt.Println("No incoming file transfer request available.")
-			return nil
-		}
+func sendFileViaWebSocket(peerID, filePath string) {
+	wsURL := url.URL{Scheme: "ws", Host: "localhost:1236", Path: "/api/v1/peers/file/send",
+		RawQuery: fmt.Sprintf("peerID=%s&filePath=%s", url.QueryEscape(peerID), url.QueryEscape(filePath))}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
+	c, _, err := websocket.DefaultDialer.Dial(wsURL.String(), nil)
+	if err != nil {
+		log.Fatal("dial:", err)
+	}
+	defer c.Close()
 
-		fmt.Println("Accepting file transfer...")
-
-		filePath, progressChan, err := libp2p.AcceptFileTransfer(ctx, libp2p.CurrentFileTransfer)
+	log.Println("Connection established. Waiting for progress updates...")
+	for {
+		_, message, err := c.ReadMessage()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to accept file transfer: %v\n", err)
-			return err
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			break
 		}
-
-		fmt.Printf("File transfer initiated, saving to %s\n", filePath)
-
-		for progress := range progressChan {
-			fmt.Printf("\rTransfer progress: %.2f%%, %s remaining", progress.Percent, progress.Remaining().Round(time.Second))
-		}
-
-		fmt.Println("\nFile transfer completed successfully.")
-
-		libp2p.ClearIncomingFileRequests()
-
-		return nil
-	},
+		log.Printf("Received: %s", message)
+	}
 }

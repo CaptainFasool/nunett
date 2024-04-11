@@ -37,6 +37,7 @@ func init() {
 	gpuCmd.AddCommand(gpuOnboardCmd)
 	offboardCmd.Flags().BoolVarP(&flagForce, "force", "f", false, "force offboarding")
 	shellCmd.Flags().StringVar(&flagNode, "node-id", "", "set nodeID value")
+	sendFileCmd := NewSendFileCmd(utilsService)
 
 	// initialize top level commands
 	rootCmd.AddCommand(gpuCmd)

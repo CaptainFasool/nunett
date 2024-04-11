@@ -77,7 +77,7 @@ func CleanupOldPeers() {
 	}
 }
 
-// UpdateKadDHT updates the Kad-DHT with the current node's peer info
+// UpdateKadDHT updates the Kad-DHT wi378-implement-p2p-file-transfer-in-cli-2378-implement-p2p-file-transfer-in-cli-2378-implement-p2p-file-transfer-in-cli-2378-implement-p2p-file-transfer-in-cli-2th the current node's peer info
 func UpdateKadDHT() {
 	// Get existing entry from Peerstore
 	var PeerInfo models.PeerData
