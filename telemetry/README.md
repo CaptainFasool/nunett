@@ -36,7 +36,7 @@ See current reference model [observable.go](https://gitlab.com/nunet/open-api/pl
 
 `EventCategory` is needed in order to account for the reasons for why we are doing observation of certain events and these are different from `ObservabilityLevel`s. Currently we are having the following event categories: `ACCOUNTING`, `LOGGING`, `TRACING`. Note that there is clear relation between `EventCategory` and `Collector` types.
 
-A generic event data type `gEvent` is then a type which joins together two interfaces -- `Event` and `Observable` -- and by that allows to a) gahter all information needed to observe an event and 2) direct the collection of that information to all registered collectors.
+A generic event data type `gEvent` is then a type which joins together two interfaces -- `Event` and `Observable` -- and by that allows to a) gather all information needed to observe an event and 2) direct the collection of that information to all registered collectors.
 
 Developers are expected to choose to choose actions of the code to be considered events and observed at different levels by using `gEvent` implementations.
 
