@@ -21,9 +21,9 @@ See current reference model [collector.go](https://gitlab.com/nunet/open-api/pla
 
 ### Observable
 
-The `Observable` interface determines how and which events hapenning in the system are to be observed by collectors. Any events that are eligible for observation at any `ObservabilityLevel` shall implement the interface. 
+The `Observable` interface determines how and which events happening in the system are to be observed by collectors. Any events that are eligible for observation at any `ObservabilityLevel` shall implement the interface. 
 
-`ObservabilityLevel` is a constructed similarly to log levels concept in many programming languages and frameworks. We currently define six observability levels -- `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR` and `FATAL`. 
+`ObservabilityLevel` is a constructed similarly to log levels concept in many programming languages and frameworks. We currently define six observability levels -- `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR` and `FATAL`.
 
 Any event that implements `Observable` interface can be observed by the collectors that are determined to be activated as a result of matching `ObservabilityLevel` declared by an event and the `ObservabilityLevel` environment variable.
 
@@ -34,18 +34,13 @@ See current reference model [observable.go](https://gitlab.com/nunet/open-api/pl
 
 `Event` is an interface which defines methods to be implemented by a generic event of type `gEvent` and by that determines data that need to be included in each event for it be eligible to observation.
 
+`EventCategory` is needed in order to account for the reasons for why we are doing observation of certain events and these are different from `ObservabilityLevel`s. Currently we are having the following event categories: `ACCOUNTING`, `LOGGING`, `TRACING`. Note that there is clear relation between `EventCategory` and `Collector` types.
+
 A generic event data type `gEvent` is then a type which joins together two interfaces -- `Event` and `Observable` -- and by that allows to a) gahter all information needed to observe an event and 2) direct the collection of that information to all registered collectors.
 
 Developers are expected to choose to choose actions of the code to be considered events and observed at different levels by using `gEvent` implementations.
 
-<<<<<<< HEAD
 See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
-
-### Message
-
-`Message` is one of the key primitives of the NuNet platform -- the angle of the the architecture mostly influenced by the Actor model. A `Message` interfece defines two methods: `send()` and `recevive()`. A generic type `gMessage` implements `Message` interface and requires neccessary fields `sender`, `receiver`, `header` and `payload`. The current reasoning to define `Message` and `gMessage` within telemetry package is the relation between `Message` type and `Event` interface since both `send()` and `receive()` result in an `gEvent`.
-
-See current reference model [message.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/message.go).
 
 ## Functions
 
@@ -53,7 +48,7 @@ See current reference model [message.go](https://gitlab.com/nunet/open-api/platf
 
 _proposed 2024-04-08; by: @kabir.kbr;_
 
-* signature: `dms.telemetry.registerCollector(gEvent gEvent, collector Collector) -> bool`;
+* signature: `dms.telemetry.registerCollector(gEvent gEvent, collector Collector) -> gEvent`;
 * input #1: a variable of an generic event `dms.telemetry.gEvent` which will   
 * input #2: a variable describing collector to be registered `dms.telemetry.Collector` ([link](#collector));
 * output type `dms.telemetry.gEvent` ([link](#event));
