@@ -1,93 +1,105 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
-
-	//"net/http"
 	"net/url"
-
-	"github.com/gorilla/websocket"
+	"os"
+	"os/signal"
 
 	"github.com/spf13/cobra"
 	"gitlab.com/nunet/device-management-service/cmd/backend"
 )
 
-func NewSendFileCmd(utilsService backend.Utility) *cobra.Command {
+func NewSendFileCmd(utilsService backend.Utility, wsClient *backend.WebSocket) *cobra.Command {
 	return &cobra.Command{
 		Use:   "send-file <peer-id> <file-path>",
 		Short: "Send a file to a peer over the p2p network via WebSocket",
 		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := checkOnboarded(utilsService); err != nil {
-				log.Fatal("Onboarding check failed:", err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			onboarded, err := utilsService.IsOnboarded()
+			if err != nil || !onboarded {
+				return fmt.Errorf("onboarding check failed: %w", err)
 			}
 
-			peerID, filePath := args[0], args[1]
-			sendFileViaWebSocket(peerID, filePath)
+			return sendFileViaWebSocket(wsClient, args[0], args[1], cmd)
 		},
 	}
 }
 
-func sendFileViaWebSocket(peerID, filePath string) {
-	wsURL := url.URL{Scheme: "ws", Host: "localhost:1236", Path: "/api/v1/peers/file/send",
-		RawQuery: fmt.Sprintf("peerID=%s&filePath=%s", url.QueryEscape(peerID), url.QueryEscape(filePath))}
-
-	c, _, err := websocket.DefaultDialer.Dial(wsURL.String(), nil)
-	if err != nil {
-		log.Fatal("dial:", err)
+// Handler to send files using WebSocket
+func sendFileViaWebSocket(wsClient *backend.WebSocket, peerID, filePath string, cmd *cobra.Command) error {
+	url := fmt.Sprintf("ws://localhost:1236/api/v1/peers/file/send?peerID=%s&filePath=%s", url.QueryEscape(peerID), url.QueryEscape(filePath))
+	if err := wsClient.Initialize(url); err != nil {
+		return fmt.Errorf("websocket initialization failed: %w", err)
 	}
-	defer c.Close()
+	defer wsClient.Close()
 
-	log.Println("Connection established. Waiting for progress updates...")
-	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
-			}
-			break
-		}
-		log.Printf("Received: %s", message)
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	setupSignalHandler(cancel)
+
+	return handleWebSocketCommunication(wsClient, ctx, cmd)
 }
 
-func NewAcceptFileCmd(utilsService backend.Utility) *cobra.Command {
+func NewAcceptFileCmd(utilsService backend.Utility, wsClient *backend.WebSocket) *cobra.Command {
 	return &cobra.Command{
 		Use:   "accept-file <stream-id>",
 		Short: "Accept an incoming file transfer via WebSocket",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := checkOnboarded(utilsService); err != nil {
-				log.Fatal("Onboarding check failed:", err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			onboarded, err := utilsService.IsOnboarded()
+			if err != nil || !onboarded {
+				return fmt.Errorf("onboarding check failed: %w", err)
 			}
 
-			streamID := args[0]
-			acceptFileViaWebSocket(streamID)
+			return acceptFileViaWebSocket(wsClient, args[0], cmd)
 		},
 	}
 }
 
-func acceptFileViaWebSocket(streamID string) {
-	// Construct WebSocket URL with the streamID as a query parameter
-	wsURL := url.URL{Scheme: "ws", Host: "localhost:1236", Path: "/api/v1/peers/file/accept", RawQuery: "streamID=" + url.QueryEscape(streamID)}
-
-	// Dial WebSocket
-	c, _, err := websocket.DefaultDialer.Dial(wsURL.String(), nil)
-	if err != nil {
-		log.Fatalf("Failed to dial websocket: %v", err)
+// Handler to accept files using WebSocket
+func acceptFileViaWebSocket(wsClient *backend.WebSocket, streamID string, cmd *cobra.Command) error {
+	url := fmt.Sprintf("ws://localhost:1236/api/v1/peers/file/accept?streamID=%s", url.QueryEscape(streamID))
+	if err := wsClient.Initialize(url); err != nil {
+		return fmt.Errorf("websocket initialization failed: %w", err)
 	}
-	defer c.Close()
+	defer wsClient.Close()
 
-	log.Println("Connected to the server. Waiting for the file transfer...")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// Listen for messages
-	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Printf("Error reading message: %v", err)
-			break
+	setupSignalHandler(cancel)
+
+	return handleWebSocketCommunication(wsClient, ctx, cmd)
+}
+
+// Handle incoming and outgoing WebSocket messages
+func handleWebSocketCommunication(wsClient *backend.WebSocket, ctx context.Context, cmd *cobra.Command) error {
+	go func() {
+		if err := wsClient.ReadMessage(ctx, cmd.OutOrStdout()); err != nil {
+			log.Printf("Read error: %v\n", err)
 		}
-		log.Printf("Received: %s", message)
-	}
+	}()
+
+	go func() {
+		if err := wsClient.WriteMessage(ctx, cmd.InOrStdin()); err != nil {
+			log.Printf("Write error: %v\n", err)
+		}
+	}()
+
+	return wsClient.Ping(ctx, cmd.OutOrStderr())
+}
+
+// Signal handler for graceful shutdown
+func setupSignalHandler(cancel context.CancelFunc) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			cancel()
+		}
+	}()
 }
