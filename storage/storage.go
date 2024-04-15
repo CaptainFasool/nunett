@@ -54,13 +54,18 @@ will use their own decoder.
 // InputSource/StoreResult (temporary) will be used by different storage type implementations
 // which need different params when reading/writing from/to them.
 // (similar to SpecConfig used by the Executor)
-type InputSource map[string]interface{}
+type InputSource map[string]interface{} // basically *SpecConfig
 type OutputTarget map[string]interface{}
 
 // StoreResult as described above + contains metadata returned by the store operation
 type StoreResult map[string]interface{}
 
-// StorageProvider
+/*
+Job's input: from S3, IPFS, etc.
+Job's output stored on S3, IPFS, etc.
+*/
+
+// StorageProvider: I/O as files of remote storage provider (not necessarily: streaming, enabling databases)
 //
 // - Authentication done when instantiating the implementation
 //   - CONCERN: different files might have different auth within the same account
@@ -106,7 +111,7 @@ type StorageReader interface {
 	Download(outputPath string) (StorageVolume, error)
 
 	// Size is also used to check if it exists
-	Size(identifier string) (int64, error)
+	Size() (int64, error)
 }
 
 // StorageWriter: when instantiating the implementation, the writer will contain
@@ -115,5 +120,31 @@ type StorageReader interface {
 type StorageWriter interface {
 	// Upload uploads the data to the source based on the information inputed when
 	// the writer was instantiated
-	Upload(in StorageVolume) error
+	Upload(in StorageVolume) (StoreResult, error)
 }
+
+// [] mounting or not mounting
+// mounting
+
+// [] enable streaming
+// interface will not able necessarily support streaming
+
+// TODOs:
+// think on StorageVolume structure
+// review VolumeController
+// review other interfaces, final version
+
+// To decide tomorrow:
+
+// [] decide which version
+// 1
+
+// [] decide where to keep encryption part
+// outside of it
+
+// Solved:
+// [] add Delete()/Remove()?
+// not have those
+
+// [] add Update()?
+// not have this
