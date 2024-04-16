@@ -34,6 +34,9 @@ type MiB uint64
 // - When needed, the availability-checking of some storage provider is handled
 // when instantiating the implementation
 //
+// - Any necessary authentication data is also provided within the `*models.SpecConfig`
+// parameters
+//
 // - Although it may be feasible to implement, the interface was not built with
 // the idea of supporting streaming of data and non-file storage operations (e.g.:
 // some databases)
