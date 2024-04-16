@@ -1,21 +1,35 @@
-package main
+package cmd
 
-import "gitlab.com/nunet/device-management-service/cmd"
+import (
+	"context"
+	"fmt"
 
-//	@title			Device Management Service
-//	@version		0.4.164
-//	@description	A dashboard application for computing providers.
-//	@termsOfService	https://nunet.io/tos
+	"gitlab.com/nunet/device-management-service/config"
+	"gitlab.com/nunet/device-management-service/telemetry"
+)
 
-//	@contact.name	Support
-//	@contact.url	https://devexchange.nunet.io/
-//	@contact.email	support@nunet.io
+func Execute() {
+	// Load configuration
+	cfg, err := config.LoadConfig("./config.yaml")
+	if err != nil {
+		fmt.Println("Error loading config:", err)
+		return
+	}
 
-//	@license.name	Apache 2.0
-//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+	// Setup logging based on the loaded configuration
+	setupLogging(cfg.Logging)
 
-// @host		localhost:9999
-// @BasePath	/api/v1
-func main() {
-	cmd.Execute()
+	// Initialize telemetry
+	collector, err := telemetry.NewOpenTelemetryCollector(context.Background(), &cfg.Telemetry)
+	if err != nil {
+		fmt.Println("Error initializing telemetry collector:", err)
+		return
+	}
+
+	// Your other application initialization code here
+}
+
+func setupLogging(loggingConfig config.LoggingConfig) {
+	// Initialize your logging framework here with the specified level from loggingConfig
+	fmt.Printf("Logging level set to: %s\n", loggingConfig.Level)
 }
