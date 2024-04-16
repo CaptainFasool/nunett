@@ -31,7 +31,7 @@ type MiB uint64
 // will rely on mounted files to upload data and downloading data will result in a
 // local mounted volume.
 //
-// - Authentication and availability-checking of storage provider are handled
+// - When needed, the availability-checking of some storage provider is handled
 // when instantiating the implementation
 //
 // - Although it may be feasible to implement, the interface was not built with
@@ -54,13 +54,10 @@ type StorageProvider interface {
 }
 
 // StorageVolume contains mainly the path to a directory/file where data is mounted
-// and additional metadata.
+// and additional metadata which is not yet defined.
 type StorageVolume struct {
 	// Path is the path to a directory/file where data is mounted
 	Path string
-
-	// Type is the type of the storage volume
-	Type string
 }
 
 // VolumeController is used to manage storage volumes which are data mounted to files/directories.
