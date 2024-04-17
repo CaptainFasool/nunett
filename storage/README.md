@@ -56,7 +56,9 @@ _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
 It is expected that the return value will vary from provider to provider (and in some cases it may be NIL) and hence it is left to be detailed during implementation. 
 
-It will return an error if the operation fails.
+It will return an error if the operation fails. 
+
+See [Feature: Upload data](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/storage/Upload.feature) for the different scenarios.
 
 ### Download
 
@@ -72,6 +74,8 @@ _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
 It will return an error if the operation fails. Note that this can also happen if the user running DMS does not have access permission to the given path.
 
+See [Feature: Download data](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/storage/Download.feature) for the different scenarios.
+
 ### Size
 
 _proposed 2024-04-17; by @0xPravar; @joao.castro5_
@@ -82,6 +86,8 @@ _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 * output (error): error of type `dms.storage.error`
 
 `Size` function returns the size of a given storage provider provided as input. It will return an error if the operation fails.
+
+See [Feature: Get size of the storage](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/storage/Size.feature) for the different scenarios.
 
 Note that this method may also be useful to check if a given source is available.
 
@@ -99,6 +105,8 @@ _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
 It will return an error if the operation fails. Note that this can also happen if the user running DMS does not have access permission to create volume at the given path.
 
+See [Feature: Create Volume](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/storage/Create_Volume.feature) for the different scenarios.
+
 ### DeleteVolume
 
 _proposed 2024-04-17; by @0xPravar; @joao.castro5_
@@ -110,6 +118,8 @@ _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
 `DeleteVolume` function deletes the specified storage volume. It will return an error if the operation fails. Note that this can also happen if the user running DMS does not have the requisite access permissions.
 
+See [Feature: Delete Volume](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/storage/Delete_Volume.feature) for the different scenarios.
+
 ### ListVolumes
 
 _proposed 2024-04-17; by @0xPravar; @joao.castro5_
@@ -120,3 +130,5 @@ _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 * output (error): error of type `dms.storage.error`
 
 `ListVolumes` function fetches the list of existing storage volumes. It will return an error if the operation fails or if the user running DMS does not have the requisite access permissions.
+
+See [Feature: List existing storage volumes](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/storage/List_Volume.feature) for the different scenarios.
