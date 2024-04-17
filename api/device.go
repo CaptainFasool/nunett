@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
-	"gitlab.com/nunet/device-management-service/utils"
+	//"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -26,7 +26,7 @@ func DeviceStatusHandler(c *gin.Context) {
 		return
 	}
 	var payload struct {
-		IsAvailable bool `json:"is_available" binding:"boolean"`
+		IsAvailable bool `json:"is_available"`
 	}
 	payload.IsAvailable = status
 	c.JSON(200, gin.H{"device": payload})
@@ -43,7 +43,7 @@ func DeviceStatusHandler(c *gin.Context) {
 func ChangeDeviceStatusHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/device/status"))
-	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
+	//span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
 	kLogger.Info("Pause job onboarding", span)
 
 	if c.Request.ContentLength == 0 {
@@ -52,7 +52,7 @@ func ChangeDeviceStatusHandler(c *gin.Context) {
 	}
 
 	type deviceStatus struct {
-		IsAvailable bool `json:"is_available" binding:"required,boolean"`
+		IsAvailable *bool `json:"is_available" binding:"required"`
 	}
 	var status deviceStatus
 	err := c.ShouldBindJSON(&status)
@@ -61,7 +61,7 @@ func ChangeDeviceStatusHandler(c *gin.Context) {
 		return
 	}
 
-	err = libp2p.ChangeDeviceStatus(status.IsAvailable)
+	err = libp2p.ChangeDeviceStatus(*status.IsAvailable)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return

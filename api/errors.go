@@ -95,8 +95,6 @@ func readableErrors(err error) []ErrorDetail {
 			switch e.Tag() {
 			case "required":
 				detail = "is required"
-			case "exists":
-				detail = "is missing"
 			default:
 				detail = "is invalid"
 			}
@@ -105,8 +103,4 @@ func readableErrors(err error) []ErrorDetail {
 		}
 	}
 	return errors
-}
-
-func exists(fl validator.FieldLevel) bool {
-	return !fl.Field().IsNil()
 }

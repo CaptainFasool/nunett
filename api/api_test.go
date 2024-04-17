@@ -182,7 +182,7 @@ func TestProblemDetails(t *testing.T) {
 
 	// for /device/status endpoint
 	type statusBody struct {
-		IsAvailable bool `json:"is_available" binding:"required,boolean"`
+		IsAvailable *bool `json:"is_available" binding:"required"`
 	}
 
 	tests := []struct {

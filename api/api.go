@@ -13,8 +13,8 @@ import (
 
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
-	router.Use(cors.New(getCustomCorsConfig()))
 
+	router.Use(cors.New(getCustomCorsConfig()))
 	router.Use(otelgin.Middleware(tracing.ServiceName))
 
 	v1 := router.Group("/api/v1")
