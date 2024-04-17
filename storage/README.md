@@ -16,7 +16,7 @@ Its functionality is coupled with local mounted volumes, meaning that implementa
 *Notes:* 
 * If needed, the availability-checking of a storage provider should be handled druing instantiation of the implementation. 
 
-* Any necessary authentication data should be provided within the `dms.executor.SpecConfig` parameters
+* Any necessary authentication data should be provided within the `dms.models.SpecConfig` parameters
 
 * The interface has been designed for file based transfer of data. It is not built with the idea of supporting streaming of data and non-file storage operations (e.g.: some databases). Assessing the feasiblity of such requirement if needed should be done while implementation. 
 
@@ -34,9 +34,9 @@ See [volumeController.data.go](https://gitlab.com/nunet/open-api/platform-data-m
 
 _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
-`dms.storage.StorageVolume`: This struct contains parameters related to a storage volume such as path, volume type etc. See [storageVolume.data.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/storage/data/storageVolume1.data.go) for reference data model. (_Note: [storage volume](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/storage/data/storageVolume.data.go) is also defined in `executor` package. This needs to be resolved_)
+`dms.storage.StorageVolume`: This struct contains parameters related to a storage volume such as path, volume type etc. See [storageVolume.data.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/storage/data/storageVolume.data.go) for reference data model. 
 
-`dms.executor.SpecConfig`: This allows arbitrary configuration/parameters as needed during implementation of a specific storage provider. The parameters include authentication related data (if applicable). See [specConfig.data.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/executor/data/specConfig.data.go) for reference data model.
+`dms.models.SpecConfig`: This allows arbitrary configuration/parameters as needed during implementation of a specific storage provider. The parameters include authentication related data (if applicable). See [specConfig.data.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/models/data/specConfig.data.go) for reference data model.
 
 `dms.storage.error`: This contains error details returned by storage operations. See [error.data.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/storage/data/error.data.go) for reference data model.
 
@@ -46,10 +46,10 @@ _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
 _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
-* signature: `Upload(vol dms.storage.StorageVolume, target dms.executor.SpecConfig) -> (dms.executor.SpecConfig, error)` <br/>
+* signature: `Upload(vol dms.storage.StorageVolume, target dms.models.SpecConfig) -> (dms.models.SpecConfig, error)` <br/>
 * input #1: storage volume from which data will be uploaded of type `dms.storage.StorageVolume` <br/>
-* input #2: configuration parameters of specified storage provider of type `dms.executor.SpecConfig` <br/>
-* output (sucess): parameters related to storage provider like upload details/metadata etc of type `dms.executor.SpecConfig` <br/>
+* input #2: configuration parameters of specified storage provider of type `dms.models.SpecConfig` <br/>
+* output (sucess): parameters related to storage provider like upload details/metadata etc of type `dms.models.SpecConfig` <br/>
 * output (error): error of type `dms.storage.error`
 
 `Upload` function uploads data from the storage volume provided as input to a given remote storage provider. The configuration of the storage provider is also provided as input to the function.
@@ -64,8 +64,8 @@ See [Feature: Upload data](https://gitlab.com/nunet/test-suite/-/blob/proposed/s
 
 _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
-* signature: `Download(source dms.executor.SpecConfig, outputPath string) -> (dms.storage.StorageVolume, error)` <br/>
-* input #1: configuration parameters of specified storage provider of type `dms.executor.SpecConfig` <br/>
+* signature: `Download(source dms.models.SpecConfig, outputPath string) -> (dms.storage.StorageVolume, error)` <br/>
+* input #1: configuration parameters of specified storage provider of type `dms.models.SpecConfig` <br/>
 * input #2: output path where downloaded data should be stored <br/>
 * output (sucess): storage volume which has downloaded data of type `dms.storage.StorageVolume` <br/>
 * output (error): error of type `dms.storage.error`
@@ -80,8 +80,8 @@ See [Feature: Download data](https://gitlab.com/nunet/test-suite/-/blob/proposed
 
 _proposed 2024-04-17; by @0xPravar; @joao.castro5_
 
-* signature: `Size(source dms.executor.SpecConfig) -> (MiB, error)` <br/>
-* input: configuration parameters of specified storage provider of type `dms.executor.SpecConfig` <br/>
+* signature: `Size(source dms.models.SpecConfig) -> (MiB, error)` <br/>
+* input: configuration parameters of specified storage provider of type `dms.models.SpecConfig` <br/>
 * output (sucess): size of the storage in Megabytes of type `uint64` <br/>
 * output (error): error of type `dms.storage.error`
 
