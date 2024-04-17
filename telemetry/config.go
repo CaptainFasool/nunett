@@ -7,17 +7,8 @@ import (
 )
 
 type Config struct {
-	Database  DatabaseConfig  `yaml:"database"`
 	Logging   LoggingConfig   `yaml:"logging"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
-}
-
-type DatabaseConfig struct {
-	Endpoint     string `yaml:"endpoint"`
-	Port         int    `yaml:"port"`
-	Username     string `yaml:"username"`
-	Password     string `yaml:"password"`
-	DatabaseName string `yaml:"databaseName"`
 }
 
 type LoggingConfig struct {

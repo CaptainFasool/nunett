@@ -26,11 +26,6 @@ The `config.go` file defines the structure and mechanisms needed to load configu
 The configuration file is structured as follows (example):
 
 ```yaml
-database:
-  endpoint: "http://database-url"
-  port: 5432
-  username: "user"
-  password: "password"
 logging:
   level: "info"
 telemetry:
