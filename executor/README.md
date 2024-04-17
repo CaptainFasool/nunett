@@ -49,37 +49,37 @@ The main functionality offered by the `executor` package is defined via the foll
 
 ### IsInstalled
 
-signature: `dms.executor.IsInstalled(ctx context.Context) -> bool`
-input: `Go context`
+signature: `dms.executor.IsInstalled(ctx context.Context) -> bool` <br/>
+input: `Go context` <br/>
 output: `bool` 
 
 `IsInstalled` checks if the executor is installed and available for use. It takes the Go `context` object as input and returns a boolean indicating if the executor is installed or not.
 
 ### Start
 
-signature: `dms.executor.Start(ctx context.Context, request dms.executor.ExecutionRequest) -> error`
-input #1: `Go context`
-input #2: `dms.executor.ExecutionRequest`
+signature: `dms.executor.Start(ctx context.Context, request dms.executor.ExecutionRequest) -> error` <br/>
+input #1: `Go context` <br/>
+input #2: `dms.executor.ExecutionRequest` <br/>
 output: `error` 
 
 `Start` function takes a Go `context` object and a `dms.executor.ExecutionRequest` type as input. It returns an error if the execution already exists and is in a started or terminal state. Implementations may also return other errors based on resource limitations or internal faults.
 
 ### Run
 
-signature: `Run(ctx context.Context, request dms.executor.ExecutionRequest) -> (dms.executor.ExecutionResult, error)`
-input #1: `Go context`
-input #2: `dms.executor.ExecutionRequest`
-output (success): `dms.executor.ExecutionResult`
+signature: `Run(ctx context.Context, request dms.executor.ExecutionRequest) -> (dms.executor.ExecutionResult, error)` <br/>
+input #1: `Go context` <br/>
+input #2: `dms.executor.ExecutionRequest` <br/>
+output (success): `dms.executor.ExecutionResult` <br/>
 output (error): `error`
 
 `Run` initiates and waits for the completion of an execution for the given Execution Request. It returns a `dms.executor.ExecutionResult` and an error if any part of the operation fails. Specifically, it will return an error if the execution already exists and is in a started or terminal state.
 
 ### Wait
 
-signature: `Wait(ctx context.Context, executionID string) -> (<-chan dms.executor.ExecutionResult, <-chan error)`
-input #1: `Go context`
-input #2: `dms.executor.ExecutionRequest.ExecutionID`
-output #1: Channel that returns `dms.executor.ExecutionResult`
+signature: `Wait(ctx context.Context, executionID string) -> (<-chan dms.executor.ExecutionResult, <-chan error)` <br/>
+input #1: `Go context` <br/>
+input #2: `dms.executor.ExecutionRequest.ExecutionID` <br/>
+output #1: Channel that returns `dms.executor.ExecutionResult` <br/>
 output #2: Channel that returns `error`
 
 `Wait` monitors the completion of an execution identified by its `executionID`. It returns two channels:
@@ -88,20 +88,20 @@ output #2: Channel that returns `error`
 
 ### Cancel
 
-signature: `Cancel(ctx context.Context, executionID string) -> error`
-input #1: `Go context`
-input #2: `dms.executor.ExecutionRequest.ExecutionID`
+signature: `Cancel(ctx context.Context, executionID string) -> error` <br/>
+input #1: `Go context` <br/>
+input #2: `dms.executor.ExecutionRequest.ExecutionID` <br/>
 output: `error`
 
 `Cancel` attempts to terminate an ongoing execution identified by its `executionID`. It returns an error if the execution does not exist or is already in a terminal state.
 
 ### GetLogStream
 
-signature: `GetLogStream(ctx context.Context, request dms.executor.LogStreamRequest, executionID string) -> (io.ReadCloser, error)`
-input #1: `Go context`
-input #2: `dms.executor.LogStreamRequest`
-input #3: `dms.executor.ExecutionRequest.ExecutionID`
-output #1: `io.ReadCloser`
+signature: `GetLogStream(ctx context.Context, request dms.executor.LogStreamRequest, executionID string) -> (io.ReadCloser, error)` <br/>
+input #1: `Go context` <br/>
+input #2: `dms.executor.LogStreamRequest` <br/>
+input #3: `dms.executor.ExecutionRequest.ExecutionID` <br/>
+output #1: `io.ReadCloser` <br/>
 output #2: `error`
 
 `GetLogStream` provides a stream of output for an ongoing or completed execution identified by its `executionID`. There are two flags that can be used to modify the functionality:
