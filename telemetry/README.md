@@ -16,6 +16,7 @@ The goal is to allow third parties to propose their collectors and for `dms` to 
 * `DatabaseCollector`, collecting events into local database;
 * `OpenTelemetryCollector`, sending telemetry events to the registered open telemetry collector using open-telemetry format;
 * `ReputationCollector` is not scheduled for the implementation now, but is considered for the future to be able to register reputation systems that will collect events for providing reputation services on the platform; 
+* `HeartbeatCollector` is a special collector for sending periodic heartbeats to a registered sink collector. A `HeartbeatCollector` can be anything, including another device-management-service or an `Allocation`.
 
 See current reference model [collector.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/collector.go).
 
@@ -34,13 +35,33 @@ See current reference model [observable.go](https://gitlab.com/nunet/open-api/pl
 
 `Event` is an interface which defines methods to be implemented by a generic event of type `gEvent` and by that determines data that need to be included in each event for it be eligible to observation.
 
-`EventCategory` is needed in order to account for the reasons for why we are doing observation of certain events and these are different from `ObservabilityLevel`s. Currently we are having the following event categories: `ACCOUNTING`, `LOGGING`, `TRACING`. Note that there is clear relation between `EventCategory` and `Collector` types.
+`EventCategory` is needed in order to account for the reasons for why we are doing observation of certain events and these are different from `ObservabilityLevel`s. Currently we are having the following event categories: `ACCOUNTING`, `LOGGING`, `TRACING`, `HEARTBEAT`. Note that there is clear relation between `EventCategory` and `Collector` types.
 
-A generic event data type `gEvent` is then a type which joins together two interfaces -- `Event` and `Observable` -- and by that allows to a) gather all information needed to observe an event and 2) direct the collection of that information to all registered collectors.
+#### Generic Event `gEvent`
+
+A generic event data type `gEvent` is then a type which joins together two interfaces -- `Event` and `Observable` -- and by that allows to a) gather all information needed to observe an event and b) direct the collection of that information to all registered collectors.
 
 Developers are expected to choose to choose actions of the code to be considered events and observed at different levels by using `gEvent` implementations.
 
 See current reference model [event.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/event.go).
+
+### Message
+
+_proposed by @kabir.kbr; 2024-04-16;_
+
+`Message` is one of the key primitives of the NuNet platform -- the angle of the the architecture mostly influenced by the Actor model. This package defines `Message` interface and related data structures, but the transport-layer implementation of the interface is done in the [`network` package](../network/README.md). 
+
+A `Message` interface defines two methods: `send()` and `receive()`. A generic type `gMessage` implements `Message` interface and requires necessary fields `sender`, `receiver`, `header` and `payload`.
+
+See current reference model [message.go](https://gitlab.com/nunet/open-api/platform-data-model/-/blob/proposed/device-management-service/telemetry/data/message.go).
+
+
+### Heartbeat 
+
+A heartbeat is an `gEvent` of `HEARTBEAT` category which is being triggered periodically by a background process. It shall be implemented in `background_task` package which actually registering, maintain and stop heartbeat processes.
+
+See [proposed specifications of `background_tasks`]((../background_tasks/README.md)) for further reference. 
+
 
 ## Functions
 
@@ -49,7 +70,7 @@ See current reference model [event.go](https://gitlab.com/nunet/open-api/platfor
 _proposed 2024-04-08; by: @kabir.kbr;_
 
 * signature: `dms.telemetry.registerCollector(gEvent gEvent, collector Collector) -> gEvent`;
-* input #1: a variable of an generic event `dms.telemetry.gEvent` which will   
+* input #1: a variable of an generic event `dms.telemetry.gEvent` which will enable observation via registered `Collector`s.
 * input #2: a variable describing collector to be registered `dms.telemetry.Collector` ([link](#collector));
 * output type `dms.telemetry.gEvent` ([link](#event));
 
@@ -66,3 +87,5 @@ _proposed 2024-04-09; by: @kabir.kbr;_
 The `gEvent` implements both `Event` and `Observable` interfaces which enables to mark each event in the program (chosen by a programmer) as an observable event and, provided the combination of `EventCategory` and `ObservabilityLevel` send telemetry information to registered collectors (e.g. `OpenTelemetryCollector`). 
 
 * A correctly constructed event of `gEvent` type is observed by calling the `observeEvent()` method defined in `Observable` interface -- see [Feature: Observe gEvent](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/observeEvent.feature).
+
+## 3. Request 
