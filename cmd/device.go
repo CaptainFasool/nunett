@@ -45,7 +45,7 @@ func NewDeviceStatusCmd(utilsService backend.Utility) *cobra.Command {
 				return fmt.Errorf("unable to get /device/status response body: %w", err)
 			}
 
-			online, err := jsonparser.GetBoolean(body, "online")
+			online, err := jsonparser.GetBoolean(body, "device", "is_available")
 			if err != nil {
 				return fmt.Errorf("failed to get device status from json response: %w", err)
 			}
@@ -91,20 +91,20 @@ func NewDeviceSetCmd(utilsService backend.Utility) *cobra.Command {
 				return fmt.Errorf("could not get response body: %w", err)
 			}
 
-			// check if error response
 			errResponse, err := jsonparser.GetString(body, "error")
-			if err == nil {
-				return fmt.Errorf("%s", errResponse)
-			}
-
-			// if no error
-			response, err := jsonparser.GetString(body, "message")
 			if err != nil {
-				return fmt.Errorf("failed to get device status from json response: %w", err)
+				return fmt.Errorf("failed to get error string: %w", err)
+			}
+			if errResponse != "" {
+				return fmt.Errorf("failed to change device status: %s", errResponse)
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), response)
+			_, err = jsonparser.GetBoolean(body, "device", "is_available")
+			if err != nil {
+				return fmt.Errorf("failed to get device status from response: %w", err)
+			}
 
+			fmt.Fprintf(cmd.OutOrStdout(), "Device status successfully updated")
 			return nil
 		},
 	}
