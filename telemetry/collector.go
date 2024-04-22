@@ -1,12 +1,9 @@
-// collector.go
 package telemetry
 
 import (
 	"context"
 	"fmt"
-	"telemetry/config"
 
-	// "gitlab.com/nunet/device-management-service/models"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -16,7 +13,7 @@ import (
 )
 
 // NewOpenTelemetryCollector initializes an OpenTelemetryCollector with the specified endpoint.
-func NewOpenTelemetryCollector(ctx context.Context, cfg *config.TelemetryConfig) (*OpenTelemetryCollector, error) {
+func NewOpenTelemetryCollector(ctx context.Context, cfg *config.TelemetryConfig) (*modOpenTelemetryCollector, error) {
 	client := otlptracehttp.NewClient(
 		otlptracehttp.WithEndpoint(cfg.OTelCollectorEndpoint),
 		otlptracehttp.WithInsecure(), // we will change this in prod
