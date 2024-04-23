@@ -30,7 +30,7 @@ func main() {
 	setupServer(collector)
 }
 
-func setupLogging(loggingConfig config.LoggingConfig) {
+func setupLogging(loggingConfig telemetry.Config.LoggingConfig) {
 	fmt.Printf("Logging level set to: %s\n", loggingConfig.Level)
 }
 

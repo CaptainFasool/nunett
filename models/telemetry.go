@@ -7,15 +7,16 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// OpenTelemetryCollector struct definition
 type OpenTelemetryCollector struct {
-	TracerProvider *trace.TracerProvider
-	otEndpoint     string
+	TracerProvider trace.TracerProvider
+	OtEndpoint     string
 }
 
 // Collector interface with necessary telemetry functions
 type Collector interface {
 	Initialize(ctx context.Context) error
-	HandleEvent(ctx context.Context, event gEvent) error
+	HandleEvent(ctx context.Context, event GEvent) error
 	Shutdown(ctx context.Context) error
 	GetObservedLevel() ObservabilityLevel
 	GetEndpoint() string
@@ -23,7 +24,7 @@ type Collector interface {
 
 // Event interface definition
 type Event interface {
-	observeEvent()
+	ObserveEvent()
 }
 
 // EventCategory represents categories of events
@@ -36,8 +37,8 @@ const (
 	TRACING
 )
 
-// gEvent represents a generic event implementing the Event interface
-type gEvent struct {
+// GEvent represents a generic event implementing the Event interface
+type GEvent struct {
 	Event
 	Observable
 
@@ -49,7 +50,7 @@ type gEvent struct {
 }
 
 // Timestamp method returns the current time
-func (ge gEvent) Timestamp() time.Time {
+func (ge GEvent) Timestamp() time.Time {
 	return time.Now()
 }
 

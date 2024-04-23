@@ -3,6 +3,7 @@ package telemetry
 import (
 	"os"
 
+	"gitlab.com/nunet/device-management-service/models"
 	"gopkg.in/yaml.v2"
 )
 
@@ -34,3 +35,5 @@ func LoadConfig(filePath string) (*Config, error) {
 	}
 	return &cfg, nil
 }
+
+type collectorInit models.OpenTelemetryCollector

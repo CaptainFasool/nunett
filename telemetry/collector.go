@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"gitlab.com/nunet/device-management-service/models" // Ensure this path is correct
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -13,10 +14,10 @@ import (
 )
 
 // NewOpenTelemetryCollector initializes an OpenTelemetryCollector with the specified endpoint.
-func NewOpenTelemetryCollector(ctx context.Context, cfg *config.TelemetryConfig) (*modOpenTelemetryCollector, error) {
+func NewOpenTelemetryCollector(ctx context.Context, cfg *models.TelemetryConfig) (*models.OpenTelemetryCollector, error) {
 	client := otlptracehttp.NewClient(
 		otlptracehttp.WithEndpoint(cfg.OTelCollectorEndpoint),
-		otlptracehttp.WithInsecure(), // we will change this in prod
+		otlptracehttp.WithInsecure(), // will change in prod
 	)
 	exporter, err := otlptracehttp.New(ctx, client)
 	if err != nil {
@@ -33,41 +34,41 @@ func NewOpenTelemetryCollector(ctx context.Context, cfg *config.TelemetryConfig)
 
 	otel.SetTracerProvider(tracerProvider)
 
-	return &OpenTelemetryCollector{
+	return &models.OpenTelemetryCollector{
 		TracerProvider: tracerProvider,
-		otEndpoint:     cfg.OTelCollectorEndpoint,
+		OtEndpoint:     cfg.OTelCollectorEndpoint,
 	}, nil
 }
-func (otc *OpenTelemetryCollector) Initialize(ctx context.Context) error {
-	// Additional initialization steps can be added here if needed
+
+func (otc *models.OpenTelemetryCollector) Initialize(ctx context.Context) error {
 	return nil
 }
 
-func (otc *OpenTelemetryCollector) HandleEvent(ctx context.Context, event gEvent) error {
+func (otc *models.OpenTelemetryCollector) HandleEvent(ctx context.Context, event models.GEvent) error {
 	if float32(event.GetObservabilityLevel()) >= float32(otc.GetObservedLevel()) {
 		tracer := otel.Tracer("OpenTelemetryCollector")
-		_, span := tracer.Start(ctx, fmt.Sprintf("%v", event.category),
-			trace.WithAttributes(toOtelAttributes(event.message)...),
-			trace.WithTimestamp(event.timestamp),
+		_, span := tracer.Start(ctx, fmt.Sprintf("%v", event.Category),
+			trace.WithAttributes(toOtelAttributes(event.Message)...),
+			trace.WithTimestamp(event.Timestamp),
 		)
 		span.End()
 	}
 	return nil
 }
 
-func (otc *OpenTelemetryCollector) Shutdown(ctx context.Context) error {
+func (otc *models.OpenTelemetryCollector) Shutdown(ctx context.Context) error {
 	if otc.TracerProvider != nil {
 		return otc.TracerProvider.Shutdown(ctx)
 	}
 	return nil
 }
 
-func (otc *OpenTelemetryCollector) GetObservedLevel() ObservabilityLevel {
-	return TRACE // As TRACE is the lowest level, it will observe all levels.
+func (otc *models.OpenTelemetryCollector) GetObservedLevel() models.ObservabilityLevel {
+	return models.TRACE // Observes all levels
 }
 
-func (otc *OpenTelemetryCollector) GetEndpoint() string {
-	return otc.otEndpoint
+func (otc *models.OpenTelemetryCollector) GetEndpoint() string {
+	return otc.OtEndpoint
 }
 
 // Helper function to convert event message to OpenTelemetry attributes
