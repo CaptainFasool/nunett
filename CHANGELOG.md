@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.165](#346)
+
+### Added
+- Generic executor package interface and its docker implementation
+
 ## [0.4.164](#340)
 
 ### Fixed
