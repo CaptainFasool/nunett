@@ -20,6 +20,11 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.166](#396)
+
+### Added
+- Firecracker executor
+
 ## [0.4.165](#346)
 
 ### Added

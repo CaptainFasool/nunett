@@ -4,6 +4,8 @@ const (
 	ExecutorTypeDocker      = "docker"
 	ExecutorTypeFirecracker = "firecracker"
 	ExecutorTypeWasm        = "wasm"
+
+	ExecutionStatusCodeSuccess = 0
 )
 
 // ExecutionRequest is the request object for executing a job

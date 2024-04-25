@@ -156,12 +156,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.2 // indirect
+	github.com/opencontainers/image-spec v1.0.2
 	github.com/opencontainers/runtime-spec v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
@@ -198,7 +198,7 @@ require (
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	go.uber.org/dig v1.17.0 // indirect
 	go.uber.org/fx v1.20.0 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/multierr v1.11.0
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
@@ -221,8 +221,8 @@ require (
 require (
 	github.com/KyleBanks/dockerstats v0.0.0-20180213183355-b5fec062e953
 	github.com/NVIDIA/go-nvml v0.12.0-1
-	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
-	github.com/coreos/go-systemd v0.0.0-20181012123002-c6f51f82210d
+	github.com/buger/jsonparser v1.1.1
+	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/elastic/go-elasticsearch/v8 v8.8.0
 	github.com/google/uuid v1.3.1
 	github.com/jaypipes/ghw v0.12.0
@@ -233,4 +233,26 @@ require (
 	github.com/uptrace/opentelemetry-go-extra/otelzap v0.1.21
 )
 
-require github.com/cosmos/btcutil v1.0.5
+require (
+	github.com/cosmos/btcutil v1.0.5
+	github.com/firecracker-microvm/firecracker-go-sdk v1.0.0
+)
+
+require (
+	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
+	github.com/containerd/fifo v1.0.0 // indirect
+	github.com/containernetworking/cni v1.0.1 // indirect
+	github.com/containernetworking/plugins v1.0.1 // indirect
+	github.com/go-openapi/analysis v0.21.2 // indirect
+	github.com/go-openapi/errors v0.20.2 // indirect
+	github.com/go-openapi/loads v0.21.1 // indirect
+	github.com/go-openapi/runtime v0.24.0 // indirect
+	github.com/go-openapi/strfmt v0.21.2 // indirect
+	github.com/go-openapi/validate v0.22.0 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
+	github.com/oklog/ulid v1.3.1 // indirect
+	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5 // indirect
+	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
+	go.mongodb.org/mongo-driver v1.8.3 // indirect
+)
