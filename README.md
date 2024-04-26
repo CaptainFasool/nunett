@@ -38,13 +38,31 @@ Run the script as follows:
 bash maint-scripts/dev-setup.sh
 ```
 
-Once the env is setup, run the DMS as follows:
+Once the env is setup, build the DMS as follows:
 
 ```
-sudo go run main.go
+go build -o nunet
 ```
 
-Notice we're using `sudo` as the onboarding process writes some configuration files to `/etc/nunet`.
+To run the DMS:
+```
+sudo ./nunet
+```
+
+Notice we're using `sudo` as the onboarding process writes some configuration files to `/etc/nunet` by default. It's possible to change this path using the configuration file which is explained later in this readme.
+
+
+#### Test
+
+Some packages contain tests and it's always best to run them and make sure there are no broken tests before submitting any changes.
+Before running the tests, the firecracker executor requires some test data such as a kernel file which can be downloaded with:
+```
+make testdata
+```
+After the download is done, all tests can be run with:
+```
+go test ./...
+```
 
 ### Component Installation
 

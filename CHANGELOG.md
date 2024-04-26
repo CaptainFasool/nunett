@@ -20,6 +20,15 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.167](#409)
+
+### Changed
+- Docker executor contianer run pulls image if it doesn't exist locally
+- Readme update on testing
+
+### Added
+- Executor tests and test data fetch using make
+
 ## [0.4.166](#396)
 
 ### Added
