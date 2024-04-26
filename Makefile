@@ -17,3 +17,23 @@ darwin_amd64:
 clean:
 	@echo "Cleaning up..."
 	rm -rf builds/
+
+arch=$(shell uname -m)
+FC_TEST_DATA_PATH = ./executor/firecracker/testdata
+
+testdata_objects = \
+$(FC_TEST_DATA_PATH)/rootfs.ext4 \
+$(FC_TEST_DATA_PATH)/vmlinux.bin
+
+testdata: $(testdata_objects)
+	@echo "Preparing test data..."
+
+$(FC_TEST_DATA_PATH)/rootfs.ext4:
+	@echo "Downloading rootfs.ext4..."
+	mkdir -p $(FC_TEST_DATA_PATH)
+	curl -L -o $@ https://s3.amazonaws.com/spec.ccfc.min/img/hello/fsfiles/hello-rootfs.ext4
+
+$(FC_TEST_DATA_PATH)/vmlinux.bin:
+	@echo "Downloading vmlinux.bin..."
+	mkdir -p $(FC_TEST_DATA_PATH)
+	curl -L -o $@ https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/$(arch)/kernels/vmlinux.bin

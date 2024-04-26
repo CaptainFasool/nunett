@@ -52,6 +52,10 @@ func (c *Client) CreateContainer(
 	platform *v1.Platform,
 	name string,
 ) (string, error) {
+	_, err := c.PullImage(ctx, config.Image)
+	if err != nil {
+		return "", err
+	}
 	resp, err := c.client.ContainerCreate(
 		ctx,
 		config,
