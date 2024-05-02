@@ -7,6 +7,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+type TelemetryConfig struct {
+	ServiceName           string
+	OTelCollectorEndpoint string
+}
+
 // OpenTelemetryCollector struct definition
 type OpenTelemetryCollector struct {
 	TracerProvider trace.TracerProvider
@@ -42,11 +47,11 @@ type GEvent struct {
 	Event
 	Observable
 
-	timestamp  time.Time
-	context    context.Context
-	category   EventCategory
-	message    string
-	collectors []Collector
+	CurrentTimestamp time.Time
+	Context          context.Context
+	Category         EventCategory
+	Message          string
+	Collectors       []Collector
 }
 
 // Timestamp method returns the current time

@@ -1,6 +1,0 @@
-logging:
-  level: "info"
-
-telemetry:
-  service_name: "DemoNunetGoService"
-  otel_collector_endpoint: "95.216.182.94:4318"
