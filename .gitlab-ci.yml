@@ -118,4 +118,5 @@ Deploy:
     - DMS_VERSION=$(cat main.go | grep @version | awk {'print $3'})
     - ansible-playbook -i $ANSIBLE_INVENTORY -e dms_version=$DMS_VERSION maint-scripts/deploy/playbook.yaml 
   rules:
+    - when: never
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "staging"
