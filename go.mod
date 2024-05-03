@@ -235,7 +235,6 @@ require (
 
 require (
 	github.com/cosmos/btcutil v1.0.5
-	github.com/libp2p/go-libp2p-core v0.20.1
 	github.com/firecracker-microvm/firecracker-go-sdk v1.0.0
 )
 
