@@ -16,7 +16,7 @@ import (
 	"gitlab.com/nunet/device-management-service/utils"
 )
 
-// sendFileCmd represents the command to send a file to a peer over the p2p network, specifying the peer ID, file path, and transfer type.
+// sendFileCmd represents the command to send a file to a peer over the p2p network via WS, specifying the peer ID, file path, and transfer type.
 var sendFileCmd = &cobra.Command{
 	Use:   "send-file <peer-id> <file-path> <transfer-type>",
 	Short: "Send a file to a peer over the p2p network",
@@ -99,7 +99,7 @@ var sendFileCmd = &cobra.Command{
 	},
 }
 
-// acceptFileCmd represents the command to accept an incoming file transfer
+// acceptFileCmd represents the command to accept an incoming file transfer via WS
 var acceptFileCmd = &cobra.Command{
 	Use:   "accept-file",
 	Short: "Accept an incoming file transfer",
