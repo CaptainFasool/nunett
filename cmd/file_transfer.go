@@ -105,32 +105,51 @@ var acceptFileCmd = &cobra.Command{
 	Short: "Accept an incoming file transfer",
 	Long:  "Accept the most recent incoming file transfer request.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if libp2p.CurrentFileTransfer.InboundFileStream == nil {
-			fmt.Println("No incoming file transfer request available.")
-			return nil
-		}
-
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
 		fmt.Println("Accepting file transfer...")
 
-		filePath, progressChan, err := libp2p.AcceptFileTransfer(ctx, libp2p.CurrentFileTransfer)
+		acceptURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/file/accept", "")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to accept file transfer: %v\n", err)
-			return err
+			return fmt.Errorf("could not compose WebSocket URL for accepting file transfer: %w", err)
 		}
 
-		fmt.Printf("File transfer initiated, saving to %s\n", filePath)
-
-		for progress := range progressChan {
-			fmt.Printf("\rTransfer progress: %.2f%%, %s remaining", progress.Percent, progress.Remaining().Round(time.Second))
+		wsClient, _, err := websocket.DefaultDialer.Dial(acceptURL, nil)
+		if err != nil {
+			return fmt.Errorf("failed to initialize WebSocket client for accepting file transfer: %w", err)
 		}
+		defer wsClient.Close()
+
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt)
+		go func() {
+			for {
+				select {
+				case <-interrupt:
+					cancel()
+					wsClient.Close()
+					return
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
+		go func() {
+			defer wsClient.Close()
+
+			for {
+				_, message, err := wsClient.ReadMessage()
+				if err != nil {
+					log.Printf("read error: %v\n", err)
+					break
+				}
+				log.Printf("Received file data: %s\n", message)
+			}
+		}()
 
 		fmt.Println("\nFile transfer completed successfully.")
-
-		libp2p.ClearIncomingFileRequests()
-
 		return nil
 	},
 }
