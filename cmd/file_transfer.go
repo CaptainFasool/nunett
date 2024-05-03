@@ -7,99 +7,130 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/spf13/cobra"
-	"gitlab.com/nunet/device-management-service/cmd/backend"
+	"gitlab.com/nunet/device-management-service/libp2p"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
-func NewSendFileCmd(utilsService backend.Utility, wsClient *backend.WebSocket) *cobra.Command {
-	return &cobra.Command{
-		Use:   "send-file <peer-id> <file-path>",
-		Short: "Send a file to a peer over the p2p network via WebSocket",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			onboarded, err := utilsService.IsOnboarded()
-			if err != nil || !onboarded {
-				return fmt.Errorf("onboarding check failed: %w", err)
+// sendFileCmd represents the command to send a file to a peer over the p2p network, specifying the peer ID, file path, and transfer type.
+var sendFileCmd = &cobra.Command{
+	Use:   "send-file <peer-id> <file-path> <transfer-type>",
+	Short: "Send a file to a peer over the p2p network",
+	Long: `Send a file to a peer over the p2p network. 
+	       The transfer type should be one of: 0 for FTDEPREQ, 1 for FTMISC.`,
+	Args: cobra.ExactArgs(3),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		peerID, err := peer.Decode(args[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid peer ID: %v\n", err)
+			return err
+		}
+
+		filePath := args[1]
+		transferTypeArg := args[2]
+		var transferType libp2p.FileTransferType
+
+		switch transferTypeArg {
+		case "0":
+			transferType = libp2p.FTDEPREQ
+		case "1":
+			transferType = libp2p.FTMISC
+		default:
+			fmt.Fprintf(os.Stderr, "Invalid transfer type. Use '0' for FTDEPREQ or '1' for FTMISC.\n")
+			return fmt.Errorf("invalid transfer type: %s", transferTypeArg)
+		}
+
+		query := url.Values{
+			"peerID":       {peerID.String()},
+			"filePath":     {filePath},
+			"transferType": {fmt.Sprintf("%d", transferType)},
+		}.Encode()
+
+		startURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/file/send", query)
+		if err != nil {
+			return fmt.Errorf("could not compose WebSocket URL: %w", err)
+		}
+
+		wsClient, _, err := websocket.DefaultDialer.Dial(startURL, nil)
+		if err != nil {
+			return fmt.Errorf("failed to initialize WebSocket client: %w", err)
+		}
+		defer wsClient.Close()
+
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt)
+		go func() {
+			for {
+				select {
+				case <-interrupt:
+					cancel()
+					wsClient.Close()
+					return
+				case <-ctx.Done():
+					return
+				}
 			}
+		}()
 
-			return sendFileViaWebSocket(wsClient, args[0], args[1], cmd)
-		},
-	}
-}
+		go func() {
+			defer func() {
+				wsClient.Close()
+			}()
 
-// Handler to send files using WebSocket
-func sendFileViaWebSocket(wsClient *backend.WebSocket, peerID, filePath string, cmd *cobra.Command) error {
-	url := fmt.Sprintf("ws://localhost:1236/api/v1/peers/file/send?peerID=%s&filePath=%s", url.QueryEscape(peerID), url.QueryEscape(filePath))
-	if err := wsClient.Initialize(url); err != nil {
-		return fmt.Errorf("websocket initialization failed: %w", err)
-	}
-	defer wsClient.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	setupSignalHandler(cancel)
-
-	return handleWebSocketCommunication(wsClient, ctx, cmd)
-}
-
-func NewAcceptFileCmd(utilsService backend.Utility, wsClient *backend.WebSocket) *cobra.Command {
-	return &cobra.Command{
-		Use:   "accept-file <stream-id>",
-		Short: "Accept an incoming file transfer via WebSocket",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			onboarded, err := utilsService.IsOnboarded()
-			if err != nil || !onboarded {
-				return fmt.Errorf("onboarding check failed: %w", err)
+			for {
+				_, message, err := wsClient.ReadMessage()
+				if err != nil {
+					log.Printf("read error: %v\n", err)
+					break
+				}
+				log.Printf("Received: %s\n", message)
 			}
+		}()
 
-			return acceptFileViaWebSocket(wsClient, args[0], cmd)
-		},
-	}
+		fmt.Println("\nFile has been sent successfully.")
+		return nil
+	},
 }
 
-// Handler to accept files using WebSocket
-func acceptFileViaWebSocket(wsClient *backend.WebSocket, streamID string, cmd *cobra.Command) error {
-	url := fmt.Sprintf("ws://localhost:1236/api/v1/peers/file/accept?streamID=%s", url.QueryEscape(streamID))
-	if err := wsClient.Initialize(url); err != nil {
-		return fmt.Errorf("websocket initialization failed: %w", err)
-	}
-	defer wsClient.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	setupSignalHandler(cancel)
-
-	return handleWebSocketCommunication(wsClient, ctx, cmd)
-}
-
-// Handle incoming and outgoing WebSocket messages
-func handleWebSocketCommunication(wsClient *backend.WebSocket, ctx context.Context, cmd *cobra.Command) error {
-	go func() {
-		if err := wsClient.ReadMessage(ctx, cmd.OutOrStdout()); err != nil {
-			log.Printf("Read error: %v\n", err)
+// acceptFileCmd represents the command to accept an incoming file transfer
+var acceptFileCmd = &cobra.Command{
+	Use:   "accept-file",
+	Short: "Accept an incoming file transfer",
+	Long:  "Accept the most recent incoming file transfer request.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if libp2p.CurrentFileTransfer.InboundFileStream == nil {
+			fmt.Println("No incoming file transfer request available.")
+			return nil
 		}
-	}()
 
-	go func() {
-		if err := wsClient.WriteMessage(ctx, cmd.InOrStdin()); err != nil {
-			log.Printf("Write error: %v\n", err)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		fmt.Println("Accepting file transfer...")
+
+		filePath, progressChan, err := libp2p.AcceptFileTransfer(ctx, libp2p.CurrentFileTransfer)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to accept file transfer: %v\n", err)
+			return err
 		}
-	}()
 
-	return wsClient.Ping(ctx, cmd.OutOrStderr())
-}
+		fmt.Printf("File transfer initiated, saving to %s\n", filePath)
 
-// Signal handler for graceful shutdown
-func setupSignalHandler(cancel context.CancelFunc) {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			cancel()
+		for progress := range progressChan {
+			fmt.Printf("\rTransfer progress: %.2f%%, %s remaining", progress.Percent, progress.Remaining().Round(time.Second))
 		}
-	}()
+
+		fmt.Println("\nFile transfer completed successfully.")
+
+		libp2p.ClearIncomingFileRequests()
+
+		return nil
+	},
 }
