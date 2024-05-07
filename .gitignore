@@ -3,7 +3,6 @@
 maint-scripts/inventory.yaml
 *.log
 *.json
-!test/*.json
 .env
 
 # Holds local development files. These files are used to develop
@@ -14,3 +13,4 @@ maint-scripts/inventory.yaml
 # Docker files
 Dockerfile
 docker-compose.yml
+.DS_Store
