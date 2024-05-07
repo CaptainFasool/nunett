@@ -446,7 +446,7 @@ func InitiateTransferFile(ctx context.Context, w http.ResponseWriter, r *http.Re
 	// upgrade to websocket and steam transfer progress
 	ws, err := internal.UpgradeConnection.Upgrade(w, r, nil)
 	if err != nil {
-		zlog.Sugar().Errorf("failed to set websocket upgrade: %w\n", err)
+		zlog.Sugar().Debugf("failed to set websocket upgrade: %w\n", err)
 		return fmt.Errorf("failed to set websocket upgrade: %w", err)
 	}
 	// conn := internal.WebSocketConnection{Conn: ws}
@@ -454,7 +454,7 @@ func InitiateTransferFile(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	transferCh, err := SendFileToPeer(ctx, id, path, FTMISC)
 	if err != nil {
-		zlog.Sugar().Errorf("error: could not send file to peer - %v", err)
+		zlog.Sugar().Debug("error: could not send file to peer - %v", err)
 		ws.Close()
 		return fmt.Errorf("could not send file to peer: %w", err)
 	}
