@@ -14,3 +14,4 @@ maint-scripts/inventory.yaml
 # Docker files
 Dockerfile
 docker-compose.yml
+.DS_Store
