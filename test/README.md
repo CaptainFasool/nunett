@@ -1,3 +1,9 @@
+# Introduction
+
+These are any tests that are not unit tests (at least this is how it was defined when Obsidian built these tests)
+
+_Note: position these tests as per our test-matrix and triggers in to the correct place attn: @gabriel_
+
 `./test` directory of the package contains full test suite of DMS. 
 
 ## Run CLI Test Suite

@@ -19,7 +19,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
-	"gitlab.com/nunet/device-management-service/cardano"
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
 	"gitlab.com/nunet/device-management-service/internal/config"
@@ -29,6 +28,7 @@ import (
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
+	"gitlab.com/nunet/device-management-service/utils/cardano"
 )
 
 // This is a transaction hash that exists on preprpod
