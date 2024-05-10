@@ -2,6 +2,152 @@
 
 This package contains all network related code such as p2p communication, ip over libp2p and other networks that might be needed in the future
 
+## Interfaces and types
+
+### Interfaces
+
+**Network**:
+
+```go
+// Network defines an interface provided by DMS to be implemented by various
+// network providers. This could be libp2p, or other p2p providers.
+type Network interface {
+	// Config sets the configuration for the network in
+	Config() error
+
+	// Init initializes the node with config specific in Config() phase.
+	// tags: Start
+	Init() error
+
+	// EventRegister sets handlers to handle events such as change of local address
+	EventRegister() error
+
+	// Dial connects to a peer
+	// tags: ConnectPeer
+	Dial() error
+
+	// Listen listens on a connection. Example could be a stream for libp2p connection.
+	Listen() error
+
+	// Status returns status of current host in regards to implementation.
+	// Output must follow a generic struct.
+	Status() bool
+
+	// Tears down network interface.
+	Stop() error
+}
+```
+
+Let's have a look at the methods and rationale behind them:
+
+1. `Config()`:
+
+`Config` is where host is prepared with desired settings. Settings are loaded from the file if required. An example in libp2p implementation would be to configure parameters which needs to be passed to `libp2p.New()` method, it can also a good place to set the stream handlers.
+
+Things like private network are configured at this point.
+
+2. `Init()`:
+
+`Init` or `Start` starts up the host. This is a good place to start discovery and starting goroutines for fetching DHT update and updating peerstore.
+
+3. `EventRegister()`:
+
+In libp2p, we can listen to specific events. `EventRegister` is to set handler to such event. A few events in libp2p are:
+
+- EvtLocalAddressesUpdated
+- EvtLocalReachabilityChanged
+- EvtPeerIdentificationCompleted
+- EvtNATDeviceTypeChanged
+- EvtPeerConnectednessChanged
+
+More can be found at: <https://github.com/libp2p/go-libp2p/tree/master/core/event>
+
+4. `Dial()`:
+
+`Dial` is for connecting to a peer. When peer A dials peer B, peer B has to `Listen` to the incoming connection.
+
+5. `Listen()`: 
+
+`Listen` is counterpart to `Dial`. Read more about listening and dialing here: <https://docs.libp2p.io/concepts/transports/listen-and-dial/>
+
+6. `Status()`:
+
+TBD
+
+- All peers we are corrently connected to.
+- ??
+
+7. `Stop()`: 
+
+Basically it's like shutting down the peer. It is opposite of `Init` or `Start`.
+
+**VPN**
+
+```go
+type VPN interface {
+	// Start takes in an initial routing table and starts the VPN.
+	Start() error
+
+	// AddPeer is for adding the peers after the VPN has been started.
+	// This should also update the routing table with the new peer.
+	AddPeer() error
+
+	// RemovePeer is oppisite of AddPeer. It should also update the routing table.
+	RemovePeer() error
+
+	// Stop tears down the VPN.
+	Stop() error
+}
+```
+
+Let's have a look at the methods and background behind them:
+
+TBD: Parameter are still to be defined. Should we pass the peer ID? Or make it more generic to have IP addresses?
+
+1. `Start()`:
+
+`Start()` takes in initial list of hosts and assigns each peer a private IP.
+
+2. `AddPeer()`:
+
+`AddPeer()` is for adding a new peer to the VPN after the VPN is created. This should also update the routing table with the new peer. It should also not affect the existing peers, and should not lead to any IP collision.
+
+3. `RemovePeer()`:
+
+`RemovePeer()` should remove a peer from remove peers from the private network.
+
+4. `Stop()`:
+
+TBD: What should be done when the VPN is stopped? Should all the peers be removed from the network?
+
+## Proposed Internal APIs
+
+1. 
+```
+dms.network.queryPeer(dms.dms.config.peerId, dms.jobs.jobDescription) -> dms.orchestrator.computeProvidersIndex.data
+```
+
+2. 
+```
+dms.network.publishJob(dms.orchestrator.bidRequest(dms.jobs.jobDescription))
+```
+
+3. There should be a top level package for set of functions/initlializers for management of:
+
+- TUN/TAP device
+- Virtual ethernet
+- Virtual switch
+- Firewall management
+
+## Flow of job between DMSes
+
+Note: To be updated.
+
+<!-- Create a sequence diagram in respective repo and link here -->
+
+Rest API > Orchestrator > Network > Libp2p > Network > Orchestrator > Executor
+
+
 ## Private Network
 The private network functionality allows users to create and join a private network with some authorised peers. Note that these peers need to be identified beforehand to use this feature. It is also required that all peers have onboarded to the Nunet network and are using the same channel. It is because the identification of peers is done using libp2p public key generated during the onboarding process.
 
