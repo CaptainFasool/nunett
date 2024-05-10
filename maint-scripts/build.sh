@@ -69,7 +69,10 @@ do
     rm -r $archDir
 
     # The remaining part of this script used to upload artifact from build.sh to GitLab Package Registry.
-    if [[ -v GITLAB_CI ]] ; then
+    #
+    # NUNETBOT_BUILD_ENDPOINT is only available for protected branches, therefore pipeline
+    #   builds in gitlab ci from branches that aren't protected should also skip this step
+    if [[ -v GITLAB_CI ]] && [[ -v NUNETBOT_BUILD_ENDPOINT ]] ; then
         curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file ${projectRoot}/dist/nunet-dms_${version}_${arch}.deb ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb
         curl -X POST -H "Content-Type: application/json" -H "$HOOK_TOKEN_HEADER_NAME: $HOOK_TOKEN_HEADER_VALUE" -d "{\"project\" : \"DMS\", \"version\" : \"$version\", \"commit\" : \"$CI_COMMIT_SHA\", \"commit_msg\" : \"$(echo $CI_COMMIT_MESSAGE | sed "s/\"/'/g")\", \"package_url\" : \"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/nunet-dms/${version}/nunet-dms_${version}_${arch}.deb\"}" $NUNETBOT_BUILD_ENDPOINT
     fi 
