@@ -58,9 +58,14 @@ See current reference model [message.go](https://gitlab.com/nunet/open-api/platf
 
 ### Heartbeat 
 
-A heartbeat is an `gEvent` of `HEARTBEAT` category which is being triggered periodically by a background process. It shall be implemented in `background_task` package which actually registering, maintain and stop heartbeat processes.
+We define `Heartbeat` as a regularly send messages from the observed `Actor` entity in NuNet network (so `Node` or `Allocation`) to another entity, which can be another `Actor` or an external. This is done by registering a background process for all heartbeats of `Actor` associated with the same `Node` and triggering them per defined characteristics. A heartbeat is an `gEvent` of `HEARTBEAT` category which is being triggered periodically by a background process. It shall be implemented in `background_task` package which actually registering, maintain and stop heartbeat processes.
 
-See [proposed specifications of `background_tasks`]((../background_tasks/README.md)) for further reference. 
+See the current reference model [heartbeat.go]()
+
+#### Related functionalities
+
+* [Request for heartbeat](#3-request-for-heartbeat) defined in this package;
+* [Register heartbeat](../background_tasks/README.md#register-heartbeat) defined in `background_tasks` package;
 
 
 ## Functions
@@ -88,4 +93,4 @@ The `gEvent` implements both `Event` and `Observable` interfaces which enables t
 
 * A correctly constructed event of `gEvent` type is observed by calling the `observeEvent()` method defined in `Observable` interface -- see [Feature: Observe gEvent](https://gitlab.com/nunet/test-suite/-/blob/proposed/stages/functional_tests/features/device-management-service/telemetry/observeEvent.feature).
 
-## 3. Request 
+## 3. Request for heartbeat
