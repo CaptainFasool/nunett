@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 // GetJobTxHashesHandler  godoc
@@ -14,7 +14,7 @@ import (
 //	@Summary		Get list of TxHashes for jobs done.
 //	@Description	Get list of TxHashes along with the date and time of jobs done.
 //	@Tags			run
-//	@Success		200		{object}	[]tokenomics.TxHashResp
+//	@Success		200		{object}	[]utils.TxHashResp
 //	@Router			/transactions [get]
 func GetJobTxHashesHandler(c *gin.Context) {
 	sizeStr := c.Query("size_done")
@@ -24,7 +24,7 @@ func GetJobTxHashesHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid size_done parameter"})
 		return
 	}
-	hashes, err := tokenomics.GetJobTxHashes(size, clean)
+	hashes, err := utils.GetJobTxHashes(size, clean)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
@@ -37,17 +37,17 @@ func GetJobTxHashesHandler(c *gin.Context) {
 //	@Summary		Get NTX tokens for work done.
 //	@Description	HandleRequestReward takes request from the compute provider, talks with Oracle and releases tokens if conditions are met.
 //	@Tags			run
-//	@Param			body	body		tokenomics.ClaimCardanoTokenBody	true	"Claim Reward Body"
-//	@Success		200		{object}	tokenomics.rewardRespToCPD
+//	@Param			body	body		utils.ClaimCardanoTokenBody	true	"Claim Reward Body"
+//	@Success		200		{object}	utils.rewardRespToCPD
 //	@Router			/transactions/request-reward [post]
 func RequestRewardHandler(c *gin.Context) {
-	var payload tokenomics.ClaimCardanoTokenBody
+	var payload utils.ClaimCardanoTokenBody
 	err := c.ShouldBindJSON(&payload)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": "Invalid JSON format"})
 		return
 	}
-	resp, err := tokenomics.RequestReward(payload)
+	resp, err := utils.RequestReward(payload)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
@@ -70,7 +70,7 @@ func SendTxStatusHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "cannot read payload body"})
 		return
 	}
-	status := tokenomics.SendStatus(body)
+	status := utils.SendStatus(body)
 	c.JSON(200, gin.H{"message": fmt.Sprintf("transaction status %s acknowledged", status)})
 }
 
@@ -79,17 +79,17 @@ func SendTxStatusHandler(c *gin.Context) {
 //	@Summary		Updates blockchain transaction status of DB.
 //	@Description	HandleUpdateStatus is used by webapps to update status of saved transactions with fetching info from blockchain using koios REST API.
 //	@Tags			tx
-//	@Param			body	body		tokenomics.UpdateTxStatusBody	true	"Transaction Status Update Body"
+//	@Param			body	body		utils.UpdateTxStatusBody	true	"Transaction Status Update Body"
 //	@Success		200		{string}	string
 //	@Router			/transactions/update-status [post]
 func UpdateTxStatusHandler(c *gin.Context) {
-	body := tokenomics.UpdateTxStatusBody{}
+	body := utils.UpdateTxStatusBody{}
 	err := c.BindJSON(&body)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
 		return
 	}
-	err = tokenomics.UpdateStatus(body)
+	err = utils.UpdateStatus(body)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return

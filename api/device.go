@@ -2,7 +2,6 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
@@ -38,7 +37,6 @@ func ChangeDeviceStatusHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/device/status"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Pause job onboarding", span)
 
 	var status struct {
 		IsAvailable bool `json:"is_available"`

@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/nunet/device-management-service/dms/onboarding"
 	"gitlab.com/nunet/device-management-service/dms/resources"
-	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -140,7 +139,6 @@ func OnboardStatusHandler(c *gin.Context) {
 //	@Success	200	{object}	models.Metadata
 //	@Router		/onboarding/resource-config [post]
 func ResourceConfigHandler(c *gin.Context) {
-	klogger.Logger.Info("device resource change started")
 	if c.Request.ContentLength == 0 {
 		c.AbortWithStatusJSON(400, gin.H{"error": "request body is empty"})
 		return

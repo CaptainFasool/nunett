@@ -466,7 +466,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/libp2p.checkpoint"
+                                "$ref": "#/definitions/api.checkpoint"
                             }
                         }
                     }
@@ -485,34 +485,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/run/request-service": {
-            "post": {
-                "description": "RequestServiceHandler searches the DHT for non-busy, available devices with appropriate metadata. Then informs parameters related to blockchain to request to run a service on NuNet.",
-                "tags": [
-                    "run"
-                ],
-                "summary": "Informs parameters related to blockchain to request to run a service on NuNet",
-                "parameters": [
-                    {
-                        "description": "Deployment Request",
-                        "name": "deployment_request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.DeploymentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/machines.fundingRespToSPD"
                         }
                     }
                 }
@@ -548,7 +520,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/tokenomics.TxHashResp"
+                                "$ref": "#/definitions/utils.TxHashResp"
                             }
                         }
                     }
@@ -569,7 +541,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tokenomics.ClaimCardanoTokenBody"
+                            "$ref": "#/definitions/utils.ClaimCardanoTokenBody"
                         }
                     }
                 ],
@@ -577,7 +549,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/tokenomics.rewardRespToCPD"
+                            "$ref": "#/definitions/utils.rewardRespToCPD"
                         }
                     }
                 }
@@ -625,7 +597,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tokenomics.UpdateTxStatusBody"
+                            "$ref": "#/definitions/utils.UpdateTxStatusBody"
                         }
                     }
                 ],
@@ -675,7 +647,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "libp2p.checkpoint": {
+        "api.checkpoint": {
             "type": "object",
             "properties": {
                 "checkpoint_dir": {
@@ -686,32 +658,6 @@ const docTemplate = `{
                 },
                 "last_modified": {
                     "type": "integer"
-                }
-            }
-        },
-        "machines.fundingRespToSPD": {
-            "type": "object",
-            "properties": {
-                "compute_provider_addr": {
-                    "type": "string"
-                },
-                "distribute_50_hash": {
-                    "type": "string"
-                },
-                "distribute_75_hash": {
-                    "type": "string"
-                },
-                "estimated_price": {
-                    "type": "number"
-                },
-                "metadata_hash": {
-                    "type": "string"
-                },
-                "refund_hash": {
-                    "type": "string"
-                },
-                "withdraw_hash": {
-                    "type": "string"
                 }
             }
         },
@@ -740,133 +686,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "tx_hash": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.DeploymentRequest": {
-            "type": "object",
-            "properties": {
-                "address_user": {
-                    "description": "service provider wallet address",
-                    "type": "string"
-                },
-                "blockchain": {
-                    "type": "string"
-                },
-                "constraints": {
-                    "type": "object",
-                    "properties": {
-                        "complexity": {
-                            "type": "string"
-                        },
-                        "cpu": {
-                            "type": "integer"
-                        },
-                        "power": {
-                            "type": "integer"
-                        },
-                        "ram": {
-                            "type": "integer"
-                        },
-                        "time": {
-                            "type": "integer"
-                        },
-                        "vram": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "distribute_50_hash": {
-                    "type": "string"
-                },
-                "distribute_75_hash": {
-                    "type": "string"
-                },
-                "max_ntx": {
-                    "type": "integer"
-                },
-                "metadata_hash": {
-                    "type": "string"
-                },
-                "params": {
-                    "type": "object",
-                    "properties": {
-                        "image_id": {
-                            "type": "string"
-                        },
-                        "local_node_id": {
-                            "description": "NodeID of service provider (machine triggering the job)",
-                            "type": "string"
-                        },
-                        "local_public_key": {
-                            "description": "Public key of service provider",
-                            "type": "string"
-                        },
-                        "machine_type": {
-                            "type": "string"
-                        },
-                        "model_url": {
-                            "type": "string"
-                        },
-                        "node_id": {
-                            "description": "NodeID of compute provider (machine to deploy the job on)",
-                            "type": "string"
-                        },
-                        "packages": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
-                        "public_key": {
-                            "description": "Public key of compute provider",
-                            "type": "string"
-                        },
-                        "resume_job": {
-                            "type": "object",
-                            "properties": {
-                                "progress_file": {
-                                    "description": "file path",
-                                    "type": "string"
-                                },
-                                "resume": {
-                                    "type": "boolean"
-                                }
-                            }
-                        }
-                    }
-                },
-                "refund_hash": {
-                    "type": "string"
-                },
-                "service_type": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                },
-                "traceinfo": {
-                    "type": "object",
-                    "properties": {
-                        "span_id": {
-                            "type": "string"
-                        },
-                        "trace_flags": {
-                            "type": "string"
-                        },
-                        "trace_id": {
-                            "type": "string"
-                        },
-                        "trace_state": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "tx_hash": {
-                    "type": "string"
-                },
-                "withdraw_hash": {
                     "type": "string"
                 }
             }
@@ -988,7 +807,7 @@ const docTemplate = `{
                 }
             }
         },
-        "tokenomics.ClaimCardanoTokenBody": {
+        "utils.ClaimCardanoTokenBody": {
             "type": "object",
             "properties": {
                 "compute_provider_address": {
@@ -999,7 +818,7 @@ const docTemplate = `{
                 }
             }
         },
-        "tokenomics.TxHashResp": {
+        "utils.TxHashResp": {
             "type": "object",
             "properties": {
                 "date_time": {
@@ -1013,7 +832,7 @@ const docTemplate = `{
                 }
             }
         },
-        "tokenomics.UpdateTxStatusBody": {
+        "utils.UpdateTxStatusBody": {
             "type": "object",
             "properties": {
                 "address": {
@@ -1021,7 +840,7 @@ const docTemplate = `{
                 }
             }
         },
-        "tokenomics.rewardRespToCPD": {
+        "utils.rewardRespToCPD": {
             "type": "object",
             "properties": {
                 "action": {
@@ -1058,7 +877,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.4.167",
+	Version:          "0.4.168",
 	Host:             "localhost:9999",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

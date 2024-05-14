@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -69,7 +68,6 @@ func ListKadDHTPeersHandler(c *gin.Context) {
 	}
 	if len(peers) == 0 {
 		c.JSON(404, gin.H{"message": "no peers found"})
-		klogger.Logger.Error("No peers found")
 		return
 	}
 	c.JSON(200, peers)
@@ -103,7 +101,6 @@ func SelfPeerInfoHandler(c *gin.Context) {
 func ListChatHandler(c *gin.Context) {
 	chats, err := libp2p.IncomingChatRequests()
 	if err != nil {
-		klogger.Logger.Error("List chat handler Error: " + err.Error())
 		c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
 		return
 	}
@@ -121,7 +118,6 @@ func ListChatHandler(c *gin.Context) {
 func ClearChatHandler(c *gin.Context) {
 	err := libp2p.ClearIncomingChatRequests()
 	if err != nil {
-		klogger.Logger.Error("Clear chat handler Error: " + err.Error())
 		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}

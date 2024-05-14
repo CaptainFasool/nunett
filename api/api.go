@@ -6,16 +6,11 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
-	"gitlab.com/nunet/device-management-service/internal/tracing"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.New(getCustomCorsConfig()))
-
-	router.Use(otelgin.Middleware(tracing.ServiceName))
 
 	v1 := router.Group("/api/v1")
 

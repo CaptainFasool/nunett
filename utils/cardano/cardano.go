@@ -9,28 +9,30 @@
 package cardano
 
 import (
-	"bytes"
-	"fmt"
-	"time"
-	"log"
-	"errors"
-	"os"
-	"strings"
 	"bufio"
-	"regexp"
-	"os/exec"
-	"encoding/json"
-	"gitlab.com/nunet/device-management-service/integrations/oracle"
+	"bytes"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+	"time"
+
+	"gitlab.com/nunet/device-management-service/integrations/oracle"
 )
 
 // NOTE: This corresponds to
 // https://gitlab.com/nunet/tokenomics-api/tokenomics-api-cardano-v2/-/blob/develop/src/SimpleEscrow.hs?ref_type=heads#L103
 // and must match exactly with the deployed contract
 type Redeemer int
+
 const (
-	Withdraw Redeemer = 0
-	Refund Redeemer = 1
+	Withdraw   Redeemer = 0
+	Refund     Redeemer = 1
 	Distribute Redeemer = 2
 )
 
@@ -51,9 +53,9 @@ const (
 	mNTX = "8cafc9b387c9f6519cacdce48a8448c062670c810d8da4b232e56313.6d4e5458"
 
 	// These are all hex encoded ascii / ByteString of a text string
-	PreGenMetaDataHash = "612072616E646F6D20737472696E63"
-	PreGenWithdrawHash = "612072616E646F6D20737472696E64"
-	PreGenRefundHash = "612072616E646F6D20737472696E65"
+	PreGenMetaDataHash     = "612072616E646F6D20737472696E63"
+	PreGenWithdrawHash     = "612072616E646F6D20737472696E64"
+	PreGenRefundHash       = "612072616E646F6D20737472696E65"
 	PreGenDistribute75Hash = "612072616E646F6D20737472696E66"
 	PreGenDistribute50Hash = "612072616E646F6D20737472696E67"
 
@@ -87,7 +89,7 @@ const (
       ]
    }`
 
-   REDEEMER_FORMAT_STRING = `{
+	REDEEMER_FORMAT_STRING = `{
      "constructor": %d,
      "fields": [
       {
@@ -115,7 +117,6 @@ const (
    	  }
      ]
    }`
-
 )
 
 // JSONInput is a intermediate unmarshalled format for custom unmarshalling logic for Inputs
@@ -126,39 +127,39 @@ type JSONInput struct {
 
 // Inputs to a transaction.
 type Input struct {
-	Key string // The key is the '<transaction-hash>#<index>'.
-	Value map[string]int64 // Value is a map from '<policy-id>.<hex-asset-name>' or 'lovelace' to token amount.
-	ScriptFile string
-	DatumFile string
+	Key          string           // The key is the '<transaction-hash>#<index>'.
+	Value        map[string]int64 // Value is a map from '<policy-id>.<hex-asset-name>' or 'lovelace' to token amount.
+	ScriptFile   string
+	DatumFile    string
 	RedeemerFile string
 }
 
 // An Output to be created by a transaction
 type Output struct {
-	To string  // To Address aka who will own the output
-	Value map[string]int64  // Value is a map from '<policy-id>.<hex-asset-name>' or 'lovelace' to token amount.
-	DatumFile string // This is a json file encoding the datum that will be used or nil for no datum
+	To        string           // To Address aka who will own the output
+	Value     map[string]int64 // Value is a map from '<policy-id>.<hex-asset-name>' or 'lovelace' to token amount.
+	DatumFile string           // This is a json file encoding the datum that will be used or nil for no datum
 }
 
 // A Cardano Transaction.
 type Transaction struct {
-	Inputs []Input // The inputs to the transaction.
-	Outputs map[string]Output // The outputs created by this transaction.
-	ChangeAddress string // The address that should be given change from this transaction.
-	Collateral string
+	Inputs        []Input           // The inputs to the transaction.
+	Outputs       map[string]Output // The outputs created by this transaction.
+	ChangeAddress string            // The address that should be given change from this transaction.
+	Collateral    string
 }
 
 // Get the Inputs owned by an address.
-func GetUTXOs(address string) ([]Input, error){
-	cmd := exec.Command ("cardano-cli",
+func GetUTXOs(address string) ([]Input, error) {
+	cmd := exec.Command("cardano-cli",
 		"query",
-       	"utxo",
-       	"--address",
-       	address,
-       	"--out-file",
-       	"/dev/stdout",
-       	"--testnet-magic",
-		testnetMagic);
+		"utxo",
+		"--address",
+		address,
+		"--out-file",
+		"/dev/stdout",
+		"--testnet-magic",
+		testnetMagic)
 	output, err := execCommand(cmd)
 
 	var result []Input
@@ -172,8 +173,8 @@ func GetUTXOs(address string) ([]Input, error){
 
 	for key, input := range dev {
 		// Skip the tester collateral!
-		if (key == SPCollateral || key == CPCollateral)  {
-			continue;
+		if key == SPCollateral || key == CPCollateral {
+			continue
 		}
 
 		var newInput Input
@@ -181,7 +182,7 @@ func GetUTXOs(address string) ([]Input, error){
 		newInput.Value = make(map[string]int64)
 
 		for policy, value := range input.Value {
-			if (policy == "lovelace") {
+			if policy == "lovelace" {
 				num := value.(float64)
 				newInput.Value["lovelace"] = int64(num)
 			} else {
@@ -201,7 +202,7 @@ func GetUTXOs(address string) ([]Input, error){
 func FindOutput(inputs []Input, tx_hash string, index int) (Input, bool) {
 	key := fmt.Sprintf("%s#%d", tx_hash, index)
 	for _, input := range inputs {
-		if (input.Key == key) {
+		if input.Key == key {
 			return input, true
 		}
 	}
@@ -229,7 +230,6 @@ func getSignaturesFromOracle(redeemer Redeemer) (oracleResp *oracle.RewardRespon
 		jobDuration = 45
 	case Withdraw: // noop
 	}
-
 
 	oracleResp, err = oracle.Oracle.WithdrawTokenRequest(&oracle.RewardRequest{
 		JobStatus:            jobStatus,
@@ -268,7 +268,7 @@ func BuildPaymentScriptAddress() (address string, err error) {
 }
 
 // Take money from script
-func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
+func SpendFromScript(tx_hash string, index int, redeemer Redeemer) error {
 	currentContract, err := BuildPaymentScriptAddress()
 	if err != nil {
 		return err
@@ -284,16 +284,16 @@ func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
 	scriptInput.DatumFile = "datum.json"
 	scriptInput.RedeemerFile = "redeemer.json"
 
-	if (!success) {
+	if !success {
 		panic("Failed to find the script output")
 	}
 
 	resp, err := getSignaturesFromOracle(redeemer)
-	if (err != nil) {
+	if err != nil {
 		panic("Failed to contact oracle")
 	}
 
-	WriteRedeemerFile("redeemer.json", resp, redeemer);
+	WriteRedeemerFile("redeemer.json", resp, redeemer)
 
 	var collateral string
 	var account string
@@ -308,7 +308,7 @@ func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
 		collateral = CPCollateral
 	}
 
-	outputs, err := GetUTXOs(address);
+	outputs, err := GetUTXOs(address)
 	if err != nil {
 		return err
 	}
@@ -316,14 +316,14 @@ func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
 	outputs = append(outputs, scriptInput)
 
 	transaction := Transaction{
-		Inputs: outputs,
-		Outputs: make(map[string]Output),
+		Inputs:        outputs,
+		Outputs:       make(map[string]Output),
 		ChangeAddress: address,
-		Collateral: collateral,
+		Collateral:    collateral,
 	}
 
 	transaction.Outputs[address] = Output{
-		To: address,
+		To:    address,
 		Value: make(map[string]int64),
 	}
 
@@ -341,14 +341,14 @@ func SpendFromScript( tx_hash string, index int, redeemer Redeemer ) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Transaction Hash %s", hash);
+	log.Printf("Transaction Hash %s", hash)
 	return err
 }
 
-func WaitForTransaction ( tx_hash string, max_timeout_minutes int ) error {
+func WaitForTransaction(tx_hash string, max_timeout_minutes int) error {
 
-	log.Printf("Waiting for Transaction Confirmation %s", tx_hash);
-	if (max_timeout_minutes == 0) {
+	log.Printf("Waiting for Transaction Confirmation %s", tx_hash)
+	if max_timeout_minutes == 0 {
 		return errors.New("Max timeout reached, transaction not observed")
 	}
 
@@ -364,16 +364,16 @@ func WaitForTransaction ( tx_hash string, max_timeout_minutes int ) error {
 	)
 
 	output, err := execCommand(cmd)
-	if (err != nil || string(output) == "{}") {
+	if err != nil || string(output) == "{}" {
 		time.Sleep(1 * time.Minute)
-		return WaitForTransaction(tx_hash, max_timeout_minutes - 1)
+		return WaitForTransaction(tx_hash, max_timeout_minutes-1)
 	}
 
 	return nil
 }
 
 // Pay to the current escrow smart contract an amount in NTX
-func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
+func PayToScript(ntx int64, spPubKey string, cpPubKey string) (string, error) {
 	outputs, err := GetUTXOs(SPAddress)
 	if err != nil {
 		return "", err
@@ -385,8 +385,8 @@ func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 	}
 
 	transaction := Transaction{
-		Inputs: outputs,
-		Outputs: make(map[string]Output),
+		Inputs:        outputs,
+		Outputs:       make(map[string]Output),
 		ChangeAddress: SPAddress,
 	}
 
@@ -394,8 +394,8 @@ func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 	WriteDatumFile(datumFile, ntx, spPubKey, cpPubKey)
 
 	transaction.Outputs[currentContract] = Output{
-		To: currentContract,
-		Value: make(map[string]int64),
+		To:        currentContract,
+		Value:     make(map[string]int64),
 		DatumFile: datumFile,
 	}
 
@@ -416,11 +416,11 @@ func PayToScript( ntx int64, spPubKey string, cpPubKey string ) (string, error){
 }
 
 func execCommand(cmd *exec.Cmd) (string, error) {
-  var stdout, stderr bytes.Buffer
-  cmd.Stdout = &stdout
-  cmd.Stderr = &stderr
-  err := cmd.Run()
-  if err != nil {
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
 		fmt.Println("Command:", cmd.String()) // Print the command
 		fmt.Println("Output:", stdout.String())
 		fmt.Println("Error:", stderr.String())
@@ -429,11 +429,11 @@ func execCommand(cmd *exec.Cmd) (string, error) {
 		// 		log.Fatal("Exit Code:", status.ExitStatus())
 		// 	}
 		// }
-  }
+	}
 	return stdout.String(), err
 }
 
-func SubmitTransaction () error {
+func SubmitTransaction() error {
 	cmd := exec.Command("cardano-cli",
 		"transaction",
 		"submit",
@@ -449,7 +449,7 @@ func SubmitTransaction () error {
 var minOutputLovelace = int64(5500000)
 
 // Helper to build a valid transaction
-func BuildTransaction( tx Transaction, txFees int64 ) (err error) {
+func BuildTransaction(tx Transaction, txFees int64) (err error) {
 	EnsureProtocolParameters()
 	fee := int64(200000)
 	if txFees == 0 { // Estimate fees if not specified
@@ -470,7 +470,7 @@ func BuildTransaction( tx Transaction, txFees int64 ) (err error) {
 }
 
 // Sign a transaction with the SPAddress.
-func SignTransaction ( account string ) {
+func SignTransaction(account string) {
 	cmd := exec.Command("cardano-cli",
 		"transaction",
 		"sign",
@@ -486,14 +486,14 @@ func SignTransaction ( account string ) {
 }
 
 // Estimate fee of transaction
-func EstimateFee( tx Transaction ) (fee int64, err error) {
+func EstimateFee(tx Transaction) (fee int64, err error) {
 
 	witness_count := 1
 
 	// Factor in script witnesses
-	for _, input := range tx.Inputs	{
-		if (input.ScriptFile != "") {
-			witness_count += 1;
+	for _, input := range tx.Inputs {
+		if input.ScriptFile != "" {
+			witness_count += 1
 		}
 	}
 
@@ -512,7 +512,7 @@ func EstimateFee( tx Transaction ) (fee int64, err error) {
 		"protocol.json",
 		"--testnet-magic",
 		testnetMagic,
-		)
+	)
 
 	output, err := execCommand(cmd)
 	if err != nil {
@@ -520,7 +520,7 @@ func EstimateFee( tx Transaction ) (fee int64, err error) {
 	}
 
 	_, fee_err := fmt.Sscan(output, &fee)
-	if (fee_err != nil) {
+	if fee_err != nil {
 		log.Fatal(fee_err)
 	}
 
@@ -533,7 +533,7 @@ func BalanceTransaction(tx *Transaction, fee int64) {
 	// Seed change with inputs
 	for _, input := range tx.Inputs {
 		for token, amount := range input.Value {
-			if (change[token] == -1) {
+			if change[token] == -1 {
 				change[token] = amount
 			} else {
 				change[token] += amount
@@ -552,16 +552,16 @@ func BalanceTransaction(tx *Transaction, fee int64) {
 	change["lovelace"] -= fee
 
 	// Add entry if it doesn't exist yet
-	entry := tx.Outputs[tx.ChangeAddress];
+	entry := tx.Outputs[tx.ChangeAddress]
 	if entry.Value == nil {
 		entry.To = tx.ChangeAddress
-		entry.Value = make(map[string]int64);
+		entry.Value = make(map[string]int64)
 		tx.Outputs[tx.ChangeAddress] = entry
 	}
 
 	// Apply to ChangeAddress output
 	for token, amount := range change {
-		if (tx.Outputs[tx.ChangeAddress].Value[token] == -1) {
+		if tx.Outputs[tx.ChangeAddress].Value[token] == -1 {
 			tx.Outputs[tx.ChangeAddress].Value[token] = amount
 		} else {
 			tx.Outputs[tx.ChangeAddress].Value[token] += amount
@@ -592,7 +592,7 @@ func GetTransactionHash() (hash string, err error) {
 	return
 }
 
-func EstimatePlutusInteraction ( tx Transaction ) {
+func EstimatePlutusInteraction(tx Transaction) {
 	args := make([]string, 0)
 
 	args = append(args,
@@ -612,23 +612,23 @@ func EstimatePlutusInteraction ( tx Transaction ) {
 		args = append(args, "--tx-in")
 		args = append(args, input.Key)
 
-		if (input.ScriptFile != "") {
+		if input.ScriptFile != "" {
 			args = append(args, "--tx-in-script-file")
 			args = append(args, input.ScriptFile)
 		}
 
 		// TODO(skylar): See if inline datum is present
-		if (input.DatumFile != "") {
+		if input.DatumFile != "" {
 			args = append(args, "--tx-in-inline-datum-present")
 		}
 
-		if (input.RedeemerFile != "") {
+		if input.RedeemerFile != "" {
 			args = append(args, "--tx-in-redeemer-file")
 			args = append(args, input.RedeemerFile)
 		}
 	}
 
-	if (tx.Collateral != "") {
+	if tx.Collateral != "" {
 		args = append(args, "--tx-in-collateral")
 		args = append(args, tx.Collateral)
 	}
@@ -637,16 +637,16 @@ func EstimatePlutusInteraction ( tx Transaction ) {
 		args = append(args, "--tx-out")
 		args = append(args, fmt.Sprintf(`%s+%s`, output.To, ValueStr(output.Value)))
 
-		if (output.DatumFile != "") {
+		if output.DatumFile != "" {
 			args = append(args, "--tx-out-inline-datum-file")
 			args = append(args, output.DatumFile)
 		}
 	}
 
-	cmd := exec.Command ("cardano-cli", args...)
+	cmd := exec.Command("cardano-cli", args...)
 
 	pipe, _ := cmd.StderrPipe()
-    scanner := bufio.NewScanner(pipe)
+	scanner := bufio.NewScanner(pipe)
 
 	go func() {
 		for scanner.Scan() {
@@ -659,7 +659,7 @@ func EstimatePlutusInteraction ( tx Transaction ) {
 }
 
 // Builds a transaction file with the given fee.
-func BuildTransactionRaw( tx Transaction, fee int64 ) {
+func BuildTransactionRaw(tx Transaction, fee int64) {
 	args := make([]string, 0)
 
 	args = append(args,
@@ -677,17 +677,17 @@ func BuildTransactionRaw( tx Transaction, fee int64 ) {
 		args = append(args, "--tx-in")
 		args = append(args, input.Key)
 
-		if (input.ScriptFile != "") {
+		if input.ScriptFile != "" {
 			args = append(args, "--tx-in-script-file")
 			args = append(args, input.ScriptFile)
 		}
 
 		// NOTE: Inline datum is expect to be standard
-		if (input.DatumFile != "") {
+		if input.DatumFile != "" {
 			args = append(args, "--tx-in-inline-datum-present")
 		}
 
-		if (input.RedeemerFile != "") {
+		if input.RedeemerFile != "" {
 			args = append(args, "--tx-in-redeemer-file")
 			args = append(args, input.RedeemerFile)
 			args = append(args, "--tx-in-execution-units")
@@ -695,7 +695,7 @@ func BuildTransactionRaw( tx Transaction, fee int64 ) {
 		}
 	}
 
-	if (tx.Collateral != "") {
+	if tx.Collateral != "" {
 		args = append(args, "--tx-in-collateral")
 		args = append(args, tx.Collateral)
 	}
@@ -704,16 +704,16 @@ func BuildTransactionRaw( tx Transaction, fee int64 ) {
 		args = append(args, "--tx-out")
 		args = append(args, fmt.Sprintf(`%s+%s`, output.To, ValueStr(output.Value)))
 
-		if (output.DatumFile != "") {
+		if output.DatumFile != "" {
 			args = append(args, "--tx-out-inline-datum-file")
 			args = append(args, output.DatumFile)
 		}
 	}
 
-	cmd := exec.Command ("cardano-cli", args...)
+	cmd := exec.Command("cardano-cli", args...)
 
 	pipe, _ := cmd.StderrPipe()
-    scanner := bufio.NewScanner(pipe)
+	scanner := bufio.NewScanner(pipe)
 
 	go func() {
 		for scanner.Scan() {
@@ -726,19 +726,19 @@ func BuildTransactionRaw( tx Transaction, fee int64 ) {
 }
 
 // Create a cardano-cli compatible multi-asset vaule string from a map of asset to amount
-func ValueStr( value map[string]int64 ) (str string) {
+func ValueStr(value map[string]int64) (str string) {
 	builder := strings.Builder{}
 
 	count := 0
 	output_count := len(value)
 	for token, amount := range value {
-		if (token == "lovelace") {
+		if token == "lovelace" {
 			builder.WriteString(fmt.Sprintf("%d", amount))
 		} else {
 			builder.WriteString(fmt.Sprintf("%d %s", amount, token))
 		}
 
-		if (count < output_count - 1) {
+		if count < output_count-1 {
 			builder.WriteString("+")
 		}
 
@@ -748,7 +748,7 @@ func ValueStr( value map[string]int64 ) (str string) {
 	return builder.String()
 }
 
-func WriteRedeemerFile (path string, response *oracle.RewardResponse, redeemer Redeemer) {
+func WriteRedeemerFile(path string, response *oracle.RewardResponse, redeemer Redeemer) {
 	r, _ := regexp.Compile(`\\\"(.*?)\\\"`)
 	// NOTE: The submatch or capture group is the second argument, the first is the whole matched expression
 	action_capture := r.FindStringSubmatch(response.Action)[1]
@@ -770,7 +770,7 @@ func WriteRedeemerFile (path string, response *oracle.RewardResponse, redeemer R
 	}
 }
 
-func WriteDatumFile (path string, ntx int64, spPubKeyHash string, cpPubKeyHash string) {
+func WriteDatumFile(path string, ntx int64, spPubKeyHash string, cpPubKeyHash string) {
 	if err := os.WriteFile(path, []byte(fmt.Sprintf(DATUM_FORMAT_STRING, spPubKeyHash, cpPubKeyHash, ntx, PreGenMetaDataHash, PreGenWithdrawHash, PreGenRefundHash, PreGenDistribute75Hash, PreGenDistribute50Hash)), 0666); err != nil {
 		log.Fatal(err)
 	}
