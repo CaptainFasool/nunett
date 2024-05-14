@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Build process comprises of following steps:
 
