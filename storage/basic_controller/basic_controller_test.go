@@ -1,4 +1,4 @@
-package storage
+package basic_controller
 
 import (
 	"os"
@@ -9,8 +9,6 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/storage"
@@ -18,9 +16,7 @@ import (
 
 type VolumeControllerTestSuite struct {
 	suite.Suite
-	volController *BasicVolumeController
-	volumes       map[string]*storage.StorageVolume
-	fs            afero.Fs
+	vcHelper *VolControllerTestSuiteHelper
 }
 
 func TestVolumeControllerTestSuite(t *testing.T) {
@@ -28,20 +24,9 @@ func TestVolumeControllerTestSuite(t *testing.T) {
 }
 
 func (s *VolumeControllerTestSuite) SetupTest() {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	assert.NoError(s.T(), err)
-
 	basePath := "/home/.nunet/volumes/"
-	fs := afero.NewMemMapFs()
 
-	err = fs.MkdirAll(basePath, 0755)
-	assert.NoError(s.T(), err)
-
-	s.fs = fs
-	s.volController, err = NewDefaultVolumeController(db, basePath, fs)
-	assert.NoError(s.T(), err)
-
-	s.volumes = map[string]*storage.StorageVolume{
+	volumes := map[string]*storage.StorageVolume{
 		"volume1": {
 			Path:           basePath + "volume1",
 			ReadOnly:       false,
@@ -61,37 +46,31 @@ func (s *VolumeControllerTestSuite) SetupTest() {
 		},
 	}
 
-	for _, vol := range s.volumes {
-		// create root volume dir
-		err = fs.MkdirAll(vol.Path, 0755)
-		assert.NoError(s.T(), err)
-
-		// create volume record in db
-		err = db.Create(vol).Error
-		assert.NoError(s.T(), err)
-	}
+	var err error
+	s.vcHelper, err = SetupVolControllerTestSuite(basePath, volumes)
+	assert.NoError(s.T(), err)
 
 	// Write a file in volume2
-	err = afero.WriteFile(fs, s.volumes["volume2"].Path+"/file.txt", []byte("hello world"), 0644)
+	err = afero.WriteFile(s.vcHelper.Fs, s.vcHelper.Volumes["volume2"].Path+"/file.txt", []byte("hello world"), 0644)
 	assert.NoError(s.T(), err)
 }
 
 func (s *VolumeControllerTestSuite) TearDownTest() {
 	// Clean up the test environment
-	err := s.volController.db.Exec("DELETE FROM storage_volumes").Error
+	err := s.vcHelper.BasicVolController.db.Exec("DELETE FROM storage_volumes").Error
 	assert.NoError(s.T(), err)
-	s.volController.db = nil
-	s.volController = nil
-	s.fs = nil
+	s.vcHelper.BasicVolController.db = nil
+	s.vcHelper.BasicVolController = nil
+	s.vcHelper.Fs = nil
 }
 
 func (s *VolumeControllerTestSuite) TestCreateVolume() {
 	// Test case 1: Create a volume without options
-	vol1, err := s.volController.CreateVolume(storage.VolumeSourceS3)
+	vol1, err := s.vcHelper.BasicVolController.CreateVolume(storage.VolumeSourceS3)
 	assert.NoError(s.T(), err)
 
 	// Test case 2: Create a volume with private option
-	vol2, err := s.volController.CreateVolume(storage.VolumeSourceS3, WithPrivate[storage.CreateVolOpt]())
+	vol2, err := s.vcHelper.BasicVolController.CreateVolume(storage.VolumeSourceS3, WithPrivate[storage.CreateVolOpt]())
 	assert.NoError(s.T(), err)
 
 	// Verify returned volume details for test case 1
@@ -110,17 +89,17 @@ func (s *VolumeControllerTestSuite) TestCreateVolume() {
 
 	// Verify that the volumes are stored in the database
 	var volumes []storage.StorageVolume
-	err = s.volController.db.Find(&volumes).Error
+	err = s.vcHelper.BasicVolController.db.Find(&volumes).Error
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), volumes, 4) // there are already 2 volumes created in the suite
 	// TODO-maybe: should we also check the DB content for each volume?
 
 	// check if directories were created based on volumes path
-	fileInfoVol1, err := s.fs.Stat(vol1.Path)
+	fileInfoVol1, err := s.vcHelper.Fs.Stat(vol1.Path)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), fileInfoVol1.IsDir())
 
-	fileInfoVol2, err := s.fs.Stat(vol2.Path)
+	fileInfoVol2, err := s.vcHelper.Fs.Stat(vol2.Path)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), fileInfoVol2.IsDir())
 }
@@ -135,15 +114,15 @@ func (s *VolumeControllerTestSuite) TestLockVolume() {
 	}{
 		{
 			name:        "Lock volume with CID",
-			volumePath:  s.volumes["volume1"].Path,
+			volumePath:  s.vcHelper.Volumes["volume1"].Path,
 			cid:         "abcdef",
 			private:     false,
 			expectError: false,
 		},
 		{
 			name:        "Lock volume with private option",
-			volumePath:  s.volumes["volume2"].Path,
-			cid:         s.volumes["volume2"].CID,
+			volumePath:  s.vcHelper.Volumes["volume2"].Path,
+			cid:         s.vcHelper.Volumes["volume2"].CID,
 			private:     true,
 			expectError: false,
 		},
@@ -166,7 +145,7 @@ func (s *VolumeControllerTestSuite) TestLockVolume() {
 				opts = append(opts, WithPrivate[storage.LockVolOpt]())
 			}
 
-			err := s.volController.LockVolume(tc.volumePath, opts...)
+			err := s.vcHelper.BasicVolController.LockVolume(tc.volumePath, opts...)
 			if tc.expectError {
 				assert.Error(t, err)
 			} else {
@@ -174,7 +153,7 @@ func (s *VolumeControllerTestSuite) TestLockVolume() {
 
 				// verify database fields (readOnly must be true)
 				var vol storage.StorageVolume
-				err = s.volController.db.Where("path = ?", tc.volumePath).First(&vol).Error
+				err = s.vcHelper.BasicVolController.db.Where("path = ?", tc.volumePath).First(&vol).Error
 				assert.NoError(t, err)
 				assert.True(t, vol.ReadOnly)
 				// checking CID and Private as some test cases inputed them
@@ -182,7 +161,7 @@ func (s *VolumeControllerTestSuite) TestLockVolume() {
 				assert.Equal(t, tc.private, vol.Private)
 
 				// verifying volume dir is read-only
-				fileInfo, err := s.fs.Stat(tc.volumePath)
+				fileInfo, err := s.vcHelper.Fs.Stat(tc.volumePath)
 				assert.NoError(t, err)
 				assert.Equal(t, os.FileMode(0400), fileInfo.Mode().Perm())
 			}
@@ -199,13 +178,13 @@ func (s *VolumeControllerTestSuite) TestDeleteVolume() {
 	}{
 		{
 			name:           "Delete volume by path",
-			identifier:     s.volumes["volume1"].Path,
+			identifier:     s.vcHelper.Volumes["volume1"].Path,
 			identifierType: storage.IDTypePath,
 			expectError:    false,
 		},
 		{
 			name:           "Delete volume by CID",
-			identifier:     s.volumes["volume2"].CID,
+			identifier:     s.vcHelper.Volumes["volume2"].CID,
 			identifierType: storage.IDTypeCID,
 			expectError:    false,
 		},
@@ -224,7 +203,7 @@ func (s *VolumeControllerTestSuite) TestDeleteVolume() {
 	}
 
 	for _, tc := range testCases {
-		err := s.volController.DeleteVolume(tc.identifier, tc.identifierType)
+		err := s.vcHelper.BasicVolController.DeleteVolume(tc.identifier, tc.identifierType)
 		if tc.expectError {
 			assert.Error(s.T(), err)
 		} else {
@@ -234,21 +213,21 @@ func (s *VolumeControllerTestSuite) TestDeleteVolume() {
 
 	// Verify that the volumes are deleted from the database
 	var volumes []storage.StorageVolume
-	err := s.volController.db.Find(&volumes).Error
+	err := s.vcHelper.BasicVolController.db.Find(&volumes).Error
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), volumes, 0)
 }
 
 func (s *VolumeControllerTestSuite) TestListVolumes() {
-	volumes, err := s.volController.ListVolumes()
+	volumes, err := s.vcHelper.BasicVolController.ListVolumes()
 	assert.NoError(s.T(), err)
 
-	assert.Len(s.T(), volumes, len(s.volumes))
+	assert.Len(s.T(), volumes, len(s.vcHelper.Volumes))
 
 	// assert details of returned volumes
 	for _, retVol := range volumes {
 		// Find the corresponding volume in the test suite's volumes map
-		expectedVol, ok := s.volumes[filepath.Base(retVol.Path)]
+		expectedVol, ok := s.vcHelper.Volumes[filepath.Base(retVol.Path)]
 		assert.True(s.T(), ok, "Unexpected volume returned: %s", retVol.Path)
 
 		// Assert the properties of the returned volume
@@ -263,7 +242,7 @@ func (s *VolumeControllerTestSuite) TestListVolumes() {
 }
 
 func (s *VolumeControllerTestSuite) TestGetSize() {
-	size, err := s.volController.GetSize(s.volumes["volume1"].Path, storage.IDTypePath)
+	size, err := s.vcHelper.BasicVolController.GetSize(s.vcHelper.Volumes["volume1"].Path, storage.IDTypePath)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), int64(0), size)
 }
