@@ -9,6 +9,9 @@ import (
 )
 
 func SetupRouter() *gin.Engine {
+	// Note: While rearranging routes in groups, make sure to also update the
+	// route handler swagger annotaion @Router with the correct path.
+
 	router := gin.Default()
 	router.Use(cors.New(getCustomCorsConfig()))
 
@@ -78,8 +81,8 @@ func SetupRouter() *gin.Engine {
 		p2p.GET("/dht/dump", DumpDHTHandler)
 		p2p.GET("/kad-dht", ListKadDHTPeersHandler)
 		p2p.GET("/self", SelfPeerInfoHandler)
-		p2p.GET("/chat", ListChatHandler)
 		p2p.GET("/depreq", DefaultDepReqPeerHandler)
+		p2p.GET("/chat", ListChatHandler)
 		p2p.GET("/chat/start", StartChatHandler)
 		p2p.GET("/chat/join", JoinChatHandler)
 		p2p.GET("/chat/clear", ClearChatHandler)

@@ -11,7 +11,10 @@ import (
 //	@Description	Checks and returns the amount of free resources available
 //	@Tags			telemetry
 //	@Produce		json
-//	@Success		200
+//	@Success		200	{object}	models.FreeResources
+//	@Failure		500	{object}	object	"could not calculate free resources and update database"
+//	@Failure		500	{object}	object	"could not find free resources table"
+//	@Failure		500	{object}	object	"no rows were affected
 //	@Router			/telemetry/free [get]
 func GetFreeResourcesHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()

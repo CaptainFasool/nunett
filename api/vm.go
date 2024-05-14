@@ -24,14 +24,24 @@ type DefaultVM struct {
 	NodeID          string `json:"node_id"`
 }
 
-//	 StartCustomHandler godoc
+//	StartCustomHandler godoc
 //
-//		@Summary		Start a VM with custom configuration.
-//		@Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
-//		@Tags			vm
-//		@Produce		json
-//		@Success		200
-//		@Router			/vm/start-custom [post]
+// @Summary		Start a VM with custom configuration.
+// @Description	This endpoint is an abstraction of all primitive endpoints. When invokend, it calls all primitive endpoints in a sequence.
+// @Tags			vm
+// @Produce		json
+// @Param			body	body		firecracker.CustomVM	true	"body"
+// @Success		200		{object}	string					"VM started successfully."
+// @Failure		400		{object}	string					"invalid request body"
+// @Failure		500		{object}	string					"could not create database table"
+// @Failure		500		{object}	string					"could not initialize virtual machine"
+// @Failure		500		{object}	string					"failed to configure drives"
+// @Failure		500		{object}	string					"failed to configure machine config"
+// @Failure		500		{object}	string					"failed to configure network-interfaces"
+// @Failure		500		{object}	string					"failed to setup MMDS"
+// @Failure		500		{object}	string					"failed to pass MMDS message"
+// @Failure		500		{object}	string					"unable to start virtual machine"
+// @Router			/vm/start-custom [post]
 func StartCustomHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
 	span := trace.SpanFromContext(reqCtx)
@@ -40,7 +50,7 @@ func StartCustomHandler(c *gin.Context) {
 	var body CustomVM
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid request body"})
 		return
 	}
 
@@ -76,10 +86,20 @@ func StartCustomHandler(c *gin.Context) {
 // StartDefaultHandler godoc
 //
 //	@Summary		Start a VM with default configuration.
-//	@Description	Everything except kernel files and filesystem file will be set by DMS itself.
+//	@Description	Kernel file and filesystem file needs to be passed in body. This endpoint is an abstraction of all primitive endpoints.
 //	@Tags			vm
 //	@Produce		json
-//	@Success		200
+//	@Param			body	body		firecracker.DefaultVM	true	"body"
+//	@Success		200		{object}	string					"VM started successfully."
+//	@Failure		400		{object}	string					"invalid request body"
+//	@Failure		500		{object}	string					"could not initialize virtual machine"
+//	@Failure		500		{object}	string					"failed to confiugre boot source"
+//	@Failure		500		{object}	string					"failed to configure drives"
+//	@Failure		500		{object}	string					"failed to configure machineConfig"
+//	@Failure		500		{object}	string					"failed to configure network-interfaces"
+//	@Failure		500		{object}	string					"failed to setup MMDS"
+//	@Failure		500		{object}	string					"failed to pass MMDS message"
+//	@Failure		500		{object}	string					"unable to start virtual machine"
 //	@Router			/vm/start-default [post]
 func StartDefaultHandler(c *gin.Context) {
 	reqCtx := c.Request.Context()
@@ -89,7 +109,7 @@ func StartDefaultHandler(c *gin.Context) {
 	var body DefaultVM
 	err := c.BindJSON(&body)
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(400, gin.H{"error": "invalid request body"})
 		return
 	}
 

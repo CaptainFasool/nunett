@@ -264,7 +264,7 @@ func selfPeerAddrs(body []byte) (addrsByte []byte, err error) {
 	return addrsByte, nil
 }
 
-// printMetadata takes models.MetadataV2 struct as input and display it in YAML-like format for better readability
+// printMetadata takes models.Metadata struct as input and display it in YAML-like format for better readability
 func printMetadata(w io.Writer, metadata *models.Metadata) {
 	fmt.Fprintln(w, "metadata:")
 
