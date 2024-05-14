@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
@@ -10,6 +11,16 @@ import (
 type TelemetryConfig struct {
 	ServiceName           string
 	OTelCollectorEndpoint string
+	ObservabilityLevel    string
+}
+
+// LoadConfigFromEnv loads configuration from environment variables
+func LoadConfigFromEnv() *TelemetryConfig {
+	return &TelemetryConfig{
+		ServiceName:           os.Getenv("SERVICE_NAME"),
+		OTelCollectorEndpoint: os.Getenv("OTEL_COLLECTOR_ENDPOINT"),
+		ObservabilityLevel:    os.Getenv("OBSERVABILITY_LEVEL"),
+	}
 }
 
 // OpenTelemetryCollector struct definition
@@ -21,7 +32,7 @@ type OpenTelemetryCollector struct {
 // Collector interface with necessary telemetry functions
 type Collector interface {
 	Initialize(ctx context.Context) error
-	HandleEvent(ctx context.Context, event GEvent) error
+	HandleEvent(ctx context.Context, event GEvent) (string, error)
 	Shutdown(ctx context.Context) error
 	GetObservedLevel() ObservabilityLevel
 	GetEndpoint() string

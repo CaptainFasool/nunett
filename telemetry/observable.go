@@ -12,10 +12,32 @@ import (
 
 type ObservableImpl struct {
 	collectors []models.Collector // Adding the collectors slice here
+	config     *models.TelemetryConfig
+}
+
+func NewObservableImpl(config *models.TelemetryConfig) *ObservableImpl {
+	return &ObservableImpl{
+		config: config, // Initialize with config
+	}
 }
 
 func (o *ObservableImpl) GetObservabilityLevel() models.ObservabilityLevel {
-	return models.INFO // Defaulting to INFO level
+    switch o.config.ObservabilityLevel {
+    case "TRACE":
+        return models.TRACE
+    case "DEBUG":
+        return models.DEBUG
+    case "INFO":
+        return models.INFO
+    case "WARN":
+        return models.WARN
+    case "ERROR":
+        return models.ERROR
+    case "FATAL":
+        return models.FATAL
+    default:
+        return models.INFO // Default to INFO if not specified or invalid
+    }
 }
 
 func (o *ObservableImpl) GetCollectors() []models.Collector {
@@ -23,34 +45,26 @@ func (o *ObservableImpl) GetCollectors() []models.Collector {
 }
 
 func (o *ObservableImpl) RegisterCollectors() {
-	config := models.TelemetryConfig{
-		ServiceName:           "DemoNunetGoService",
-		OTelCollectorEndpoint: "95.216.182.94:4318",
-	}
-
-	// Create a context with background for initialization
+	// Use the configuration from the struct
 	ctx := context.Background()
 
-	// Setting up the HTTP trace exporter with the endpoint from the config
-	exp, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpoint(config.OTelCollectorEndpoint))
+	// Set up the HTTP trace exporter with the endpoint from the config
+	exp, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpoint(o.config.OTelCollectorEndpoint), otlptracehttp.WithInsecure())
 	if err != nil {
-		log.Printf("Failed to create exporter: %v", err)
+		log.Printf("Failed to create the HTTP exporter: %v", err)
 		return
 	}
 
-	// Setting TracerProvider
 	tracerProvider := trace.NewTracerProvider(trace.WithBatcher(exp))
 	otel.SetTracerProvider(tracerProvider)
 
-	// Creating a new collector instance with the configured tracer provider
 	collector := &CollectorImpl{
 		models.OpenTelemetryCollector{
 			TracerProvider: tracerProvider,
-			OtEndpoint:     config.OTelCollectorEndpoint,
+			OtEndpoint:     o.config.OTelCollectorEndpoint,
 		},
 	}
 
-	// Add the new collector to the list
 	o.collectors = append(o.collectors, collector)
 
 	log.Println("Collector registered and initialized")
