@@ -14,8 +14,11 @@ import "gitlab.com/nunet/device-management-service/cmd"
 //	@license.name	Apache 2.0
 //	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host		localhost:9999
-// @BasePath	/api/v1
+//	@host		localhost:9999
+//
+//	@Schemes	http
+//
+//	@BasePath	/api/v1
 func main() {
 	cmd.Execute()
 }

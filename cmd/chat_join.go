@@ -35,7 +35,7 @@ func NewChatJoinCmd(utilsService backend.Utility, wsClient backend.WebSocketClie
 				return fmt.Errorf("join chat failed: %w", err)
 			}
 
-			query := "streamID=" + args[0]
+			query := "id=" + args[0]
 
 			joinURL, err := utils.InternalAPIURL("ws", "/api/v1/peers/chat/join", query)
 			if err != nil {

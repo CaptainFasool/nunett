@@ -22,7 +22,7 @@ import (
 var FS afero.Fs = afero.NewOsFs()
 var AFS *afero.Afero = &afero.Afero{Fs: FS}
 
-// GetMetadata reads metadataV2.json file and returns a models.MetadataV2 struct
+// GetMetadata reads metadataV2.json file and returns a models.Metadata struct
 func GetMetadata() (*models.Metadata, error) {
 	metadataPath := utils.GetMetadataFilePath()
 	content, err := AFS.ReadFile(metadataPath)
