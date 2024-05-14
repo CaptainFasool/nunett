@@ -3,10 +3,9 @@
 package storage
 
 import (
+	"context"
 	"gitlab.com/nunet/device-management-service/models"
 )
-
-type MiB uint64
 
 // StorageProvider handles I/O operations of files with remote storage providers
 // such as AWS S3 and IPFS.
@@ -28,14 +27,13 @@ type StorageProvider interface {
 	// Upload uploads a storage volume data to a given remote storage provider.
 	// The operation results in a return value that might vary from provider to provider
 	// (and it may not exist in some cases).
-	Upload(vol StorageVolume, target *models.SpecConfig) (*models.SpecConfig, error)
+	Upload(ctx context.Context, vol StorageVolume, target *models.SpecConfig) (*models.SpecConfig, error)
 
-	// Download downloads data from a given source, mounting it to a certain local path.
-	// (Note: the operation will fail if the user running DMS does not have access permission
-	// to the given path).
-	Download(source *models.SpecConfig, outputPath string) (StorageVolume, error)
+	// Download downloads data from a given source, mounting it to a certain local path
+	// which is defined by the VolumeController being used.
+	Download(ctx context.Context, source *models.SpecConfig) (StorageVolume, error)
 
-	// Size returns the size of a given source. The method may also be useful to check
+	// Size returns the size in bytes of a given source. The method may also be useful to check
 	// if a given source is available.
-	Size(source *models.SpecConfig) (MiB, error)
+	Size(ctx context.Context, source *models.SpecConfig) (uint64, error)
 }

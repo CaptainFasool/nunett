@@ -1,4 +1,4 @@
-package storage
+package basic_controller
 
 import (
 	"fmt"
@@ -15,6 +15,8 @@ import (
 // BasicVolumeController is the default implementation of the VolumeController.
 // It persists storage volumes information in the local database.
 //
+// TODO: rename to BasicVolumeController
+//
 // TODO [Remove gormDB]: *gorm.DB shouldn't be coupled with this struct.
 // We should otherwise depend on a DB general interface
 // which we may probably have with the DB refactoring
@@ -26,7 +28,7 @@ type BasicVolumeController struct {
 	basePath string
 
 	// file system to act upon
-	fs afero.Fs
+	FS afero.Fs
 }
 
 // NewDefaultVolumeController returns a new instance of BasicVolumeController
@@ -44,7 +46,7 @@ func NewDefaultVolumeController(db *gorm.DB, volBasePath string, fs afero.Fs) (*
 	return &BasicVolumeController{
 		db:       db,
 		basePath: volBasePath,
-		fs:       fs,
+		FS:       fs,
 	}, nil
 }
 
@@ -71,7 +73,7 @@ func (vc *BasicVolumeController) CreateVolume(volSource storage.VolumeSource, op
 
 	vol.Path = vc.basePath + string(volSource) + "-" + utils.RandomString(16)
 
-	if err := vc.fs.Mkdir(vol.Path, 0770); err != nil {
+	if err := vc.FS.Mkdir(vol.Path, 0770); err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to create storage volume: %w", err)
 	}
 
@@ -105,7 +107,7 @@ func (vc *BasicVolumeController) LockVolume(pathToVol string, opts ...storage.Lo
 	}
 
 	// change file permissions
-	if err := vc.fs.Chmod(vol.Path, 0400); err != nil {
+	if err := vc.FS.Chmod(vol.Path, 0400); err != nil {
 		return fmt.Errorf("failed to make storage volume read-only (path: %s): %w", vol.Path, err)
 	}
 
@@ -194,7 +196,7 @@ func (vc *BasicVolumeController) GetSize(identifier string, idType storage.IDTyp
 		return 0, fmt.Errorf("unsupported ID type: %d", idType)
 	}
 
-	size, err := utils.GetDirectorySize(vc.fs, path)
+	size, err := utils.GetDirectorySize(vc.FS, path)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get directory size: %w", err)
 	}
