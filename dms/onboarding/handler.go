@@ -12,8 +12,6 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/internal/config"
-	"gitlab.com/nunet/device-management-service/internal/heartbeat"
-	"gitlab.com/nunet/device-management-service/internal/klogger"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -202,12 +200,6 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 		return nil, fmt.Errorf("could not register and run new node: %w", err)
 	}
 
-	_, err = heartbeat.NewToken(hostID, capacity.Channel)
-	if err != nil {
-		zlog.Sugar().Errorf("unable to get new telemetry token: %v", err)
-	}
-	klogger.Logger.Info("device onboarded")
-
 	_, err = utils.RegisterLogbin(utils.GetMachineUUID(), hostID)
 	if err != nil {
 		zlog.Sugar().Errorf("unable to register with logbin: %v", err)
@@ -255,7 +247,6 @@ func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*mod
 	if err != nil {
 		return nil, fmt.Errorf("could not write to metadata file: %w", err)
 	}
-	klogger.Logger.Info("device resource changed")
 
 	err = resources.CalcFreeResAndUpdateDB()
 	if err != nil {
@@ -265,7 +256,6 @@ func ResourceConfig(ctx context.Context, capacity models.CapacityForNunet) (*mod
 }
 
 func Offboard(ctx context.Context, force bool) error {
-	klogger.Logger.Info("device offboarding started")
 	onboarded, err := utils.IsOnboarded()
 	if err != nil && !force {
 		return fmt.Errorf("could not retrieve onboard status: %w", err)
@@ -302,7 +292,6 @@ func Offboard(ctx context.Context, force bool) error {
 		return fmt.Errorf("unable to delete available resources on database: %w", err)
 	}
 
-	klogger.Logger.Info("device offboarded successfully")
 	return nil
 }
 

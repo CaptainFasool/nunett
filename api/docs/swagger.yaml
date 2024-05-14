@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  libp2p.checkpoint:
+  api.checkpoint:
     properties:
       checkpoint_dir:
         type: string
@@ -8,23 +8,6 @@ definitions:
         type: string
       last_modified:
         type: integer
-    type: object
-  machines.fundingRespToSPD:
-    properties:
-      compute_provider_addr:
-        type: string
-      distribute_50_hash:
-        type: string
-      distribute_75_hash:
-        type: string
-      estimated_price:
-        type: number
-      metadata_hash:
-        type: string
-      refund_hash:
-        type: string
-      withdraw_hash:
-        type: string
     type: object
   models.BlockchainAddressPrivKey:
     properties:
@@ -43,91 +26,6 @@ definitions:
         description: No need of this param maybe be deprecated in future
         type: string
       tx_hash:
-        type: string
-    type: object
-  models.DeploymentRequest:
-    properties:
-      address_user:
-        description: service provider wallet address
-        type: string
-      blockchain:
-        type: string
-      constraints:
-        properties:
-          complexity:
-            type: string
-          cpu:
-            type: integer
-          power:
-            type: integer
-          ram:
-            type: integer
-          time:
-            type: integer
-          vram:
-            type: integer
-        type: object
-      distribute_50_hash:
-        type: string
-      distribute_75_hash:
-        type: string
-      max_ntx:
-        type: integer
-      metadata_hash:
-        type: string
-      params:
-        properties:
-          image_id:
-            type: string
-          local_node_id:
-            description: NodeID of service provider (machine triggering the job)
-            type: string
-          local_public_key:
-            description: Public key of service provider
-            type: string
-          machine_type:
-            type: string
-          model_url:
-            type: string
-          node_id:
-            description: NodeID of compute provider (machine to deploy the job on)
-            type: string
-          packages:
-            items:
-              type: string
-            type: array
-          public_key:
-            description: Public key of compute provider
-            type: string
-          resume_job:
-            properties:
-              progress_file:
-                description: file path
-                type: string
-              resume:
-                type: boolean
-            type: object
-        type: object
-      refund_hash:
-        type: string
-      service_type:
-        type: string
-      timestamp:
-        type: string
-      traceinfo:
-        properties:
-          span_id:
-            type: string
-          trace_flags:
-            type: string
-          trace_id:
-            type: string
-          trace_state:
-            type: string
-        type: object
-      tx_hash:
-        type: string
-      withdraw_hash:
         type: string
     type: object
   models.Gpu:
@@ -206,14 +104,14 @@ definitions:
       total_cores:
         type: integer
     type: object
-  tokenomics.ClaimCardanoTokenBody:
+  utils.ClaimCardanoTokenBody:
     properties:
       compute_provider_address:
         type: string
       tx_hash:
         type: string
     type: object
-  tokenomics.TxHashResp:
+  utils.TxHashResp:
     properties:
       date_time:
         type: string
@@ -222,12 +120,12 @@ definitions:
       tx_hash:
         type: string
     type: object
-  tokenomics.UpdateTxStatusBody:
+  utils.UpdateTxStatusBody:
     properties:
       address:
         type: string
     type: object
-  tokenomics.rewardRespToCPD:
+  utils.rewardRespToCPD:
     properties:
       action:
         type: string
@@ -260,7 +158,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://nunet.io/tos
   title: Device Management Service
-  version: 0.4.167
+  version: 0.4.168
 paths:
   /device/status:
     get:
@@ -569,7 +467,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/libp2p.checkpoint'
+              $ref: '#/definitions/api.checkpoint'
             type: array
       summary: Returns a list of absolute path to checkpoint files.
       tags:
@@ -585,27 +483,6 @@ paths:
             type: string
       summary: Websocket endpoint responsible for sending deployment request and receiving
         deployment response.
-      tags:
-      - run
-  /run/request-service:
-    post:
-      description: RequestServiceHandler searches the DHT for non-busy, available
-        devices with appropriate metadata. Then informs parameters related to blockchain
-        to request to run a service on NuNet.
-      parameters:
-      - description: Deployment Request
-        in: body
-        name: deployment_request
-        required: true
-        schema:
-          $ref: '#/definitions/models.DeploymentRequest'
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/machines.fundingRespToSPD'
-      summary: Informs parameters related to blockchain to request to run a service
-        on NuNet
       tags:
       - run
   /telemetry/free:
@@ -627,7 +504,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/tokenomics.TxHashResp'
+              $ref: '#/definitions/utils.TxHashResp'
             type: array
       summary: Get list of TxHashes for jobs done.
       tags:
@@ -642,12 +519,12 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/tokenomics.ClaimCardanoTokenBody'
+          $ref: '#/definitions/utils.ClaimCardanoTokenBody'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/tokenomics.rewardRespToCPD'
+            $ref: '#/definitions/utils.rewardRespToCPD'
       summary: Get NTX tokens for work done.
       tags:
       - run
@@ -680,7 +557,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/tokenomics.UpdateTxStatusBody'
+          $ref: '#/definitions/utils.UpdateTxStatusBody'
       responses:
         "200":
           description: OK

@@ -20,6 +20,22 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.168](!349)
+
+### Deprecated
+- deleted the following packages
+    - docker
+    - firecracker
+    - integrations/oracle
+    - internal/klogger
+    - internal/messaging
+    - internal/tracing
+    - libp2p
+### Changed
+- moved /internal/logger into /telemetry
+- moved /docs into /api/docs
+- moved integration/tokenomics into /utils/blockchain.go and /cardano into /utils/cardano
+
 ## [0.4.167](#409)
 
 ### Changed

@@ -1,7 +1,7 @@
 package executor
 
 import (
-	"gitlab.com/nunet/device-management-service/internal/logger"
+	"gitlab.com/nunet/device-management-service/telemetry/logger"
 )
 
 var zlog *logger.Logger

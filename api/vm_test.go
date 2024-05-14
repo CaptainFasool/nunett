@@ -9,11 +9,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/nunet/device-management-service/firecracker"
 )
 
 func (h *MockHandler) StartDefaultHandler(c *gin.Context) {
-	var body firecracker.DefaultVM
+	var body DefaultVM
 	err := c.BindJSON(&body)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
@@ -23,7 +22,7 @@ func (h *MockHandler) StartDefaultHandler(c *gin.Context) {
 }
 
 func (h *MockHandler) StartCustomHandler(c *gin.Context) {
-	var body firecracker.CustomVM
+	var body CustomVM
 	err := c.BindJSON(&body)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
@@ -36,7 +35,7 @@ func (h *MockHandler) StartCustomHandler(c *gin.Context) {
 func TestStartCustomHandler(t *testing.T) {
 	router := SetupMockRouter()
 
-	body := firecracker.CustomVM{
+	body := CustomVM{
 		KernelImagePath: "/foo/bar",
 		FilesystemPath:  "/baz/foo",
 		VCPUCount:       1,
@@ -56,7 +55,7 @@ func TestStartCustomHandler(t *testing.T) {
 func TestStartDefaultHandler(t *testing.T) {
 	router := SetupMockRouter()
 
-	body := firecracker.DefaultVM{
+	body := DefaultVM{
 		KernelImagePath: "/foo/bar",
 		FilesystemPath:  "/baz/foo",
 		PublicKey:       "foobar",
