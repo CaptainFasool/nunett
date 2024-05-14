@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+
+## [0.4.169](#428)
+
+### Added
+- Volume Controller
+
 ## [0.4.168](!349)
 
 ### Deprecated
