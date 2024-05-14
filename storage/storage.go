@@ -39,17 +39,3 @@ type StorageProvider interface {
 	// if a given source is available.
 	Size(source *models.SpecConfig) (MiB, error)
 }
-
-// StorageVolume contains mainly the path to a directory/file where data is mounted
-// and additional metadata which is not yet defined.
-type StorageVolume struct {
-	// Path is the path to a directory/file where data is mounted
-	Path string
-}
-
-// VolumeController is used to manage storage volumes which are data mounted to files/directories.
-type VolumeController interface {
-	CreateVolume(path string, volType string) (StorageVolume, error)
-	DeleteVolume(in StorageVolume) error
-	ListVolumes() ([]StorageVolume, error)
-}
