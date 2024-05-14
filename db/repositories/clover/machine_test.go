@@ -1,4 +1,4 @@
-package repositories_gorm
+package repositories_clover
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.com/nunet/device-management-service/internal/repositories"
+	"gitlab.com/nunet/device-management-service/db/repositories"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -16,8 +16,8 @@ import (
 // This test suite ensures that the repository functions for the PeerInfo model behave as expected.
 func TestPeerInfoRepository(t *testing.T) {
 	// Setup database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	peerInfoRepo := NewPeerInfoRepository(db)
@@ -84,8 +84,8 @@ func TestPeerInfoRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the Machine model behave as expected.
 func TestMachineRepository(t *testing.T) {
 	// Setup database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	machineRepo := NewMachineRepository(db)
@@ -146,8 +146,8 @@ func TestMachineRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the FreeResources model behave as expected.
 func TestFreeResourcesRepository(t *testing.T) {
 	// Setup your database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	freeResourcesRepo := NewFreeResourcesRepository(db)
@@ -175,9 +175,18 @@ func TestFreeResourcesRepository(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, updatedFreeResources.Vcpu, retrievedFreeResources.Vcpu)
 
-	// Test Delete method
-	err = freeResourcesRepo.Delete(context.Background())
+	// Test History method
+	query := freeResourcesRepo.GetQuery()
+	query.Limit = 3
+	history, err := freeResourcesRepo.History(context.Background(), query)
 	assert.NoError(t, err)
+	assert.Len(t, history, 2)
+
+	// Test Clear method
+	err = freeResourcesRepo.Clear(context.Background())
+	assert.NoError(t, err)
+	history, err = freeResourcesRepo.History(context.Background(), query)
+	assert.Len(t, history, 0)
 }
 
 // TestAvailableResourcesRepository is a test suite for the AvailableResourcesRepository.
@@ -185,8 +194,8 @@ func TestFreeResourcesRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the AvailableResources model behave as expected.
 func TestAvailableResourcesRepository(t *testing.T) {
 	// Setup your database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	availableResourcesRepo := NewAvailableResourcesRepository(db)
@@ -214,9 +223,18 @@ func TestAvailableResourcesRepository(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, updatedAvailableResources.Vcpu, retrievedAvailableResources.Vcpu)
 
-	// Test Delete method
-	err = availableResourcesRepo.Delete(context.Background())
+	// Test History method
+	query := availableResourcesRepo.GetQuery()
+	query.Limit = 3
+	history, err := availableResourcesRepo.History(context.Background(), query)
 	assert.NoError(t, err)
+	assert.Len(t, history, 2)
+
+	// Test Clear method
+	err = availableResourcesRepo.Clear(context.Background())
+	assert.NoError(t, err)
+	history, err = availableResourcesRepo.History(context.Background(), query)
+	assert.Len(t, history, 0)
 }
 
 // TestServicesRepository is a test suite for the ServicesRepository.
@@ -224,8 +242,8 @@ func TestAvailableResourcesRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the Services model behave as expected.
 func TestServicesRepository(t *testing.T) {
 	// Setup database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	servicesRepo := NewServicesRepository(db)
@@ -292,8 +310,8 @@ func TestServicesRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the ServiceResourceRequirements model behave as expected.
 func TestServiceResourceRequirementsRepository(t *testing.T) {
 	// Setup database serviceResourceRequirements for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	serviceResourceRequirementsRepo := NewServiceResourceRequirementsRepository(
@@ -393,8 +411,8 @@ func TestServiceResourceRequirementsRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the Libp2pInfo model behave as expected.
 func TestLibp2pInfoRepository(t *testing.T) {
 	// Setup your database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	libp2pInfoRepo := NewLibp2pInfoRepository(db)
@@ -422,9 +440,18 @@ func TestLibp2pInfoRepository(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, updatedLibp2pInfo.ServerMode, retrievedLibp2pInfo.ServerMode)
 
-	// Test Delete method
-	err = libp2pInfoRepo.Delete(context.Background())
+	// Test History method
+	query := libp2pInfoRepo.GetQuery()
+	query.Limit = 3
+	history, err := libp2pInfoRepo.History(context.Background(), query)
 	assert.NoError(t, err)
+	assert.Len(t, history, 2)
+
+	// Test Clear method
+	err = libp2pInfoRepo.Clear(context.Background())
+	assert.NoError(t, err)
+	history, err = libp2pInfoRepo.History(context.Background(), query)
+	assert.Len(t, history, 0)
 }
 
 // TestMachineUUIDRepository is a test suite for the MachineUUIDRepository.
@@ -432,8 +459,8 @@ func TestLibp2pInfoRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the MachineUUID model behave as expected.
 func TestMachineUUIDRepository(t *testing.T) {
 	// Setup your database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	machineUUIDRepo := NewMachineUUIDRepository(db)
@@ -461,9 +488,18 @@ func TestMachineUUIDRepository(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, updatedMachineUUID.UUID, retrievedMachineUUID.UUID)
 
-	// Test Delete method
-	err = machineUUIDRepo.Delete(context.Background())
+	// Test History method
+	query := machineUUIDRepo.GetQuery()
+	query.Limit = 3
+	history, err := machineUUIDRepo.History(context.Background(), query)
 	assert.NoError(t, err)
+	assert.Len(t, history, 2)
+
+	// Test Clear method
+	err = machineUUIDRepo.Clear(context.Background())
+	assert.NoError(t, err)
+	history, err = machineUUIDRepo.History(context.Background(), query)
+	assert.Len(t, history, 0)
 }
 
 // TestConnectionRepository is a test suite for the ConnectionRepository.
@@ -471,8 +507,8 @@ func TestMachineUUIDRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the Connection model behave as expected.
 func TestConnectionRepository(t *testing.T) {
 	// Setup database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	connectionRepo := NewConnectionRepository(db)
@@ -539,8 +575,8 @@ func TestConnectionRepository(t *testing.T) {
 // This test suite ensures that the repository functions for the ElasticToken model behave as expected.
 func TestElasticTokenRepository(t *testing.T) {
 	// Setup database elasticToken for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	elasticTokenRepo := NewElasticTokenRepository(db)

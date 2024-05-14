@@ -44,7 +44,7 @@ func TestLogBinAuthRepository(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, updatedLogBinAuth.Token, retrievedLogBinAuth.Token)
 
-	// Test Delete method
-	err = logBinAuthRepo.Delete(context.Background())
+	// Test Clear method
+	err = logBinAuthRepo.Clear(context.Background())
 	assert.NoError(t, err)
 }

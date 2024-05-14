@@ -7,18 +7,18 @@ import (
 
 	"gorm.io/gorm"
 
-	"gitlab.com/nunet/device-management-service/internal/repositories"
+	"gitlab.com/nunet/device-management-service/db/repositories"
 )
 
 // GenericRepositoryGORM is a generic repository implementation using GORM as an ORM.
 // It is intended to be embedded in model repositories to provide basic database operations.
-type GenericRepositoryGORM[T interface{}] struct {
+type GenericRepositoryGORM[T repositories.ModelType] struct {
 	db *gorm.DB
 }
 
 // NewGenericRepository creates a new instance of GenericRepositoryGORM.
 // It initializes and returns a repository with the provided GORM database.
-func NewGenericRepository[T interface{}](db *gorm.DB) repositories.GenericRepository[T] {
+func NewGenericRepository[T repositories.ModelType](db *gorm.DB) repositories.GenericRepository[T] {
 	return &GenericRepositoryGORM[T]{db: db}
 }
 
@@ -34,9 +34,9 @@ func (repo *GenericRepositoryGORM[T]) Create(ctx context.Context, data T) (T, er
 }
 
 // Get retrieves a record by its identifier.
-func (repo *GenericRepositoryGORM[T]) Get(ctx context.Context, id uint) (T, error) {
+func (repo *GenericRepositoryGORM[T]) Get(ctx context.Context, id interface{}) (T, error) {
 	var result T
-	err := repo.db.WithContext(ctx).First(&result, id).Error
+	err := repo.db.WithContext(ctx).First(&result, "id = ?", id).Error
 	if err != nil {
 		return result, handleDBError(err)
 	}
@@ -44,14 +44,14 @@ func (repo *GenericRepositoryGORM[T]) Get(ctx context.Context, id uint) (T, erro
 }
 
 // Update modifies a record by its identifier.
-func (repo *GenericRepositoryGORM[T]) Update(ctx context.Context, id uint, data T) (T, error) {
+func (repo *GenericRepositoryGORM[T]) Update(ctx context.Context, id interface{}, data T) (T, error) {
 	err := repo.db.WithContext(ctx).Model(new(T)).Where("id = ?", id).Updates(data).Error
 	return data, handleDBError(err)
 }
 
 // Delete removes a record by its identifier.
-func (repo *GenericRepositoryGORM[T]) Delete(ctx context.Context, id uint) error {
-	err := repo.db.WithContext(ctx).Delete(new(T), id).Error
+func (repo *GenericRepositoryGORM[T]) Delete(ctx context.Context, id interface{}) error {
+	err := repo.db.WithContext(ctx).Delete(new(T), "id = ?", id).Error
 	return err
 }
 
@@ -102,13 +102,13 @@ func applyConditions[T any](db *gorm.DB, query repositories.Query[T]) *gorm.DB {
 	}
 
 	// Apply conditions based on non-zero values in the query instance.
-	if !isEmptyValue(query.Instance) {
+	if !repositories.IsEmptyValue(query.Instance) {
 		exampleType := reflect.TypeOf(query.Instance)
 		exampleValue := reflect.ValueOf(query.Instance)
 		for i := 0; i < exampleType.NumField(); i++ {
 			fieldName := exampleType.Field(i).Name
 			fieldValue := exampleValue.Field(i).Interface()
-			if !isEmptyValue(fieldValue) {
+			if !repositories.IsEmptyValue(fieldValue) {
 				columnName := db.NamingStrategy.ColumnName(tableName, fieldName)
 				db = db.Where(fmt.Sprintf("%s = ?", columnName), fieldValue)
 			}
@@ -117,7 +117,13 @@ func applyConditions[T any](db *gorm.DB, query repositories.Query[T]) *gorm.DB {
 
 	// Apply sorting if specified in the query.
 	if query.SortBy != "" {
-		db = db.Order(query.SortBy)
+		dir := "ASC"
+		if query.SortBy[0] == '-' {
+			query.SortBy = query.SortBy[1:]
+			dir = "DESC"
+		}
+		columnName := db.NamingStrategy.ColumnName(tableName, query.SortBy)
+		db = db.Order(fmt.Sprintf("%s.%s %s", tableName, columnName, dir))
 	}
 
 	// Apply limit if specified in the query.

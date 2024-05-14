@@ -11,6 +11,8 @@ type QueryCondition struct {
 	Value    interface{} // Value is the expected value for the given field.
 }
 
+type ModelType interface{}
+
 // Query is a struct that wraps both the instance of type T and additional query parameters.
 // It is used to construct queries with conditions, sorting, limiting, and offsetting.
 type Query[T any] struct {
@@ -22,15 +24,15 @@ type Query[T any] struct {
 }
 
 // GenericRepository is an interface defining basic CRUD operations and standard querying methods.
-type GenericRepository[T interface{}] interface {
+type GenericRepository[T ModelType] interface {
 	// Create adds a new record to the repository.
 	Create(ctx context.Context, data T) (T, error)
 	// Get retrieves a record by its identifier.
-	Get(ctx context.Context, id uint) (T, error)
+	Get(ctx context.Context, id interface{}) (T, error)
 	// Update modifies a record by its identifier.
-	Update(ctx context.Context, id uint, data T) (T, error)
+	Update(ctx context.Context, id interface{}, data T) (T, error)
 	// Delete removes a record by its identifier.
-	Delete(ctx context.Context, id uint) error
+	Delete(ctx context.Context, id interface{}) error
 	// Find retrieves a single record based on a query.
 	Find(ctx context.Context, query Query[T]) (T, error)
 	// FindAll retrieves multiple records based on a query.

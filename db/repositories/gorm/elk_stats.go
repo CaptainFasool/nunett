@@ -3,7 +3,7 @@ package repositories_gorm
 import (
 	"gorm.io/gorm"
 
-	"gitlab.com/nunet/device-management-service/internal/repositories"
+	"gitlab.com/nunet/device-management-service/db/repositories"
 	"gitlab.com/nunet/device-management-service/models"
 )
 

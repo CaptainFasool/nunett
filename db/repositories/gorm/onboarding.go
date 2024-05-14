@@ -3,7 +3,7 @@ package repositories_gorm
 import (
 	"gorm.io/gorm"
 
-	"gitlab.com/nunet/device-management-service/internal/repositories"
+	"gitlab.com/nunet/device-management-service/db/repositories"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -16,6 +16,6 @@ type LogBinAuthRepositoryGORM struct {
 // It initializes and returns a GORM-based repository for LogBinAuth entity.
 func NewLogBinAuthRepository(db *gorm.DB) repositories.LogBinAuthRepository {
 	return &LogBinAuthRepositoryGORM{
-		NewGenericEntityRepository[models.LogBinAuth](db, "", ""),
+		NewGenericEntityRepository[models.LogBinAuth](db),
 	}
 }

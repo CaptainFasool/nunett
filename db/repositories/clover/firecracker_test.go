@@ -1,4 +1,4 @@
-package repositories_gorm
+package repositories_clover
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.com/nunet/device-management-service/internal/repositories"
+	"gitlab.com/nunet/device-management-service/db/repositories"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -15,8 +15,8 @@ import (
 // This test suite ensures that the repository functions for the VirtualMachine model behave as expected.
 func TestVirtualMachineRepository(t *testing.T) {
 	// Setup database connection for testing
-	setup()
-	defer teardown()
+	db, path := setup()
+	defer teardown(db, path)
 
 	// Initialize the repository
 	virtualMachineRepo := NewVirtualMachineRepository(db)
