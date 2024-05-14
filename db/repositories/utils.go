@@ -1,36 +1,13 @@
-package repositories_gorm
+package repositories
 
 import (
 	"fmt"
 	"reflect"
-
-	"gorm.io/gorm"
-
-	"gitlab.com/nunet/device-management-service/internal/repositories"
 )
 
-// handleDBError is a utility function that translates GORM database errors into custom repository errors.
-// It takes a GORM database error as input and returns a corresponding custom error from the repositories package.
-func handleDBError(err error) error {
-	if err != nil {
-		switch err {
-		case gorm.ErrRecordNotFound:
-			// Return NotFoundError for record not found errors
-			return repositories.NotFoundError
-		case gorm.ErrInvalidData, gorm.ErrInvalidField, gorm.ErrInvalidValue:
-			// Return InvalidDataError for various invalid data errors
-			return repositories.InvalidDataError
-		default:
-			// Return DatabaseError for other unspecified database errors
-			return repositories.DatabaseError
-		}
-	}
-	return nil
-}
-
-// updateField is a generic function that updates a field of a struct or a pointer to a struct.
+// UpdateField is a generic function that updates a field of a struct or a pointer to a struct.
 // The function uses reflection to dynamically update the specified field of the input struct.
-func updateField[T interface{}](input T, fieldName string, newValue interface{}) (T, error) {
+func UpdateField[T interface{}](input T, fieldName string, newValue interface{}) (T, error) {
 	// Use reflection to get the struct's field
 	val := reflect.ValueOf(input)
 	if val.Kind() == reflect.Ptr {
@@ -71,11 +48,9 @@ func updateField[T interface{}](input T, fieldName string, newValue interface{})
 	return input, nil
 }
 
-// isEmptyValue checks if a value is considered empty (zero or nil).
-
-// isEmptyValue checks if value represents a zero-value struct (or pointer to a zero-value struct) using reflection.
+// IsEmptyValue checks if value represents a zero-value struct (or pointer to a zero-value struct) using reflection.
 // The function is useful for determining if a struct or its pointer is empty, i.e., all fields have their zero-values.
-func isEmptyValue(value interface{}) bool {
+func IsEmptyValue(value interface{}) bool {
 	// Check if the value is nil
 	if value == nil {
 		return true

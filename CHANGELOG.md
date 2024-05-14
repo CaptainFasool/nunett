@@ -21,6 +21,11 @@ Types of changes
 
 -->
 
+## [0.4.170](#386)
+
+### Added
+- Support for Clover DB
+
 ## [0.4.169](#428)
 
 ### Added
