@@ -20,6 +20,12 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
+## [0.4.171](#412)
+
+### Added
+- open telemetry package implemntation
+
+
 ## [0.4.164](#340)
 
 ### Fixed
