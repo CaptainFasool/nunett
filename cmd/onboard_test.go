@@ -25,7 +25,7 @@ func Test_OnboardCmdFlags(t *testing.T) {
 	})
 }
 
-func Test_OnboardCmdMissingFlags(t *testing.T) {
+func Test_OnboardCmdMissingMemory(t *testing.T) {
 	conns := GetMockConn(true)
 	mockConn := &MockConnection{conns: conns}
 	mockUtils := &MockUtilsService{}
@@ -38,10 +38,101 @@ func Test_OnboardCmdMissingFlags(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 
-	cmd.SetArgs([]string{"--memory=0", "--nunet-channel=''"})
+	cmd.SetArgs([]string{"--memory=0", "--cpu=5000", "--nunet-channel=nunet-test", "--address=addr1_qtest123"})
 
 	err := cmd.Execute()
-	assert.ErrorContains(err, "missing at least one required flag")
+	assert.ErrorContains(err, "memory must be provided and greater than 0")
+}
+
+func Test_OnboardCmdMissingCpu(t *testing.T) {
+	conns := GetMockConn(true)
+	mockConn := &MockConnection{conns: conns}
+	mockUtils := &MockUtilsService{}
+
+	assert := assert.New(t)
+
+	buf := new(bytes.Buffer)
+
+	cmd := NewOnboardCmd(mockConn, mockUtils)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cmd.SetArgs([]string{"--cpu=0", "--nunet-channel=nunet-test", "--address=addr1_qtest123"})
+
+	err := cmd.Execute()
+	assert.ErrorContains(err, "cpu must be provided and greater than 0")
+}
+
+func Test_OnboardCmdMissingChannel(t *testing.T) {
+	conns := GetMockConn(true)
+	mockConn := &MockConnection{conns: conns}
+	mockUtils := &MockUtilsService{}
+
+	assert := assert.New(t)
+
+	buf := new(bytes.Buffer)
+
+	cmd := NewOnboardCmd(mockConn, mockUtils)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cmd.SetArgs([]string{"--memory=3000", "--cpu=5000", "--nunet-channel=''", "--address=addr1_qtest123"})
+
+	err := cmd.Execute()
+	assert.ErrorContains(err, "nunet-channel must be provided and non-empty")
+}
+
+func Test_OnboardCmdMissingAddress(t *testing.T) {
+	conns := GetMockConn(true)
+	mockConn := &MockConnection{conns: conns}
+	mockUtils := &MockUtilsService{}
+
+	assert := assert.New(t)
+
+	buf := new(bytes.Buffer)
+
+	cmd := NewOnboardCmd(mockConn, mockUtils)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cmd.SetArgs([]string{"--memory=3000", "--cpu=5000", "--nunet-channel=nunet-test", "--address="})
+
+	err := cmd.Execute()
+	assert.ErrorContains(err, "address must be provided and non-empty")
+}
+
+func Test_OnboardCmdAllFlagsValid(t *testing.T) {
+	conns := GetMockConn(true)
+	mockConn := &MockConnection{conns: conns}
+	mockUtils := &MockUtilsService{}
+	mockUtils.SetResponseFor("POST", "/api/v1/onboarding/onboard", []byte(`{ "message": "test" }`))
+
+	cmd := NewOnboardCmd(mockConn, mockUtils)
+
+	outBuf := new(bytes.Buffer)
+	cmd.SetOut(outBuf)
+	cmd.SetErr(outBuf)
+
+	cmd.SetArgs([]string{
+		"--memory=3000",
+		"--cpu=5000",
+		"--nunet-channel=nunet-test",
+		"--address=addr1_qtest123",
+		"--ntx-price=1.0",
+		"--plugin=test-plugin",
+		"--local-enable=true",
+		"--cardano=true",
+		"--unavailable=false",
+	})
+
+	inBuf := bytes.NewBufferString("y\n")
+	cmd.SetIn(inBuf)
+
+	assert := assert.New(t)
+
+	err := cmd.Execute()
+	assert.NoError(err)
+	assert.Contains(outBuf.String(), "Successfully onboarded!")
 }
 
 func Test_OnboardCmdSuccess(t *testing.T) {
