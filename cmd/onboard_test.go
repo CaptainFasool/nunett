@@ -57,7 +57,7 @@ func Test_OnboardCmdMissingCpu(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 
-	cmd.SetArgs([]string{"--cpu=0", "--nunet-channel=nunet-test", "--address=addr1_qtest123"})
+	cmd.SetArgs([]string{"--memory=3000", "--cpu=0", "--nunet-channel=nunet-test", "--address=addr1_qtest123"})
 
 	err := cmd.Execute()
 	assert.ErrorContains(err, "cpu must be provided and greater than 0")
