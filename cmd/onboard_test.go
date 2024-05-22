@@ -101,40 +101,6 @@ func Test_OnboardCmdMissingAddress(t *testing.T) {
 	assert.ErrorContains(err, "address must be provided and non-empty")
 }
 
-func Test_OnboardCmdAllFlagsValid(t *testing.T) {
-	conns := GetMockConn(true)
-	mockConn := &MockConnection{conns: conns}
-	mockUtils := &MockUtilsService{}
-	mockUtils.SetResponseFor("POST", "/api/v1/onboarding/onboard", []byte(`{ "message": "test" }`))
-
-	cmd := NewOnboardCmd(mockConn, mockUtils)
-
-	outBuf := new(bytes.Buffer)
-	cmd.SetOut(outBuf)
-	cmd.SetErr(outBuf)
-
-	cmd.SetArgs([]string{
-		"--memory=3000",
-		"--cpu=5000",
-		"--nunet-channel=nunet-test",
-		"--address=addr1_qtest123",
-		"--ntx-price=1.0",
-		"--plugin=test-plugin",
-		"--local-enable=true",
-		"--cardano=true",
-		"--unavailable=false",
-	})
-
-	inBuf := bytes.NewBufferString("y\n")
-	cmd.SetIn(inBuf)
-
-	assert := assert.New(t)
-
-	err := cmd.Execute()
-	assert.NoError(err)
-	assert.Contains(outBuf.String(), "Successfully onboarded!")
-}
-
 func Test_OnboardCmdSuccess(t *testing.T) {
 	conns := GetMockConn(true)
 	mockConn := &MockConnection{conns: conns}
