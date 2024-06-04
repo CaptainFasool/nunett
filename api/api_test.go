@@ -93,7 +93,7 @@ func SetupMockRouter() *gin.Engine {
 	if debug == true {
 		dht := v1.Group("/dht")
 		{
-			dht.GET("", m.DumpDHTHandler)
+			// dht.GET("", m.DumpDHTHandler)
 			dht.GET("/update", m.ManualDHTUpdateHandler)
 		}
 		kadDHT := v1.Group("/kad-dht")
@@ -104,24 +104,24 @@ func SetupMockRouter() *gin.Engine {
 		v1.GET("/oldping", m.OldPingPeerHandler)
 		v1.GET("/cleanup", m.CleanupPeerHandler)
 	}
-	p2p := v1.Group("/peers")
-	{
-		p2p.GET("", m.ListPeersHandler)
-		p2p.GET("/dht", m.ListDHTPeersHandler)
-		p2p.GET("/kad-dht", m.ListKadDHTPeersHandler)
-		p2p.GET("/self", m.SelfPeerInfoHandler)
-		p2p.GET("/chat", m.ListChatHandler)
-		p2p.GET("/depreq", m.DefaultDepReqPeerHandler)
-		p2p.GET("/chat/start", m.StartChatHandler)
-		p2p.GET("/chat/join", m.JoinChatHandler)
-		p2p.GET("/chat/clear", m.ClearChatHandler)
-		p2p.GET("/file", m.ListFileTransferRequestsHandler)
-		p2p.GET("/file/send", m.SendFileTransferHandler)
-		p2p.GET("/file/accept", m.AcceptFileTransferHandler)
-		p2p.GET("/file/clear", m.ClearFileTransferRequestsHandler)
-		// peer.GET("/shell", internal.HandleWebSocket)
-		// peer.GET("/log", internal.HandleWebSocket)
-	}
+	// p2p := v1.Group("/peers")
+	// {
+	// p2p.GET("", m.ListPeersHandler)
+	// p2p.GET("/dht", m.ListDHTPeersHandler)
+	// p2p.GET("/kad-dht", m.ListKadDHTPeersHandler)
+	// p2p.GET("/self", m.SelfPeerInfoHandler)
+	// p2p.GET("/chat", m.ListChatHandler)
+	// p2p.GET("/depreq", m.DefaultDepReqPeerHandler)
+	// p2p.GET("/chat/start", m.StartChatHandler)
+	// p2p.GET("/chat/join", m.JoinChatHandler)
+	// p2p.GET("/chat/clear", m.ClearChatHandler)
+	// p2p.GET("/file", m.ListFileTransferRequestsHandler)
+	// p2p.GET("/file/send", m.SendFileTransferHandler)
+	// p2p.GET("/file/accept", m.AcceptFileTransferHandler)
+	// p2p.GET("/file/clear", m.ClearFileTransferRequestsHandler)
+	// peer.GET("/shell", internal.HandleWebSocket)
+	// peer.GET("/log", internal.HandleWebSocket)
+	// }
 	return router
 }
 

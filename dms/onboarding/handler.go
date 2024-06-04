@@ -3,6 +3,7 @@ package onboarding
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -12,8 +13,8 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/dms/resources"
 	"gitlab.com/nunet/device-management-service/internal/config"
-	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
+	// "gitlab.com/nunet/device-management-service/network/libp2p"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/spf13/afero"
@@ -195,12 +196,13 @@ func Onboard(ctx context.Context, capacity models.CapacityForNunet) (*models.Met
 		return nil, fmt.Errorf("could not calculate free resources and update database: %w", err)
 	}
 
-	hostID, err := libp2p.RegisterRunNewNode(capacity.ServerMode, capacity.IsAvailable)
-	if err != nil {
-		return nil, fmt.Errorf("could not register and run new node: %w", err)
-	}
+	// hostID, err := libp2p.RegisterRunNewNode(capacity.ServerMode, capacity.IsAvailable)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("could not register and run new node: %w", err)
+	// }
+	return nil, errors.New("RegisterRunNewNode is not implemented")
 
-	_, err = utils.RegisterLogbin(utils.GetMachineUUID(), hostID)
+	// _, err = utils.RegisterLogbin(utils.GetMachineUUID(), hostID)
 	if err != nil {
 		zlog.Sugar().Errorf("unable to register with logbin: %v", err)
 	}
@@ -268,10 +270,11 @@ func Offboard(ctx context.Context, force bool) error {
 		return fmt.Errorf("machine is not onboarded")
 	}
 
-	err = libp2p.ShutdownNode()
-	if err != nil {
-		return fmt.Errorf("unable to shutdown node: %w", err)
-	}
+	// err = libp2p.ShutdownNode()
+	// if err != nil {
+	// 	return fmt.Errorf("unable to shutdown node: %w", err)
+	// }
+	return errors.New("ShutdownNode is not implemented")
 
 	metadataPath := utils.GetMetadataFilePath()
 	err = os.Remove(metadataPath)

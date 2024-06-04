@@ -1,4 +1,4 @@
-package lipp2p
+package libp2p
 
 type Libp2pPeer struct {
 }

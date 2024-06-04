@@ -1,7 +1,6 @@
 package api
 
 import (
-	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -60,37 +59,37 @@ func SetupRouter() *gin.Engine {
 		tele.GET("/free", GetFreeResourcesHandler)
 	}
 
-	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-		dht := v1.Group("/dht")
-		{
-			dht.GET("/update", ManualDHTUpdateHandler)
-		}
-		kadDHT := v1.Group("/kad-dht")
-		{
-			kadDHT.GET("", DumpKademliaDHTHandler)
-		}
-		v1.GET("/ping", PingPeerHandler)
-		v1.GET("/oldping", OldPingPeerHandler)
-		v1.GET("/cleanup", CleanupPeerHandler)
-	}
+	// if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+	// 	dht := v1.Group("/dht")
+	// 	{
+	// 		dht.GET("/update", ManualDHTUpdateHandler)
+	// 	}
+	// 	kadDHT := v1.Group("/kad-dht")
+	// 	{
+	// 		kadDHT.GET("", DumpKademliaDHTHandler)
+	// 	}
+	// 	v1.GET("/ping", PingPeerHandler)
+	// 	v1.GET("/oldping", OldPingPeerHandler)
+	// 	v1.GET("/cleanup", CleanupPeerHandler)
+	// }
 
-	p2p := v1.Group("/peers")
-	{
-		p2p.GET("", ListPeersHandler)
-		p2p.GET("/dht", ListDHTPeersHandler)
-		p2p.GET("/dht/dump", DumpDHTHandler)
-		p2p.GET("/kad-dht", ListKadDHTPeersHandler)
-		p2p.GET("/self", SelfPeerInfoHandler)
-		p2p.GET("/depreq", DefaultDepReqPeerHandler)
-		p2p.GET("/chat", ListChatHandler)
-		p2p.GET("/chat/start", StartChatHandler)
-		p2p.GET("/chat/join", JoinChatHandler)
-		p2p.GET("/chat/clear", ClearChatHandler)
-		p2p.GET("/file", ListFileTransferRequestsHandler)
-		p2p.GET("/file/send", SendFileTransferHandler)
-		p2p.GET("/file/accept", AcceptFileTransferHandler)
-		p2p.GET("/file/clear", ClearFileTransferRequestsHandler)
-	}
+	// p2p := v1.Group("/peers")
+	// {
+	// 	p2p.GET("", ListPeersHandler)
+	// 	p2p.GET("/dht", ListDHTPeersHandler)
+	// 	p2p.GET("/dht/dump", DumpDHTHandler)
+	// 	p2p.GET("/kad-dht", ListKadDHTPeersHandler)
+	// 	p2p.GET("/self", SelfPeerInfoHandler)
+	// 	p2p.GET("/depreq", DefaultDepReqPeerHandler)
+	// 	p2p.GET("/chat", ListChatHandler)
+	// 	p2p.GET("/chat/start", StartChatHandler)
+	// 	p2p.GET("/chat/join", JoinChatHandler)
+	// 	p2p.GET("/chat/clear", ClearChatHandler)
+	// 	p2p.GET("/file", ListFileTransferRequestsHandler)
+	// 	p2p.GET("/file/send", SendFileTransferHandler)
+	// 	p2p.GET("/file/accept", AcceptFileTransferHandler)
+	// 	p2p.GET("/file/clear", ClearFileTransferRequestsHandler)
+	// }
 
 	return router
 }

@@ -1,15 +1,10 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"gitlab.com/nunet/device-management-service/libp2p"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // ListPeersHandler  godoc
@@ -24,12 +19,13 @@ import (
 //	@Success		200	{object}	object	"list of peers"
 //	@Router			/peers [get]
 func ListPeersHandler(c *gin.Context) {
-	peers, err := libp2p.ListPeers()
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, peers)
+	// peers, err := libp2p.ListPeers()
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// c.JSON(200, peers)
+	c.AbortWithStatusJSON(500, gin.H{"error": "list peers not implemented"})
 }
 
 // ListDHTPeersHandler  godoc
@@ -44,17 +40,19 @@ func ListPeersHandler(c *gin.Context) {
 //
 //	@Router			/peers/dht [get]
 func ListDHTPeersHandler(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	peers, err := libp2p.ListDHTPeers(reqCtx)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	if len(peers) == 0 {
-		c.JSON(404, gin.H{"message": "no peers found"})
-		return
-	}
-	c.JSON(200, peers)
+	// reqCtx := c.Request.Context()
+	// peers, err := libp2p.ListDHTPeers(reqCtx)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// if len(peers) == 0 {
+	// 	c.JSON(404, gin.H{"message": "no peers found"})
+	// 	return
+	// }
+	// c.JSON(200, peers)
+
+	c.AbortWithStatusJSON(500, gin.H{"error": "list dht peers not implemented"})
 }
 
 // ListKadDHTPeersHandler  godoc
@@ -68,18 +66,19 @@ func ListDHTPeersHandler(c *gin.Context) {
 //	@Failure		500	{object}	object	"Host Node hasn't yet been initialized"
 //	@Router			/peers/kad-dht [get]
 func ListKadDHTPeersHandler(c *gin.Context) {
-	reqCtx := c.Request.Context()
+	// reqCtx := c.Request.Context()
 
-	peers, err := libp2p.ListKadDHTPeers(c, reqCtx)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	if len(peers) == 0 {
-		c.JSON(404, gin.H{"message": "no peers found"})
-		return
-	}
-	c.JSON(200, peers)
+	// peers, err := libp2p.ListKadDHTPeers(c, reqCtx)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// if len(peers) == 0 {
+	// 	c.JSON(404, gin.H{"message": "no peers found"})
+	// 	return
+	// }
+	// c.JSON(200, peers)
+	c.AbortWithStatusJSON(500, gin.H{"error": "list kad dht peers not implemented"})
 }
 
 // SelfPeerInfoHandler  godoc
@@ -92,12 +91,13 @@ func ListKadDHTPeersHandler(c *gin.Context) {
 //	@Failure		500	{object}	object	"host node hasn't yet been initialized"
 //	@Router			/peers/self [get]
 func SelfPeerInfoHandler(c *gin.Context) {
-	self, err := libp2p.SelfPeerInfo()
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, self)
+	// self, err := libp2p.SelfPeerInfo()
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// c.JSON(200, self)
+	c.AbortWithStatusJSON(500, gin.H{"error": "self peer info not implemented"})
 }
 
 // ListChatHandler  godoc
@@ -110,12 +110,13 @@ func SelfPeerInfoHandler(c *gin.Context) {
 //	@Failure		404	{object}	object				"no incoming message stream"
 //	@Router			/peers/chat [get]
 func ListChatHandler(c *gin.Context) {
-	chats, err := libp2p.IncomingChatRequests()
-	if err != nil {
-		c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, chats)
+	// chats, err := libp2p.IncomingChatRequests()
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// c.JSON(200, chats)
+	c.AbortWithStatusJSON(500, gin.H{"error": "list chat requests not implemented"})
 }
 
 // ClearChatHandler  godoc
@@ -128,12 +129,13 @@ func ListChatHandler(c *gin.Context) {
 //	@Failure		500	{object}	object	"no inbound chat streams"
 //	@Router			/peers/chat/clear [get]
 func ClearChatHandler(c *gin.Context) {
-	err := libp2p.ClearIncomingChatRequests()
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"message": "successfully cleared inbound chat requests"})
+	// err := libp2p.ClearIncomingChatRequests()
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// c.JSON(200, gin.H{"message": "successfully cleared inbound chat requests"})
+	c.AbortWithStatusJSON(500, gin.H{"error": "clear chat requests not implemented"})
 }
 
 // StartChatHandler  godoc
@@ -149,25 +151,27 @@ func ClearChatHandler(c *gin.Context) {
 //	@Failure		500		{object}	object	"could not create stream with peer"
 //	@Router			/peers/chat/start [get]
 func StartChatHandler(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	id := c.Query("peerID")
-	if id == "" {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer ID: empty peer ID"})
-		return
-	}
-	p, err := peer.Decode(id)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer ID: could not decode string ID to peer ID"})
-		return
-	}
+	// reqCtx := c.Request.Context()
+	// id := c.Query("peerID")
+	// if id == "" {
+	// 	c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer ID: empty peer ID"})
+	// 	return
+	// }
+	// p, err := peer.Decode(id)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer ID: could not decode string ID to peer ID"})
+	// 	return
+	// }
 
-	stream, err := libp2p.CreateChatStream(reqCtx, p)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	libp2p.StartChat(c.Writer, c.Request, stream, id)
+	// stream, err := libp2p.CreateChatStream(reqCtx, p)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// libp2p.StartChat(c.Writer, c.Request, stream, id)
 	// should it return a response?
+
+	c.AbortWithStatusJSON(500, gin.H{"error": "start chat not implemented"})
 }
 
 // JoinChatHandler  godoc
@@ -189,16 +193,17 @@ func JoinChatHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"error": "stream ID not provided"})
 		return
 	}
-	stream, err := strconv.Atoi(streamID)
+	_, err := strconv.Atoi(streamID)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid type for streamID"})
 		return
 	}
-	err = libp2p.JoinChat(c.Writer, c.Request, stream)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
+	// err = libp2p.JoinChat(c.Writer, c.Request, stream)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	c.AbortWithStatusJSON(500, gin.H{"error": "join chat not implemented"})
 	// Successfully upgraded to WebSocket
 	response := gin.H{"message": "WebSocket connection upgraded successfully"}
 	c.JSON(http.StatusOK, response)
@@ -215,17 +220,19 @@ func JoinChatHandler(c *gin.Context) {
 //	@Failure		404	{object}	object	"no content in DHT"
 //	@Router			/peers/dht/dump [get]
 func DumpDHTHandler(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	dht, err := libp2p.DumpDHT(reqCtx)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	if len(dht) == 0 {
-		c.JSON(200, gin.H{"message": "empty DHT"})
-		return
-	}
-	c.JSON(200, dht)
+	// reqCtx := c.Request.Context()
+	// dht, err := libp2p.DumpDHT(reqCtx)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// if len(dht) == 0 {
+	// 	c.JSON(200, gin.H{"message": "empty DHT"})
+	// 	return
+	// }
+	// c.JSON(200, dht)
+
+	c.AbortWithStatusJSON(500, gin.H{"error": "dump dht not implemented"})
 }
 
 // DefaultDepReqPeerHandler  godoc
@@ -246,16 +253,17 @@ func DumpDHTHandler(c *gin.Context) {
 //	@Failure		500		{object}	object	"Peer not in DHT yet"
 //	@Router			/peers/depreq [get]
 func DefaultDepReqPeerHandler(c *gin.Context) {
-	peerID := c.Query("peerID")
-	reqCtx := c.Request.Context()
+	// peerID := c.Query("peerID")
+	// reqCtx := c.Request.Context()
 
-	target, err := libp2p.DefaultDepReqPeer(reqCtx, peerID)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
+	// target, err := libp2p.DefaultDepReqPeer(reqCtx, peerID)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
 
-	c.JSON(200, gin.H{"message": fmt.Sprintf("successfully set %s as target", target)})
+	// c.JSON(200, gin.H{"message": fmt.Sprintf("successfully set %s as target", target)})
+	c.AbortWithStatusJSON(500, gin.H{"error": "default dep req peer not implemented"})
 }
 
 // ClearFileTransferRequestsHandler  godoc
@@ -268,16 +276,17 @@ func DefaultDepReqPeerHandler(c *gin.Context) {
 //	@Failure		500	{object}	object	"no inbound file transfer stream"
 //	@Router			/peers/file/clear [get]
 func ClearFileTransferRequestsHandler(c *gin.Context) {
-	reqCtx := c.Request.Context()
-	span := trace.SpanFromContext(reqCtx)
-	span.SetAttributes(attribute.String("URL", "/peers/file/clear"))
+	// reqCtx := c.Request.Context()
+	// span := trace.SpanFromContext(reqCtx)
+	// span.SetAttributes(attribute.String("URL", "/peers/file/clear"))
 
-	err := libp2p.ClearIncomingFileRequests()
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"message": "successfully cleared inbound file transfer requests"})
+	// err := libp2p.ClearIncomingFileRequests()
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// c.JSON(200, gin.H{"message": "successfully cleared inbound file transfer requests"})
+	c.AbortWithStatusJSON(500, gin.H{"error": "clear file transfer requests not implemented"})
 }
 
 // ListFileTransferRequestsHandler  godoc
@@ -290,15 +299,16 @@ func ClearFileTransferRequestsHandler(c *gin.Context) {
 //	@Failure		404	{object}	object	"no incoming file transfer stream"
 //	@Router			/peers/file [get]
 func ListFileTransferRequestsHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/file"))
+	// span := trace.SpanFromContext(c.Request.Context())
+	// span.SetAttributes(attribute.String("URL", "/peers/file"))
 
-	req, err := libp2p.IncomingFileTransferRequests()
-	if err != nil {
-		c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, req)
+	// req, err := libp2p.IncomingFileTransferRequests()
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// c.JSON(200, req)
+	c.AbortWithStatusJSON(500, gin.H{"error": "list file transfer requests not implemented"})
 }
 
 // SendFileTransferHandler  godoc
@@ -317,32 +327,33 @@ func ListFileTransferRequestsHandler(c *gin.Context) {
 //	@Failure		500	{object}	object	"could not send file to peer"
 //	@Router			/peers/file/send [get]
 func SendFileTransferHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/file/send"))
+	// span := trace.SpanFromContext(c.Request.Context())
+	// span.SetAttributes(attribute.String("URL", "/peers/file/send"))
 
-	id := c.Query("peerID")
-	p, err := peer.Decode(id)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer string ID: could not decode string ID to peer ID"})
-		return
-	}
-	if p == libp2p.GetP2P().Host.ID() {
-		c.AbortWithStatusJSON(400, gin.H{"error": "peer ID cannot be self peer ID"})
-		return
-	}
+	// id := c.Query("peerID")
+	// p, err := peer.Decode(id)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(400, gin.H{"error": "invalid peer string ID: could not decode string ID to peer ID"})
+	// 	return
+	// }
+	// if p == libp2p.GetP2P().Host.ID() {
+	// 	c.AbortWithStatusJSON(400, gin.H{"error": "peer ID cannot be self peer ID"})
+	// 	return
+	// }
 
-	path := c.Query("filePath")
-	if len(path) == 0 {
-		c.AbortWithStatusJSON(400, gin.H{"error": "filePath not provided"})
-		return
-	}
+	// path := c.Query("filePath")
+	// if len(path) == 0 {
+	// 	c.AbortWithStatusJSON(400, gin.H{"error": "filePath not provided"})
+	// 	return
+	// }
 
-	err = libp2p.InitiateTransferFile(c, c.Writer, c.Request, p, path)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, nil)
+	// err = libp2p.InitiateTransferFile(c, c.Writer, c.Request, p, path)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	// c.JSON(200, nil)
+	c.AbortWithStatusJSON(500, gin.H{"error": "send file transfer not implemented"})
 }
 
 // AcceptFileTransferHandler  godoc
@@ -359,26 +370,27 @@ func SendFileTransferHandler(c *gin.Context) {
 //	@Failure		500	{object}	object	"Failed to set websocket upgrade: {error}"
 //	@Router			/peers/file/accept [get]
 func AcceptFileTransferHandler(c *gin.Context) {
-	span := trace.SpanFromContext(c.Request.Context())
-	span.SetAttributes(attribute.String("URL", "/peers/file/accept"))
+	// span := trace.SpanFromContext(c.Request.Context())
+	// span.SetAttributes(attribute.String("URL", "/peers/file/accept"))
 
-	id := c.Query("id")
-	stream, err := strconv.Atoi(id)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Errorf("invalid ID: %w", err)})
-		return
-	}
-	if stream != 0 {
-		c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("unknown ID: %d", stream)})
-		return
-	}
+	// id := c.Query("id")
+	// stream, err := strconv.Atoi(id)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(400, gin.H{"error": fmt.Errorf("invalid ID: %w", err)})
+	// 	return
+	// }
+	// if stream != 0 {
+	// 	c.AbortWithStatusJSON(400, gin.H{"error": fmt.Sprintf("unknown ID: %d", stream)})
+	// 	return
+	// }
 
-	msg, err := libp2p.AcceptPeerFileTransfer(c, c.Writer, c.Request)
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
-		return
-	}
+	// msg, err := libp2p.AcceptPeerFileTransfer(c, c.Writer, c.Request)
+	// if err != nil {
+	// 	c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+	// 	return
+	// }
 
-	c.JSON(200, gin.H{"message": msg})
+	// c.JSON(200, gin.H{"message": msg})
 
+	c.AbortWithStatusJSON(500, gin.H{"error": "accept file transfer not implemented"})
 }
