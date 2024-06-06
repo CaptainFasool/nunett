@@ -1,13 +1,15 @@
 package api
 
 import (
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"gitlab.com/nunet/device-management-service/network/libp2p"
 )
 
-func SetupRouter() *gin.Engine {
+func SetupRouter(p2p libp2p.Libp2p) *gin.Engine {
 	// Note: While rearranging routes in groups, make sure to also update the
 	// route handler swagger annotaion @Router with the correct path.
 
@@ -59,37 +61,37 @@ func SetupRouter() *gin.Engine {
 		tele.GET("/free", GetFreeResourcesHandler)
 	}
 
-	// if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
-	// 	dht := v1.Group("/dht")
-	// 	{
-	// 		dht.GET("/update", ManualDHTUpdateHandler)
-	// 	}
-	// 	kadDHT := v1.Group("/kad-dht")
-	// 	{
-	// 		kadDHT.GET("", DumpKademliaDHTHandler)
-	// 	}
-	// 	v1.GET("/ping", PingPeerHandler)
-	// 	v1.GET("/oldping", OldPingPeerHandler)
-	// 	v1.GET("/cleanup", CleanupPeerHandler)
-	// }
+	if _, debugMode := os.LookupEnv("NUNET_DEBUG"); debugMode {
+		dht := v1.Group("/dht")
+		{
+			dht.GET("/update", func(c *gin.Context) { ManualDHTUpdateHandler(c, p2p) })
+		}
+		kadDHT := v1.Group("/kad-dht")
+		{
+			kadDHT.GET("", DumpKademliaDHTHandler)
+		}
+		v1.GET("/ping", func(c *gin.Context) { PingPeerHandler(c, p2p) })
+		v1.GET("/oldping", func(c *gin.Context) { OldPingPeerHandler(c, p2p) })
+		v1.GET("/cleanup", CleanupPeerHandler)
+	}
 
-	// p2p := v1.Group("/peers")
-	// {
-	// 	p2p.GET("", ListPeersHandler)
-	// 	p2p.GET("/dht", ListDHTPeersHandler)
-	// 	p2p.GET("/dht/dump", DumpDHTHandler)
-	// 	p2p.GET("/kad-dht", ListKadDHTPeersHandler)
-	// 	p2p.GET("/self", SelfPeerInfoHandler)
-	// 	p2p.GET("/depreq", DefaultDepReqPeerHandler)
-	// 	p2p.GET("/chat", ListChatHandler)
-	// 	p2p.GET("/chat/start", StartChatHandler)
-	// 	p2p.GET("/chat/join", JoinChatHandler)
-	// 	p2p.GET("/chat/clear", ClearChatHandler)
-	// 	p2p.GET("/file", ListFileTransferRequestsHandler)
-	// 	p2p.GET("/file/send", SendFileTransferHandler)
-	// 	p2p.GET("/file/accept", AcceptFileTransferHandler)
-	// 	p2p.GET("/file/clear", ClearFileTransferRequestsHandler)
-	// }
+	p2pGrp := v1.Group("/peers")
+	{
+		p2pGrp.GET("", func(c *gin.Context) { ListPeersHandler(c, p2p) })
+		p2pGrp.GET("/dht", func(c *gin.Context) { ListDHTPeersHandler(c, p2p) })
+		p2pGrp.GET("/dht/dump", func(c *gin.Context) { DumpDHTHandler(c, p2p) })
+		p2pGrp.GET("/kad-dht", func(c *gin.Context) { ListKadDHTPeersHandler(c, p2p) })
+		p2pGrp.GET("/self", func(c *gin.Context) { SelfPeerInfoHandler(c, p2p) })
+		p2pGrp.GET("/depreq", func(c *gin.Context) { DefaultDepReqPeerHandler(c, p2p) })
+		p2pGrp.GET("/chat", func(c *gin.Context) { ListChatHandler(c, p2p) })
+		p2pGrp.GET("/chat/start", func(c *gin.Context) { StartChatHandler(c, p2p) })
+		p2pGrp.GET("/chat/join", func(c *gin.Context) { JoinChatHandler(c, p2p) })
+		p2pGrp.GET("/chat/clear", func(c *gin.Context) { ClearChatHandler(c, p2p) })
+		p2pGrp.GET("/file", func(c *gin.Context) { ListFileTransferRequestsHandler(c, p2p) })
+		p2pGrp.GET("/file/send", func(c *gin.Context) { SendFileTransferHandler(c, p2p) })
+		p2pGrp.GET("/file/accept", func(c *gin.Context) { AcceptFileTransferHandler(c, p2p) })
+		p2pGrp.GET("/file/clear", func(c *gin.Context) { ClearFileTransferRequestsHandler(c, p2p) })
+	}
 
 	return router
 }

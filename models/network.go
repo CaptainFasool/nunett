@@ -21,4 +21,5 @@ type MessageInfo struct {
 }
 
 // NetP2P is a stub.
-type NetP2P string
+type NetP2P struct {
+}

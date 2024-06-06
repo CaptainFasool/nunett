@@ -11,15 +11,22 @@ import (
 	"gitlab.com/nunet/device-management-service/db"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
+
 	// "gitlab.com/nunet/device-management-service/internal/messaging"
 	"gitlab.com/nunet/device-management-service/models"
-	// "gitlab.com/nunet/device-management-service/network/libp2p"
+	"gitlab.com/nunet/device-management-service/network/libp2p"
 	"gitlab.com/nunet/device-management-service/utils"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+// NewP2P is stub, real implementation is needed in order to pass it to
+// routers which access them in some handlers.
+func NewP2P() libp2p.Libp2p {
+	return libp2p.Libp2p{}
+}
 
 func Run() {
 	// ctx := context.Background()
@@ -28,7 +35,8 @@ func Run() {
 
 	db.ConnectDatabase()
 
-	go startServer()
+	lp2p := NewP2P()
+	go startServer(lp2p)
 
 	// go messaging.DeploymentWorker()
 
@@ -87,8 +95,8 @@ func ValidateOnboarding(metadata *models.Metadata) {
 	}
 }
 
-func startServer() {
-	router := api.SetupRouter()
+func startServer(p2p libp2p.Libp2p) {
+	router := api.SetupRouter(p2p)
 	// router.Use(otelgin.Middleware(tracing.MachineName))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
