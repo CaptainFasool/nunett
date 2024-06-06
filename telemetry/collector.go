@@ -2,80 +2,46 @@ package telemetry
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"log"
+	"time"
 
 	"gitlab.com/nunet/device-management-service/models"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-type CollectorImpl struct {
-	models.OpenTelemetryCollector
+type Collector interface {
+	Initialize(ctx context.Context) error
+	HandleEvent(ctx context.Context, event GEvent) (string, error)
+	Shutdown(ctx context.Context) error
+	GetObservedLevel() models.ObservabilityLevel
+	GetEndpoint() string
 }
 
-func (c *CollectorImpl) Initialize(ctx context.Context) error {
-	// Setting up the HTTP trace exporter
-	exp, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpoint(c.OtEndpoint))
-	if err != nil {
-		log.Printf("Failed to create HTTP trace exporter: %v", err)
-		return err
-	}
+// EventCategory represents categories of events.
+type EventCategory int8
 
-	// Setting TracerProvider
-	c.TracerProvider = trace.NewTracerProvider(trace.WithBatcher(exp))
-	otel.SetTracerProvider(c.TracerProvider)
+// Enumeration of EventCategory.
+const (
+	ACCOUNTING EventCategory = iota + 1
+	LOGGING
+	TRACING
+)
 
-	log.Println("Collector initialized with endpoint:", c.OtEndpoint)
-	return nil
+// Event interface defines the structure for an event.
+type Event interface {
+	ObserveEvent()
 }
 
-func (c *CollectorImpl) HandleEvent(ctx context.Context, event models.GEvent) (string, error) {
-	tr := otel.Tracer("http-tracer")
-	ctx, span := tr.Start(ctx, "HandleEvent")
-	defer span.End()
-
-	// Add attributes to the span for better trace information
-	span.SetAttributes(
-		attribute.String("event.message", event.Message),
-		attribute.String("event.category", string(event.Category)), // Convert the enum to string if necessary
-	)
-
-	log.Printf("Handling event: %v", event.Message)
-
-	// Example condition to simulate an error
-	if event.Message == "error" {
-		err := errors.New("failed to handle event due to XYZ")
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return "", err
-	}
-
-	// Mark the span as successful
-	span.SetStatus(codes.Ok, "Event processed successfully")
-	return "Event processed successfully", nil
-}
-func (c *CollectorImpl) Shutdown(ctx context.Context) error {
-	sdkTP, ok := c.TracerProvider.(*trace.TracerProvider)
-	if !ok {
-		return fmt.Errorf("incorrect tracer provider type")
-	}
-	if err := sdkTP.Shutdown(ctx); err != nil {
-		log.Printf("Error shutting down tracer provider: %v", err)
-		return err
-	}
-	log.Println("Collector shutdown successfully")
-	return nil
+// GEvent represents a generic event implementing the Event interface.
+type GEvent struct {
+	Event            Event
+	Observable       interface{} // Keeping this as an interface to avoid cyclic dependency
+	CurrentTimestamp time.Time
+	Context          context.Context
+	Category         EventCategory
+	Message          string
+	Collectors       []Collector
 }
 
-func (c *CollectorImpl) GetObservedLevel() models.ObservabilityLevel {
-	return models.INFO
-}
-
-func (c *CollectorImpl) GetEndpoint() string {
-	return c.OtEndpoint
+// Timestamp method returns the current time.
+func (ge GEvent) Timestamp() time.Time {
+	return time.Now()
 }

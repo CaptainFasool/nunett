@@ -1,91 +1,34 @@
 package models
 
 import (
-	"context"
 	"os"
-	"time"
-
-	"go.opentelemetry.io/otel/trace"
 )
 
+// TelemetryConfig holds the configuration for telemetry.
 type TelemetryConfig struct {
-	ServiceName           string
-	OTelCollectorEndpoint string
-	ObservabilityLevel    string
+	ServiceName        string
+	CollectorEndpoint  string
+	ObservabilityLevel string
 }
 
-// LoadConfigFromEnv loads configuration from environment variables
+// LoadConfigFromEnv loads configuration from environment variables.
 func LoadConfigFromEnv() *TelemetryConfig {
 	return &TelemetryConfig{
-		ServiceName:           os.Getenv("SERVICE_NAME"),
-		OTelCollectorEndpoint: os.Getenv("OTEL_COLLECTOR_ENDPOINT"),
-		ObservabilityLevel:    os.Getenv("OBSERVABILITY_LEVEL"),
+		ServiceName:        os.Getenv("SERVICE_NAME"),
+		CollectorEndpoint:  os.Getenv("COLLECTOR_ENDPOINT"),
+		ObservabilityLevel: os.Getenv("OBSERVABILITY_LEVEL"),
 	}
 }
 
-// OpenTelemetryCollector struct definition
-type OpenTelemetryCollector struct {
-	TracerProvider trace.TracerProvider
-	OtEndpoint     string
-}
+// ObservabilityLevel defines levels of observability.
+type ObservabilityLevel string
 
-// Collector interface with necessary telemetry functions
-type Collector interface {
-	Initialize(ctx context.Context) error
-	HandleEvent(ctx context.Context, event GEvent) (string, error)
-	Shutdown(ctx context.Context) error
-	GetObservedLevel() ObservabilityLevel
-	GetEndpoint() string
-}
-
-// Event interface definition
-type Event interface {
-	ObserveEvent()
-}
-
-// EventCategory represents categories of events
-type EventCategory int8
-
-// Enumeration of EventCategory
+// Constants representing levels of observability.
 const (
-	ACCOUNTING EventCategory = iota + 1
-	LOGGING
-	TRACING
-)
-
-// GEvent represents a generic event implementing the Event interface
-type GEvent struct {
-	Event
-	Observable
-
-	CurrentTimestamp time.Time
-	Context          context.Context
-	Category         EventCategory
-	Message          string
-	Collectors       []Collector
-}
-
-// Timestamp method returns the current time
-func (ge GEvent) Timestamp() time.Time {
-	return time.Now()
-}
-
-// Observable interface for observability features
-type Observable interface {
-	GetObservabilityLevel() ObservabilityLevel
-	GetCollectors() []Collector
-	RegisterCollectors()
-}
-
-// ObservabilityLevel defines levels of observability
-type ObservabilityLevel float32
-
-// Constants representing levels of observability
-const (
-	TRACE ObservabilityLevel = 1.0
-	DEBUG ObservabilityLevel = 2.0
-	INFO  ObservabilityLevel = 3.0
-	WARN  ObservabilityLevel = 4.0
-	ERROR ObservabilityLevel = 5.0
-	FATAL ObservabilityLevel = 6.0
+	TRACE ObservabilityLevel = "TRACE"
+	DEBUG ObservabilityLevel = "DEBUG"
+	INFO  ObservabilityLevel = "INFO"
+	WARN  ObservabilityLevel = "WARN"
+	ERROR ObservabilityLevel = "ERROR"
+	FATAL ObservabilityLevel = "FATAL"
 )

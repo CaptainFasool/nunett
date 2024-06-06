@@ -75,3 +75,10 @@ func main() {
 1. Load the configuration from `config.yaml`.
 2. Initialize the appropriate collectors.
 3. Use these collectors within our application logic to handle telemetry data effectively.
+
+.env.example
+```
+SERVICE_NAME=<your-service-name>
+COLLECTOR_ENDPOINT=<endpoint and port>
+OBSERVABILITY_LEVEL=<default is INFO>
+```
