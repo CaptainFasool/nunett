@@ -10,11 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -188,6 +190,28 @@ func (p Libp2p) GetDHTUpdates(ctx context.Context) {
 	gettingDHTUpdate = false
 	doneGettingDHTUpdate <- true
 	zlog.Debug("Done Getting DHT Updates")
+}
+
+// UpdateKadDHT is a stub
+func (p Libp2p) UpdateKadDHT() {
+	zlog.Warn("UpdateKadDHT: Stub")
+}
+
+// ListKadDHTPeers is a stub
+func (p Libp2p) ListKadDHTPeers(c *gin.Context, ctx context.Context) ([]string, error) {
+	zlog.Warn("ListKadDHTPeers: Stub")
+	return nil, nil
+}
+
+type SelfPeer struct {
+	ID    string
+	Addrs []multiaddr.Multiaddr
+}
+
+// SelfPeerInfo is a stub
+func (p Libp2p) SelfPeerInfo() (*SelfPeer, error) {
+	zlog.Warn("SelfPeerInfo: Stub")
+	return nil, nil
 }
 
 func signData(hostPrivateKey crypto.PrivKey, data []byte) ([]byte, error) {
