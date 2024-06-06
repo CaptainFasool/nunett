@@ -13,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
@@ -31,15 +30,6 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils/validate"
 )
-
-// Libp2p contains the configuration for a Libp2p instance.
-type Libp2p struct {
-	Host   host.Host
-	DHT    *dht.IpfsDHT
-	PS     peerstore.Peerstore
-	peers  []peer.AddrInfo
-	config Libp2pConfig
-}
 
 type Libp2pConfig struct {
 	PrivateKey     crypto.PrivKey
