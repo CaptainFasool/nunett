@@ -40,60 +40,6 @@ type Libp2pConfig struct {
 	Scheduler      *bt.Scheduler
 }
 
-func (p *Libp2p) Init(config models.NetConfig) error {
-	libp2pConfig, err := DecodeSpec(&config.NetworkSpec)
-	if err != nil {
-		return fmt.Errorf("failed to decode libp2p config: %v", err)
-	}
-
-	host, dht, err := newHost(context.Background(), libp2pConfig.PrivateKey, libp2pConfig.Server)
-	if err != nil {
-		return err
-	}
-	p.Host = host
-	p.DHT = dht
-	p.PS = host.Peerstore()
-
-	return nil
-}
-
-func (p *Libp2p) Start(ctx context.Context) error {
-	err := p.BootstrapNode(ctx)
-	if err != nil {
-		return fmt.Errorf("bootstraping failed: %v", err)
-	}
-
-	p.Host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), PingHandler)
-
-	err = p.DiscoverDialPeers(ctx)
-	if err != nil {
-		return err
-	}
-
-	// register period peer discoveryTask task
-	discoveryTask := &bt.Task{
-		Name:        "Peer Discovery",
-		Description: "Periodic task to discover new peers every 15 minutes",
-		Function: func(args interface{}) error {
-			return p.DiscoverDialPeers(ctx)
-		},
-		Triggers: []bt.Trigger{&bt.PeriodicTrigger{Interval: 15 * time.Minute}},
-	}
-	p.config.Scheduler.AddTask(discoveryTask)
-
-	// register period offline peer cleanup task
-	cleanupTask := &bt.Task{
-		Name:        "Peer Discovery",
-		Description: "Periodic task to discover new peers every 15 minutes",
-		Function: func(args interface{}) error {
-			return p.DiscoverDialPeers(ctx)
-		},
-		Triggers: []bt.Trigger{&bt.PeriodicTrigger{Interval: 5 * time.Minute}},
-	}
-	p.config.Scheduler.AddTask(cleanupTask)
-
-	return nil
-}
 
 type Advertisement struct {
 	PeerID    string `json:"peer_id"`

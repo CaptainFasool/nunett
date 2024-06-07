@@ -102,9 +102,12 @@ func TestLibp2pMethods(t *testing.T) {
 	assert.Equal(t, 2, peer1.Host.Peerstore().Peers().Len())
 
 	// peer2 pings peer1
-	pingResult, err := peer1.Ping(context.TODO(), peer1.Host.ID().String(), 100*time.Millisecond)
+	pingResult, err := peer1.Ping(context.TODO(), peer2.Host.ID().String(), 100*time.Millisecond)
 	assert.NoError(t, err)
 	assert.True(t, pingResult.Success)
+	zeroMicro, err := time.ParseDuration("0µs")
+	assert.NoError(t, err)
+	assert.Greater(t, pingResult.RTT, zeroMicro)
 }
 
 func setupPeerConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.Multiaddr) *models.Libp2pConfig {

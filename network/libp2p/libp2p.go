@@ -33,6 +33,9 @@ type Libp2p struct {
 	// services
 	pingService *ping.PingService
 
+	// tasks
+	discoveryTask *bt.Task
+
 	config *models.Libp2pConfig
 }
 
@@ -100,7 +103,8 @@ func (l *Libp2p) Start(context context.Context) error {
 		},
 		Triggers: []bt.Trigger{&bt.PeriodicTrigger{Interval: 15 * time.Minute}},
 	}
-	l.config.Scheduler.AddTask(discoveryTask)
+
+	l.discoveryTask = l.config.Scheduler.AddTask(discoveryTask)
 
 	// handlers
 	return nil
@@ -123,6 +127,8 @@ func (l *Libp2p) GetMultiaddr() ([]multiaddr.Multiaddr, error) {
 // Stop performs a cleanup of any resources used in this package.
 func (l *Libp2p) Stop() error {
 	var errorMessages []string
+
+	l.config.Scheduler.RemoveTask(l.discoveryTask.ID)
 
 	if err := l.DHT.Close(); err != nil {
 		errorMessages = append(errorMessages, err.Error())
@@ -168,6 +174,7 @@ func (l *Libp2p) Ping(ctx context.Context, peerIDAddress string, timeout time.Du
 }
 
 func (l *Libp2p) Advertise(adId string, data []byte) error {
+
 	return nil
 }
 
