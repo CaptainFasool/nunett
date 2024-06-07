@@ -19,12 +19,12 @@ func (l *Libp2p) DiscoverDialPeers(ctx context.Context) error {
 	}
 
 	if len(foundPeers) > 0 {
-		l.peers = foundPeers
+		l.discoveredPeers = foundPeers
 	}
 
 	// filter out peers with no listening addresses and self host
 	filterSpec := NoAddrIDFilter{ID: l.Host.ID()}
-	l.peers = PeerPassFilter(l.peers, filterSpec)
+	l.discoveredPeers = PeerPassFilter(l.discoveredPeers, filterSpec)
 
 	l.dialPeers(ctx)
 
@@ -52,7 +52,7 @@ func (l *Libp2p) fingPeersFromRendezvousDiscovery(ctx context.Context) ([]peer.A
 }
 
 func (l *Libp2p) dialPeers(ctx context.Context) {
-	for _, p := range l.peers {
+	for _, p := range l.discoveredPeers {
 		if p.ID == l.Host.ID() {
 			continue
 		}

@@ -24,13 +24,27 @@ func TestNew(t *testing.T) {
 			config: nil,
 			expErr: "config is nil",
 		},
-		"success": {
+		"no scheduler": {
 			config: &models.Libp2pConfig{
 				PrivateKey:              &crypto.Secp256k1PrivateKey{},
 				BootstrapPeers:          []multiaddr.Multiaddr{},
 				Rendezvous:              "nunet-randevouz",
 				Server:                  false,
 				Scheduler:               nil,
+				CustomNamespace:         "/nunet-dht-1/",
+				ListenAddress:           []string{"/ip4/localhost/tcp/10209"},
+				PeerCountDiscoveryLimit: 40,
+				PrivateNetwork:          false,
+			},
+			expErr: "scheduler is nil",
+		},
+		"success": {
+			config: &models.Libp2pConfig{
+				PrivateKey:              &crypto.Secp256k1PrivateKey{},
+				BootstrapPeers:          []multiaddr.Multiaddr{},
+				Rendezvous:              "nunet-randevouz",
+				Server:                  false,
+				Scheduler:               background_tasks.NewScheduler(1),
 				CustomNamespace:         "/nunet-dht-1/",
 				ListenAddress:           []string{"/ip4/localhost/tcp/10209"},
 				PeerCountDiscoveryLimit: 40,

@@ -3,6 +3,7 @@ package libp2p
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -21,13 +22,15 @@ import (
 
 // Libp2p contains the configuration for a Libp2p instance.
 type Libp2p struct {
-	Host      host.Host
-	DHT       *dht.IpfsDHT
-	PS        peerstore.Peerstore
-	peers     []peer.AddrInfo
-	discovery libp2pdiscovery.Discovery
+	Host host.Host
+	DHT  *dht.IpfsDHT
+	PS   peerstore.Peerstore
 
-	// register services
+	// a list of peers discovered by discovery
+	discoveredPeers []peer.AddrInfo
+	discovery       libp2pdiscovery.Discovery
+
+	// services
 	pingService *ping.PingService
 
 	config *models.Libp2pConfig
@@ -66,17 +69,20 @@ func (l *Libp2p) Init(context context.Context) error {
 
 // Start performs network bootstrapping, peer discovery and protocols handling.
 func (l *Libp2p) Start(context context.Context) error {
-	// advertise randevouz discovery
-	err := l.advertiseForRendezvousDiscovery(context)
-	if err != nil {
-		zlog.Sugar().Errorf("failed to start network with randevouz discovery: %v", err)
-	}
+	// set stream handlers
+	l.registerStreamHandlers()
 
 	// bootstrap should return error if it had an error
-	err = l.Bootstrap(context, l.config.BootstrapPeers)
+	err := l.Bootstrap(context, l.config.BootstrapPeers)
 	if err != nil {
 		zlog.Sugar().Errorf("failed to start network: %v", err)
 		return err
+	}
+
+	// advertise randevouz discovery
+	err = l.advertiseForRendezvousDiscovery(context)
+	if err != nil {
+		zlog.Sugar().Errorf("failed to start network with randevouz discovery: %v", err)
 	}
 
 	// discover
@@ -84,9 +90,6 @@ func (l *Libp2p) Start(context context.Context) error {
 	if err != nil {
 		zlog.Sugar().Errorf("failed to discover peers: %v", err)
 	}
-
-	// set stream handlers
-	l.registerStreamHandlers()
 
 	// register period peer discoveryTask task
 	discoveryTask := &bt.Task{
@@ -119,7 +122,20 @@ func (l *Libp2p) GetMultiaddr() ([]multiaddr.Multiaddr, error) {
 
 // Stop performs a cleanup of any resources used in this package.
 func (l *Libp2p) Stop() error {
-	return l.Host.Close()
+	var errorMessages []string
+
+	if err := l.DHT.Close(); err != nil {
+		errorMessages = append(errorMessages, err.Error())
+	}
+	if err := l.Host.Close(); err != nil {
+		errorMessages = append(errorMessages, err.Error())
+	}
+
+	if len(errorMessages) > 0 {
+		return errors.New(strings.Join(errorMessages, "; "))
+	}
+
+	return nil
 }
 
 func (l *Libp2p) Stat() models.NetworkStats {
