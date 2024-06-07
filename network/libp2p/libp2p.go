@@ -3,11 +3,13 @@ package libp2p
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
+	"google.golang.org/protobuf/proto"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pdiscovery "github.com/libp2p/go-libp2p/core/discovery"
@@ -18,6 +20,7 @@ import (
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	bt "gitlab.com/nunet/device-management-service/internal/background_tasks"
 	"gitlab.com/nunet/device-management-service/models"
+	commonproto "gitlab.com/nunet/device-management-service/proto/generated/v1/common"
 )
 
 // Libp2p contains the configuration for a Libp2p instance.
@@ -174,6 +177,21 @@ func (l *Libp2p) Ping(ctx context.Context, peerIDAddress string, timeout time.Du
 }
 
 func (l *Libp2p) Advertise(adId string, data []byte) error {
+	envelope := &commonproto.Advertisement{
+		PeerId:    adId,
+		Timestamp: time.Now().Unix(),
+		Data:      data,
+	}
+
+	envelopeBytes, err := proto.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("failed to marshal advertise envelope: %w", err)
+	}
+
+	// remove...
+	fmt.Println(envelopeBytes)
+
+	// do the advertise
 
 	return nil
 }
