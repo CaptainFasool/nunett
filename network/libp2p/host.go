@@ -11,6 +11,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
@@ -19,18 +20,15 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
+	webtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/afero"
 	mafilt "github.com/whyrusleeping/multiaddr-filter"
 	"gitlab.com/nunet/device-management-service/models"
 )
-
-/*
-   TODOs pnet:
-   1. add opt
-   2. force pnet
-   3. deactivate quic
-*/
 
 // NewHost returns a new libp2p host with dht and other related settings.
 func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (host.Host, *dht.IpfsDHT, error) {
@@ -65,6 +63,20 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 		dht.Mode(dht.ModeServer),
 	}
 
+	if config.PNet.WithSwarmKey {
+		psk, err := configureSwarmKey(fs)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to configure swarm key: %v", err)
+		}
+		libp2pOpts = append(libp2pOpts, libp2p.PrivateNetwork(psk))
+
+		// guarantee that outer connection will be refused
+		pnet.ForcePrivateNetwork = true
+	} else {
+		// enable quic (it does not work with pnet enabled)
+		libp2pOpts = append(libp2pOpts, libp2p.Transport(quic.NewTransport))
+	}
+
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(config.ListenAddress...),
 		libp2p.Identity(config.PrivateKey),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
@@ -74,7 +86,10 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 		libp2p.Peerstore(ps),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 		libp2p.Security(noise.ID, noise.New),
-		libp2p.DefaultTransports,
+		// Do not use DefaulTransports as we can not enable Quic when pnet
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(ws.New),
+		libp2p.Transport(webtransport.New),
 		libp2p.EnableNATService(),
 		libp2p.ConnectionManager(connmgr),
 		libp2p.EnableRelay(),
@@ -127,14 +142,6 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 		libp2pOpts = append(libp2pOpts, libp2p.ConnectionGater((*filtersConnectionGater)(filter)))
 	} else {
 		libp2pOpts = append(libp2pOpts, libp2p.NATPortMap())
-	}
-
-	if config.PNet.WithSwarmKey {
-		psk, err := configureSwarmKey(fs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to configure swarm key: %v", err)
-		}
-		libp2pOpts = append(libp2pOpts, libp2p.PrivateNetwork(psk))
 	}
 
 	host, err := libp2p.New(libp2pOpts...)

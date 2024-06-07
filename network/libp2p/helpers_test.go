@@ -15,15 +15,15 @@ import (
 	"gitlab.com/nunet/device-management-service/models"
 )
 
-func TestCreateTestNet(t *testing.T) {
+func TestCreateTestNetwork(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	numNodes := 5
-	nodes := createTestNet(t, fs, numNodes)
+	nodes := createTestNetwork(t, fs, numNodes)
 
 	// verify the number of nodes
 	assert.Equal(t, 5, len(nodes))
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// verify if all nodes have more than 2 connections
 	for _, node := range nodes {
@@ -31,7 +31,7 @@ func TestCreateTestNet(t *testing.T) {
 	}
 }
 
-func createTestNet(t *testing.T, fs afero.Fs, n int) []*Libp2p {
+func createTestNetwork(t *testing.T, fs afero.Fs, n int) []*Libp2p {
 	var peers []*Libp2p
 
 	// initiating and configuring a single bootstrap node
@@ -67,6 +67,13 @@ func createTestNet(t *testing.T, fs afero.Fs, n int) []*Libp2p {
 		}
 		peers = append(peers, p)
 	}
+
+	// close peers after tests are done
+	t.Cleanup(func() {
+		for _, p := range peers {
+			p.Host.Close()
+		}
+	})
 
 	return peers
 }
