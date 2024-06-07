@@ -2,6 +2,7 @@ package libp2p
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -19,12 +20,20 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/spf13/afero"
 	mafilt "github.com/whyrusleeping/multiaddr-filter"
 	"gitlab.com/nunet/device-management-service/models"
 )
 
+/*
+   TODOs pnet:
+   1. add opt
+   2. force pnet
+   3. deactivate quic
+*/
+
 // NewHost returns a new libp2p host with dht and other related settings.
-func NewHost(ctx context.Context, config *models.Libp2pConfig) (host.Host, *dht.IpfsDHT, *pubsub.PubSub, error) {
+func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (host.Host, *dht.IpfsDHT, error) {
 	var idht *dht.IpfsDHT
 	connmgr, err := connmgr.NewConnManager(
 		100,
@@ -118,6 +127,14 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig) (host.Host, *dht.
 		libp2pOpts = append(libp2pOpts, libp2p.ConnectionGater((*filtersConnectionGater)(filter)))
 	} else {
 		libp2pOpts = append(libp2pOpts, libp2p.NATPortMap())
+	}
+
+	if config.PNet.WithSwarmKey {
+		psk, err := configureSwarmKey(fs)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to configure swarm key: %v", err)
+		}
+		libp2pOpts = append(libp2pOpts, libp2p.PrivateNetwork(psk))
 	}
 
 	host, err := libp2p.New(libp2pOpts...)
