@@ -117,11 +117,6 @@ func (l *Libp2p) Start(context context.Context) error {
 	return nil
 }
 
-func (l *Libp2p) registerStreamHandlers() {
-	l.pingService = ping.NewPingService(l.Host)
-	l.Host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), l.pingService.PingHandler)
-}
-
 // GetMultiaddr returns the peer's multiaddr.
 func (l *Libp2p) GetMultiaddr() ([]multiaddr.Multiaddr, error) {
 	peerInfo := peer.AddrInfo{
@@ -151,6 +146,7 @@ func (l *Libp2p) Stop() error {
 	return nil
 }
 
+// Stat returns the status about the libp2p network.
 func (l *Libp2p) Stat() models.NetworkStats {
 	return models.NetworkStats{}
 }
@@ -180,8 +176,10 @@ func (l *Libp2p) Ping(ctx context.Context, peerIDAddress string, timeout time.Du
 	}
 }
 
-// GetAdvertisement
-func (l *Libp2p) GetAdvertisements(ctx context.Context, key string) ([]*commonproto.Advertisement, error) {
+// Advertisements return all the advertisements in the network related to a key.
+// The network is queried to find providers for the given key, and peers which we aren't connected to
+// can be retrieved.
+func (l *Libp2p) Advertisements(ctx context.Context, key string) ([]*commonproto.Advertisement, error) {
 	if key == "" {
 		return nil, errors.New("advertisement key is empty")
 	}
@@ -197,6 +195,7 @@ func (l *Libp2p) GetAdvertisements(ctx context.Context, key string) ([]*commonpr
 	}
 	var advertisements []*commonproto.Advertisement
 	for _, v := range addrInfo {
+		// TODO: use go routines to get the values in parallel.
 		bytesAdvertisement, err := l.DHT.GetValue(ctx, l.getCustomNamespace(key, v.ID.String()))
 		if err != nil {
 			continue
@@ -282,6 +281,11 @@ func (l *Libp2p) Publish(topic string, data []byte) error {
 
 func (l *Libp2p) Subscribe(topic string, handler func(data []byte)) error {
 	return nil
+}
+
+func (l *Libp2p) registerStreamHandlers() {
+	l.pingService = ping.NewPingService(l.Host)
+	l.Host.SetStreamHandler(protocol.ID("/ipfs/ping/1.0.0"), l.pingService.PingHandler)
 }
 
 func (l *Libp2p) sign(data []byte) ([]byte, error) {

@@ -33,8 +33,8 @@ type Network interface {
 	// Unadvertise stops advertising data corresponding to the given adId
 	Unadvertise(ctx context.Context, key string) error
 
-	// GetAdvertisements returns the advertisement
-	GetAdvertisements(ctx context.Context, key string) ([]*commonproto.Advertisement, error)
+	// Advertisements returns the network advertisement
+	Advertisements(ctx context.Context, key string) ([]*commonproto.Advertisement, error)
 
 	// Publish publishes the given data to the given topic if the network
 	// type allows publish/subscribe functionality such as gossipsub or nats
@@ -64,6 +64,7 @@ type Message interface {
 	Info() models.MessageInfo
 }
 
+// NewNetwork returns a new network given the configuration.
 func NewNetwork(netConfig *models.NetworkConfig) (Network, error) {
 	if netConfig == nil {
 		return nil, errors.New("network configuration is nil")

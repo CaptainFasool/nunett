@@ -134,7 +134,7 @@ func TestLibp2pMethods(t *testing.T) {
 	time.Sleep(40 * time.Millisecond)
 
 	// get the peers who have the who_am_i key
-	advertisements, err := peer1.GetAdvertisements(context.TODO(), "who_am_i")
+	advertisements, err := peer1.Advertisements(context.TODO(), "who_am_i")
 	assert.NoError(t, err)
 	assert.NotNil(t, advertisements)
 	assert.Len(t, advertisements, 3)
@@ -162,8 +162,8 @@ func TestLibp2pMethods(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(40 * time.Millisecond)
 
-	// get the values again
-	advertisements, err = peer1.GetAdvertisements(context.TODO(), "who_am_i")
+	// get the values again, it should be 2 peers only
+	advertisements, err = peer1.Advertisements(context.TODO(), "who_am_i")
 	assert.NoError(t, err)
 	assert.NotNil(t, advertisements)
 	assert.Len(t, advertisements, 2)
