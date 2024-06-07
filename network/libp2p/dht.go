@@ -2,7 +2,6 @@ package libp2p
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
-	"gitlab.com/nunet/device-management-service/models"
 )
 
 // Bootstrap using a list.
@@ -195,50 +193,53 @@ func (d dhtValidator) Validate(key string, value []byte) error {
 		return errors.New("invalid key namespace")
 	}
 
-	components := strings.Split(key, "/")
-	key = components[len(components)-1]
-	var dhtUpdate models.KadDHTMachineUpdate
+	return nil
 
-	err := json.Unmarshal(value, &dhtUpdate)
-	if err != nil {
-		// zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
-		return err
-	}
+	// components := strings.Split(key, "/")
+	// key = components[len(components)-1]
 
-	// Extract data and signature fields
-	data := dhtUpdate.Data
-	var peerInfo models.PeerData
-	err = json.Unmarshal(dhtUpdate.Data, &peerInfo)
-	if err != nil {
-		// zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
-		return err
-	}
+	// var dhtUpdate models.KadDHTMachineUpdate
 
-	signature := dhtUpdate.Signature
-	remotePeerID, err := peer.Decode(key)
-	if err != nil {
-		// zlog.Sugar().Errorf("Error decoding peerID: %v", err)
-		return errors.New("error decoding peerID")
-	}
+	// err := json.Unmarshal(value, &dhtUpdate)
+	// if err != nil {
+	// 	// zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+	// 	return err
+	// }
 
-	// Get the public key of the remote peer from the peerstore
-	remotePeerPublicKey := d.PS.PubKey(remotePeerID)
-	if remotePeerPublicKey == nil {
-		return errors.New("public key for remote peer not found in peerstore")
-	}
-	verify, err := remotePeerPublicKey.Verify(data, signature)
-	if err != nil {
-		// zlog.Sugar().Errorf("Error verifying signature: %v", err)
-		return err
-	}
-	if !verify {
-		// zlog.Sugar().Info("Invalid signature")
-		return errors.New("invalid signature")
-	}
+	// // Extract data and signature fields
+	// data := dhtUpdate.Data
+	// var peerInfo models.PeerData
+	// err = json.Unmarshal(dhtUpdate.Data, &peerInfo)
+	// if err != nil {
+	// 	// zlog.Sugar().Errorf("Error unmarshalling value: %v", err)
+	// 	return err
+	// }
 
-	if len(value) == 0 {
-		return errors.New("value cannot be empty")
-	}
+	// signature := dhtUpdate.Signature
+	// remotePeerID, err := peer.Decode(key)
+	// if err != nil {
+	// 	// zlog.Sugar().Errorf("Error decoding peerID: %v", err)
+	// 	return errors.New("error decoding peerID")
+	// }
+
+	// // Get the public key of the remote peer from the peerstore
+	// remotePeerPublicKey := d.PS.PubKey(remotePeerID)
+	// if remotePeerPublicKey == nil {
+	// 	return errors.New("public key for remote peer not found in peerstore")
+	// }
+	// verify, err := remotePeerPublicKey.Verify(data, signature)
+	// if err != nil {
+	// 	// zlog.Sugar().Errorf("Error verifying signature: %v", err)
+	// 	return err
+	// }
+	// if !verify {
+	// 	// zlog.Sugar().Info("Invalid signature")
+	// 	return errors.New("invalid signature")
+	// }
+
+	// if len(value) == 0 {
+	// 	return errors.New("value cannot be empty")
+	// }
 	return nil
 }
 func (dhtValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }

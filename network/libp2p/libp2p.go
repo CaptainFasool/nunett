@@ -1,14 +1,18 @@
 package libp2p
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
 	"google.golang.org/protobuf/proto"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -176,27 +180,99 @@ func (l *Libp2p) Ping(ctx context.Context, peerIDAddress string, timeout time.Du
 	}
 }
 
-func (l *Libp2p) Advertise(adId string, data []byte) error {
+// GetAdvertisement
+func (l *Libp2p) GetAdvertisements(ctx context.Context, key string) ([]*commonproto.Advertisement, error) {
+	if key == "" {
+		return nil, errors.New("advertisement key is empty")
+	}
+
+	customCID, err := createCIDFromKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cid for key %s: %w", key, err)
+	}
+
+	addrInfo, err := l.DHT.FindProviders(ctx, customCID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find providers for key %s: %w", key, err)
+	}
+	var advertisements []*commonproto.Advertisement
+	for _, v := range addrInfo {
+		bytesAdvertisement, err := l.DHT.GetValue(ctx, l.getCustomNamespace(key, v.ID.String()))
+		if err != nil {
+			continue
+		}
+		var ad commonproto.Advertisement
+		if err := proto.Unmarshal(bytesAdvertisement, &ad); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal advertisement payload: %w", err)
+		}
+		advertisements = append(advertisements, &ad)
+	}
+
+	return advertisements, nil
+}
+
+// Advertise given data and a key pushes the data to the dht.
+func (l *Libp2p) Advertise(ctx context.Context, key string, data []byte) error {
+	if key == "" {
+		return errors.New("advertisement key is empty")
+	}
+
+	pubKeyBytes, err := l.getPublicKey()
+	if err != nil {
+		return fmt.Errorf("failed to get public key: %w", err)
+	}
+
 	envelope := &commonproto.Advertisement{
-		PeerId:    adId,
+		PeerId:    l.Host.ID().String(),
 		Timestamp: time.Now().Unix(),
 		Data:      data,
+		PublicKey: pubKeyBytes,
 	}
+
+	concatenatedBytes := bytes.Join([][]byte{
+		[]byte(envelope.PeerId),
+		{byte(envelope.Timestamp)},
+		envelope.Data,
+		pubKeyBytes,
+	}, nil)
+
+	sig, err := l.sign(concatenatedBytes)
+	if err != nil {
+		return fmt.Errorf("failed to sign advertisement envelope content: %w", err)
+	}
+
+	envelope.Signature = sig
 
 	envelopeBytes, err := proto.Marshal(envelope)
 	if err != nil {
 		return fmt.Errorf("failed to marshal advertise envelope: %w", err)
 	}
 
-	// remove...
-	fmt.Println(envelopeBytes)
+	customCID, err := createCIDFromKey(key)
+	if err != nil {
+		return fmt.Errorf("failed to create cid for key %s: %w", key, err)
+	}
 
-	// do the advertise
+	err = l.DHT.PutValue(ctx, l.getCustomNamespace(key, l.DHT.PeerID().String()), envelopeBytes)
+	if err != nil {
+		return fmt.Errorf("failed to put key %s into the dht: %w", key, err)
+	}
+
+	err = l.DHT.Provide(ctx, customCID, true)
+	if err != nil {
+		return fmt.Errorf("failed to provide key %s into the dht: %w", key, err)
+	}
 
 	return nil
 }
 
-func (l *Libp2p) Unadvertise(adId string) error {
+// Unadvertise removes the data from the dht.
+func (l *Libp2p) Unadvertise(ctx context.Context, key string) error {
+	err := l.DHT.PutValue(ctx, l.getCustomNamespace(key, l.DHT.PeerID().String()), nil)
+	if err != nil {
+		return fmt.Errorf("failed to remove key %s from the DHT: %w", key, err)
+	}
+
 	return nil
 }
 
@@ -206,4 +282,41 @@ func (l *Libp2p) Publish(topic string, data []byte) error {
 
 func (l *Libp2p) Subscribe(topic string, handler func(data []byte)) error {
 	return nil
+}
+
+func (l *Libp2p) sign(data []byte) ([]byte, error) {
+	privKey := l.Host.Peerstore().PrivKey(l.Host.ID())
+	if privKey == nil {
+		return nil, errors.New("private key not found for the host")
+	}
+
+	signature, err := privKey.Sign(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign data: %w", err)
+	}
+
+	return signature, nil
+}
+
+func (l *Libp2p) getPublicKey() ([]byte, error) {
+	privKey := l.Host.Peerstore().PrivKey(l.Host.ID())
+	if privKey == nil {
+		return nil, errors.New("private key not found for the host")
+	}
+
+	pubKey := privKey.GetPublic()
+	return pubKey.Raw()
+}
+
+func (l *Libp2p) getCustomNamespace(key, peerID string) string {
+	return fmt.Sprintf("%s-%s-%s", l.config.CustomNamespace, key, peerID)
+}
+
+func createCIDFromKey(key string) (cid.Cid, error) {
+	hash := sha256.Sum256([]byte(key))
+	mh, err := multihash.Encode(hash[:], multihash.SHA2_256)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return cid.NewCidV1(cid.Raw, mh), nil
 }

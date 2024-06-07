@@ -108,6 +108,65 @@ func TestLibp2pMethods(t *testing.T) {
 	zeroMicro, err := time.ParseDuration("0µs")
 	assert.NoError(t, err)
 	assert.Greater(t, pingResult.RTT, zeroMicro)
+
+	// setup a new peer and advertise specs
+	// peer3 will connect to peer2 in a ring setup.
+	peer2p2pAddrs, err := peer2.GetMultiaddr()
+	assert.NoError(t, err)
+	peer3Config := setupPeerConfig(t, 65514, peer2p2pAddrs)
+	peer3, err := New(peer3Config)
+	assert.NoError(t, err)
+	assert.NotNil(t, peer3)
+
+	err = peer3.Init(context.TODO())
+	assert.NoError(t, err)
+	err = peer3.Start(context.TODO())
+	assert.NoError(t, err)
+
+	// advertise key
+	err = peer1.Advertise(context.TODO(), "who_am_i", []byte(`{"peer":"peer1"}`))
+	assert.NoError(t, err)
+	err = peer2.Advertise(context.TODO(), "who_am_i", []byte(`{"peer":"peer2"}`))
+	assert.NoError(t, err)
+	err = peer3.Advertise(context.TODO(), "who_am_i", []byte(`{"peer":"peer3"}`))
+	assert.NoError(t, err)
+
+	time.Sleep(40 * time.Millisecond)
+
+	// get the peers who have the who_am_i key
+	advertisements, err := peer1.GetAdvertisements(context.TODO(), "who_am_i")
+	assert.NoError(t, err)
+	assert.NotNil(t, advertisements)
+	assert.Len(t, advertisements, 3)
+
+	// check if all peers have returned the correct data
+	for _, v := range advertisements {
+		switch v.PeerId {
+		case peer1.Host.ID().String():
+			{
+				assert.Equal(t, []byte(`{"peer":"peer1"}`), v.Data)
+			}
+		case peer2.Host.ID().String():
+			{
+				assert.Equal(t, []byte(`{"peer":"peer2"}`), v.Data)
+			}
+		case peer3.Host.ID().String():
+			{
+				assert.Equal(t, []byte(`{"peer":"peer3"}`), v.Data)
+			}
+		}
+	}
+
+	// peer3 unadvertises
+	err = peer3.Unadvertise(context.TODO(), "who_am_i")
+	assert.NoError(t, err)
+	time.Sleep(40 * time.Millisecond)
+
+	// get the values again
+	advertisements, err = peer1.GetAdvertisements(context.TODO(), "who_am_i")
+	assert.NoError(t, err)
+	assert.NotNil(t, advertisements)
+	assert.Len(t, advertisements, 2)
 }
 
 func setupPeerConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.Multiaddr) *models.Libp2pConfig {

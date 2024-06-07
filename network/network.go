@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	commonproto "gitlab.com/nunet/device-management-service/proto/generated/v1/common"
+
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/network/libp2p"
 )
@@ -26,10 +28,13 @@ type Network interface {
 
 	// Advertise advertises the given data with the given adId
 	// such as advertising device capabilities on the DHT
-	Advertise(adId string, data []byte) error
+	Advertise(ctx context.Context, key string, data []byte) error
 
 	// Unadvertise stops advertising data corresponding to the given adId
-	Unadvertise(adId string) error
+	Unadvertise(ctx context.Context, key string) error
+
+	// GetAdvertisements returns the advertisement
+	GetAdvertisements(ctx context.Context, key string) ([]*commonproto.Advertisement, error)
 
 	// Publish publishes the given data to the given topic if the network
 	// type allows publish/subscribe functionality such as gossipsub or nats
