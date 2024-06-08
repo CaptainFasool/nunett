@@ -118,7 +118,6 @@ func (l *Libp2p) Start(context context.Context) error {
 
 	l.discoveryTask = l.config.Scheduler.AddTask(discoveryTask)
 
-	// handlers
 	return nil
 }
 
