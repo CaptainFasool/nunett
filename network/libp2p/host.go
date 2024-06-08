@@ -7,6 +7,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -23,7 +24,7 @@ import (
 )
 
 // NewHost returns a new libp2p host with dht and other related settings.
-func NewHost(ctx context.Context, config *models.Libp2pConfig) (host.Host, *dht.IpfsDHT, error) {
+func NewHost(ctx context.Context, config *models.Libp2pConfig) (host.Host, *dht.IpfsDHT, *pubsub.PubSub, error) {
 	var idht *dht.IpfsDHT
 	connmgr, err := connmgr.NewConnManager(
 		100,
@@ -31,7 +32,7 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig) (host.Host, *dht.
 		connmgr.WithGracePeriod(time.Duration(config.GracePeriodMs)*time.Millisecond),
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	filter := multiaddr.NewFilters()
@@ -45,7 +46,7 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig) (host.Host, *dht.
 
 	ps, err := pstoremem.NewPeerstore()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	var libp2pOpts []libp2p.Option
@@ -121,9 +122,16 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig) (host.Host, *dht.
 
 	host, err := libp2p.New(libp2pOpts...)
 
+	optsPS := []pubsub.Option{pubsub.WithMessageSigning(true), pubsub.WithMaxMessageSize(config.GossipMaxMessageSize)}
+	gossip, err := pubsub.NewGossipSub(ctx, host, optsPS...)
+	// gossip, err := pubsub.NewGossipSubWithRouter(ctx, host, pubsub.DefaultGossipSubRouter(host), optsPS...)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return host, idht, nil
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return host, idht, gossip, nil
 }

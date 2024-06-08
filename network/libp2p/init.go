@@ -6,16 +6,9 @@ import (
 	"gitlab.com/nunet/device-management-service/telemetry/logger"
 )
 
-const (
-// Custom namespace for DHT protocol with version number
-// customNamespace = "/nunet-dht-1/"
-)
-
+// TODO: pass the logger to the constructor and remove from here
 var (
-	zlog otelzap.Logger
-	// gettingDHTUpdate     = false
-	// doneGettingDHTUpdate = make(chan bool) // XXX dirty hack to wait for DHT update to finish - should be removed
-
+	zlog    otelzap.Logger
 	newPeer = make(chan peer.AddrInfo)
 )
 

@@ -40,4 +40,5 @@ type Libp2pConfig struct {
 	PeerCountDiscoveryLimit int
 	PrivateNetwork          bool
 	GracePeriodMs           int
+	GossipMaxMessageSize    int
 }

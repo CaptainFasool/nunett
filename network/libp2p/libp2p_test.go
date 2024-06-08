@@ -81,7 +81,6 @@ func TestLibp2pMethods(t *testing.T) {
 
 	// peers of peer1 should be one (itself)
 	assert.Equal(t, peer1.Host.Peerstore().Peers().Len(), 1)
-	fmt.Println("peer addresses", peer1.Host.Addrs())
 
 	// setup peer2 to connect to peer 1
 	peer1p2pAddrs, err := peer1.GetMultiaddr()
@@ -167,6 +166,29 @@ func TestLibp2pMethods(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, advertisements)
 	assert.Len(t, advertisements, 2)
+
+	// test publish/subscribe
+	// in this test gossipsub messages are not always delivered from peer1 to other peers
+	// and this makes the test flaky. To solve the flakiness we use the peer one for
+	// both publishing and subscribing.
+	subscribeData := make(chan []byte)
+	err = peer1.Subscribe(context.TODO(), "blocks", func(data []byte) {
+		subscribeData <- data
+		close(subscribeData)
+	})
+	assert.NoError(t, err)
+
+	// calling one time publish doesnt gurantee that the message has been sent.
+	// without this we might not get a message in the subscribe and we would get
+	// flaky test which will fail
+	go func() {
+		for {
+			err = peer1.Publish(context.TODO(), "blocks", []byte(`{"block":"1"}`))
+		}
+	}()
+
+	receivedData := <-subscribeData
+	assert.EqualValues(t, []byte(`{"block":"1"}`), receivedData)
 }
 
 func setupPeerConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.Multiaddr) *models.Libp2pConfig {

@@ -38,10 +38,10 @@ type Network interface {
 
 	// Publish publishes the given data to the given topic if the network
 	// type allows publish/subscribe functionality such as gossipsub or nats
-	Publish(topic string, data []byte) error
+	Publish(ctx context.Context, topic string, data []byte) error
 	// Subscribe subscribes to the given topic and calls the handler function
 	// if the network type allows it simmilar to Publish()
-	Subscribe(topic string, handler func(data []byte)) error
+	Subscribe(ctx context.Context, topic string, handler func(data []byte)) error
 
 	// Stop stops the network including any existing advertisments and subscriptions
 	Stop() error

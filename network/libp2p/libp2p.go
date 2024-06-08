@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
@@ -29,9 +30,11 @@ import (
 
 // Libp2p contains the configuration for a Libp2p instance.
 type Libp2p struct {
-	Host host.Host
-	DHT  *dht.IpfsDHT
-	PS   peerstore.Peerstore
+	Host         host.Host
+	DHT          *dht.IpfsDHT
+	PS           peerstore.Peerstore
+	pubsub       *pubsub.PubSub
+	pubsubTopics map[string]*pubsub.Topic
 
 	// a list of peers discovered by discovery
 	discoveredPeers []peer.AddrInfo
@@ -57,13 +60,14 @@ func New(config *models.Libp2pConfig) (*Libp2p, error) {
 	}
 
 	return &Libp2p{
-		config: config,
+		config:       config,
+		pubsubTopics: make(map[string]*pubsub.Topic),
 	}, nil
 }
 
 // Init initializes a libp2p host with its dependencies.
 func (l *Libp2p) Init(context context.Context) error {
-	host, dht, err := NewHost(context, l.config)
+	host, dht, pubsub, err := NewHost(context, l.config)
 	if err != nil {
 		zlog.Sugar().Error(err)
 		return err
@@ -73,6 +77,7 @@ func (l *Libp2p) Init(context context.Context) error {
 	l.DHT = dht
 	l.PS = host.Peerstore()
 	l.discovery = drouting.NewRoutingDiscovery(dht)
+	l.pubsub = pubsub
 
 	return nil
 }
@@ -275,11 +280,54 @@ func (l *Libp2p) Unadvertise(ctx context.Context, key string) error {
 	return nil
 }
 
-func (l *Libp2p) Publish(topic string, data []byte) error {
+// Publish publishes data to a topic.
+// The requirements are that only one topic handler should exist per topic.
+func (l *Libp2p) Publish(ctx context.Context, topic string, data []byte) error {
+	topicHandler, ok := l.pubsubTopics[topic]
+	if !ok {
+		t, err := l.pubsub.Join(topic)
+		if err != nil {
+			return fmt.Errorf("failed to join topic %s: %w", topic, err)
+		}
+		topicHandler = t
+		l.pubsubTopics[topic] = topicHandler
+	}
+
+	err := topicHandler.Publish(ctx, data)
+	if err != nil {
+		return fmt.Errorf("failed to publish to topic %s: %w", topic, err)
+	}
+
 	return nil
 }
 
-func (l *Libp2p) Subscribe(topic string, handler func(data []byte)) error {
+// Subscribe subscribes to a topic and sends the messages to the handler.
+func (l *Libp2p) Subscribe(ctx context.Context, topic string, handler func(data []byte)) error {
+	topicHandler, ok := l.pubsubTopics[topic]
+	if !ok {
+		t, err := l.pubsub.Join(topic)
+		if err != nil {
+			return fmt.Errorf("failed to join topic %s: %w", topic, err)
+		}
+		topicHandler = t
+		l.pubsubTopics[topic] = topicHandler
+	}
+
+	sub, err := topicHandler.Subscribe()
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to topic %s: %w", topic, err)
+	}
+
+	go func() {
+		for {
+			msg, err := sub.Next(ctx)
+			if err != nil {
+				continue
+			}
+			handler(msg.Data)
+		}
+	}()
+
 	return nil
 }
 
