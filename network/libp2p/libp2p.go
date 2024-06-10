@@ -121,6 +121,11 @@ func (l *Libp2p) Start(context context.Context) error {
 	return nil
 }
 
+// SendMessage sends a message to a list of peers.
+func (l *Libp2p) SendMessage(ctx context.Context, addrs []string, msg []byte) error {
+	return errors.New("unimplemented")
+}
+
 // GetMultiaddr returns the peer's multiaddr.
 func (l *Libp2p) GetMultiaddr() ([]multiaddr.Multiaddr, error) {
 	peerInfo := peer.AddrInfo{

@@ -12,7 +12,16 @@ import (
 	"gitlab.com/nunet/device-management-service/network/libp2p"
 )
 
+// Messenger defines the interface for sending messages.
+type Messenger interface {
+	// SendMessage sends a message to the given address.
+	SendMessage(ctx context.Context, addrs []string, msg []byte) error
+}
+
 type Network interface {
+	// Messenger embedded interface
+	Messenger
+
 	// Init initializes the network
 	Init(context.Context) error
 
