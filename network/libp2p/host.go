@@ -75,6 +75,7 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 	} else {
 		// enable quic (it does not work with pnet enabled)
 		libp2pOpts = append(libp2pOpts, libp2p.Transport(quic.NewTransport))
+		libp2pOpts = append(libp2pOpts, libp2p.Transport(webtransport.New))
 	}
 
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(config.ListenAddress...),
@@ -89,7 +90,6 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 		// Do not use DefaulTransports as we can not enable Quic when pnet
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
-		libp2p.Transport(webtransport.New),
 		libp2p.EnableNATService(),
 		libp2p.ConnectionManager(connmgr),
 		libp2p.EnableRelay(),

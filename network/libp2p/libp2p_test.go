@@ -75,7 +75,7 @@ func TestNew(t *testing.T) {
 
 func TestLibp2pMethods(t *testing.T) {
 	// setup peer1
-	peer1Config := setupLibp2pConfig(t, 65512, []multiaddr.Multiaddr{})
+	peer1Config := setupLibp2pConfig(t, 65512, []multiaddr.Multiaddr{}, false)
 	peer1, err := New(peer1Config, afero.NewMemMapFs())
 	assert.NoError(t, err)
 	assert.NotNil(t, peer1)
@@ -90,7 +90,7 @@ func TestLibp2pMethods(t *testing.T) {
 	// setup peer2 to connect to peer 1
 	peer1p2pAddrs, err := peer1.GetMultiaddr()
 	assert.NoError(t, err)
-	peer2Config := setupLibp2pConfig(t, 65513, peer1p2pAddrs)
+	peer2Config := setupLibp2pConfig(t, 65513, peer1p2pAddrs, false)
 	peer2, err := New(peer2Config, afero.NewMemMapFs())
 	assert.NoError(t, err)
 	assert.NotNil(t, peer2)

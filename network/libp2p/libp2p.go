@@ -56,10 +56,10 @@ type Libp2p struct {
 	fs afero.Fs
 }
 
+// New creates a libp2p instance.
+//
 // TODO-Suggestion: move models.Libp2pConfig to here for better readability.
 // Unless there is a reason to keep within models.
-
-// New creates a libp2p instance.
 func New(config *models.Libp2pConfig, fs afero.Fs) (*Libp2p, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
@@ -109,7 +109,7 @@ func (l *Libp2p) Start(context context.Context) error {
 	err = l.advertiseForRendezvousDiscovery(context)
 	if err != nil {
 		// TODO: the error might be misleading
-		zlog.Sugar().Errorf("failed to start network with randevouz discovery: %v", err)
+		// zlog.Sugar().Errorf("failed to start network with randevouz discovery: %v", err)
 	}
 
 	// discover

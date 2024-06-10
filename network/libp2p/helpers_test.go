@@ -3,22 +3,24 @@ package libp2p
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/spf13/afero"
-
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/pnet"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/nunet/device-management-service/internal/background_tasks"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 func TestCreateTestNetwork(t *testing.T) {
-	fs := afero.NewMemMapFs()
 	numNodes := 5
-	nodes := createTestNetwork(t, fs, numNodes)
+	nodes := createTestNetwork(t, numNodes, false)
 
 	// verify the number of nodes
 	assert.Equal(t, 5, len(nodes))
@@ -31,12 +33,12 @@ func TestCreateTestNetwork(t *testing.T) {
 	}
 }
 
-func createTestNetwork(t *testing.T, fs afero.Fs, n int) []*Libp2p {
+func createTestNetwork(t *testing.T, n int, withSwarmKey bool) []*Libp2p {
 	var peers []*Libp2p
 
 	// initiating and configuring a single bootstrap node
-	bootstrapConfig := setupLibp2pConfig(t, 45600, []multiaddr.Multiaddr{})
-	bootstrapNode, err := New(bootstrapConfig, fs)
+	bootstrapConfig := setupLibp2pConfig(t, 45600, []multiaddr.Multiaddr{}, withSwarmKey)
+	bootstrapNode, err := New(bootstrapConfig, afero.NewMemMapFs())
 	assert.NoError(t, err)
 
 	err = bootstrapNode.Init(context.TODO())
@@ -50,26 +52,57 @@ func createTestNetwork(t *testing.T, fs afero.Fs, n int) []*Libp2p {
 
 	peers = append(peers, bootstrapNode)
 
+	var bootstrapNodeBasePath string
+	var bootstrapSwarmKey pnet.PSK
+	if withSwarmKey {
+		// base path where nunet things are stored (we'll use to copy the swarm key
+		// to other peers)
+		bootstrapNodeBasePath, err = getBasePath(bootstrapNode.fs)
+		assert.NoError(t, err)
+
+		// checking if swarm key was generated
+		bootstrapSwarmKey, err = getSwarmKey(bootstrapNode.fs)
+		assert.NoError(t, err)
+		assert.NotNil(t, bootstrapSwarmKey)
+	}
+
 	// create the remaining hosts
 	for i := 1; i < n; i++ {
-		config := setupLibp2pConfig(t, 45600+i, bootstrapMultiAddr)
-		p, err := New(config, fs)
-		if err != nil {
-			t.Fatalf("Failed to create peer: %v", err)
+		config := setupLibp2pConfig(t, 45600+i, bootstrapMultiAddr, withSwarmKey)
+		p, err := New(config, afero.NewMemMapFs())
+		assert.NoError(t, err)
+
+		if withSwarmKey {
+			peerBasePath, err := getBasePath(p.fs)
+			assert.NoError(t, err)
+
+			// copy swarm key from bootstrap FS to each peer's filesystem
+			err = utils.CopyFile(
+				bootstrapNode.fs,
+				p.fs,
+				filepath.Join(bootstrapNodeBasePath, "swarm.key"),
+				filepath.Join(peerBasePath, "swarm.key"),
+			)
+			assert.NoError(t, err)
+
+			// check if swarm key was indeed copied
+			key, err := getSwarmKey(p.fs)
+			assert.NoError(t, err)
+			assert.Equal(t, bootstrapSwarmKey, key)
 		}
+
 		err = p.Init(context.TODO())
-		if err != nil {
-			t.Fatalf("Failed to initialize peer: %v", err)
-		}
+		assert.NoError(t, err)
+
 		err = p.Start(context.TODO())
-		if err != nil {
-			t.Fatalf("Failed to start peer: %v", err)
-		}
+		assert.NoError(t, err)
+
 		peers = append(peers, p)
 	}
 
 	// close peers after tests are done
 	t.Cleanup(func() {
+		t.Log("Closing peers")
 		for _, p := range peers {
 			p.Host.Close()
 		}
@@ -78,7 +111,8 @@ func createTestNetwork(t *testing.T, fs afero.Fs, n int) []*Libp2p {
 	return peers
 }
 
-func setupLibp2pConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.Multiaddr) *models.Libp2pConfig {
+func setupLibp2pConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.Multiaddr,
+	withSwarmKey bool) *models.Libp2pConfig {
 	priv, _, err := crypto.GenerateKeyPair(crypto.Secp256k1, 256)
 	assert.NoError(t, err)
 	return &models.Libp2pConfig{
@@ -91,7 +125,7 @@ func setupLibp2pConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.
 		ListenAddress:           []string{fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", libp2pPort)},
 		PeerCountDiscoveryLimit: 40,
 		PNet: models.PNetConfig{
-			WithSwarmKey: false,
+			WithSwarmKey: withSwarmKey,
 		},
 	}
 }

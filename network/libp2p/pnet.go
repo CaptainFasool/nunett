@@ -85,7 +85,7 @@ func generateSwarmKey(fs afero.Fs) (pnet.PSK, error) {
 	}
 	encodedKey := base64.StdEncoding.EncodeToString(privBytes)
 
-	swarmKeyWithCodec := fmt.Sprintf("/key/swarm/psk/1.0.0/base64/%s\n", encodedKey)
+	swarmKeyWithCodec := fmt.Sprintf("/key/swarm/psk/1.0.0/\n/base64/\n%s\n", encodedKey)
 
 	// TODO-pnet-1
 	nunetDir, err := getBasePath(fs)
@@ -103,7 +103,7 @@ func generateSwarmKey(fs afero.Fs) (pnet.PSK, error) {
 		return nil, fmt.Errorf("failed to decode generated swarm key: %s", err)
 	}
 
-	fmt.Printf("A new Swarm key was generated and written to %s\n"+
+	zlog.Sugar().Infof("A new Swarm key was generated and written to %s\n"+
 		"IMPORTANT: If you'd like to create the swarm key using a cryptography algorithm "+
 		"of your choice, just modify the swarm.key file with your own key.\n"+
 		"The content of `swarm.key` should look like: `/key/swarm/psk/1.0.0/<base_encoding>/<your_key>`\n"+
