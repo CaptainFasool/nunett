@@ -3,31 +3,31 @@ package network
 
 // Network defines an interface provided by DMS to be implemented by various
 // network providers. This could be libp2p, or other p2p providers.
-type Network interface {
-	// Config sets the configuration for the network in
-	Config() error
+// type Network interface {
+// 	// Config sets the configuration for the network in
+// 	Config() error
 
-	// Init initializes the node with config specific in Config() phase.
-	// tags: Start
-	Init() error
+// 	// Init initializes the node with config specific in Config() phase.
+// 	// tags: Start
+// 	Init() error
 
-	// EventRegister sets handlers to handle events such as change of local address
-	EventRegister() error
+// 	// EventRegister sets handlers to handle events such as change of local address
+// 	EventRegister() error
 
-	// Dial connects to a peer
-	// tags: ConnectPeer
-	Dial() error
+// 	// Dial connects to a peer
+// 	// tags: ConnectPeer
+// 	Dial() error
 
-	// Listen listens on a connection. Example could be a stream for libp2p connection.
-	Listen() error
+// 	// Listen listens on a connection. Example could be a stream for libp2p connection.
+// 	Listen() error
 
-	// Status returns status of current host in regards to implementation.
-	// Output must follow a generic struct.
-	Status() bool
+// 	// Status returns status of current host in regards to implementation.
+// 	// Output must follow a generic struct.
+// 	Status() bool
 
-	// Tears down network interface.
-	Stop() error
-}
+// 	// Tears down network interface.
+// 	Stop() error
+// }
 
 type VPN interface {
 	// Start takes in an initial routing table and starts the VPN.
