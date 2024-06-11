@@ -21,14 +21,14 @@ func LoadConfigFromEnv() *TelemetryConfig {
 }
 
 // ObservabilityLevel defines levels of observability.
-type ObservabilityLevel string
+type ObservabilityLevel int
 
 // Constants representing levels of observability.
 const (
-	TRACE ObservabilityLevel = "TRACE"
-	DEBUG ObservabilityLevel = "DEBUG"
-	INFO  ObservabilityLevel = "INFO"
-	WARN  ObservabilityLevel = "WARN"
-	ERROR ObservabilityLevel = "ERROR"
-	FATAL ObservabilityLevel = "FATAL"
+	TRACE ObservabilityLevel = 1
+	DEBUG ObservabilityLevel = 2
+	INFO  ObservabilityLevel = 3
+	WARN  ObservabilityLevel = 4
+	ERROR ObservabilityLevel = 5
+	FATAL ObservabilityLevel = 6
 )

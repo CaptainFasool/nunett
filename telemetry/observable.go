@@ -1,6 +1,9 @@
 package telemetry
 
 import (
+	"log"
+	"strconv"
+
 	"gitlab.com/nunet/device-management-service/models"
 )
 
@@ -22,7 +25,12 @@ func NewObservableImpl(config *models.TelemetryConfig) *ObservableImpl {
 }
 
 func (o *ObservableImpl) GetObservabilityLevel() models.ObservabilityLevel {
-	return models.ObservabilityLevel(o.config.ObservabilityLevel)
+	level, err := strconv.Atoi(o.config.ObservabilityLevel)
+	if err != nil {
+		log.Printf("Invalid observability level: %s, defaulting to INFO", o.config.ObservabilityLevel)
+		return models.INFO
+	}
+	return models.ObservabilityLevel(level)
 }
 
 func (o *ObservableImpl) GetCollectors() []Collector {
