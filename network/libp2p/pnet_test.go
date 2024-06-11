@@ -45,6 +45,11 @@ func TestPrivateSwarm(t *testing.T) {
 	err = p.Start(context.TODO())
 	assert.NoError(t, err)
 
+	t.Cleanup(func() {
+		err := p.Host.Close()
+		assert.NoError(t, err)
+	})
+
 	// Ping seems to rely on peerIDs which under the hood are then used to search for peers multiaddresses
 	// which might fail if the peer has no access to this info through DHT or local information (peerstore).
 	// A more reliable way to test the security of a private network is to try to dial peers directly
@@ -52,12 +57,21 @@ func TestPrivateSwarm(t *testing.T) {
 	for _, node := range nodes {
 		t.Run("Connection trial with peer outside the private swarm", func(t *testing.T) {
 			t.Parallel()
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
 			// trial: outer peer trying to connect with a peer within a pnet
-			err := p.Host.Connect(context.TODO(), peer.AddrInfo{ID: node.Host.ID(), Addrs: node.Host.Addrs()})
+			err := p.Host.Connect(ctx, peer.AddrInfo{ID: node.Host.ID(), Addrs: node.Host.Addrs()})
+			if ctx.Err() == context.DeadlineExceeded {
+				t.Fatal("Test failed due to timeout")
+			}
 			assert.Error(t, err)
 
 			// trial: peer within a private network trying to establish a connection with an outer peer
-			err = node.Host.Connect(context.TODO(), peer.AddrInfo{ID: p.Host.ID(), Addrs: p.Host.Addrs()})
+			err = node.Host.Connect(ctx, peer.AddrInfo{ID: p.Host.ID(), Addrs: p.Host.Addrs()})
+			if ctx.Err() == context.DeadlineExceeded {
+				t.Fatal("Test failed due to timeout")
+			}
 			assert.Error(t, err)
 		})
 	}
