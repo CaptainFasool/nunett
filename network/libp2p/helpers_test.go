@@ -37,7 +37,7 @@ func createTestNetwork(t *testing.T, n int, withSwarmKey bool) []*Libp2p {
 	var peers []*Libp2p
 
 	// initiating and configuring a single bootstrap node
-	bootstrapConfig := setupLibp2pConfig(t, 45600, []multiaddr.Multiaddr{}, withSwarmKey)
+	bootstrapConfig := setupPeerConfig(t, 45600, []multiaddr.Multiaddr{}, withSwarmKey)
 	bootstrapNode, err := New(bootstrapConfig, afero.NewMemMapFs())
 	assert.NoError(t, err)
 
@@ -68,7 +68,7 @@ func createTestNetwork(t *testing.T, n int, withSwarmKey bool) []*Libp2p {
 
 	// create the remaining hosts
 	for i := 1; i < n; i++ {
-		config := setupLibp2pConfig(t, 45600+i, bootstrapMultiAddr, withSwarmKey)
+		config := setupPeerConfig(t, 45600+i, bootstrapMultiAddr, withSwarmKey)
 		p, err := New(config, afero.NewMemMapFs())
 		assert.NoError(t, err)
 
@@ -111,7 +111,7 @@ func createTestNetwork(t *testing.T, n int, withSwarmKey bool) []*Libp2p {
 	return peers
 }
 
-func setupLibp2pConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.Multiaddr,
+func setupPeerConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.Multiaddr,
 	withSwarmKey bool) *models.Libp2pConfig {
 	priv, _, err := crypto.GenerateKeyPair(crypto.Secp256k1, 256)
 	assert.NoError(t, err)

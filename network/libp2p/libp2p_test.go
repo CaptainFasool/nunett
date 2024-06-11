@@ -2,7 +2,6 @@ package libp2p
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -75,7 +74,7 @@ func TestNew(t *testing.T) {
 
 func TestLibp2pMethods(t *testing.T) {
 	// setup peer1
-	peer1Config := setupLibp2pConfig(t, 65512, []multiaddr.Multiaddr{}, false)
+	peer1Config := setupPeerConfig(t, 65512, []multiaddr.Multiaddr{}, false)
 	peer1, err := New(peer1Config, afero.NewMemMapFs())
 	assert.NoError(t, err)
 	assert.NotNil(t, peer1)
@@ -90,7 +89,7 @@ func TestLibp2pMethods(t *testing.T) {
 	// setup peer2 to connect to peer 1
 	peer1p2pAddrs, err := peer1.GetMultiaddr()
 	assert.NoError(t, err)
-	peer2Config := setupLibp2pConfig(t, 65513, peer1p2pAddrs, false)
+	peer2Config := setupPeerConfig(t, 65513, peer1p2pAddrs, false)
 	peer2, err := New(peer2Config, afero.NewMemMapFs())
 	assert.NoError(t, err)
 	assert.NotNil(t, peer2)
@@ -117,8 +116,8 @@ func TestLibp2pMethods(t *testing.T) {
 	// peer3 will connect to peer2 in a ring setup.
 	peer2p2pAddrs, err := peer2.GetMultiaddr()
 	assert.NoError(t, err)
-	peer3Config := setupPeerConfig(t, 65514, peer2p2pAddrs)
-	peer3, err := New(peer3Config)
+	peer3Config := setupPeerConfig(t, 65514, peer2p2pAddrs, false)
+	peer3, err := New(peer3Config, afero.NewMemMapFs())
 	assert.NoError(t, err)
 	assert.NotNil(t, peer3)
 

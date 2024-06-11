@@ -31,7 +31,7 @@ import (
 )
 
 // NewHost returns a new libp2p host with dht and other related settings.
-func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (host.Host, *dht.IpfsDHT, error) {
+func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (host.Host, *dht.IpfsDHT, *pubsub.PubSub, error) {
 	var idht *dht.IpfsDHT
 	connmgr, err := connmgr.NewConnManager(
 		100,
@@ -66,7 +66,7 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 	if config.PNet.WithSwarmKey {
 		psk, err := configureSwarmKey(fs)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to configure swarm key: %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to configure swarm key: %v", err)
 		}
 		libp2pOpts = append(libp2pOpts, libp2p.PrivateNetwork(psk))
 
@@ -76,6 +76,9 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 		// enable quic (it does not work with pnet enabled)
 		libp2pOpts = append(libp2pOpts, libp2p.Transport(quic.NewTransport))
 		libp2pOpts = append(libp2pOpts, libp2p.Transport(webtransport.New))
+
+		// for some reason, ForcePrivateNetwork was equal to true even without being set to true
+		pnet.ForcePrivateNetwork = false
 	}
 
 	libp2pOpts = append(libp2pOpts, libp2p.ListenAddrStrings(config.ListenAddress...),
@@ -145,6 +148,9 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 	}
 
 	host, err := libp2p.New(libp2pOpts...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	optsPS := []pubsub.Option{pubsub.WithMessageSigning(true), pubsub.WithMaxMessageSize(config.GossipMaxMessageSize)}
 	gossip, err := pubsub.NewGossipSub(ctx, host, optsPS...)
@@ -152,10 +158,5 @@ func NewHost(ctx context.Context, config *models.Libp2pConfig, fs afero.Fs) (hos
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	return host, idht, gossip, nil
 }
