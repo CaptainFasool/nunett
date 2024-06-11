@@ -6,16 +6,14 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
-	"gitlab.com/nunet/device-management-service/internal/tracing"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func SetupRouter() *gin.Engine {
+	// Note: While rearranging routes in groups, make sure to also update the
+	// route handler swagger annotaion @Router with the correct path.
+
 	router := gin.Default()
 	router.Use(cors.New(getCustomCorsConfig()))
-
-	router.Use(otelgin.Middleware(tracing.ServiceName))
 
 	v1 := router.Group("/api/v1")
 
@@ -83,8 +81,8 @@ func SetupRouter() *gin.Engine {
 		p2p.GET("/dht/dump", DumpDHTHandler)
 		p2p.GET("/kad-dht", ListKadDHTPeersHandler)
 		p2p.GET("/self", SelfPeerInfoHandler)
-		p2p.GET("/chat", ListChatHandler)
 		p2p.GET("/depreq", DefaultDepReqPeerHandler)
+		p2p.GET("/chat", ListChatHandler)
 		p2p.GET("/chat/start", StartChatHandler)
 		p2p.GET("/chat/join", JoinChatHandler)
 		p2p.GET("/chat/clear", ClearChatHandler)

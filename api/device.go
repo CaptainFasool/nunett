@@ -2,7 +2,6 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	kLogger "gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/utils"
 	"go.opentelemetry.io/otel/attribute"
@@ -11,12 +10,15 @@ import (
 
 // DeviceStatusHandler  godoc
 //
-// @Summary			Retrieve device status
-// @Description		Retrieve device status whether paused/offline (unable to receive job deployments) or online
-// @Tags			device
-// @Produce			json
-// @Success			200	{string}	string
-// @Router			/device/status [get]
+//	@Summary		Retrieve device status
+//	@Description	Retrieve device status whether paused/offline (unable to receive job deployments) or online
+//	@Tags			device
+//	@Produce		json
+//	@Success		200	{object}	object
+//	@Failure		500	{object}	object	"host node has not yet been initialized"
+//	@Failure		500	{object}	object	"could not retrieve data from peer"
+//	@Failure		500	{object}	object	"failed to type assert peer data for peer ID"
+//	@Router			/device/status [get]
 func DeviceStatusHandler(c *gin.Context) {
 	status, err := libp2p.DeviceStatus()
 	if err != nil {
@@ -28,17 +30,26 @@ func DeviceStatusHandler(c *gin.Context) {
 
 // ChangeDeviceStatusHandler  godoc
 //
-// @Summary			Change device status between online/offline
-// @Description		Change device status to online (able to receive jobs) or offline (unable to receive jobs).
-// @Tags			device
-// @Produce			json
-// @Success			200	{string}	string
-// @Router			/device/status [post]
+//	@Summary		Change device status between online/offline
+//	@Description	Change device status to online (able to receive jobs) or offline (unable to receive jobs).
+//	@Tags			device
+//	@Produce		json
+//	@Failure		400	{object}	object	"empty content data"
+//	@Failure		400	{object}	object	"invalid payload data"
+//	@Failure		500	{object}	object	"host node has not yet been initialized"
+//	@Failure		500	{object}	object	"could not retrieve data from self peer"
+//	@Failure		500	{object}	object	"failed to type assert peer data for peer ID"
+//	@Failure		500	{object}	object	"Failed to retrieve libp2p info from database"
+//	@Failure		500	{object}	object	"Failed to update libp2p info in database"
+//	@Failure		500	{object}	object	"failed to put peer data into peerstore"
+//	@Success		200	{object}	object	"Device status successfully changed to online"
+//	@Success		200	{object}	object	"Device status successfully changed to offline"
+//	@Success		200	{object}	object	"no change in device status"
+//	@Router			/device/status [post]
 func ChangeDeviceStatusHandler(c *gin.Context) {
 	span := trace.SpanFromContext(c.Request.Context())
 	span.SetAttributes(attribute.String("URL", "/device/status"))
 	span.SetAttributes(attribute.String("MachineUUID", utils.GetMachineUUID()))
-	kLogger.Info("Pause job onboarding", span)
 
 	var status struct {
 		IsAvailable bool `json:"is_available"`

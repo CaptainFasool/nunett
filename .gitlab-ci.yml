@@ -5,8 +5,8 @@ variables:
   DMS_BUILDER_VERSION: "0.4"
 
 include:
-  project: nunet/nunet-infra
-  file: ci/templates/Auto-DevOps.gitlab-ci.yml
+  project: nunet/test-suite
+  file: cicd/Auto-DevOps.gitlab-ci.yml
   ref: develop
 
 image: registry.gitlab.com/nunet/device-management-service/nunet-dms-builder:0.3
@@ -91,8 +91,8 @@ deploy:openapi:
   extends: .git:push
   stage: .pre
   script:
-    - mv docs/swagger.json "${CI_COMMIT_SHA}"
-    - mv docs/device-management-api-spec.yaml "${CI_COMMIT_SHA}"
+    - mv api/docs/swagger.json "${CI_COMMIT_SHA}"
+    - mv api/docs/device-management-api-spec.yaml "${CI_COMMIT_SHA}"
   only:
     refs:
       - $CI_DEFAULT_BRANCH
@@ -118,4 +118,5 @@ Deploy:
     - DMS_VERSION=$(cat main.go | grep @version | awk {'print $3'})
     - ansible-playbook -i $ANSIBLE_INVENTORY -e dms_version=$DMS_VERSION maint-scripts/deploy/playbook.yaml 
   rules:
+    - when: never
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "staging"

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"gitlab.com/nunet/device-management-service/docs"
+	"gitlab.com/nunet/device-management-service/api/docs"
 )
 
 var rootCmd = &cobra.Command{

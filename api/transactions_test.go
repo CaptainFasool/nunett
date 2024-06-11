@@ -11,8 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/nunet/device-management-service/integrations/tokenomics"
 	"gitlab.com/nunet/device-management-service/models"
+	"gitlab.com/nunet/device-management-service/utils"
 )
 
 type rewardRespToCPD struct {
@@ -39,7 +39,7 @@ func (h *MockHandler) GetJobTxHashesHandler(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid clean_tx parameter"})
 		return
 	}
-	resp := []tokenomics.TxHashResp{
+	resp := []utils.TxHashResp{
 		{
 			TxHash:          "foobar123",
 			TransactionType: "baz",
@@ -55,7 +55,7 @@ func (h *MockHandler) GetJobTxHashesHandler(c *gin.Context) {
 }
 
 func (h *MockHandler) RequestRewardHandler(c *gin.Context) {
-	var payload tokenomics.ClaimCardanoTokenBody
+	var payload utils.ClaimCardanoTokenBody
 	err := c.ShouldBindJSON(&payload)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
@@ -87,7 +87,7 @@ func (h *MockHandler) SendTxStatusHandler(c *gin.Context) {
 }
 
 func (h *MockHandler) UpdateTxStatusHandler(c *gin.Context) {
-	var body tokenomics.UpdateTxStatusBody
+	var body utils.UpdateTxStatusBody
 	err := c.BindJSON(&body)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"error": "invalid payload data"})
@@ -133,7 +133,7 @@ func TestGetJobTxHashesHandler(t *testing.T) {
 func TestRequestRewardHandler(t *testing.T) {
 	router := SetupMockRouter()
 
-	payload := tokenomics.ClaimCardanoTokenBody{
+	payload := utils.ClaimCardanoTokenBody{
 		// Fill in required fields
 	}
 	bodyBytes, _ := json.Marshal(payload)
@@ -163,7 +163,7 @@ func TestSendTxStatusHandler(t *testing.T) {
 func TestUpdateTxStatusHandler(t *testing.T) {
 	router := SetupMockRouter()
 
-	body := tokenomics.UpdateTxStatusBody{
+	body := utils.UpdateTxStatusBody{
 		// Fill in required fields
 	}
 	bodyBytes, _ := json.Marshal(body)

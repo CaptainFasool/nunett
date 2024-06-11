@@ -20,11 +20,51 @@ Types of changes
 - `Security` in case of vulnerabilities.
 
 -->
-## [0.4.171](#412)
+
+## [0.4.170](#386)
 
 ### Added
-- open telemetry package implemntation
+- Support for Clover DB
 
+## [0.4.169](#428)
+
+### Added
+- Volume Controller
+
+## [0.4.168](!349)
+
+### Deprecated
+- deleted the following packages
+    - docker
+    - firecracker
+    - integrations/oracle
+    - internal/klogger
+    - internal/messaging
+    - internal/tracing
+    - libp2p
+### Changed
+- moved /internal/logger into /telemetry
+- moved /docs into /api/docs
+- moved integration/tokenomics into /utils/blockchain.go and /cardano into /utils/cardano
+
+## [0.4.167](#409)
+
+### Changed
+- Docker executor contianer run pulls image if it doesn't exist locally
+- Readme update on testing
+
+### Added
+- Executor tests and test data fetch using make
+
+## [0.4.166](#396)
+
+### Added
+- Firecracker executor
+
+## [0.4.165](#346)
+
+### Added
+- Generic executor package interface and its docker implementation
 
 ## [0.4.164](#340)
 

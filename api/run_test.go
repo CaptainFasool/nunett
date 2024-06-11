@@ -22,12 +22,6 @@ type fundingRespToSPD struct {
 	Distribute_75Hash   string  `json:"distribute_75_hash"`
 }
 
-type checkpoint struct {
-	CheckpointDir string `json:"checkpoint_dir"`
-	FilenamePath  string `json:"filename_path"`
-	LastModified  int64  `json:"last_modified"`
-}
-
 func (h *MockHandler) RequestServiceHandler(c *gin.Context) {
 	var depReq models.DeploymentRequest
 	err := c.BindJSON(&depReq)

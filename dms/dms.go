@@ -8,13 +8,9 @@ import (
 
 	"gitlab.com/nunet/device-management-service/api"
 	"gitlab.com/nunet/device-management-service/db"
-	"gitlab.com/nunet/device-management-service/docker"
-	"gitlab.com/nunet/device-management-service/firecracker"
 	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
-	"gitlab.com/nunet/device-management-service/internal/heartbeat"
 	"gitlab.com/nunet/device-management-service/internal/messaging"
-	"gitlab.com/nunet/device-management-service/internal/tracing"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/models"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -30,24 +26,14 @@ func Run() {
 
 	db.ConnectDatabase()
 
-	docker.StartCleanup()
-
-	cleanup := tracing.InitTracer()
-	defer cleanup(context.Background())
-
 	go startServer()
 
 	go messaging.DeploymentWorker()
 
 	go messaging.FileTransferWorker(ctx)
 
-	heartbeat.Done = make(chan bool)
-	go heartbeat.Heartbeat()
 	// wait for server to start properly before sending requests below
 	time.Sleep(time.Second * 5)
-
-	// get managed VMs, assume previous run left some VM running
-	firecracker.RestoreVMs()
 
 	// check if onboarded
 	if onboarded, _ := utils.IsOnboarded(); onboarded {
@@ -67,7 +53,6 @@ func Run() {
 		libp2p.RunNode(priv, p2pParams.ServerMode, p2pParams.Available)
 		if libp2p.GetP2P().Host != nil {
 			SanityCheck(db.DB)
-			heartbeat.CheckToken(libp2p.GetP2P().Host.ID().String(), utils.GetChannelName())
 		}
 	}
 
