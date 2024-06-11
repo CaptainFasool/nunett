@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
 )
 
@@ -39,7 +40,7 @@ func New(pkg string) *Logger {
 	Log := &Logger{}
 	err = Log.init()
 	if err != nil {
-		panic(err)
+		internal.Shutdown(err.Error())
 	}
 
 	Log.Logger = Log.Logger.With(

@@ -1,6 +1,7 @@
 package repositories_gorm
 
 import (
+	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -15,7 +16,7 @@ func setup() {
 	var err error
 	db, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
-		panic("failed to connect to database")
+		internal.Shutdown("failed to connect to database")
 	}
 
 	// Run Migrations if needed

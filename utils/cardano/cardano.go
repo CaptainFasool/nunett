@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"gitlab.com/nunet/device-management-service/integrations/oracle"
+	"gitlab.com/nunet/device-management-service/internal"
 )
 
 // NOTE: This corresponds to
@@ -285,12 +286,12 @@ func SpendFromScript(tx_hash string, index int, redeemer Redeemer) error {
 	scriptInput.RedeemerFile = "redeemer.json"
 
 	if !success {
-		panic("Failed to find the script output")
+		internal.Shutdown("Failed to find the script output")
 	}
 
 	resp, err := getSignaturesFromOracle(redeemer)
 	if err != nil {
-		panic("Failed to contact oracle")
+		internal.Shutdown("Failed to contact oracle")
 	}
 
 	WriteRedeemerFile("redeemer.json", resp, redeemer)
