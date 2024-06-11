@@ -104,7 +104,8 @@ func createTestNetwork(t *testing.T, n int, withSwarmKey bool) []*Libp2p {
 	t.Cleanup(func() {
 		t.Log("Closing peers")
 		for _, p := range peers {
-			p.Host.Close()
+			err := p.Host.Close()
+			assert.NoError(t, err)
 		}
 	})
 
