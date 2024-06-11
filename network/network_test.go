@@ -5,6 +5,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/internal/background_tasks"
 	"gitlab.com/nunet/device-management-service/models"
@@ -40,7 +41,9 @@ func TestNewNetwork(t *testing.T) {
 					CustomNamespace:         "/nunet-dht-1/",
 					ListenAddress:           []string{"/ip4/localhost/tcp/10209"},
 					PeerCountDiscoveryLimit: 40,
-					PrivateNetwork:          false,
+					PNet: models.PNetConfig{
+						WithSwarmKey: false,
+					},
 				},
 			},
 		},
@@ -50,7 +53,7 @@ func TestNewNetwork(t *testing.T) {
 		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			network, err := NewNetwork(tt.config)
+			network, err := NewNetwork(tt.config, afero.NewMemMapFs())
 			if tt.expErr != "" {
 				assert.Nil(t, network)
 				assert.EqualError(t, err, tt.expErr)

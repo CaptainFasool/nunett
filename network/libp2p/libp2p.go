@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
+	"github.com/spf13/afero"
 	"google.golang.org/protobuf/proto"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -29,6 +30,9 @@ import (
 )
 
 // Libp2p contains the configuration for a Libp2p instance.
+//
+// TODO-suggestion: maybe we should call it something else like libp2pPeer, libp2pNode,
+// or just Peer/Node
 type Libp2p struct {
 	Host         host.Host
 	DHT          *dht.IpfsDHT
@@ -47,10 +51,16 @@ type Libp2p struct {
 	discoveryTask *bt.Task
 
 	config *models.Libp2pConfig
+
+	// dependencies (db, filesystem...)
+	fs afero.Fs
 }
 
 // New creates a libp2p instance.
-func New(config *models.Libp2pConfig) (*Libp2p, error) {
+//
+// TODO-Suggestion: move models.Libp2pConfig to here for better readability.
+// Unless there is a reason to keep within models.
+func New(config *models.Libp2pConfig, fs afero.Fs) (*Libp2p, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -62,12 +72,13 @@ func New(config *models.Libp2pConfig) (*Libp2p, error) {
 	return &Libp2p{
 		config:       config,
 		pubsubTopics: make(map[string]*pubsub.Topic),
+		fs:           fs,
 	}, nil
 }
 
 // Init initializes a libp2p host with its dependencies.
 func (l *Libp2p) Init(context context.Context) error {
-	host, dht, pubsub, err := NewHost(context, l.config)
+	host, dht, pubsub, err := NewHost(context, l.config, l.fs)
 	if err != nil {
 		zlog.Sugar().Error(err)
 		return err
@@ -97,7 +108,8 @@ func (l *Libp2p) Start(context context.Context) error {
 	// advertise randevouz discovery
 	err = l.advertiseForRendezvousDiscovery(context)
 	if err != nil {
-		zlog.Sugar().Errorf("failed to start network with randevouz discovery: %v", err)
+		// TODO: the error might be misleading
+		// zlog.Sugar().Errorf("failed to start network with randevouz discovery: %v", err)
 	}
 
 	// discover
@@ -161,7 +173,16 @@ func (l *Libp2p) Stat() models.NetworkStats {
 }
 
 // Ping the remote address. The remote address is the encoded peer id which will be decoded and used here.
+//
+// TODO (Return error once): something that was confusing me when using this method is that the error is
+// returned twice if any. Once as a field of PingResult and one as a return value.
 func (l *Libp2p) Ping(ctx context.Context, peerIDAddress string, timeout time.Duration) (models.PingResult, error) {
+	// avoid dial to self attempt
+	if peerIDAddress == l.Host.ID().String() {
+		err := errors.New("can't ping self")
+		return models.PingResult{Success: false, Error: err}, err
+	}
+
 	pingCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -174,6 +195,15 @@ func (l *Libp2p) Ping(ctx context.Context, peerIDAddress string, timeout time.Du
 
 	select {
 	case res := <-pingChan:
+		if res.Error != nil {
+			zlog.Sugar().Errorf("failed to ping peer %s: %v", peerIDAddress, res.Error)
+			return models.PingResult{
+				Success: false,
+				RTT:     res.RTT,
+				Error:   res.Error,
+			}, res.Error
+		}
+
 		return models.PingResult{
 			RTT:     res.RTT,
 			Success: true,

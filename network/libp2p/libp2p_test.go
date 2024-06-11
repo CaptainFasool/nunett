@@ -2,12 +2,12 @@ package libp2p
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/nunet/device-management-service/internal/background_tasks"
 	"gitlab.com/nunet/device-management-service/models"
@@ -34,7 +34,9 @@ func TestNew(t *testing.T) {
 				CustomNamespace:         "/nunet-dht-1/",
 				ListenAddress:           []string{"/ip4/localhost/tcp/10209"},
 				PeerCountDiscoveryLimit: 40,
-				PrivateNetwork:          false,
+				PNet: models.PNetConfig{
+					WithSwarmKey: false,
+				},
 			},
 			expErr: "scheduler is nil",
 		},
@@ -48,7 +50,9 @@ func TestNew(t *testing.T) {
 				CustomNamespace:         "/nunet-dht-1/",
 				ListenAddress:           []string{"/ip4/localhost/tcp/10209"},
 				PeerCountDiscoveryLimit: 40,
-				PrivateNetwork:          false,
+				PNet: models.PNetConfig{
+					WithSwarmKey: false,
+				},
 			},
 		},
 	}
@@ -57,7 +61,7 @@ func TestNew(t *testing.T) {
 		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			libp2p, err := New(tt.config)
+			libp2p, err := New(tt.config, afero.NewMemMapFs())
 			if tt.expErr != "" {
 				assert.Nil(t, libp2p)
 				assert.EqualError(t, err, tt.expErr)
@@ -70,8 +74,8 @@ func TestNew(t *testing.T) {
 
 func TestLibp2pMethods(t *testing.T) {
 	// setup peer1
-	peer1Config := setupPeerConfig(t, 65512, []multiaddr.Multiaddr{})
-	peer1, err := New(peer1Config)
+	peer1Config := setupPeerConfig(t, 65512, []multiaddr.Multiaddr{}, false)
+	peer1, err := New(peer1Config, afero.NewMemMapFs())
 	assert.NoError(t, err)
 	assert.NotNil(t, peer1)
 	err = peer1.Init(context.TODO())
@@ -85,8 +89,8 @@ func TestLibp2pMethods(t *testing.T) {
 	// setup peer2 to connect to peer 1
 	peer1p2pAddrs, err := peer1.GetMultiaddr()
 	assert.NoError(t, err)
-	peer2Config := setupPeerConfig(t, 65513, peer1p2pAddrs)
-	peer2, err := New(peer2Config)
+	peer2Config := setupPeerConfig(t, 65513, peer1p2pAddrs, false)
+	peer2, err := New(peer2Config, afero.NewMemMapFs())
 	assert.NoError(t, err)
 	assert.NotNil(t, peer2)
 
@@ -112,8 +116,8 @@ func TestLibp2pMethods(t *testing.T) {
 	// peer3 will connect to peer2 in a ring setup.
 	peer2p2pAddrs, err := peer2.GetMultiaddr()
 	assert.NoError(t, err)
-	peer3Config := setupPeerConfig(t, 65514, peer2p2pAddrs)
-	peer3, err := New(peer3Config)
+	peer3Config := setupPeerConfig(t, 65514, peer2p2pAddrs, false)
+	peer3, err := New(peer3Config, afero.NewMemMapFs())
 	assert.NoError(t, err)
 	assert.NotNil(t, peer3)
 
@@ -189,21 +193,4 @@ func TestLibp2pMethods(t *testing.T) {
 
 	receivedData := <-subscribeData
 	assert.EqualValues(t, []byte(`{"block":"1"}`), receivedData)
-}
-
-func setupPeerConfig(t *testing.T, libp2pPort int, bootstrapPeers []multiaddr.Multiaddr) *models.Libp2pConfig {
-	priv, _, err := crypto.GenerateKeyPair(crypto.Secp256k1, 256)
-	assert.NoError(t, err)
-	return &models.Libp2pConfig{
-		PrivateKey:              priv,
-		BootstrapPeers:          bootstrapPeers,
-		Rendezvous:              "nunet-randevouz",
-		Server:                  false,
-		Scheduler:               background_tasks.NewScheduler(10),
-		CustomNamespace:         "/nunet-dht-1/",
-		ListenAddress:           []string{fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", libp2pPort)},
-		PeerCountDiscoveryLimit: 40,
-		PrivateNetwork:          false,
-	}
-
 }

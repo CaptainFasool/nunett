@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/afero"
 	commonproto "gitlab.com/nunet/device-management-service/proto/generated/v1/common"
 
 	"gitlab.com/nunet/device-management-service/models"
@@ -74,14 +75,14 @@ type Message interface {
 }
 
 // NewNetwork returns a new network given the configuration.
-func NewNetwork(netConfig *models.NetworkConfig) (Network, error) {
+func NewNetwork(netConfig *models.NetworkConfig, fs afero.Fs) (Network, error) {
+	// TODO: probable additional params to receive: DB, FileSystem
 	if netConfig == nil {
 		return nil, errors.New("network configuration is nil")
 	}
 	switch netConfig.Type {
 	case models.Libp2pNetwork:
-		ln, err := libp2p.New(&netConfig.Libp2pConfig)
-
+		ln, err := libp2p.New(&netConfig.Libp2pConfig, fs)
 		return ln, err
 	case models.NATSNetwork:
 		return nil, errors.New("not implemented")
