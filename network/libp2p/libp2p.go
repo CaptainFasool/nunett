@@ -173,7 +173,16 @@ func (l *Libp2p) Stat() models.NetworkStats {
 }
 
 // Ping the remote address. The remote address is the encoded peer id which will be decoded and used here.
+//
+// TODO (Return error once): something that was confusing me when using this method is that the error is
+// returned twice if any. Once as a field of PingResult and one as a return value.
 func (l *Libp2p) Ping(ctx context.Context, peerIDAddress string, timeout time.Duration) (models.PingResult, error) {
+	// avoid dial to self attempt
+	if peerIDAddress == l.Host.ID().String() {
+		err := errors.New("can't ping self")
+		return models.PingResult{Success: false, Error: err}, err
+	}
+
 	pingCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -186,6 +195,15 @@ func (l *Libp2p) Ping(ctx context.Context, peerIDAddress string, timeout time.Du
 
 	select {
 	case res := <-pingChan:
+		if res.Error != nil {
+			zlog.Sugar().Errorf("failed to ping peer %s: %v", peerIDAddress, res.Error)
+			return models.PingResult{
+				Success: false,
+				RTT:     res.RTT,
+				Error:   res.Error,
+			}, res.Error
+		}
+
 		return models.PingResult{
 			RTT:     res.RTT,
 			Success: true,
