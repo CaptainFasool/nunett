@@ -32,9 +32,9 @@ type Allocation struct {
 }
 
 // NewAllocation returns a pointer to *Allocation
-func NewAllocation(nodeID string, req *models.ExecutionRequest) *Allocation {
+func NewAllocation(id, nodeID string, req *models.ExecutionRequest) *Allocation {
 	return &Allocation{
-		ID:      "teste",
+		ID:      id,
 		NodeID:  nodeID,
 		Request: req,
 	}
@@ -76,6 +76,6 @@ func (a *Allocator) Listen(ctx context.Context, w io.Writer) {
 
 // Allocate currently implements a placeholder text
 // Here we should define the mechanism to actually place the allocation (e.g. RPC calls, libp2p streams etc.)
-func (a *Allocator) Allocate(_ context.Context, alloc *Allocation) {
-	fmt.Printf("allocation %s: placing execution %s at node %s", alloc.ID, alloc.Request.ExecutionID, alloc.NodeID)
+func (a *Allocator) Allocate(_ context.Context, req *models.ExecutionRequest) *Allocation {
+	return &Allocation{}
 }
