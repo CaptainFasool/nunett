@@ -42,19 +42,19 @@ func NewAllocation(nodeID string, req *models.ExecutionRequest) *Allocation {
 
 // Allocater manages allocations
 type Allocater interface {
-	Allocate(ctx context.Context, alloc *Allocation)
+	Allocate(ctx context.Context, req *models.ExecutionRequest) *Allocation
 }
 
 // Allocator is a form of collector for allocations
 // It implements the Allocater interface
 type Allocator struct {
-	ch chan *Allocation
+	ch chan *models.ExecutionRequest
 }
 
 // NewAllocator returns a pointer to allocator struct
 func NewAllocator() *Allocator {
 	return &Allocator{
-		ch: make(chan *Allocation),
+		ch: make(chan *models.ExecutionRequest),
 	}
 }
 
