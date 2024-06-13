@@ -4,6 +4,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"gitlab.com/nunet/device-management-service/executor"
 	"gitlab.com/nunet/device-management-service/models"
@@ -59,18 +60,18 @@ func NewAllocator() *Allocator {
 
 // Listen wait on a *Allocation channel until it receives a value
 // Once a value is read, it calls Allocate method
-func (a *Allocator) Listen(ctx context.Context) {
-	for {
-		go func() {
+func (a *Allocator) Listen(ctx context.Context, w io.Writer) {
+	go func() {
+		for {
 			select {
 			case <-ctx.Done():
 				fmt.Println("stopping listen...")
 				break
-			case alloc := <-a.ch:
-				a.Allocate(ctx, alloc)
+			case <-a.ch:
+				fmt.Fprintf(w, "received execution request!")
 			}
-		}()
-	}
+		}
+	}()
 }
 
 // Allocate currently implements a placeholder text
