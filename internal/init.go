@@ -19,4 +19,9 @@ func init() {
 
 	ShutdownChan = make(chan os.Signal, 1)
 	signal.Notify(ShutdownChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-ShutdownChan
+		Shutdown("Received signal: " + sig.String())
+	}()
 }
