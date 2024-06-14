@@ -1,11 +1,7 @@
 package internal
 
-import (
-	"log"
-)
-
 // Shutdown logs the shutdown reason and signals the ShutdownChan
 func Shutdown(message string) {
-	log.Println("Shutdown initiated:", message)
+	zlog.Sugar().Infof("Shutdown initiated: %s", message)
 	close(ShutdownChan)
 }
