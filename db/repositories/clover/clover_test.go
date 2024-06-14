@@ -5,6 +5,7 @@ import (
 	"os"
 
 	clover "github.com/ostafen/clover/v2"
+	"gitlab.com/nunet/device-management-service/internal"
 )
 
 // setup initializes and sets up the clover database using bbolt under the hood in a temporary dir.
@@ -15,7 +16,7 @@ func setup() (*clover.DB, string) {
 	db, err := clover.Open(path)
 	if err != nil {
 		fmt.Println(err)
-		panic("failed to connect to database")
+		internal.Shutdown("failed to connect to database")
 	}
 
 	//Create collections
@@ -48,7 +49,7 @@ func teardown(db *clover.DB, path string) {
 func tempfile() string {
 	dir, err := os.MkdirTemp("", "nunet-test-")
 	if err != nil {
-		panic(err)
+		internal.Shutdown(err.Error())
 	}
 	return dir
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
+	"gitlab.com/nunet/device-management-service/internal"
 	"gitlab.com/nunet/device-management-service/internal/config"
 	"gitlab.com/nunet/device-management-service/internal/logger"
 )
@@ -34,7 +35,7 @@ func init() {
 	for _, s := range config.GetConfig().P2P.BootstrapPeers {
 		ma, err := multiaddr.NewMultiaddr(s)
 		if err != nil {
-			panic(err)
+			internal.Shutdown(err.Error())
 		}
 		NuNetBootstrapPeers = append(NuNetBootstrapPeers, ma)
 	}
