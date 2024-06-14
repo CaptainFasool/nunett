@@ -22,6 +22,6 @@ func init() {
 
 	go func() {
 		sig := <-ShutdownChan
-		Shutdown("Received signal: " + sig.String())
+		Shutdown("Received signal for " + sig.String())
 	}()
 }
