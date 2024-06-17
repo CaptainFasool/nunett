@@ -111,7 +111,7 @@ func RunContainer(ctx context.Context, depReq models.DeploymentRequest, createdL
 	containerConfig := &container.Config{
 		Image: imageName,
 		Cmd:   []string{modelURL, packages},
-		Tty:   true, // Enable TTY mode based on the parameter
+		Tty:   true, // Enable TTY mode
         AttachStdout: true,       // Attach stdout
         AttachStderr: true,       // Attach stderr
 	}
