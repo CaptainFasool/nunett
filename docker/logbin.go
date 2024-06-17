@@ -1,6 +1,6 @@
 package docker
 
-// This files keeps all the functions related to Logbin communication
+// This file keeps all the functions related to Logbin communication
 
 import (
 	"bytes"
@@ -11,6 +11,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"gitlab.com/nunet/device-management-service/libp2p"
 	"gitlab.com/nunet/device-management-service/utils"
@@ -83,16 +85,42 @@ func newLogBin(title string) (LogbinResponse, error) {
 	return logbinResp, nil
 }
 
-func updateLogbin(ctx context.Context, logbinID string, containerID string) error {
+func isTTYEnabled(ctx context.Context, containerID string) (bool, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return false, err
+	}
+	defer cli.Close()
 
+	containerJSON, err := cli.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return false, err
+	}
+
+	return containerJSON.Config.Tty, nil
+}
+
+func updateLogbin(ctx context.Context, logbinID string, containerID string) error {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+
+	ttyEnabled, err := isTTYEnabled(ctx, containerID)
+	if err != nil {
+		return fmt.Errorf("failed to determine if TTY is enabled: %v", err)
+	}
 
 	containerLog, err := GetLogs(ctx, containerID)
 	if err != nil {
 		return fmt.Errorf("failed to get logs from container - %v", err)
 	}
-	stdcopy.StdCopy(&stdout, &stderr, containerLog)
+
+	if ttyEnabled {
+		// TTY mode: Combined output
+		io.Copy(&stdout, containerLog)
+	} else {
+		// Non-TTY mode: Separate stdout and stderr
+		stdcopy.StdCopy(&stdout, &stderr, containerLog)
+	}
 
 	logAppend := LogAppend{}
 
@@ -128,3 +156,4 @@ func updateLogbin(ctx context.Context, logbinID string, containerID string) erro
 	}
 	return nil
 }
+
